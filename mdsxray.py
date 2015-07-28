@@ -5,6 +5,8 @@ import re
 import warnings
 import numpy as np
 
+import dask.array as da
+
 from xray import Variable
 from xray.backends.common import AbstractDataStore
 from xray.core.utils import NDArrayMixin
@@ -29,50 +31,50 @@ _endian_lookup = {'=': 'native',
 # the variable metadata will be stored in dicts of the form
 #_variable[varname] = (dimensions, description, units)
 
-_grid_variables = {
+_grid_variables = OrderedDict(
+    # horizontal grid
+    X=   (('X',), "X-coordinate of cell center", "meters"),
+    Y=   (('Y',), "Y-coordinate of cell center", "meters"),
+    Xp1= (('Xp1',), "X-coordinate of cell corner", "meters"),
+    Yp1= (('Yp1',), "Y-coordinate of cell corner", "meters"),
+    # 2d versions
+    XC=  (('Y','X'), "X coordinate of cell center (T-P point)", "degree_east"),
+    YC=  (('Y','X'), "Y coordinate of cell center (T-P point)", "degree_north"),
+    XG=  (('Yp1','Xp1'), "X coordinate of cell corner (Vorticity point)", "degree_east"),
+    YG=  (('Yp1','Xp1'), "Y coordinate of cell corner (Vorticity point)", "degree_north"),
     # vertical grid
-    'Z':   (('Z',), "vertical coordinate of cell center", "meters"),
-    'Zp1': (('Zp1',), "vertical coordinate of cell interface", "meters"),
-    'Zu':  (('Zu',), "vertical coordinate of lower cell interface", "meters"),
-    'Zl':  (('Zl',), "vertical coordinate of upper cell interface", "meters"),
+    Z=   (('Z',), "vertical coordinate of cell center", "meters"),
+    Zp1= (('Zp1',), "vertical coordinate of cell interface", "meters"),
+    Zu=  (('Zu',), "vertical coordinate of lower cell interface", "meters"),
+    Zl=  (('Zl',), "vertical coordinate of upper cell interface", "meters"),
     # (for some reason, the netCDF files use both R and Z notation )   
 #    'RC':  (('Z',), "R coordinate of cell center", "m"),
 #    'RF':  (('Zp1',), "R coordinate of cell interface", "m"),
 #    'RU':  (('Zu',), "R coordinate of lower cell interface", "m"),
 #    'RL':  (('Zl',), "R coordinate of upper cell interface", "m"),
-    # differentials
-    'drC': (('Zp1',), "r cell center separation", "m"),
-    'drF': (('Z',), "r cell face separation", "m"),
-    # horizontal grid
-    'X':   (('X',), "X-coordinate of cell center", "meters"),
-    'Y':   (('Y',), "Y-coordinate of cell center", "meters"),
-    'Xp1': (('Xp1',), "X-coordinate of cell corner", "meters"),
-    'Yp1': (('Yp1',), "Y-coordinate of cell corner", "meters"),
-    # 2d versions
-    'XC':  (('Y','X'), "X coordinate of cell center (T-P point)", "degree_east"),
-    'YC':  (('Y','X'), "Y coordinate of cell center (T-P point)", "degree_north"),
-    'XG':  (('Yp1','Xp1'), "X coordinate of cell corner (Vorticity point)", "degree_east"),
-    'YG':  (('Yp1','Xp1'), "Y coordinate of cell corner (Vorticity point)", "degree_north"),
-    # differentials
-    'dxC': (('Y','Xp1'), "x cell center separation", "meters"),
-    'dyC': (('Yp1','X'), "y cell center separation", "meters"),
-    'dxG': (('Yp1','X'), "x cell corner separation", "meters"),
-    'dyG': (('Y','Xp1'), "y cell corner separation", "meters"),
+    # horiz. differentials
+    dxC= (('Y','Xp1'), "x cell center separation", "meters"),
+    dyC= (('Yp1','X'), "y cell center separation", "meters"),
+    dxG= (('Yp1','X'), "x cell corner separation", "meters"),
+    dyG= (('Y','Xp1'), "y cell corner separation", "meters"),
+    # vert. differentials
+    drC= (('Zp1',), "r cell center separation", "m"),
+    drF= (('Z',), "r cell face separation", "m"),
     # areas
-    'rA':  (('Y','X'), "r-face area at cell center", "m^2"),
-    'rAw': (('Y','Xp1'), "r-face area at U point", "m^2"),
-    'rAs': (('Yp1','X'), "r-face area at V point", "m^2"),
-    'rAz': (('Yp1','Xp1'), "r-face area at cell corner", "m^2"),
+    rA=  (('Y','X'), "r-face area at cell center", "m^2"),
+    rAw= (('Y','Xp1'), "r-face area at U point", "m^2"),
+    rAs= (('Yp1','X'), "r-face area at V point", "m^2"),
+    rAz= (('Yp1','Xp1'), "r-face area at cell corner", "m^2"),
     # depth
-    'Depth':(('Y','X'), "fluid thickness in r coordinates (at rest)", "meters"),
+    Depth=(('Y','X'), "fluid thickness in r coordinates (at rest)", "meters"),
     # thickness factors
-    'HFacC':(('Z','Y','X'),
+    HFacC=(('Z','Y','X'),
              "vertical fraction of open cell at cell center", "none (0-1)"),
-    'HFacW':(('Z','Y','Xp1'),
+    HFacW=(('Z','Y','Xp1'),
              "vertical fraction of open cell at West face", "none (0-1)"),
-    'HFacS':(('Z','Yp1','X'),
+    HFacS=(('Z','Yp1','X'),
              "vertical fraction of open cell at South face", "none (0-1)")
-}
+)
 
 _grid_special_mapping = {
     'Z': ('RC', (slice(None),0,0)),
@@ -89,16 +91,44 @@ _grid_special_mapping = {
     'HFacS': ('hFacS', None),    
 }
 
-_state_variables = {
-    'U':  (('Z','Y','Xp1'), 'Zonal Component of Velocity', 'm/s'),
-    'V':  (('Z','Yp1','X'), 'Meridional Component of Velocity', 'm/s'),
-    'W':  (('Zl','Y','X'), 'Vertical Component of Velocity', 'm/s'),
-    'T':  (('Z','Y','X'), 'Potential Temperature', 'degC'),
-    'S':  (('Z','Y','X'), 'Salinity', 'psu'),
-    'PH': (('Z','Y','X'), 'Hydrostatic Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
-    'PHL':(('Y','X'), 'Bottom Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
-    'Eta':(('Y','X'), 'Surface Height Anomaly', 'm')
-}
+_state_variables = OrderedDict(
+    # state
+    U=  (('Z','Y','Xp1'), 'Zonal Component of Velocity', 'm/s'),
+    V=  (('Z','Yp1','X'), 'Meridional Component of Velocity', 'm/s'),
+    W=  (('Zl','Y','X'), 'Vertical Component of Velocity', 'm/s'),
+    T=  (('Z','Y','X'), 'Potential Temperature', 'degC'),
+    S=  (('Z','Y','X'), 'Salinity', 'psu'),
+    PH= (('Z','Y','X'), 'Hydrostatic Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
+    PHL=(('Y','X'), 'Bottom Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
+    Eta=(('Y','X'), 'Surface Height Anomaly', 'm'),
+    # tave
+    uVeltave=(('Z','Y','Xp1'), 'Zonal Component of Velocity', 'm/s'),
+    vVeltave=(('Z','Yp1','X'), 'Meridional Component of Velocity', 'm/s'),
+    wVeltave=(('Zl','Y','X'), 'Vertical Component of Velocity', 'm/s'),
+    Ttave=(('Z','Y','X'), 'Potential Temperature', 'degC'),
+    Stave=(('Z','Y','X'), 'Salinity', 'psu'),
+    PhHytave=(('Z','Y','X'), 'Hydrostatic Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
+    PHLtave=(('Y','X'), 'Bottom Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
+    ETAtave=(('Y','X'), 'Surface Height Anomaly', 'm'),    
+    Convtave=(('Zl','Y','X'), "Convective Adjustment Index", "none [0-1]"), 
+    Eta2tave=(('Y','X'), "Square of Surface Height Anomaly", "m^2"),
+    PHL2tave=(('Y','X'), 'Square of Hyd. Pressure Pot.(p/rho) Anomaly', 'm^4/s^4'),
+    sFluxtave=(('Y','X'), 'total salt flux (match salt-content variations), >0 increases salt', 'g/m^2/s'),
+    Tdiftave=(('Zl','Y','X'), "Vertical Diffusive Flux of Pot.Temperature", "degC.m^3/s"),
+    tFluxtave=(('Y','X'), "Total heat flux (match heat-content variations), >0 increases theta", "W/m^2"),
+    TTtave=(('Z','Y','X'), 'Squared Potential Temperature', 'degC^2'),
+    uFluxtave=(('Y','Xp1'), 'surface zonal momentum flux, positive -> increase u', 'N/m^2'),
+    UStave=(('Z','Y','Xp1'), "Zonal Transport of Salinity", "psu m/s"),
+    UTtave=(('Z','Y','Xp1'), "Zonal Transport of Potenial Temperature", "degC m/s"),
+    UUtave=(('Z','Y','Xp1'), "Zonal Transport of Zonal Momentum", "m^2/s^2"),
+    UVtave=(('Z','Yp1','Xp1'), 'Product of meridional and zonal velocity', 'm^2/s^2'),
+    vFluxtave=(('Yp1','X'), 'surface meridional momentum flux, positive -> increase v', 'N/m^2'),
+    VStave=(('Z','Yp1','X'), "Meridional Transport of Salinity", "psu m/s"),
+    VTtave=(('Z','Yp1','X'), "Meridional Transport of Potential Temperature", "degC m/s"),
+    VVtave=(('Z','Yp1','X'), 'Zonal Transport of Zonal Momentum', 'm^2/s^2'),
+    WStave=(('Zl','Y','X'), 'Vertical Transport of Salinity', "psu m/s"),
+    WTtave=(('Zl','Y','X'), 'Vertical Transport of Potential Temperature', "degC m/s")
+)
 
 def _force_native_endianness(var):
     # possible values for byteorder are:
@@ -175,7 +205,7 @@ def _parse_meta(fname):
     """Get the metadata as a dict out of the mitGCM mds .meta file."""
 
     flds = {}
-    basename = re.match('(^\w+)', os.path.basename(fname)).groups()[0]
+    basename = re.match('(^.+?)\..+', os.path.basename(fname)).groups()[0]
     flds['basename'] = basename
     with open(fname) as f:
         text = f.read()
@@ -292,7 +322,7 @@ class MemmapArrayWrapper(NDArrayMixin):
     @property
     def dtype(self):
         # always use native endianness
-        return np._memmap_array.dtype
+        return self._memmap_array.dtype
 
     def __getitem__(self, key):
         data = self._memmap_array.__getitem__(key)
@@ -304,7 +334,8 @@ class MDSDataStore(AbstractDataStore):
     """Represents the entire directory of MITgcm mds output
     including all grid variables. Similar in some ways to
     netCDF.Dataset."""
-    def __init__(self, dirname, geometry='Cartesian'):
+    def __init__(self, dirname, iters=None, deltaT=1,
+                 ignore_pickup=True, geometry='Cartesian'):
         assert geometry in _valid_geometry
         self.geometry = geometry
         
@@ -344,25 +375,62 @@ class MDSDataStore(AbstractDataStore):
                 self._variables[k] = Variable(
                     dims, MemmapArrayWrapper(data), {'description': desc, 'units': units})
                 self._dimensions.append(k)
+                
+        # now get variables from our iters
+        if iters is not None:
             
-        
-        #filenames = _list_all_mds_files(dirname)
-        
-        #iternum = None
-        #for f in filenames:
-        #    # returns a dict
-        #    for vname, data in _read_mds(
-        #            os.path.join(dirname, f), iternum, force_dict=True).iteritems():
-        #        try:
-        #            meta = diag_meta[vname]
-        #        except KeyError:
-        #            raise IOError('No metadata found for ' + vname)
-        #        dimensions = meta.coords()
-        #        attributes = {'description': meta.desc, 'units': meta.units}     
-        #        self._variables[v] = Variable(
-        #                dimensions, data, attributes)
+            # create time array
+            timedata = np.asarray(iters)*deltaT
+            self._variables['time'] = Variable(
+                                        ('time',), timedata,
+                                        {'description': 'model time', 'units': 'seconds'})
+            self._dimensions.append('time')
+            
+            varnames = []
+            fnames = []
+            _data_vars = OrderedDict()
+            # look at first iter to get variable metadata
+            for f in glob(os.path.join(dirname, '*.%010d.meta' % iters[0])):
+                if ignore_pickup and re.search('pickup', f):
+                    pass
+                else:
+                    meta = _parse_meta(f)
+                    if meta.has_key('fldList'):
+                        flds = meta['fldList']
+                        [varnames.append(fl) for fl in flds]
+                    else:
+                        varnames.append(meta['basename'])
+                    fnames.append(os.path.join(dirname,meta['basename']))
+            
+            # read data
+            vardata = {}
+            for k in varnames:
+                vardata[k] = []
+            for i in iters:
+                for f in fnames:
+                    try:
+                        data = _read_mds(f, i, force_dict=True)
+                        for k in data.keys():
+                            vardata[k].append(MemmapArrayWrapper(data[k]))
+                    except IOError:
+                        # couldn't find the variable, remove it from the list
+                        #print 'Removing %s from list (iter %g)' % (k, i)
+                        varnames.remove(k)
 
-        #self._variables = self.mds.find_mds_variables() # return ordered dict
+            # final loop to create Variable objects
+            for k in varnames:
+                try:
+                    dims, desc, units = _state_variables[k]
+                except KeyError:
+                    dims, desc, units = diag_meta[k]
+                # add time to dimension
+                dims_time = ('time',) + dims
+                varshape = vardata[k][0].shape
+                # wrap variable in dask array
+                vardask = da.stack([da.from_array(d, varshape) for d in vardata[k]])
+                self._variables[k] = Variable( dims_time, vardask,
+                                               {'description': desc, 'units': units})
+                                        
         self._attributes = {'history': 'Some made up attribute'}
 
 
