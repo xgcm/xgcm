@@ -236,7 +236,7 @@ def _parse_meta(fname):
                        re.split(',\n',flds['dimList'])]
     if flds.has_key('fldList'):
         flds['fldList'] = [re.match("'*(\w+)",g).groups()[0] for g in
-                           re.split("' '",flds['fldList'])]
+                           re.split("'\s+'",flds['fldList'])]
         assert flds['nrecords'] == len(flds['fldList'])
     return flds
 
@@ -335,7 +335,12 @@ class MDSDataStore(AbstractDataStore):
     including all grid variables. Similar in some ways to
     netCDF.Dataset."""
     def __init__(self, dirname, iters=None, deltaT=1,
+                 prefix=None,
                  ignore_pickup=True, geometry='Cartesian'):
+        """iters: list of iteration numbers
+        deltaT: timestep
+        prefix: list of file prefixes (if None use all)
+        """
         assert geometry in _valid_geometry
         self.geometry = geometry
         
@@ -394,13 +399,19 @@ class MDSDataStore(AbstractDataStore):
                 if ignore_pickup and re.search('pickup', f):
                     pass
                 else:
-                    meta = _parse_meta(f)
-                    if meta.has_key('fldList'):
-                        flds = meta['fldList']
-                        [varnames.append(fl) for fl in flds]
-                    else:
-                        varnames.append(meta['basename'])
-                    fnames.append(os.path.join(dirname,meta['basename']))
+                    go = True
+                    if prefix is not None:
+                        matches = [re.search(p, f) for p in prefix]
+                        if not any(matches):
+                            go = False
+                    if go:
+                        meta = _parse_meta(f)
+                        if meta.has_key('fldList'):
+                            flds = meta['fldList']
+                            [varnames.append(fl) for fl in flds]
+                        else:
+                            varnames.append(meta['basename'])
+                        fnames.append(os.path.join(dirname,meta['basename']))
             
             # read data
             vardata = {}
