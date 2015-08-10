@@ -321,7 +321,6 @@ class MemmapArrayWrapper(NDArrayMixin):
 
     @property
     def dtype(self):
-        # always use native endianness
         return self._memmap_array.dtype
 
     def __getitem__(self, key):
@@ -434,13 +433,23 @@ class MDSDataStore(AbstractDataStore):
                     dims, desc, units = _state_variables[k]
                 except KeyError:
                     dims, desc, units = diag_meta[k]
-                # add time to dimension
-                dims_time = ('time',) + dims
+                # check for shape compatability
                 varshape = vardata[k][0].shape
-                # wrap variable in dask array
-                vardask = da.stack([da.from_array(d, varshape) for d in vardata[k]])
-                self._variables[k] = Variable( dims_time, vardask,
-                                               {'description': desc, 'units': units})
+                varndims = len(varshape)
+                if len(dims) != varndims:
+                    warnings.warn("Shape of variable data is not compatible "
+                                  "with expected number of dimensions. This "
+                                  "can arise if the 'levels' option is used "
+                                  "in data.diagnostics. Right now we have no "
+                                  "way to infer the level, so the variable is "
+                                  "skipped: " + k)
+                else:
+                    # add time to dimension
+                    dims_time = ('time',) + dims
+                    # wrap variable in dask array
+                    vardask = da.stack([da.from_array(d, varshape) for d in vardata[k]])
+                    self._variables[k] = Variable( dims_time, vardask,
+                                                   {'description': desc, 'units': units})
                                         
         self._attributes = {'history': 'Some made up attribute'}
 
