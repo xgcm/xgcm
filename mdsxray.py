@@ -79,7 +79,7 @@ _grid_variables = OrderedDict(
 _grid_special_mapping = {
     'Z': ('RC', (slice(None),0,0)),
     'Zp1': ('RF', (slice(None),0,0)),
-    'Zu': ('RC', (slice(1,None),0,0)),
+    'Zu': ('RF', (slice(1,None),0,0)),
     'Zl': ('RF', (slice(None,-1),0,0)),
     'X': ('XC', (0,slice(None))),
     'Y': ('YC', (slice(None),0)),
