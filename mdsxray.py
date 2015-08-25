@@ -334,7 +334,7 @@ class MDSDataStore(AbstractDataStore):
     including all grid variables. Similar in some ways to
     netCDF.Dataset."""
     def __init__(self, dirname, iters=None, deltaT=1,
-                 prefix=None,
+                 prefix=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='Cartesian'):
         """iters: list of iteration numbers
         deltaT: timestep
@@ -383,11 +383,22 @@ class MDSDataStore(AbstractDataStore):
         # now get variables from our iters
         if iters is not None:
             
+            # create iteration array
+            iterdata = np.asarray(iters)
+            self._variables['iter'] = Variable(('time',), iterdata,
+                                                {'description': 'model timestep number'})
+            
             # create time array
             timedata = np.asarray(iters)*deltaT
+            time_attrs = {'description': 'model time'}
+            if ref_date is not None:
+                time_attrs['units'] = 'seconds since %s' % ref_date
+            else:
+                time_attrs['units'] = 'seconds'
+            if calendar is not None:
+                time_attrs['calendar'] = calendar
             self._variables['time'] = Variable(
-                                        ('time',), timedata,
-                                        {'description': 'model time', 'units': 'seconds'})
+                                        ('time',), timedata, time_attrs)
             self._dimensions.append('time')
             
             varnames = []
@@ -400,7 +411,8 @@ class MDSDataStore(AbstractDataStore):
                 else:
                     go = True
                     if prefix is not None:
-                        matches = [re.search(p, f) for p in prefix]
+                        bname = os.path.basename(f[:-16])
+                        matches = [bname==p for p in prefix]
                         if not any(matches):
                             go = False
                     if go:
