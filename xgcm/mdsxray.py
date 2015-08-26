@@ -7,6 +7,7 @@ import numpy as np
 
 import dask.array as da
 
+import xray
 from xray import Variable
 from xray.backends.common import AbstractDataStore
 from xray.core.utils import NDArrayMixin
@@ -329,7 +330,18 @@ class MemmapArrayWrapper(NDArrayMixin):
 
 _valid_geometry = ['Cartesian', 'SphericalPolar']
 
-class MDSDataStore(AbstractDataStore):
+def open_mdsdataset(dirname, iters=None, deltaT=1,
+                 prefix=None, ref_date=None, calendar=None,
+                 ignore_pickup=True, geometry='Cartesian'):
+    """Open MITgcm-style mds file output as xray datset."""
+    
+    store = _MDSDataStore(dirname, iters, deltaT, 
+                             prefix, ref_date, calendar,
+                             ignore_pickup, geometry)
+    return xray.Dataset.load_store(store)
+
+
+class _MDSDataStore(AbstractDataStore):
     """Represents the entire directory of MITgcm mds output
     including all grid variables. Similar in some ways to
     netCDF.Dataset."""
