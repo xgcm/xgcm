@@ -29,9 +29,10 @@ class MITgcmDataset(object):
             chunks = list(darr.data.chunks)
             chunks[zdim] = (1,)
             zarr = fill_value * da.ones(shape, dtype=darr.dtype, chunks=chunks)
+            zeros = xray.DataArray(zarr, coords, dims).chunk()
         else:
             zarr = np.zeros(shape, darr.dtype)
-        zeros = xray.DataArray(zarr, coords, dims)
+            zeros = xray.DataArray(zarr, coords, dims)
         newdarr = xray.concat([darr, zeros], dim='Zl').rename({'Zl':'Zp1'})
         if newdarr.chunks:
             return newdarr.chunk({'Zp1': len(newdarr.Zp1)})
@@ -42,7 +43,6 @@ class MITgcmDataset(object):
         a_up = darr.isel(Zp1=slice(None,-1))
         a_dn = darr.isel(Zp1=slice(1,None))
         a_diff = a_up.data - a_dn.data
-        print a_diff.shape
         # dimensions and coords of new array
         coords, dims = self._get_coords_from_dims(darr.dims, replace={'Zp1':'Z'})
         return xray.DataArray(a_diff, coords, dims,

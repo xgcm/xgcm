@@ -171,7 +171,7 @@ def _parse_available_diagnostics(fname):
                 dds = MITgcmDiagnosticDescription(
                     key, code, units, desc, levs, mate)
                 # return dimensions, description, units
-                all_diags[key] = (dds.coords(), dds.units, dds.desc)
+                all_diags[key] = (dds.coords(), dds.desc, dds.units)
     return all_diags
 
 
@@ -436,7 +436,7 @@ class _MDSDataStore(AbstractDataStore):
                             varnames.append(meta['basename'])
                         fnames.append(os.path.join(dirname,meta['basename']))
             
-            # read data
+            # read data as dask arrays (should be an option)
             vardata = {}
             for k in varnames:
                 vardata[k] = []
@@ -445,7 +445,9 @@ class _MDSDataStore(AbstractDataStore):
                     try:
                         data = _read_mds(f, i, force_dict=True)
                         for k in data.keys():
-                            vardata[k].append(MemmapArrayWrapper(data[k]))
+                            mwrap = MemmapArrayWrapper(data[k])
+                            vardata[k].append(
+                                da.from_array(mwrap, mwrap.shape))
                     except IOError:
                         # couldn't find the variable, remove it from the list
                         #print 'Removing %s from list (iter %g)' % (k, i)
