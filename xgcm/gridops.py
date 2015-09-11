@@ -130,7 +130,7 @@ class GCMDataset(object):
         """
         array_zp1 = self.pad_zl_to_zp1(array, fill_value)
         array_diff = self.diff_zp1_to_z(array_zp1)
-        return array_diff.rename(_append_to_name_or(array, '_diff_zl_to_z'))
+        return array_diff.rename(_append_to_name(array, '_diff_zl_to_z'))
 
     def diff_z_to_zp1(self, array):
         """Take the vertical difference of an array located at z points, resulting
