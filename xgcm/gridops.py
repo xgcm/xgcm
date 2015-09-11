@@ -17,8 +17,7 @@ class GCMDataset(object):
     # without these variables in the dataset, can't function
     needed_vars = ['Z', 'Zp1', 'Zl', 'Zu', 'X', 'Xp1', 'Y', 'Yp1',
                    'XC', 'YC', 'XG', 'YG',
-                   'drF', 'drC', 'dxC', 'dxG', 'dyC', 'dyG'
-                  ]
+                   'drF', 'drC', 'dxC', 'dxG', 'dyC', 'dyG']
 
     def __init__(self, ds):
         """Initialize GCM object.
@@ -35,6 +34,8 @@ class GCMDataset(object):
 
         self.ds = ds
 
+    # silly functions
+
     def _get_coords_from_dims(self, dims, replace=None):
         """Utility function for quickly fetching coordinates from parent
         dataset.
@@ -44,6 +45,17 @@ class GCMDataset(object):
             for k in replace:
                 dims[dims.index(k)] = replace[k]
         return {dim: self.ds[dim] for dim in dims}, dims
+
+    def _get_hfac_for_array(self, array):
+        """Figure out the correct hfac given array dimensions."""
+        hfac = None
+        if 'X' in array.dims and 'Y' in array.dims and 'HFacC' in self.ds:
+            hfac = self.ds.HFacC
+        if 'Xp1' in array.dims and 'Y' in array.dims and 'HFacW' in self.ds:
+            hfac = self.ds.HFacW
+        if 'X' in array.dims and 'Yp1' in array.dims and 'HFacW' in self.ds:
+            hfac = self.ds.HFacS
+        return hfac
 
     ### Vertical Differences, Derivatives, and Interpolation ###
 
@@ -154,7 +166,7 @@ class GCMDataset(object):
         # trim vertical
         coords['Zp1'] = coords['Zp1'][1:-1]
         return xray.DataArray(a_diff, coords, dims,
-                              name=array.name+'_diff_z_to_zp1')
+                              name=_append_to_name(array, 'diff_z_to_zp1'))
 
     def derivative_zp1_to_z(self, array):
         """Take the vertical derivative of an array located at zp1 points, resulting
@@ -184,7 +196,7 @@ class GCMDataset(object):
         array : xray DataArray
             The array to differentiate. Must have the coordinate zl.
         fill_value : number, optional
-            The value to be used at the bottom point. The default (0) is the
+            The assumed value at the bottom point. The default (0) is the
             appropriate choice for vertical fluxes.
 
         Returns
@@ -215,6 +227,41 @@ class GCMDataset(object):
         dz = self.ds.drC[1:-1]
         return a_diff / dz
 
+    ### Vertical Integrals ###
+    # if the array to integrate is 1D or 2D, don't multiply by hFac
+    # but what if it is 3D, how do we decide what to do?
+    # what if points are missing? xray should take care of that
+    # how do we pick which hFac to use? look at dims
+    def integrate_z(self, array, average=False):
+        """Integrate ``array`` in vertical dimension, accounting for vertical
+        grid geometry.
+
+        Parameters
+        ----------
+        array : xray DataArray
+            The array to integrate. Must have the dimension Z.
+        average : bool, optional
+            If ``True``, return an average instead of an integral.
+
+        Returns
+        -------
+        integral : xray DataArray
+            The vertical integral of ``array``.
+        """
+        if not 'Z' in array.dims:
+            raise ValueError('Can only integrate arrays on Z grid')
+        dz = self.ds.drF
+        # look at horizontal dimensions and try to find an hfac
+        hfac = self._get_hfac_for_array(array)
+        if hfac is not None:
+            # brodcast hfac against dz
+            dz *= hfac
+        a_int = (array * dz).sum(dim='Z')
+        if average:
+            return a_int / dz.sum(dim='Z')
+        else:
+            return a_int
+
     ### Horizontal Differences, Derivatives, and Interpolation ###
 
     # doesn't actually need parent ds
@@ -235,7 +282,7 @@ class GCMDataset(object):
         diff = right.data - left.data
         coords, dims = self._get_coords_from_dims(array.dims, replace={'Xp1':'X'})
         return xray.DataArray(diff, coords, dims
-                              ).rename(array.name + '_diff_xp1_to_x')
+                        ).rename(_append_to_name(array, 'diff_xp1_to_x'))
 
     def diff_yp1_to_y(self, array):
         """Difference DataArray ``array`` in the y direction.
@@ -247,4 +294,4 @@ class GCMDataset(object):
         diff = right.data - left.data
         coords, dims = self._get_coords_from_dims(array.dims, replace={'Yp1':'Y'})
         return xray.DataArray(diff, coords, dims
-                              ).rename(array.name + '_diff_yp1_to_y')
+                        ).rename(_append_to_name(array, '_diff_yp1_to_y'))

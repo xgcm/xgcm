@@ -16,7 +16,7 @@ def create_test_dataset():
     Nz = 10
     Nx = 25
     Ny = 20
-    dz = H / Nx
+    dz = H / Nz
     dx = Lx / Nx
     dy = Ly / Ny
 
@@ -105,3 +105,43 @@ class TestGCMDataset(unittest.TestCase):
         assert gcm_dg.equals(dsdg), (gcm_dg, dsdg)
         gcm_dgdf = gcm.derivative_z_to_zp1(ds.g)
         assert gcm_dgdf.equals(dsdgdf), (gcm_dgdf, dsdgdf)
+
+    def test_vertical_integral(self):
+        ds = create_test_dataset()
+        H = ds.attrs['H']
+        dz = ds.attrs['dz']
+
+        f = np.sin(np.pi * ds.Z.values / H)
+        ds['f'] = (('Z'), f)
+        ds['fint'] = (f*dz).sum()
+        ds['favg'] = ds['fint'] / H
+
+        gcm = GCMDataset(ds)
+        gcm_fint = gcm.integrate_z(ds.f)
+        assert gcm_fint.equals(ds.fint), (gcm_fint, ds.fint)
+        gcm_favg = gcm.integrate_z(ds.f, average=True)
+        assert gcm_favg.equals(ds.favg), (gcm_favg, ds.favg)
+
+    def test_horizontal_derivatives(self):
+        ds = create_test_dataset()
+        dx = ds.attrs['dx']
+        dy = ds.attrs['dy']
+        Lx = ds.attrs['Lx']
+        Ly = ds.attrs['Ly']
+
+        # perdiodic function of Xp1
+        f = np.sin(np.pi * ds.Xp1.values / Lx)
+        ds['f'] = ('Xp1', f)
+        ds['df'] = ('X', np.roll(f,-1) - f)
+        ds['dfdx'] = ds.df/dx
+        # periodic function of Yp1
+        g = np.cos(np.pi * ds.Yp1.values / Ly)
+        ds['g'] = ('Yp1', g)
+        ds['dg'] = ('Y', np.roll(g,-1) - g)
+        ds['dgdy'] = ds.dg/dy
+
+        gcm = GCMDataset(ds)
+        gcm_df = gcm.diff_xp1_to_x(ds.f)
+        assert gcm_df.equals(ds.df), (gcm_df, ds.df)
+        gcm_dg = gcm.diff_yp1_to_y(ds.g)
+        assert gcm_dg.equals(ds.dg), (gcm_dg, ds.dg)
