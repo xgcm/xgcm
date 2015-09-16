@@ -12,7 +12,7 @@ from xray import Variable
 from xray.backends.common import AbstractDataStore
 from xray.core.utils import NDArrayMixin
 from xray.core.pycompat import OrderedDict
-from xray.core.indexing import NumpyIndexingAdapter 
+from xray.core.indexing import NumpyIndexingAdapter
 
 #from ..conventions import pop_to, cf_encoder
 #from ..core import indexing
@@ -48,7 +48,7 @@ _grid_variables = OrderedDict(
     Zp1= (('Zp1',), "vertical coordinate of cell interface", "meters"),
     Zu=  (('Zu',), "vertical coordinate of lower cell interface", "meters"),
     Zl=  (('Zl',), "vertical coordinate of upper cell interface", "meters"),
-    # (for some reason, the netCDF files use both R and Z notation )   
+    # (for some reason, the netCDF files use both R and Z notation )
 #    'RC':  (('Z',), "R coordinate of cell center", "m"),
 #    'RF':  (('Zp1',), "R coordinate of cell interface", "m"),
 #    'RU':  (('Zu',), "R coordinate of lower cell interface", "m"),
@@ -82,6 +82,8 @@ _grid_special_mapping = {
     'Zp1': ('RF', (slice(None),0,0)),
     'Zu': ('RF', (slice(1,None),0,0)),
     'Zl': ('RF', (slice(None,-1),0,0)),
+    # this will create problems with some curvillinear grids
+    # whate if X and Y need to be 2D?
     'X': ('XC', (0,slice(None))),
     'Y': ('YC', (slice(None),0)),
     'Xp1': ('XG', (0,slice(None))),
@@ -89,7 +91,7 @@ _grid_special_mapping = {
     'rA': ('RAC', None),
     'HFacC': ('hFacC', None),
     'HFacW': ('hFacW', None),
-    'HFacS': ('hFacS', None),    
+    'HFacS': ('hFacS', None),
 }
 
 _state_variables = OrderedDict(
@@ -110,8 +112,8 @@ _state_variables = OrderedDict(
     Stave=(('Z','Y','X'), 'Salinity', 'psu'),
     PhHytave=(('Z','Y','X'), 'Hydrostatic Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
     PHLtave=(('Y','X'), 'Bottom Pressure Pot.(p/rho) Anomaly', 'm^2/s^2'),
-    ETAtave=(('Y','X'), 'Surface Height Anomaly', 'm'),    
-    Convtave=(('Zl','Y','X'), "Convective Adjustment Index", "none [0-1]"), 
+    ETAtave=(('Y','X'), 'Surface Height Anomaly', 'm'),
+    Convtave=(('Zl','Y','X'), "Convective Adjustment Index", "none [0-1]"),
     Eta2tave=(('Y','X'), "Square of Surface Height Anomaly", "m^2"),
     PHL2tave=(('Y','X'), 'Square of Hyd. Pressure Pot.(p/rho) Anomaly', 'm^4/s^4'),
     sFluxtave=(('Y','X'), 'total salt flux (match salt-content variations), >0 increases salt', 'g/m^2/s'),
@@ -153,9 +155,9 @@ def _force_native_endianness(var):
 
 def _parse_available_diagnostics(fname):
     all_diags = {}
-    
+
     # add default diagnostics for grid, tave, and state
-    
+
     with open(fname) as f:
         # will automatically skip first four header lines
         for l in f:
@@ -164,7 +166,7 @@ def _parse_available_diagnostics(fname):
                 key = c[1].strip()
                 levs = int(c[2].strip())
                 mate = c[3].strip()
-                if mate: mate = int(mate) 
+                if mate: mate = int(mate)
                 code = c[4]
                 units = c[5].strip()
                 desc = c[6].strip()
@@ -176,7 +178,7 @@ def _parse_available_diagnostics(fname):
 
 
 class MITgcmDiagnosticDescription(object):
-    
+
     def __init__(self, key, code, units=None, desc=None, levs=None, mate=None):
         self.key = key
         self.levs = levs
@@ -184,7 +186,7 @@ class MITgcmDiagnosticDescription(object):
         self.code = code
         self.units = units
         self.desc = desc
-    
+
     def coords(self):
         """Parse code to determine coordinates."""
         hpoint = self.code[1]
@@ -252,7 +254,7 @@ def _read_mds(fname, iternum=None, use_mmap=True,
         istr = '.%010d' % iternum
     datafile = fname + istr + '.data'
     metafile = fname + istr + '.meta'
-    
+
     # get metadata
     meta = _parse_meta(metafile)
     # why does the .meta file contain so much repeated info?
@@ -263,7 +265,7 @@ def _read_mds(fname, iternum=None, use_mmap=True,
     # now add an extra for number of recs
     nrecs = meta['nrecords']
     shape.insert(0, nrecs)
-    
+
     # load and shape data
     if use_mmap:
         d = np.memmap(datafile, meta['dataprec'], 'r')
@@ -272,9 +274,9 @@ def _read_mds(fname, iternum=None, use_mmap=True,
     if convert_big_endian:
         dtnew = d.dtype.newbyteorder('=')
         d = d.astype(dtnew)
-        
+
     d.shape = shape
-    
+
     if nrecs == 1:
         if meta.has_key('fldList'):
             name = meta['fldList'][0]
@@ -308,7 +310,7 @@ def _list_all_mds_files(dirname):
 
 
 #class MemmapArrayWrapper(NumpyIndexingAdapter):
-class MemmapArrayWrapper(NDArrayMixin):    
+class MemmapArrayWrapper(NDArrayMixin):
     def __init__(self, memmap_array):
         self._memmap_array = memmap_array
 
@@ -334,8 +336,8 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
                  prefix=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='Cartesian'):
     """Open MITgcm-style mds file output as xray datset."""
-    
-    store = _MDSDataStore(dirname, iters, deltaT, 
+
+    store = _MDSDataStore(dirname, iters, deltaT,
                              prefix, ref_date, calendar,
                              ignore_pickup, geometry)
     return xray.Dataset.load_store(store)
@@ -354,15 +356,15 @@ class _MDSDataStore(AbstractDataStore):
         """
         assert geometry in _valid_geometry
         self.geometry = geometry
-        
+
         # the directory where the files live
         self.dirname = dirname
-        
+
         # storage dicts for variables and attributes
         self._variables = OrderedDict()
         self._attributes = OrderedDict()
         self._dimensions = []
- 
+
         ### figure out the mapping between diagnostics names and variable properties
         # all possible diagnostics
         diag_meta = _parse_available_diagnostics(
@@ -391,15 +393,15 @@ class _MDSDataStore(AbstractDataStore):
                 self._variables[k] = Variable(
                     dims, MemmapArrayWrapper(data), {'description': desc, 'units': units})
                 self._dimensions.append(k)
-                
+
         # now get variables from our iters
         if iters is not None:
-            
+
             # create iteration array
             iterdata = np.asarray(iters)
             self._variables['iter'] = Variable(('time',), iterdata,
                                                 {'description': 'model timestep number'})
-            
+
             # create time array
             timedata = np.asarray(iters)*deltaT
             time_attrs = {'description': 'model time'}
@@ -412,7 +414,7 @@ class _MDSDataStore(AbstractDataStore):
             self._variables['time'] = Variable(
                                         ('time',), timedata, time_attrs)
             self._dimensions.append('time')
-            
+
             varnames = []
             fnames = []
             _data_vars = OrderedDict()
@@ -435,7 +437,7 @@ class _MDSDataStore(AbstractDataStore):
                         else:
                             varnames.append(meta['basename'])
                         fnames.append(os.path.join(dirname,meta['basename']))
-            
+
             # read data as dask arrays (should be an option)
             vardata = {}
             for k in varnames:
@@ -476,7 +478,7 @@ class _MDSDataStore(AbstractDataStore):
                     vardask = da.stack([da.from_array(d, varshape) for d in vardata[k]])
                     self._variables[k] = Variable( dims_time, vardask,
                                                    {'description': desc, 'units': units})
-                                        
+
         self._attributes = {'history': 'Some made up attribute'}
 
 
