@@ -74,7 +74,9 @@ _grid_variables = OrderedDict(
     HFacW=(('Z','Y','Xp1'),
              "vertical fraction of open cell at West face", "none (0-1)"),
     HFacS=(('Z','Yp1','X'),
-             "vertical fraction of open cell at South face", "none (0-1)")
+             "vertical fraction of open cell at South face", "none (0-1)"),
+    PHrefC=(('Z',), 'Reference Hydrostatic Pressure', 'm^2/s^2'),
+    PHrefF=(('Zp1',), 'Reference Hydrostatic Pressure', 'm^2/s^2')
 )
 
 _grid_special_mapping = {
