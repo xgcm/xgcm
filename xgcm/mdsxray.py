@@ -448,8 +448,12 @@ class _MDSDataStore(AbstractDataStore):
                         data = _read_mds(f, i, force_dict=True)
                         for k in data.keys():
                             mwrap = MemmapArrayWrapper(data[k])
-                            vardata[k].append(
-                                da.from_array(mwrap, mwrap.shape))
+                            # for some reason, da.from_array does not
+                            # necessarily give a unique name
+                            # need to specify array name
+                            myda = da.from_array(mwrap, mwrap.shape,
+                                    name='%s_%010d' % (k, i))
+                            vardata[k].append(myda)
                     except IOError:
                         # couldn't find the variable, remove it from the list
                         #print 'Removing %s from list (iter %g)' % (k, i)
@@ -475,9 +479,17 @@ class _MDSDataStore(AbstractDataStore):
                     # add time to dimension
                     dims_time = ('time',) + dims
                     # wrap variable in dask array
-                    vardask = da.stack([da.from_array(d, varshape) for d in vardata[k]])
-                    self._variables[k] = Variable( dims_time, vardask,
-                                                   {'description': desc, 'units': units})
+                    # -- why? it's already a dask array
+                    #vardask = da.stack([da.from_array(d, varshape) for d in vardata[k]])
+                    vardask = da.stack(vardata[k])
+                    #for nkdsk in range(len(vardata[k])):
+                    #    print 'Key %s, vardata[%g] sum %g, name %s' % (k, nkdsk, 
+                    #        vardata[k][nkdsk].sum(), vardata[k][nkdsk].name)
+                    #    print 'Key %s, vardask[%g] sum %g' % (k, nkdsk, 
+                    #        vardask[nkdsk].sum())
+                    newvar = Variable( dims_time, vardask,
+                                       {'description': desc, 'units': units})
+                    self._variables[k] = newvar
 
         self._attributes = {'history': 'Some made up attribute'}
 
