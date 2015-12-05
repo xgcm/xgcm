@@ -136,6 +136,11 @@ _state_variables = OrderedDict(
     WTtave=(('Zl','Y','X'), 'Vertical Transport of Potential Temperature', "degC m/s")
 )
 
+Nptracers=99
+_ptracers = { 'PTRACER%02d' % n : 
+               (('Z','Y','X'), 'PTRACER%02d Concentration' % n, "tracer units/m^3")
+               for n in range(Nptracers)}
+
 def _read_and_shape_grid_data(k, dirname):
     if _grid_special_mapping.has_key(k):
         fname, sl, ndim_expected = _grid_special_mapping[k]
@@ -485,10 +490,21 @@ class _MDSDataStore(AbstractDataStore):
                 try:
                     dims, desc, units = _state_variables[k]
                 except KeyError:
-                    dims, desc, units = diag_meta[k]
+                    try:
+                        dims, desc, units = _ptracers[k]
+                    except KeyError:
+                        dims, desc, units = diag_meta[k]
                 # check for shape compatability
                 varshape = vardata[k][0].shape
                 varndims = len(varshape)
+                # maybe promote 2d data to 3d
+                if (len(dims)==3) and (varndims==2):
+                    if len(self._variables[dims[0]])==1:
+                        vardata[k] = \
+                            [v.reshape((1,) + varshape) for v in vardata[k]]
+                        warnings.warn('Promiting 2D data to 3D data '
+                                      'for variable %s' % k)
+                        varndims += 1
                 if len(dims) != varndims:
                     warnings.warn("Shape of variable data is not compatible "
                                   "with expected number of dimensions. This "
