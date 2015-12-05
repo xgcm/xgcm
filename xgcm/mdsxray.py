@@ -80,20 +80,21 @@ _grid_variables = OrderedDict(
 )
 
 _grid_special_mapping = {
-    'Z': ('RC', (slice(None),0,0)),
-    'Zp1': ('RF', (slice(None),0,0)),
-    'Zu': ('RF', (slice(1,None),0,0)),
-    'Zl': ('RF', (slice(None,-1),0,0)),
+# name: (file_name, slice_to_extract, expecting_3D_field)
+    'Z': ('RC', (slice(None),0,0), 3),
+    'Zp1': ('RF', (slice(None),0,0), 3),
+    'Zu': ('RF', (slice(1,None),0,0), 3),
+    'Zl': ('RF', (slice(None,-1),0,0), 3),
     # this will create problems with some curvillinear grids
     # whate if X and Y need to be 2D?
-    'X': ('XC', (0,slice(None))),
-    'Y': ('YC', (slice(None),0)),
-    'Xp1': ('XG', (0,slice(None))),
-    'Yp1': ('YG', (slice(None),0)),
-    'rA': ('RAC', None),
-    'HFacC': ('hFacC', None),
-    'HFacW': ('hFacW', None),
-    'HFacS': ('hFacS', None),
+    'X': ('XC', (0,slice(None)), 2),
+    'Y': ('YC', (slice(None),0), 2),
+    'Xp1': ('XG', (0,slice(None)), 2),
+    'Yp1': ('YG', (slice(None),0), 2),
+    'rA': ('RAC', (slice(None), slice(None)), 2),
+    'HFacC': ('hFacC', 3*(slice(None),), 3),
+    'HFacW': ('hFacW', 3*(slice(None),), 3),
+    'HFacS': ('hFacS', 3*(slice(None),), 3),
 }
 
 _state_variables = OrderedDict(
@@ -134,6 +135,43 @@ _state_variables = OrderedDict(
     WStave=(('Zl','Y','X'), 'Vertical Transport of Salinity', "psu m/s"),
     WTtave=(('Zl','Y','X'), 'Vertical Transport of Potential Temperature', "degC m/s")
 )
+
+Nptracers=99
+_ptracers = { 'PTRACER%02d' % n : 
+               (('Z','Y','X'), 'PTRACER%02d Concentration' % n, "tracer units/m^3")
+               for n in range(Nptracers)}
+
+def _read_and_shape_grid_data(k, dirname):
+    if _grid_special_mapping.has_key(k):
+        fname, sl, ndim_expected = _grid_special_mapping[k]
+    else:
+        fname = k
+        sl = None
+        ndim_expected = None
+    data = None
+    try:
+        data = _read_mds(os.path.join(dirname, fname), force_dict=False)
+    except IOError:
+        try:
+            data = _read_mds(os.path.join(dirname, fname.upper()),
+                             force_dict=False)
+        except IOError:
+            warnings.warn("Couldn't load grid variable " + k)
+    if data is not None:
+        if sl is not None:
+            # have to reslice and reshape the data
+            if data.ndim != ndim_expected:
+                # if there is only one vertical level, some variables
+                # are squeeze at the mds level and need to get a dimension back
+                if data.ndim==2 and ndim_expected==3:
+                    data.shape = (1,) + data.shape
+                else:
+                    raise ValueError("Don't know how to handle data shape")
+            # now apply the slice
+            data = np.atleast_1d(data[sl])
+        else:
+            data = np.atleast_1d(data.squeeze())
+        return data     
 
 def _force_native_endianness(var):
     # possible values for byteorder are:
@@ -374,26 +412,12 @@ class _MDSDataStore(AbstractDataStore):
 
         ### read grid files
         for k in _grid_variables:
-            if _grid_special_mapping.has_key(k):
-                fname = _grid_special_mapping[k][0]
-                sl = _grid_special_mapping[k][1]
-            else:
-                fname = k
-                sl = None
-            data = None
-            try:
-                data = _read_mds(os.path.join(dirname, fname), force_dict=False)
-            except IOError:
-                try:
-                    data = _read_mds(os.path.join(dirname, fname.upper()),
-                                     force_dict=False)
-                except IOError:
-                    warnings.warn("Couldn't load grid variable " + k)
+            dims, desc, units = _grid_variables[k]
+            data = _read_and_shape_grid_data(k, dirname)
             if data is not None:
-                data = data[sl] if sl is not None else data.squeeze()
-                dims, desc, units = _grid_variables[k]
                 self._variables[k] = Variable(
-                    dims, MemmapArrayWrapper(data), {'description': desc, 'units': units})
+                    dims, MemmapArrayWrapper(data),
+                    {'description': desc, 'units': units})
                 self._dimensions.append(k)
 
         # now get variables from our iters
@@ -466,10 +490,21 @@ class _MDSDataStore(AbstractDataStore):
                 try:
                     dims, desc, units = _state_variables[k]
                 except KeyError:
-                    dims, desc, units = diag_meta[k]
+                    try:
+                        dims, desc, units = _ptracers[k]
+                    except KeyError:
+                        dims, desc, units = diag_meta[k]
                 # check for shape compatability
                 varshape = vardata[k][0].shape
                 varndims = len(varshape)
+                # maybe promote 2d data to 3d
+                if (len(dims)==3) and (varndims==2):
+                    if len(self._variables[dims[0]])==1:
+                        vardata[k] = \
+                            [v.reshape((1,) + varshape) for v in vardata[k]]
+                        warnings.warn('Promiting 2D data to 3D data '
+                                      'for variable %s' % k)
+                        varndims += 1
                 if len(dims) != varndims:
                     warnings.warn("Shape of variable data is not compatible "
                                   "with expected number of dimensions. This "
