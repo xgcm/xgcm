@@ -239,6 +239,10 @@ class MITgcmDiagnosticDescription(object):
             return (ycoords[hpoint], xcoords[hpoint])
         elif rlev=='R':
             return (rcoords[rpoint], ycoords[hpoint], xcoords[hpoint])
+        elif rlev=='X':
+            # we might have a LAYERS variable
+            # return a code that will be reinterpreted downstream
+            return ('_LAYERS_', ycoords[hpoint], xcoords[hpoint])
         else:
             warnings.warn("Not sure what to do with rlev = " + rlev)
             return (rcoords[rpoint], ycoords[hpoint], xcoords[hpoint])
