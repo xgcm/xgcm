@@ -193,16 +193,39 @@ def _force_native_endianness(var):
                                   "library.")
     return var
 
-def _parse_available_diagnostics(fname):
+def _parse_available_diagnostics(fname, Nlayers=None):
+    """Examine the available_diagnostics.log file and translate it into
+    useful variable metadata.
+
+    PARAMETERS
+    ----------
+    fname : str
+        the path to the diagnostics file
+    Nlayers : int (optional)
+        The size of the layers output. Used as a hint to decode vertical
+        coordinate
+    
+    RETURNS
+    -------
+    all_diags : a dictionary keyed by variable names with values
+        (coords, description, units)
+    """
     all_diags = {}
 
-    # add default diagnostics for grid, tave, and state
+    # mapping between the available_diagnostics.log codes and the actual
+    # coordinate names
+    # http://mitgcm.org/public/r2_manual/latest/online_documents/node268.html
+    xcoords = {'U': 'Xp1', 'V': 'X', 'M': 'X', 'Z': 'Xp1'}
+    ycoords = {'U': 'Y', 'V': 'Yp1', 'M': 'Y', 'Z': 'Yp1'}
+    rcoords = {'M': 'Z', 'U': 'Zu', 'L': 'Zl'}
 
     with open(fname) as f:
         # will automatically skip first four header lines
         for l in f:
             c = re.split('\|',l)
             if len(c)==7 and c[0].strip()!='Num':
+                
+                # parse the line to extract the relevant variables
                 key = c[1].strip()
                 levs = int(c[2].strip())
                 mate = c[3].strip()
@@ -210,44 +233,45 @@ def _parse_available_diagnostics(fname):
                 code = c[4]
                 units = c[5].strip()
                 desc = c[6].strip()
-                dds = MITgcmDiagnosticDescription(
-                    key, code, units, desc, levs, mate)
+
+                # decode what those variables mean
+                hpoint = code[1]
+                rpoint = code[8]
+                rlev = code[9]
+                if rlev=='1' and levs==1:
+                    coords = (ycoords[hpoint], xcoords[hpoint])
+                elif rlev=='R':
+                    coords = (rcoords[rpoint], ycoords[hpoint], xcoords[hpoint])
+                elif rlev=='X' and (Nlayers is not None):
+                    layers_suffix = key.ljust(8)[-4:].strip()
+                    if levs==Nlayers:
+                        lcoord = 'layers' + layers_suffix + '_bounds'
+                    elif levs==(Nlayers-1):
+                        lcoord = 'layers' + layers_suffix + '_center'
+                    elif levs==(Nlayers-2):
+                        lcoord = 'layers' + layers_suffix + '_interface'
+                    else:
+                        warnings.warn("Could not match rlev = %g to a layers"
+                            "coordiante" % rlev)
+                        lcoord = '_UNKNOWN_'
+                    coords = (lcoord, ycoords[hpoint], xcoords[hpoint]) 
+                else:
+                    warnings.warn("Not sure what to do with rlev = " + rlev)
+                    coords = (rcoords[rpoint], ycoords[hpoint], xcoords[hpoint])
+
+                # don't need an object for this
+                #dds = MITgcmDiagnosticDescription(
+                #    key, code, units, desc, levs, mate)
                 # return dimensions, description, units
-                all_diags[key] = (dds.coords(), dds.desc, dds.units)
+                all_diags[key] = (coords, desc, units)
     return all_diags
 
 
-class MITgcmDiagnosticDescription(object):
-
-    def __init__(self, key, code, units=None, desc=None, levs=None, mate=None):
-        self.key = key
-        self.levs = levs
-        self.mate = mate
-        self.code = code
-        self.units = units
-        self.desc = desc
-
-    def coords(self):
-        """Parse code to determine coordinates."""
-        hpoint = self.code[1]
-        rpoint = self.code[8]
-        rlev = self.code[9]
-        xcoords = {'U': 'Xp1', 'V': 'X', 'M': 'X', 'Z': 'Xp1'}
-        ycoords = {'U': 'Y', 'V': 'Yp1', 'M': 'Y', 'Z': 'Yp1'}
-        rcoords = {'M': 'Z', 'U': 'Zu', 'L': 'Zl'}
-        if rlev=='1' and self.levs==1:
-            return (ycoords[hpoint], xcoords[hpoint])
-        elif rlev=='R':
-            return (rcoords[rpoint], ycoords[hpoint], xcoords[hpoint])
-        elif rlev=='X':
-            # we might have a LAYERS variable
-            # return a code that will be reinterpreted downstream
-            return ('_LAYERS_', ycoords[hpoint], xcoords[hpoint])
-        else:
-            warnings.warn("Not sure what to do with rlev = " + rlev)
-            return (rcoords[rpoint], ycoords[hpoint], xcoords[hpoint])
-
-
+def _decode_diagnostic_description(
+        key, code, units=None, desc=None, levs=None, mate=None):
+    """Convert parsed available_diagnostics line to tuple of
+    coords, description, units."""
+    
 def _parse_meta(fname):
     """Get the metadata as a dict out of the mitGCM mds .meta file."""
 
@@ -352,6 +376,31 @@ def _list_all_mds_files(dirname):
     # strip the suffix
     return [f[:-5] for f in files]
 
+_layers_desc_and_units = dict(
+    TH = ('potential temperature layer', 'deg. C'),
+    SA = ('salinity layer', 'PSU'),
+    RHO = ('potential density layer', 'kg / m^3')
+)
+
+# varname, dims, desc, units, data in _get_layers_grid_variables()
+def _get_layers_grid_variables(dirname):
+    """Look for special layers mds files describing the layers grid."""
+    files = glob(os.path.join(dirname, 'layers[0-9]*.meta'))
+    for f in files:
+        varname = os.path.basename(f[:-5])
+        # varname will be something like 'layers1TH'
+        desc, units = _layers_desc_and_units[varname[7:]]
+        data = _read_mds(os.path.join(dirname, varname),
+                force_dict=False).squeeze()
+        Nlayers = len(data)
+        # construct the three different layers coordinates
+        yield (varname + '_bounds', (varname + '_bounds'),
+               desc + ' boundaries', units, data)
+        yield (varname + '_center', (varname + '_center'),
+               desc + ' centers', units, 0.5*(data[:-1]+data[1:]))
+        yield (varname + '_interface', (varname + '_interface'),
+               desc + ' interfaces', units, data[1:-1])
+
 
 #class MemmapArrayWrapper(NumpyIndexingAdapter):
 class MemmapArrayWrapper(NDArrayMixin):
@@ -410,10 +459,7 @@ class _MDSDataStore(AbstractDataStore):
         self._dimensions = []
 
         ### figure out the mapping between diagnostics names and variable properties
-        # all possible diagnostics
-        diag_meta = _parse_available_diagnostics(
-                os.path.join(dirname, 'available_diagnostics.log'))
-
+        
         ### read grid files
         for k in _grid_variables:
             dims, desc, units = _grid_variables[k]
@@ -423,6 +469,23 @@ class _MDSDataStore(AbstractDataStore):
                     dims, MemmapArrayWrapper(data),
                     {'description': desc, 'units': units})
                 self._dimensions.append(k)
+
+        ## check for layers
+        Nlayers = None
+        for varname, dims, desc, units, data in _get_layers_grid_variables(dirname):
+            self._variables[varname] = Variable(
+                    dims, MemmapArrayWrapper(data),
+                    {'description': desc, 'units': units})
+            self._dimensions.append(varname)
+            # if there are multiple layers coordinates, they all have the same
+            # size, so this works (although it is sloppy)
+            if varname[-7:]=='_bounds':
+                Nlayers = len(data)
+
+        ## load metadata for all possible diagnostics
+        diag_meta = _parse_available_diagnostics(
+                os.path.join(dirname, 'available_diagnostics.log'),
+                Nlayers=Nlayers)
 
         # now get variables from our iters
         if iters is not None:
@@ -498,6 +561,7 @@ class _MDSDataStore(AbstractDataStore):
                         dims, desc, units = _ptracers[k]
                     except KeyError:
                         dims, desc, units = diag_meta[k]
+
                 # check for shape compatability
                 varshape = vardata[k][0].shape
                 varndims = len(varshape)
