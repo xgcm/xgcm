@@ -433,7 +433,12 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
     store = _MDSDataStore(dirname, iters, deltaT,
                              prefix, ref_date, calendar,
                              ignore_pickup, geometry)
-    return xray.Dataset.load_store(store)
+    # turn all the auxilliary grid variables into coordinates
+    ds = xray.Dataset.load_store(store)
+    for k in _grid_variables:
+        ds.set_coords(k, inplace=True)
+    ds.set_coords('iter', inplace=True)
+    return ds
 
 
 class _MDSDataStore(AbstractDataStore):
