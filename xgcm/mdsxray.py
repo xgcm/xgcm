@@ -427,7 +427,8 @@ _valid_geometry = ['Cartesian', 'SphericalPolar']
 
 def open_mdsdataset(dirname, iters=None, deltaT=1,
                  prefix=None, ref_date=None, calendar=None,
-                 ignore_pickup=True, geometry='Cartesian'):
+                 ignore_pickup=True, geometry='Cartesian',
+                 grid_vars_to_coords=True):
     """Open MITgcm-style mds file output as xray datset."""
 
     store = _MDSDataStore(dirname, iters, deltaT,
@@ -435,9 +436,10 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
                              ignore_pickup, geometry)
     # turn all the auxilliary grid variables into coordinates
     ds = xray.Dataset.load_store(store)
-    for k in _grid_variables:
-        ds.set_coords(k, inplace=True)
-    ds.set_coords('iter', inplace=True)
+    if grid_vars_to_coords:
+        for k in _grid_variables:
+            ds.set_coords(k, inplace=True)
+        ds.set_coords('iter', inplace=True)
     return ds
 
 

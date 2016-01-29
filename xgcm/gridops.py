@@ -59,7 +59,7 @@ class GCMDataset(object):
 
     ### Vertical Differences, Derivatives, and Interpolation ###
 
-    def pad_zl_to_zp1(self, array, fill_value=0.):
+    def pad_zl_to_zp1(self, array, fill_value=0., zlname='Zl', zp1name='Zp1'):
         """Pad an array located at zl points such that it is located at
         zp1 points. An additional fill value is required for the bottom point.
 
@@ -69,6 +69,10 @@ class GCMDataset(object):
             The array to difference. Must have the coordinate zp1.
         fill_value : number, optional
             The value to be used at the bottom point.
+        zlname : str, optional
+            The variable name for the zl point
+        zp1name : str, optional
+            The variable name for the zp1 point
 
         Returns
         -------
@@ -76,12 +80,12 @@ class GCMDataset(object):
             Padded array with vertical coordinate zp1.
         """
         coords, dims = self._get_coords_from_dims(array.dims)
-        zdim = dims.index('Zl')
+        zdim = dims.index(zlname)
         # shape of the new array to concat at the bottom
         shape = list(array.shape)
         shape[zdim] = 1
         # replace Zl with the bottom level
-        coords['Zl'] = np.atleast_1d(self.ds['Zp1'][-1].data)
+        coords[zlname] = np.atleast_1d(self.ds[zp1name][-1].data)
         # an array of zeros at the bottom
         # need different behavior for numpy vs dask
         if array.chunks:
@@ -92,15 +96,15 @@ class GCMDataset(object):
         else:
             zarr = np.zeros(shape, array.dtype)
             zeros = xray.DataArray(zarr, coords, dims)
-        newarray = xray.concat([array, zeros], dim='Zl').rename({'Zl':'Zp1'})
+        newarray = xray.concat([array, zeros], dim=zlname).rename({zlname: zp1name})
         if newarray.chunks:
             # this assumes that there was only one chunk in the vertical to begin with
             # how can we do that better
-            return newarray.chunk({'Zp1': len(newarray.Zp1)})
+            return newarray.chunk({zp1name: len(newarray[zp1name])})
         else:
             return newarray
 
-    def diff_zp1_to_z(self, array):
+    def diff_zp1_to_z(self, array, zname='Z', zp1name='Zp1'):
         """Take the vertical difference of an array located at zp1 points, resulting
         in a new array at z points.
 
@@ -108,17 +112,21 @@ class GCMDataset(object):
         ----------
         array : xray DataArray
             The array to difference. Must have the coordinate zp1.
+        zname : str, optional
+            The variable name for the z point
+        zp1name : str, optional
+            The variable name for the zp1 point
 
         Returns
         -------
         diff : xray DataArray
             A new array with vertical coordinate z.
         """
-        a_up = array.isel(Zp1=slice(None,-1))
-        a_dn = array.isel(Zp1=slice(1,None))
+        a_up = array.isel(**{zp1name: slice(None,-1)})
+        a_dn = array.isel(**{zp1name: slice(1,None)})
         a_diff = a_up.data - a_dn.data
         # dimensions and coords of new array
-        coords, dims = self._get_coords_from_dims(array.dims, replace={'Zp1':'Z'})
+        coords, dims = self._get_coords_from_dims(array.dims, replace={zp1name:zname})
         return xray.DataArray(a_diff, coords, dims,
                               name=_append_to_name(array, 'diff_zp1_to_z'))
 
