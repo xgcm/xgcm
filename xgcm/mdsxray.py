@@ -9,10 +9,11 @@ import dask.array as da
 
 import xray
 from xray import Variable
-from xray.backends.common import AbstractDataStore
-from xray.core.utils import NDArrayMixin
-from xray.core.pycompat import OrderedDict
-from xray.core.indexing import NumpyIndexingAdapter
+from xray import backends #.common import AbstractDataStore
+from xray import core
+#core.utils.NDArrayMixin
+#core.pycompat.OrderedDict
+#core.indexing.NumpyIndexingAdapter
 
 #from ..conventions import pop_to, cf_encoder
 #from ..core import indexing
@@ -32,7 +33,7 @@ _endian_lookup = {'=': 'native',
 # the variable metadata will be stored in dicts of the form
 #_variable[varname] = (dimensions, description, units)
 
-_grid_variables = OrderedDict(
+_grid_variables = xray.core.pycompat.OrderedDict(
     # horizontal grid
     X=   (('X',), "X-coordinate of cell center", "meters"),
     Y=   (('Y',), "Y-coordinate of cell center", "meters"),
@@ -97,7 +98,7 @@ _grid_special_mapping = {
     'HFacS': ('hFacS', 3*(slice(None),), 3),
 }
 
-_state_variables = OrderedDict(
+_state_variables = xray.core.pycompat.OrderedDict(
     # state
     U=  (('Z','Y','Xp1'), 'Zonal Component of Velocity', 'm/s'),
     V=  (('Z','Yp1','X'), 'Meridional Component of Velocity', 'm/s'),
@@ -137,7 +138,7 @@ _state_variables = OrderedDict(
 )
 
 Nptracers=99
-_ptracers = { 'PTRACER%02d' % n : 
+_ptracers = { 'PTRACER%02d' % n :
                (('Z','Y','X'), 'PTRACER%02d Concentration' % n, "tracer units/m^3")
                for n in range(Nptracers)}
 
@@ -171,7 +172,7 @@ def _read_and_shape_grid_data(k, dirname):
             data = np.atleast_1d(data[sl])
         else:
             data = np.atleast_1d(data.squeeze())
-        return data     
+        return data
 
 def _force_native_endianness(var):
     # possible values for byteorder are:
@@ -204,7 +205,7 @@ def _parse_available_diagnostics(fname, Nlayers=None):
     Nlayers : int (optional)
         The size of the layers output. Used as a hint to decode vertical
         coordinate
-    
+
     RETURNS
     -------
     all_diags : a dictionary keyed by variable names with values
@@ -224,7 +225,7 @@ def _parse_available_diagnostics(fname, Nlayers=None):
         for l in f:
             c = re.split('\|',l)
             if len(c)==7 and c[0].strip()!='Num':
-                
+
                 # parse the line to extract the relevant variables
                 key = c[1].strip()
                 levs = int(c[2].strip())
@@ -254,7 +255,7 @@ def _parse_available_diagnostics(fname, Nlayers=None):
                         warnings.warn("Could not match rlev = %g to a layers"
                             "coordiante" % rlev)
                         lcoord = '_UNKNOWN_'
-                    coords = (lcoord, ycoords[hpoint], xcoords[hpoint]) 
+                    coords = (lcoord, ycoords[hpoint], xcoords[hpoint])
                 else:
                     warnings.warn("Not sure what to do with rlev = " + rlev)
                     coords = (rcoords[rpoint], ycoords[hpoint], xcoords[hpoint])
@@ -271,7 +272,7 @@ def _decode_diagnostic_description(
         key, code, units=None, desc=None, levs=None, mate=None):
     """Convert parsed available_diagnostics line to tuple of
     coords, description, units."""
-    
+
 def _parse_meta(fname):
     """Get the metadata as a dict out of the mitGCM mds .meta file."""
 
@@ -362,7 +363,7 @@ def _read_mds(fname, iternum=None, use_mmap=True,
         return out
 
 
-class MDSArrayWrapper(NDArrayMixin):
+class MDSArrayWrapper(xray.core.utils.NDArrayMixin):
     def __init__(self, array):
         self.array = array
 
@@ -403,7 +404,7 @@ def _get_layers_grid_variables(dirname):
 
 
 #class MemmapArrayWrapper(NumpyIndexingAdapter):
-class MemmapArrayWrapper(NDArrayMixin):
+class MemmapArrayWrapper(xray.core.utils.NDArrayMixin):
     def __init__(self, memmap_array):
         self._memmap_array = memmap_array
 
@@ -441,7 +442,7 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
     return ds
 
 
-class _MDSDataStore(AbstractDataStore):
+class _MDSDataStore(backends.common.AbstractDataStore):
     """Represents the entire directory of MITgcm mds output
     including all grid variables. Similar in some ways to
     netCDF.Dataset."""
@@ -459,12 +460,12 @@ class _MDSDataStore(AbstractDataStore):
         self.dirname = dirname
 
         # storage dicts for variables and attributes
-        self._variables = OrderedDict()
-        self._attributes = OrderedDict()
+        self._variables = xray.core.pycompat.OrderedDict()
+        self._attributes = xray.core.pycompat.OrderedDict()
         self._dimensions = []
 
         ### figure out the mapping between diagnostics names and variable properties
-        
+
         ### read grid files
         for k in _grid_variables:
             dims, desc, units = _grid_variables[k]
@@ -515,7 +516,7 @@ class _MDSDataStore(AbstractDataStore):
 
             varnames = []
             fnames = []
-            _data_vars = OrderedDict()
+            _data_vars = xray.core.pycompat.OrderedDict()
             # look at first iter to get variable metadata
             for f in glob(os.path.join(dirname, '*.%010d.meta' % iters[0])):
                 if ignore_pickup and re.search('pickup', f):
@@ -593,9 +594,9 @@ class _MDSDataStore(AbstractDataStore):
                     #vardask = da.stack([da.from_array(d, varshape) for d in vardata[k]])
                     vardask = da.stack(vardata[k])
                     #for nkdsk in range(len(vardata[k])):
-                    #    print 'Key %s, vardata[%g] sum %g, name %s' % (k, nkdsk, 
+                    #    print 'Key %s, vardata[%g] sum %g, name %s' % (k, nkdsk,
                     #        vardata[k][nkdsk].sum(), vardata[k][nkdsk].name)
-                    #    print 'Key %s, vardask[%g] sum %g' % (k, nkdsk, 
+                    #    print 'Key %s, vardask[%g] sum %g' % (k, nkdsk,
                     #        vardask[nkdsk].sum())
                     newvar = Variable( dims_time, vardask,
                                        {'description': desc, 'units': units})

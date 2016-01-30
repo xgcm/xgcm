@@ -1,7 +1,7 @@
 import numpy as np
 
 from xray import Dataset, DataArray
-from xray.core.ops import allclose_or_equiv
+#from xray.core.ops import allclose_or_equiv
 from xgcm import GCMDataset
 
 # better unitttest2?
