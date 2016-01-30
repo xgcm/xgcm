@@ -1,0 +1,10 @@
+name: test_env
+dependencies:
+  - python=2.7
+  - xray=0.6.1
+  - dask
+  - numpy
+  - pytest
+  - pip:
+    - coveralls
+    - pytest-cov
