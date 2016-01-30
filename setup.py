@@ -35,7 +35,8 @@ CLASSIFIERS = [
 ]
 
 INSTALL_REQUIRES = ['xray']
-TESTS_REQUIRE = ['nose >= 1.0']
+SETUP_REQUIRES = ['pytest-runner']
+TESTS_REQUIRE = ['pytest >= 2.8']
 
 if sys.version_info[:2] < (2, 7):
     TESTS_REQUIRE += ["unittest2 == 0.5.1"]
@@ -53,7 +54,7 @@ setup(name=DISTNAME,
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
       install_requires=INSTALL_REQUIRES,
+      setup_requires=SETUP_REQUIRES,
       tests_require=TESTS_REQUIRE,
       url=URL,
-      test_suite='nose.collector',
       packages=find_packages())
