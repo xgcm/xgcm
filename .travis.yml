@@ -34,10 +34,19 @@ before_install:
 install:
   - conda env create --file ci/environment-$CONDA_ENV.yml
   - source activate test_env
-  - python setup.py install
+# if we do this, the package gets installed into
+# /home/travis/build/xgcm/xgcm/build/lib/xgcm
+#  - python setup.py install
+  - pip install -e .
+# this puts the package into
+# /home/travis/build/xgcm/xgcm/xgcm
+# That turns out to be necessary for py.test to correctly collect the tests
+# and for coverage to work properly.
+# It is very complicated and confusing.
 
 script:
-  - py.test xgcm --cov=xgcm --cov-report term-missing
+  - py.test xgcm --cov=xgcm --cov-config .coveragerc --cov-report term-missing
+#  - py.test -v
 
 after_success:
-  - coveralls
+  - codecov
