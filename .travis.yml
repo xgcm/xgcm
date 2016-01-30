@@ -40,4 +40,4 @@ script:
   - py.test xgcm --cov=xgcm --cov-report term-missing
 
 after_success:
-  - coveralls
+  - codecov
