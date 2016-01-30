@@ -32,7 +32,7 @@ before_install:
   - conda info -a
 
 install:
-  - conda env create --file ci/requirements-$CONDA_ENV.yml
+  - conda env create --file ci/environment-$CONDA_ENV.yml
   - source activate test_env
   - python setup.py install
 
