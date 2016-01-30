@@ -36,7 +36,7 @@ CLASSIFIERS = [
 
 INSTALL_REQUIRES = ['xray']
 SETUP_REQUIRES = ['pytest-runner']
-TESTS_REQUIRE = ['pytest >= 2.8']
+TESTS_REQUIRE = ['pytest >= 2.8', 'coverage']
 
 if sys.version_info[:2] < (2, 7):
     TESTS_REQUIRE += ["unittest2 == 0.5.1"]
