@@ -1,0 +1,52 @@
+# Based on http://conda.pydata.org/docs/travis.html
+language: python
+sudo: false # use container based build
+notifications:
+  email: false
+
+matrix:
+  fast_finish: true
+  include:
+  - python: 2.7
+    env: CONDA_ENV=py27
+  - python: 2.7
+    env: CONDA_ENV=py27-xray06
+  - python: 3.4
+    env: CONDA_ENV=py34
+  - python: 3.5
+    env: CONDA_ENV=py35
+  - python: 3.5
+    env: CONDA_ENV=py35-xray06
+
+before_install:
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+      wget http://repo.continuum.io/miniconda/Miniconda-3.16.0-Linux-x86_64.sh -O miniconda.sh;
+    else
+      wget http://repo.continuum.io/miniconda/Miniconda3-3.16.0-Linux-x86_64.sh -O miniconda.sh;
+    fi
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+
+install:
+  - conda env create --file ci/environment-$CONDA_ENV.yml
+  - source activate test_env
+# if we do this, the package gets installed into
+# /home/travis/build/xgcm/xgcm/build/lib/xgcm
+#  - python setup.py install
+  - pip install -e .
+# this puts the package into
+# /home/travis/build/xgcm/xgcm/xgcm
+# That turns out to be necessary for py.test to correctly collect the tests
+# and for coverage to work properly.
+# It is very complicated and confusing.
+
+script:
+  - py.test xgcm --cov=xgcm --cov-config .coveragerc --cov-report term-missing
+#  - py.test -v
+
+after_success:
+  - codecov
