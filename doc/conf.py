@@ -29,13 +29,19 @@ import os
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
-    'sphinx.ext.mathjax',
+    'sphinx.ext.mathjax', 'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.extlinks',
     'sphinx.ext.viewcode',
+    'numpydoc',
 ]
+
+# link to github issues
+extlinks = {'issue': ('https://github.com/xgcm/xgcm/issues/%s', 'GH')}
+
+autosummary_generate = True
+numpydoc_class_members_toctree = True
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -51,7 +57,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'xgcm'
-copyright = u'2015, xgcm developers'
+copyright = u'2016, xgcm developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -102,6 +108,13 @@ pygments_style = 'sphinx'
 
 
 # -- Options for HTML output ----------------------------------------------
+
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+if not on_rtd:  # only import and set the theme if we're building docs locally
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
