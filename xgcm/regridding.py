@@ -60,7 +60,7 @@ def _regrid_vertical(q, tr, trlevs, axis=0, extra_mask=None):
 
     # now do the bin counting for each point
     qtr = np.zeros((Nbins, Npts))
-    for n in xrange(Npts):
+    for n in range(Npts):
         if Nr==1:
             # can use a simple index array
             qtr[idx[:,n],n] = q[:,n]
