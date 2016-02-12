@@ -133,8 +133,16 @@ _state_variables = OrderedDict(
     VTtave=(('Z','Yp1','X'), "Meridional Transport of Potential Temperature", "degC m/s"),
     VVtave=(('Z','Yp1','X'), 'Zonal Transport of Zonal Momentum', 'm^2/s^2'),
     WStave=(('Zl','Y','X'), 'Vertical Transport of Salinity', "psu m/s"),
-    WTtave=(('Zl','Y','X'), 'Vertical Transport of Potential Temperature', "degC m/s")
+    WTtave=(('Zl','Y','X'), 'Vertical Transport of Potential Temperature', "degC m/s"),
 )
+# should find a better way to inlude the package variables
+_state_variables['GM_Kwx-T'] = (
+        ('Zl','Y','X'), 'K_31 element (W.point, X.dir) of GM-Redi tensor','m^2/s')
+_state_variables['GM_Kwy-T'] = (
+        ('Zl','Y','X'), 'K_33 element (W.point, X.dir) of GM-Redi tensor','m^2/s')
+_state_variables['GM_Kwz-T'] = (
+        ('Zl','Y','X'), 'K_33 element (W.point, X.dir) of GM-Redi tensor','m^2/s')
+
 
 Nptracers=99
 _ptracers = { 'PTRACER%02d' % n : 
@@ -544,6 +552,8 @@ class _MDSDataStore(AbstractDataStore):
                 for f in fnames:
                     try:
                         data = _read_mds(f, i, force_dict=True)
+                        # this can screw up if the same variable appears in
+                        # multiple diagnostic files
                         for k in data.keys():
                             mwrap = MemmapArrayWrapper(data[k])
                             # for some reason, da.from_array does not
