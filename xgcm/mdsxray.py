@@ -5,6 +5,9 @@ import re
 import warnings
 import numpy as np
 
+# python 3 compatiblity
+
+
 import dask.array as da
 
 import xray
@@ -151,7 +154,7 @@ _ptracers = { 'PTRACER%02d' % n :
                for n in range(Nptracers)}
 
 def _read_and_shape_grid_data(k, dirname):
-    if _grid_special_mapping.has_key(k):
+    if k in _grid_special_mapping:
         fname, sl, ndim_expected = _grid_special_mapping[k]
     else:
         fname = k
@@ -305,7 +308,7 @@ def _parse_meta(fname):
     # now check the needed things are there
     needed_keys = ['dimList','nDims','nrecords','dataprec']
     for k in needed_keys:
-        assert flds.has_key(k)
+        assert k in flds
     # transform datatypes
     flds['nDims'] = int(flds['nDims'])
     flds['nrecords'] = int(flds['nrecords'])
@@ -314,7 +317,7 @@ def _parse_meta(fname):
     flds['dimList'] = [[int(h) for h in
                        re.split(',', g)] for g in
                        re.split(',\n',flds['dimList'])]
-    if flds.has_key('fldList'):
+    if 'fldList' in flds:
         flds['fldList'] = [re.match("'*(\w+)",g).groups()[0] for g in
                            re.split("'\s+'",flds['fldList'])]
         assert flds['nrecords'] == len(flds['fldList'])
@@ -355,7 +358,7 @@ def _read_mds(fname, iternum=None, use_mmap=True,
     d.shape = shape
 
     if nrecs == 1:
-        if meta.has_key('fldList'):
+        if 'fldList' in meta:
             name = meta['fldList'][0]
         else:
             name = meta['basename']
@@ -540,7 +543,7 @@ class _MDSDataStore(backends.common.AbstractDataStore):
                             go = False
                     if go:
                         meta = _parse_meta(f)
-                        if meta.has_key('fldList'):
+                        if 'fldList' in meta:
                             flds = meta['fldList']
                             [varnames.append(fl) for fl in flds]
                         else:
@@ -557,7 +560,7 @@ class _MDSDataStore(backends.common.AbstractDataStore):
                         data = _read_mds(f, i, force_dict=True)
                         # this can screw up if the same variable appears in
                         # multiple diagnostic files
-                        for k in data.keys():
+                        for k in list(data.keys()):
                             mwrap = MemmapArrayWrapper(data[k])
                             # for some reason, da.from_array does not
                             # necessarily give a unique name
