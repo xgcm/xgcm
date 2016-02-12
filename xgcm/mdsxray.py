@@ -1,11 +1,12 @@
+# python 3 compatiblity
+from __future__ import print_function, division
+
 import operator
 from glob import glob
 import os
 import re
 import warnings
 import numpy as np
-
-# python 3 compatiblity
 
 
 import dask.array as da
@@ -560,7 +561,7 @@ class _MDSDataStore(backends.common.AbstractDataStore):
                         data = _read_mds(f, i, force_dict=True)
                         # this can screw up if the same variable appears in
                         # multiple diagnostic files
-                        for k in list(data.keys()):
+                        for k in data:
                             mwrap = MemmapArrayWrapper(data[k])
                             # for some reason, da.from_array does not
                             # necessarily give a unique name
