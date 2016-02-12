@@ -1,3 +1,6 @@
+# python 3 compatiblity
+from __future__ import print_function, division
+
 import warnings
 import numpy as np
 import xray
@@ -47,13 +50,13 @@ def _regrid_vertical(q, tr, trlevs, axis=0, extra_mask=None):
     #tr_m = np.ma.masked_greater_equal(
     #            np.ma.masked_less(tr, trlevs.min()), trlevs.max())
     #if self.extra_mask is not None:
-    #    tr_m.mask += self.extra_mask    
+    #    tr_m.mask += self.extra_mask
     #mask = tr_m.mask
-    
+
     # get indices of bins for whole array
     idx = np.digitize(tr.ravel(), trlevs)-1
     idx.shape = tr.shape
-    
+
     # if there were values below the bottom bin, idx will have values less than 0
     idx[idx<0] = 0
     idx[idx>=Nbins] = Nbins-1
@@ -70,4 +73,3 @@ def _regrid_vertical(q, tr, trlevs, axis=0, extra_mask=None):
     if axis!=0:
         qtr = qtr.swapaxes(0,axis)
     return qtr
-    
