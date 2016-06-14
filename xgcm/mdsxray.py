@@ -441,12 +441,13 @@ _valid_geometry = ['Cartesian', 'SphericalPolar']
 def open_mdsdataset(dirname, iters=None, deltaT=1,
                  prefix=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='Cartesian',
-                 grid_vars_to_coords=True):
+                 grid_vars_to_coords=True,
+                 skip_vars=[]):
     """Open MITgcm-style mds file output as xray datset."""
 
     store = _MDSDataStore(dirname, iters, deltaT,
                              prefix, ref_date, calendar,
-                             ignore_pickup, geometry)
+                             ignore_pickup, geometry, skip_vars)
     # turn all the auxilliary grid variables into coordinates
     ds = xray.Dataset.load_store(store)
     if grid_vars_to_coords:
@@ -462,7 +463,8 @@ class _MDSDataStore(backends.common.AbstractDataStore):
     netCDF.Dataset."""
     def __init__(self, dirname, iters=None, deltaT=1,
                  prefix=None, ref_date=None, calendar=None,
-                 ignore_pickup=True, geometry='Cartesian'):
+                 ignore_pickup=True, geometry='Cartesian',
+                 skip_vars=[]):
         """iters: list of iteration numbers
         deltaT: timestep
         prefix: list of file prefixes (if None use all)
@@ -545,11 +547,20 @@ class _MDSDataStore(backends.common.AbstractDataStore):
                     if go:
                         meta = _parse_meta(f)
                         if 'fldList' in meta:
+                            # we have multiple variables per file
                             flds = meta['fldList']
                             [varnames.append(fl) for fl in flds]
                         else:
+                            # just use the filename as the variable name
                             varnames.append(meta['basename'])
                         fnames.append(os.path.join(dirname,meta['basename']))
+
+            # strip unwanted variables
+            for v in skip_vars:
+                try:
+                    varnames.remove(v)
+                except ValueError:
+                    pass
 
             # read data as dask arrays (should be an option)
             vardata = {}
@@ -562,13 +573,14 @@ class _MDSDataStore(backends.common.AbstractDataStore):
                         # this can screw up if the same variable appears in
                         # multiple diagnostic files
                         for k in data:
-                            mwrap = MemmapArrayWrapper(data[k])
-                            # for some reason, da.from_array does not
-                            # necessarily give a unique name
-                            # need to specify array name
-                            myda = da.from_array(mwrap, mwrap.shape,
-                                    name='%s_%010d' % (k, i))
-                            vardata[k].append(myda)
+                            if k in varnames:
+                                mwrap = MemmapArrayWrapper(data[k])
+                                # for some reason, da.from_array does not
+                                # necessarily give a unique name
+                                # need to specify array name
+                                myda = da.from_array(mwrap, mwrap.shape,
+                                        name='%s_%010d' % (k, i))
+                                vardata[k].append(myda)
                     except IOError:
                         # couldn't find the variable, remove it from the list
                         #print 'Removing %s from list (iter %g)' % (k, i)
