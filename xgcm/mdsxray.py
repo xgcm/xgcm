@@ -443,7 +443,40 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
                  ignore_pickup=True, geometry='Cartesian',
                  grid_vars_to_coords=True,
                  skip_vars=[]):
-    """Open MITgcm-style mds file output as xray datset."""
+    """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
+
+    Parameters
+    ----------
+    dirname : string
+        Path to the directory where the mds .data and .meta files are stored
+    iters : list, optional
+        The iterations numbers of the files to be read
+    deltaT : number, optional
+        The timestep used in the model (can't be inferred)
+    prefix : list, optional
+        List of different filename prefixes to read. Default is to read all files.
+    ref_date : string, optional
+        A date string corresponding to the zero timestep. See CF conventions [1]_
+    calendar : string, optional
+        A calendar allowed by CF conventions [1]_
+    ignore_pickup : boolean, optional
+        Whether to read the pickup files
+    geometry : string
+        MITgcm grid geometry. (Not really used yet.)
+    grid_vars_to_coords : boolean
+        If `True`, all grid related variables will be promoted to coordinates
+    skip_vars : list
+        Names of variables to ignore.
+
+    Returns
+    -------
+    dset : xarray.Dataset
+        Dataset object containing all coordinate and variables
+
+    References
+    ----------
+    .. [1] http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html
+    """
 
     store = _MDSDataStore(dirname, iters, deltaT,
                              prefix, ref_date, calendar,
