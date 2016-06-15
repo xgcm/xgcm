@@ -484,7 +484,7 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
 
     store = _MDSDataStore(dirname, iters, deltaT,
                              prefix, ref_date, calendar,
-                             ignore_pickup, geometry, skip_vars)
+                             ignore_pickup, geometry, skip_vars, endian)
     # turn all the auxilliary grid variables into coordinates
     ds = xray.Dataset.load_store(store)
     if grid_vars_to_coords:
