@@ -29,3 +29,13 @@ def test_open_mdsdataset(mds_datadir):
     # most basic test: make sure we can open an mds dataset
     ds = xgcm.open_mdsdataset(os.path.join(mds_datadir, 'testdata'),
             _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT)
+    #print(ds)
+
+    # check just a single value
+    assert ds['X'][0].values == 2.0
+
+    # check little endianness
+    ds = xgcm.open_mdsdataset(os.path.join(mds_datadir, 'testdata'),
+            _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT, endian="<")
+    assert ds['X'][0].values == 8.96831017167883e-44
+    #print(ds)
