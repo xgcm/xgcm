@@ -154,7 +154,7 @@ _ptracers = { 'PTRACER%02d' % n :
                (('Z','Y','X'), 'PTRACER%02d Concentration' % n, "tracer units/m^3")
                for n in range(Nptracers)}
 
-def _read_and_shape_grid_data(k, dirname):
+def _read_and_shape_grid_data(k, dirname, endian='>'):
     if k in _grid_special_mapping:
         fname, sl, ndim_expected = _grid_special_mapping[k]
     else:
@@ -163,11 +163,12 @@ def _read_and_shape_grid_data(k, dirname):
         ndim_expected = None
     data = None
     try:
-        data = _read_mds(os.path.join(dirname, fname), force_dict=False)
+        data = _read_mds(os.path.join(dirname, fname),
+                force_dict=False, endian=endian)
     except IOError:
         try:
             data = _read_mds(os.path.join(dirname, fname.upper()),
-                             force_dict=False)
+                             force_dict=False, endian=endian)
         except IOError:
             warnings.warn("Couldn't load grid variable " + k)
     if data is not None:
@@ -313,8 +314,8 @@ def _parse_meta(fname):
     # transform datatypes
     flds['nDims'] = int(flds['nDims'])
     flds['nrecords'] = int(flds['nrecords'])
-    # use big endian always
-    flds['dataprec'] = np.dtype(re.sub("'",'',flds['dataprec'])).newbyteorder('>')
+    # endianness is set by _read_mds
+    flds['dataprec'] = np.dtype(re.sub("'",'',flds['dataprec']))
     flds['dimList'] = [[int(h) for h in
                        re.split(',', g)] for g in
                        re.split(',\n',flds['dimList'])]
@@ -325,7 +326,7 @@ def _parse_meta(fname):
     return flds
 
 def _read_mds(fname, iternum=None, use_mmap=True,
-             force_dict=True, convert_big_endian=False):
+             force_dict=True, endian='>', convert_big_endian=False):
     """Read an MITgcm .meta / .data file pair"""
 
     if iternum is None:
@@ -348,10 +349,11 @@ def _read_mds(fname, iternum=None, use_mmap=True,
     shape.insert(0, nrecs)
 
     # load and shape data
+    dtype = meta['dataprec'].newbyteorder(endian)
     if use_mmap:
-        d = np.memmap(datafile, meta['dataprec'], 'r')
+        d = np.memmap(datafile, dtype, 'r')
     else:
-        d = np.fromfile(datafile, meta['dataprec'])
+        d = np.fromfile(datafile, dtype)
     if convert_big_endian:
         dtnew = d.dtype.newbyteorder('=')
         d = d.astype(dtnew)
@@ -396,7 +398,7 @@ _layers_desc_and_units = dict(
 )
 
 # varname, dims, desc, units, data in _get_layers_grid_variables()
-def _get_layers_grid_variables(dirname):
+def _get_layers_grid_variables(dirname, endian=">"):
     """Look for special layers mds files describing the layers grid."""
     files = glob(os.path.join(dirname, 'layers[0-9]*.meta'))
     for f in files:
@@ -404,7 +406,7 @@ def _get_layers_grid_variables(dirname):
         # varname will be something like 'layers1TH'
         desc, units = _layers_desc_and_units[varname[7:]]
         data = _read_mds(os.path.join(dirname, varname),
-                force_dict=False).squeeze()
+                force_dict=False,  endian=endian).squeeze()
         Nlayers = len(data)
         # construct the three different layers coordinates
         yield (varname + '_bounds', (varname + '_bounds'),
@@ -442,7 +444,7 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
                  prefix=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='Cartesian',
                  grid_vars_to_coords=True,
-                 skip_vars=[]):
+                 skip_vars=[], endian=">"):
     """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
 
     Parameters
@@ -467,6 +469,8 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
         If `True`, all grid related variables will be promoted to coordinates
     skip_vars : list
         Names of variables to ignore.
+    endian : {'=', '>', '<'}, optional
+        Endianness of variables. Default for MITgcm is ">" (big endian)
 
     Returns
     -------
@@ -480,7 +484,7 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
 
     store = _MDSDataStore(dirname, iters, deltaT,
                              prefix, ref_date, calendar,
-                             ignore_pickup, geometry, skip_vars)
+                             ignore_pickup, geometry, skip_vars, endian)
     # turn all the auxilliary grid variables into coordinates
     ds = xray.Dataset.load_store(store)
     if grid_vars_to_coords:
@@ -497,7 +501,7 @@ class _MDSDataStore(backends.common.AbstractDataStore):
     def __init__(self, dirname, iters=None, deltaT=1,
                  prefix=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='Cartesian',
-                 skip_vars=[]):
+                 skip_vars=[], endian='>'):
         """iters: list of iteration numbers
         deltaT: timestep
         prefix: list of file prefixes (if None use all)
@@ -518,7 +522,7 @@ class _MDSDataStore(backends.common.AbstractDataStore):
         ### read grid files
         for k in _grid_variables:
             dims, desc, units = _grid_variables[k]
-            data = _read_and_shape_grid_data(k, dirname)
+            data = _read_and_shape_grid_data(k, dirname, endian=endian)
             if data is not None:
                 self._variables[k] = Variable(
                     dims, MemmapArrayWrapper(data),
@@ -527,7 +531,8 @@ class _MDSDataStore(backends.common.AbstractDataStore):
 
         ## check for layers
         Nlayers = None
-        for varname, dims, desc, units, data in _get_layers_grid_variables(dirname):
+        for varname, dims, desc, units, data in \
+                _get_layers_grid_variables(dirname, endian=endian):
             self._variables[varname] = Variable(
                     dims, MemmapArrayWrapper(data),
                     {'description': desc, 'units': units})
@@ -602,7 +607,7 @@ class _MDSDataStore(backends.common.AbstractDataStore):
             for i in iters:
                 for f in fnames:
                     try:
-                        data = _read_mds(f, i, force_dict=True)
+                        data = _read_mds(f, i, force_dict=True, endian=endian)
                         # this can screw up if the same variable appears in
                         # multiple diagnostic files
                         for k in data:
