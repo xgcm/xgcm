@@ -5,14 +5,8 @@ conventions, etc.
 
 from xarray.core.pycompat import OrderedDict
 
-# these are not stored in files but must be inferred
-# from pycomodo
-#                float ni_u(ni_u) ;
-#                         ni_u:axis = "X" ;
-#                         ni_u:standard_name = "x_grid_index_at_u_location" ;
-#                         ni_u:long_name = "x-dimension of the grid" ;
-#                         ni_u:c_grid_dynamic_range = "3:8" ;
-#                         ni_u:c_grid_axis_shift = -0.5 ;
+# comodo conventions
+# http://pycomodo.forge.imag.fr/norm.html
 
 # the spatial dimensions, all 1D
 dimensions = OrderedDict(
@@ -26,18 +20,63 @@ dimensions = OrderedDict(
     k = ("Z", "z_grid_index", "z-dimension of the grid", None, None),
     k_u = ("Z", "z_grid_index_at_w_location", "z-dimension of the grid", None, -0.5),
     k_l = ("Z", "z_grid_index_at_w_location", "z-dimension of the grid", None, 0.5),
+    # this is complicated because it is offset in both directions - allowed by comodo?
+    k_p1 = ("Z", "z_grid_index_at_w_location", "z-dimension of the grid", None, (-0.5,0.5)),
 )
+
+# MITgcm reference
+# http://mitgcm.org/sealion/online_documents/node47.html
 
 # coordinates
-coordinates_spherical = OrderedDict(
-# coordinate_name = (dims, axis, standard_name, long_name, units, coordinates)
-    XC = (("j", "i"), "X", "longitude", "longitude", "degrees_east", "YC XC"),
-    YC = (("j", "i"), "Y", "latitude", "latitude", "degrees_north", "YC XC"),
-    XG = (("j", "i_g"), "X", "longitude_at_f_location", "longitude", "degrees_east", "YG XG"),
-    YG = (("j_g", "i"), "Y", "latitude_at_f_location", "latitude", "degrees_north", "YG XG"),
+horizontal_coordinates_spherical = OrderedDict(
+# coordinate_name = (dims, standard_name, long_name, units, coordinates)
+    XC = (["j", "i"], "longitude", "longitude", "degrees_east", "YC XC"),
+    YC = (["j", "i"], "latitude", "latitude", "degrees_north", "YC XC"),
+    XG = (["j_g", "i_g"], "longitude_at_f_location", "longitude", "degrees_east", "YG XG"),
+    YG = (["j_g", "i_g"], "latitude_at_f_location", "latitude", "degrees_north", "YG XG"),
 )
 
+horizontal_coordinates_cartesian = OrderedDict(
+    XC = (["j", "i"], "plane_x_coordinate", "x coordinate", "m", "YC XC"),
+    YC = (["j", "i"], "plane_y_coordinate", "y coordinate", "m", "YC XC"),
+    XG = (["j_g", "i_g"], "plane_x_coordinate_at_f_location", "x coordinate", "m", "YG XG"),
+    YG = (["j_g", "i_g"], "plane_y_coordinate_at_f_location", "y coordinate", "m", "YG XG")
+)
 
+vertical_coordinates = OrderedDict(
+# coordinate_name = (dims, standard_name, long_name, units, positive)
+    Z = (["k"], "depth", "depth", "m", "down"),
+    Zu= (["k_u"], "depth_at_w_location", "depth", "m", "down"),
+    Zl= (["k_l"], "depth_at_w_location", "depth", "m", "down"),
+)
+
+horizontal_grid_variables = OrderedDict(
+# coordinate_name = (dims, standard_name, long_name, units, coordinates)
+    # tracer cell
+    rA  = (["j", "i"], "cell_area", "cell area", "m^2", "YC XC"),
+    dxG = (["j_g", "i"], "cell_x_size_at_v_location", "cell x size", "m", "YG XC"),
+    dyG = (["j", "i_g"], "cell_y_size_at_u_location", "cell y size", "m", "YC XG"),
+    Depth=(["j", "i"], "ocean_depth", "ocean depth", "m", "XC YC"),
+    # vorticity cell
+    rAz  = (["j_g", "i_g"], "cell_area_at_f_location", "cell area", "m^2", "YG XG"),
+    dxC = (["j", "i_g"], "cell_x_size_at_u_location", "cell x size", "m", "YC XG"),
+    dyG = (["j_g", "i"], "cell_y_size_at_v_location", "cell y size", "m", "YG XC"),
+    # u cell
+    rAw = (["j", "i_g"], "cell_area_at_u_location", "cell area", "m^2", "YG XC"),
+    # v cell
+    rAs = (["j_g", "i"], "cell_area_at_v_location", "cell area", "m^2", "YG XC"),
+)
+
+vertical_grid_variables = OrderedDict(
+# coordinate_name = (dims, standard_name, long_name, units)
+    drC = (['k_p1'], "cell_z_size_at_w_location", "cell z size" "m"),
+    drF = (['k'], "cell_z_size", "cell z size" "m"),
+)
+
+volume_grid_variables = OrderedDict(
+
+
+)
 _grid_variables = xray.core.pycompat.OrderedDict(
     # horizontal grid
     X=   (('X',), "X-coordinate of cell center", "meters"),
