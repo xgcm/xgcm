@@ -11,9 +11,9 @@ import warnings
 import numpy as np
 import dask.array as da
 import xarray as xr
-from xarray import Variable
-from xarray import backends
-from xarray import core
+#from xarray import Variable
+#from xarray import backends
+#from xarray import core
 
 # we keep the metadata in its own module to keep this one cleaner
 from .variables import dimensions, \
@@ -26,7 +26,60 @@ from .variables import dimensions, \
 from .utils import parse_meta_file
 
 
-class MDSDataStore(backends.common.AbstractDataStore):
+def open_mdsdataset(dirname, iters=None, deltaT=1,
+                 prefix=None, ref_date=None, calendar=None,
+                 ignore_pickup=True, geometry='Cartesian',
+                 grid_vars_to_coords=True,
+                 skip_vars=[], endian=">"):
+    """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
+
+    Parameters
+    ----------
+    dirname : string
+        Path to the directory where the mds .data and .meta files are stored
+    iters : list, optional
+        The iterations numbers of the files to be read
+    deltaT : number, optional
+        The timestep used in the model (can't be inferred)
+    prefix : list, optional
+        List of different filename prefixes to read. Default is to read all files.
+    ref_date : string, optional
+        A date string corresponding to the zero timestep. See CF conventions [1]_
+    calendar : string, optional
+        A calendar allowed by CF conventions [1]_
+    ignore_pickup : boolean, optional
+        Whether to read the pickup files
+    geometry : string
+        MITgcm grid geometry. (Not really used yet.)
+    grid_vars_to_coords : boolean
+        If `True`, all grid related variables will be promoted to coordinates
+    skip_vars : list
+        Names of variables to ignore.
+    endian : {'=', '>', '<'}, optional
+        Endianness of variables. Default for MITgcm is ">" (big endian)
+
+    Returns
+    -------
+    dset : xarray.Dataset
+        Dataset object containing all coordinate and variables
+
+    References
+    ----------
+    .. [1] http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html
+    """
+
+    store = _MDSDataStore(dirname, iters, deltaT,
+                             prefix, ref_date, calendar,
+                             ignore_pickup, geometry, skip_vars, endian)
+    # turn all the auxilliary grid variables into coordinates
+    ds = xr.Dataset.load_store(store)
+    # if grid_vars_to_coords:
+    #     for k in _grid_variables:
+    #         ds.set_coords(k, inplace=True)
+    #     ds.set_coords('iter', inplace=True)
+    return ds
+
+class _MDSDataStore(xr.backends.common.AbstractDataStore):
     """Representation of MITgcm mds binary file storage format for a specific
     model instance."""
     def __init__(self, dirname, iters=None, deltaT=1,
@@ -64,8 +117,8 @@ class MDSDataStore(backends.common.AbstractDataStore):
         self.dirname = dirname
 
         # storage dicts for variables and attributes
-        self._variables = core.pycompat.OrderedDict()
-        self._attributes = core.pycompat.OrderedDict()
+        self._variables = xr.core.pycompat.OrderedDict()
+        self._attributes = xr.core.pycompat.OrderedDict()
         self._dimensions = []
 
         # the dimensions are theoretically the same for all datasets
@@ -91,7 +144,8 @@ class MDSDataStore(backends.common.AbstractDataStore):
 
         # Now set up the corresponding coordinates.
         # Rather than assuming the dimension names, we use Comodo conventions to
-        # parse the dimension metdata
+        # parse the dimension metdata.
+        # http://pycomodo.forge.imag.fr/norm.html
         irange = np.arange(self.nx)
         jrange = np.arange(self.ny)
         krange = np.arange(self.nz)
@@ -115,7 +169,7 @@ class MDSDataStore(backends.common.AbstractDataStore):
             dims = dim_meta['dims']
             attrs = dim_meta['attrs']
             data = dimension_data[attrs['standard_name']]
-            dim_variable = Variable(dims, data, attrs)
+            dim_variable = xr.Variable(dims, data, attrs)
             self._variables[dim] = dim_variable
 
         # the rest of the data has to be read from disk
@@ -128,7 +182,7 @@ class MDSDataStore(backends.common.AbstractDataStore):
                 pass
                 # do something related to time
             dims, data, attrs = self.read_data_and_lookup_metadata(p)
-            self._variables[p] = Variable(dims, data, attrs)
+            self._variables[p] = xr.Variable(dims, data, attrs)
 
     def read_grid_data(self, name):
         """Read data and look up metadata for grid variable `name`.
