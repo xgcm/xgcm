@@ -44,3 +44,65 @@ def parse_meta_file(fname):
                            re.split("'\s+'",flds['fldList'])]
         assert flds['nrecords'] == len(flds['fldList'])
     return flds
+
+def read_mds(fname, iternum=None, use_mmap=True,
+              force_dict=True, endian='>'):
+    """Read an MITgcm .meta / .data file pair"""
+
+    if iternum is None:
+        istr = ''
+    else:
+        assert isinstance(iternum, int)
+        istr = '.%010d' % iternum
+    datafile = fname + istr + '.data'
+    metafile = fname + istr + '.meta'
+
+    # get metadata
+    meta = parse_meta_file(metafile)
+    # why does the .meta file contain so much repeated info?
+    # just get the part we need
+    # and reverse order (numpy uses C order, mds is fortran)
+    shape = [g[0] for g in meta['dimList']][::-1]
+    assert len(shape) == meta['nDims']
+    # now add an extra for number of recs
+    nrecs = meta['nrecords']
+    shape.insert(0, nrecs)
+
+    # load and shape data
+    dtype = meta['dataprec'].newbyteorder(endian)
+    d = read_raw_data(datafile, dtype, shape, use_mmap=use_mmap)
+
+    if nrecs == 1:
+        if 'fldList' in meta:
+            name = meta['fldList'][0]
+        else:
+            name = meta['basename']
+        if force_dict:
+            return {name: d[0]}
+        else:
+            return d[0]
+    else:
+        # need record names
+        out = {}
+        for n, name in enumerate(meta['fldList']):
+            out[name] = d[n]
+        return out
+
+def read_raw_data(datafile, dtype, shape, use_mmap=False):
+    """Read a raw binary file and shape it."""
+
+    # first check to be sure there is the right number of bytes in the file
+    number_of_values = reduce(lambda x, y: x * y, shape)
+    expected_number_of_bytes = number_of_values * dtype.itemsize
+    actual_number_of_bytes = os.path.getsize(datafile)
+    if  expected_number_of_bytes != actual_number_of_bytes:
+        raise IOError('File `%s` does not have the correct size '
+                      '(expected %g, found %g)' % (datafile,
+                        expected_number_of_bytes, actual_number_of_bytes))
+
+    if use_mmap:
+        d = np.memmap(datafile, dtype, 'r')
+    else:
+        d = np.fromfile(datafile, dtype)
+    d.shape = shape
+    return d

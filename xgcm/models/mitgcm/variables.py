@@ -18,39 +18,39 @@ from xarray.core.pycompat import OrderedDict
 # There is no "data" to go with these. They are just indices.
 dimensions = OrderedDict(
     # x direction
-    i = dict(dims=['i'], attrs=dict(
+    i = dict(dims=['i'], swap_dim='XC', attrs=dict(
                 standard_name="x_grid_index", axis='X',
                 long_name="x-dimension of the t grid")),
-    i_g = dict(dims=['i_g'], attrs=dict(
+    i_g = dict(dims=['i_g'], swap_dim='XG', attrs=dict(
                 standard_name="x_grid_index_at_u_location", axis='X',
                 long_name="x-dimension of the u grid", c_grid_axis_shift=-0.5)),
-    i_z = dict(dims=['i_z'], attrs=dict(
-                standard_name="x_grid_index_at_f_location", axis='X',
-                long_name="x-dimension of the f grid", c_grid_axis_shift=-0.5)),
+    # i_z = dict(dims=['i_z'], swap_dim='XG', attrs=dict(
+    #             standard_name="x_grid_index_at_f_location", axis='X',
+    #             long_name="x-dimension of the f grid", c_grid_axis_shift=-0.5)),
     # y direction
-    j = dict(dims=['j'], attrs=dict(
+    j = dict(dims=['j'], swap_dim='YC', attrs=dict(
                 standard_name="y_grid_index", axis='Y',
                 long_name="y-dimension of the t grid")),
-    j_g = dict(dims=['j_g'], attrs=dict(
+    j_g = dict(dims=['j_g'], swap_dim='YG', attrs=dict(
                 standard_name="y_grid_index_at_v_location", axis='Y',
                 long_name="y-dimension of the v grid", c_grid_axis_shift=-0.5)),
-    j_z = dict(dims=['j_z'], attrs=dict(
-                standard_name="y_grid_index_at_f_location", axis='Y',
-                long_name="y-dimension of the f grid", c_grid_axis_shift=-0.5)),
+    # j_z = dict(dims=['j_z'], swap_dim='YG', attrs=dict(
+    #             standard_name="y_grid_index_at_f_location", axis='Y',
+    #             long_name="y-dimension of the f grid", c_grid_axis_shift=-0.5)),
     # x direction
-    k = dict(dims=['k'], attrs=dict(
+    k = dict(dims=['k'], swap_dim='Z', attrs=dict(
                 standard_name="z_grid_index", axis="Z",
                 long_name="z-dimension of the t grid")),
-    k_u = dict(dims=['k_u'], attrs=dict(
+    k_u = dict(dims=['k_u'], swap_dim='Zu', attrs=dict(
                 standard_name="z_grid_index_at_lower_w_location",
                 axis="Z", long_name="z-dimension of the w grid",
                 c_grid_axis_shift=-0.5)),
-    k_l = dict(dims=['k_l'], attrs=dict(
+    k_l = dict(dims=['k_l'], swap_dim='Zl', attrs=dict(
                 standard_name="z_grid_index_at_upper_w_location",
                 axis="Z", long_name="z-dimension of the w grid",
                 c_grid_axis_shift=0.5)),
     # this is complicated because it is offset in both directions - allowed by comodo?
-    k_p1 = dict(dims=['k_p1'], attrs=dict(
+    k_p1 = dict(dims=['k_p1'], swap_dim='Zp1', attrs=dict(
                 standard_name="z_grid_index_at_w_location",
                 axis="Z", long_name="z-dimension of the w grid",
                 c_grid_axis_shift=(-0.5,0.5)))
@@ -109,10 +109,12 @@ vertical_coordinates = OrderedDict(
             filename="RF", slice=(slice(None,-1),0,0))
 )
 
+# I got these variable names from the default MITgcm netcdf output
 horizontal_grid_variables = OrderedDict(
     # tracer cell
     rA  = dict(dims=["j", "i"], attrs=dict(standard_name="cell_area",
-                long_name="cell area", units="m2", coordinate="YC XC")),
+                long_name="cell area", units="m2", coordinate="YC XC"),
+               filename='RAC'),
     dxG = dict(dims=["j_g", "i"], attrs=dict(
                 standard_name="cell_x_size_at_v_location",
                 long_name="cell x size", units="m", coordinate="YG XC")),
@@ -124,7 +126,8 @@ horizontal_grid_variables = OrderedDict(
     # vorticity cell
     rAz  = dict(dims=["j_g", "i_g"], attrs=dict(
                 standard_name="cell_area_at_f_location",
-                long_name="cell area", units="m", coordinate="YG XG")),
+                long_name="cell area", units="m", coordinate="YG XG"),
+               filename='RAZ'),
     dxC = dict(dims=["j", "i_g"], attrs=dict(
                 standard_name="cell_x_size_at_u_location",
                 long_name="cell x size", units="m", coordinate="YC XG")),
@@ -134,11 +137,13 @@ horizontal_grid_variables = OrderedDict(
     # u cell
     rAw = dict(dims=["j", "i_g"], attrs=dict(
                 standard_name="cell_area_at_u_location",
-                long_name="cell area", units="m2", coordinate="YG XC")),
+                long_name="cell area", units="m2", coordinate="YG XC"),
+               filename='RAW'),
     # v cell
     rAs = dict(dims=["j_g", "i"], attrs=dict(
                 standard_name="cell_area_at_v_location",
-                long_name="cell area", units="m2", coordinates="YG XC")),
+                long_name="cell area", units="m2", coordinates="YG XC"),
+               filename='RAZ'),
 )
 
 vertical_grid_variables = OrderedDict(

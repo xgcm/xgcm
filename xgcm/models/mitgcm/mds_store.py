@@ -23,13 +23,13 @@ from .variables import dimensions, \
 # would it be better to import mitgcm_variables and then automate the search
 # for variable dictionaries
 
-from .utils import parse_meta_file
+from .utils import parse_meta_file, read_mds
 
 
-def open_mdsdataset(dirname, iters=None, deltaT=1,
+def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                  prefix=None, ref_date=None, calendar=None,
-                 ignore_pickup=True, geometry='Cartesian',
-                 grid_vars_to_coords=True,
+                 ignore_pickup=True, geometry='sphericalpolar',
+                 grid_vars_to_coords=True, swap_dims=False,
                  skip_vars=[], endian=">"):
     """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
 
@@ -41,6 +41,8 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
         The iterations numbers of the files to be read
     deltaT : number, optional
         The timestep used in the model (can't be inferred)
+    read_grid : bool, optional
+        Whether to try to read the grid data
     prefix : list, optional
         List of different filename prefixes to read. Default is to read all files.
     ref_date : string, optional
@@ -51,8 +53,10 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
         Whether to read the pickup files
     geometry : string
         MITgcm grid geometry. (Not really used yet.)
-    grid_vars_to_coords : boolean
+    grid_vars_to_coords : boolean, optional
         If `True`, all grid related variables will be promoted to coordinates
+    swap_dims : boolean, optional
+        Whether to swap the logical dimensions for physical ones.
     skip_vars : list
         Names of variables to ignore.
     endian : {'=', '>', '<'}, optional
@@ -68,7 +72,14 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
     .. [1] http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html
     """
 
-    store = _MDSDataStore(dirname, iters, deltaT,
+    if iters is not None:
+        if len(iters) > 1:
+            raise NotImplementedError("Can't handle more than one iteration yet.")
+        iternum=iters[0]
+    else:
+        iternum = None
+
+    store = _MDSDataStore(dirname, iternum, delta_t, read_grid,
                              prefix, ref_date, calendar,
                              ignore_pickup, geometry, skip_vars, endian)
     # turn all the auxilliary grid variables into coordinates
@@ -77,14 +88,42 @@ def open_mdsdataset(dirname, iters=None, deltaT=1,
     #     for k in _grid_variables:
     #         ds.set_coords(k, inplace=True)
     #     ds.set_coords('iter', inplace=True)
+
+    if swap_dims:
+        ds = _swap_dimensions(ds, geometry)
     return ds
+
+
+def _swap_dimensions(ds, geometry, drop_old=True):
+    """Replace logical coordinates with physical ones. Does not work for llc.
+    """
+    if geometry.lower()=='llc':
+        raise ValueError("Can't swap dimensions if geometry is `llc`")
+
+    # first squeeze all the coordinates
+    for orig_dim in dimensions:
+        new_dim = dimensions[orig_dim]['swap_dim']
+        coord_var = ds[new_dim]
+        for coord_dim in coord_var.dims:
+            if coord_dim != orig_dim:
+                # dimension should be the same along all other axes, so just
+                # take the first row / column
+                coord_var = coord_var.isel(**{coord_dim: 0}).drop(coord_dim)
+        ds[new_dim] = coord_var
+    for orig_dim in dimensions:
+        new_dim = dimensions[orig_dim]['swap_dim']
+        ds = ds.swap_dims({orig_dim: new_dim})
+        if drop_old:
+            ds = ds.drop(orig_dim)
+    return ds
+
 
 class _MDSDataStore(xr.backends.common.AbstractDataStore):
     """Representation of MITgcm mds binary file storage format for a specific
     model instance."""
-    def __init__(self, dirname, iters=None, deltaT=1,
-                 prefix=None, ref_date=None, calendar=None,
-                 ignore_pickup=True, geometry='cartesian',
+    def __init__(self, dirname, iternum=None, delta_t=1, read_grid=True,
+                 file_prefixes=None, ref_date=None, calendar=None,
+                 ignore_pickup=True, geometry='sphericalpolar',
                  skip_vars=[], endian='>'):
         """
 
@@ -92,8 +131,9 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         ----------
         dirname : string
             Location of the output files. Usually the "run" directory.
-        iters : list
-            The iteration numbers corresponding with the files to read
+        iternum : list
+            The iteration numbers corresponding with the files to read. If None,
+            don't read any data files.
         deltaT : float
             Numerical timestep of MITgcm model. Used to infer actual time
         prefix : list
@@ -112,9 +152,12 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
                              'It must be one of the following: %s' %
                              allowed_geometries)
 
-
         # the directory where the files live
         self.dirname = dirname
+
+        # build lookup tables for variable metadata
+        self._all_grid_variables = _get_all_grid_variables(self.geometry)
+        self._all_data_variables = _get_all_data_variables(self.dirname)
 
         # storage dicts for variables and attributes
         self._variables = xr.core.pycompat.OrderedDict()
@@ -172,28 +215,54 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             dim_variable = xr.Variable(dims, data, attrs)
             self._variables[dim] = dim_variable
 
+        # maybe add a time dimension
+        if iternum is not None:
+            self.time_dim_name = 'time'
+            self._dimensions.append(self.time_dim_name)
+            # a variable for iteration number
+            self._variables['iter'] = xr.Variable(
+                        (self.time_dim_name,),
+                        [iternum],
+                        {'standard_name': 'timestep',
+                         'long_name': 'model timestep number'})
+            self._variables[self.time_dim_name] = _iternum_to_datetime_variable(
+                iternum, delta_t, ref_date, self.time_dim_name
+            )
+
+
         # the rest of the data has to be read from disk
         # USE A SINGLE SYNTAX TO READ ALL VARIABLES... GRID OR OTHERWISE
         # Perhaps this is as simple as specifying the file prefixes
 
+        # The problem with this is that some prefixes are single variables while
+        # some are multi-variable diagnostics files
         prefixes = []
-        for p in prefixes:
-            if p not in grid_variables:
-                pass
-                # do something related to time
-            dims, data, attrs = self.read_data_and_lookup_metadata(p)
-            self._variables[p] = xr.Variable(dims, data, attrs)
+        if read_grid:
+            prefixes = prefixes + self._all_grid_variables.keys()
 
-    def read_grid_data(self, name):
+        # add data files
+        prefixes = (prefixes +
+                    _get_all_matching_prefixes(dirname, iternum, file_prefixes))
+
+        for p in prefixes:
+            # use a generator to loop through the possible files
+            for (vname, dims, data, attrs) in self.load_from_prefix(p, iternum):
+                self._variables[vname] = xr.Variable(dims, data, attrs)
+
+    def load_from_prefix(self, prefix, iternum=None):
         """Read data and look up metadata for grid variable `name`.
 
         Parameters
         ----------
         name : string
             The name of the grid variable.
+        iternume : int (optional)
+            MITgcm iteration number
 
-        Returns
+        Yields
         -------
+        varname : string
+            The name of the variable
         dims : list
             The dimension list
         data : arraylike
@@ -201,7 +270,59 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         attrs : dict
             The metadata attributes
         """
-        pass
+
+        fname_base = prefix
+        custom_slice = None
+
+        # some special logic is required for grid variables
+        if prefix in self._all_grid_variables:
+            # grid variables don't have an iteration number suffix
+            iternum = None
+            # some grid variables have a different filename than their varname
+            if 'filename' in self._all_grid_variables[prefix]:
+                fname_base = self._all_grid_variables[prefix]['filename']
+            # some grid variables have to be specially sliced
+            if 'slice' in self._all_grid_variables[prefix]:
+                custom_slice = self._all_grid_variables[prefix]['slice']
+        else:
+            assert iternum is not None
+
+        # get a dict of variables and their data
+        vardata = read_mds(os.path.join(self.dirname, fname_base), iternum)
+        for vname, data in vardata.items():
+            # we now have to revert to the original prefix once the file is read
+            if fname_base != prefix:
+                vname = prefix
+            metadata = (self._all_grid_variables[vname]
+                        if vname in self._all_grid_variables
+                        else self._all_data_variables[vname])
+            # maybe slice and squeeze the data
+            if 'slice' in metadata:
+                sl = metadata['slice']
+                # TODO: lots of this logic is leftover...is is still necessary?
+                # # have to reslice and reshape the data
+                # if data.ndim != ndim_expected:
+                #     # if there is only one vertical level, some variables
+                #     # are squeeze at the mds level and need to get a dimension back
+                #     if data.ndim==2 and ndim_expected==3:
+                #         data.shape = (1,) + data.shape
+                #     else:
+                #         raise ValueError("Don't know how to handle data shape")
+                # # now apply the slice
+                data = np.atleast_1d(data[sl])
+            else:
+                data = np.atleast_1d(data.squeeze())
+
+            dims = metadata['dims']
+            attrs = metadata['attrs']
+            # need to add an extra dimension at the beginning if we have a time
+            # variable
+            if iternum is not None:
+                dims = [self.time_dim_name] + dims
+                newshape = (1,) + data.shape
+                data = data.reshape(newshape)
+
+            yield vname, dims, data, attrs
 
     def get_variables(self):
         return self._variables
@@ -214,3 +335,71 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
 
     def close(self):
         pass
+
+def _get_all_grid_variables(geometry):
+    """"Put all the relevant grid metadata into one big dictionary."""
+    hcoords = horizontal_coordinates_cartesian if geometry=='cartesian' else \
+              horizontal_coordinates_spherical
+    allvars = [hcoords, vertical_coordinates, horizontal_grid_variables,
+               vertical_grid_variables, volume_grid_variables]
+    metadata = _concat_dicts(allvars)
+    return metadata
+
+def _get_all_data_variables(dirname):
+    """"Put all the relevant data metadata into one big dictionary."""
+    allvars = [state_variables]
+    # add others from available_diagnostics.log
+    metadata = _concat_dicts(allvars)
+    return metadata
+
+def _concat_dicts(list_of_dicts):
+    result = xr.core.pycompat.OrderedDict()
+    for eachdict in list_of_dicts:
+        for k, v in eachdict.items():
+            result[k] = v
+    return result
+
+def _get_all_iternums(dirname, file_prefixes=None):
+    """Scan a directory for all iteration number suffixes."""
+    iternums = set()
+    all_datafiles = glob(os.path.join(dirname,'*.??????????.data'))
+    for f in all_datafiles:
+        iternum = int(f[-15:-5])
+        prefix = os.path.split(f[:-16])[-1]
+        if file_prefixes is None:
+            iternums.add(iternum)
+        else:
+            if prefix in file_prefixes:
+                iternums.add(iternum)
+    return list(iternums)
+
+def _get_all_matching_prefixes(dirname, iternum, file_prefixes=None):
+    """Scan a directory and return all file prefixes matching a certain
+    iteration number."""
+    if iternum is None:
+        return []
+    prefixes = set()
+    all_datafiles = glob(os.path.join(dirname,'*.%010d.data' % iternum))
+    for f in all_datafiles:
+        iternum = int(f[-15:-5])
+        prefix = os.path.split(f[:-16])[-1]
+        if file_prefixes is None:
+            prefixes.add(prefix)
+        else:
+            if prefix in file_prefixes:
+                prefixes.add(prefix)
+    return list(prefixes)
+
+def _iternum_to_datetime_variable(iternum, delta_t, ref_date,
+                                  calendar, time_dim_name='time'):
+    # create time array
+    timedata = np.atleast_1d(iternum)*delta_t
+    time_attrs = {'standard_name': 'time', 'long_name': 'Time', 'axis': 'T'}
+    if ref_date is not None:
+        time_attrs['units'] = 'seconds since %s' % ref_date
+    else:
+        time_attrs['units'] = 'seconds'
+    if calendar is not None:
+        time_attrs['calendar'] = calendar
+    timevar = xr.Variable( (time_dim_name,), timedata, time_attrs)
+    return timevar
