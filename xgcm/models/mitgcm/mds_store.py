@@ -97,6 +97,9 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
 def _swap_dimensions(ds, geometry, drop_old=True):
     """Replace logical coordinates with physical ones. Does not work for llc.
     """
+    # TODO: handle metadata correctly such that the new dimension attributes
+    # still conform to comodo conventions
+
     if geometry.lower()=='llc':
         raise ValueError("Can't swap dimensions if geometry is `llc`")
 
@@ -175,7 +178,10 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         # nx, ny, nz. We do this by peeking at the grid file metadata
         try:
             rc_meta = parse_meta_file(os.path.join(self.dirname, 'RC.meta'))
-            self.nz = rc_meta['dimList'][2][2]
+            if len(rc_meta['dimList'])==2:
+                self.nz = 1
+            else:
+                self.nz = rc_meta['dimList'][2][2]
         except IOError:
             raise RuntimeError("Couldn't find RC.meta file to infer nz.")
         try:
@@ -230,9 +236,8 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             )
 
 
-        # the rest of the data has to be read from disk
-        # USE A SINGLE SYNTAX TO READ ALL VARIABLES... GRID OR OTHERWISE
-        # Perhaps this is as simple as specifying the file prefixes
+        # The rest of the data has to be read from disk.
+        # The list `prefixes` specifies file prefixes from which to infer
 
         # The problem with this is that some prefixes are single variables while
         # some are multi-variable diagnostics files
@@ -245,8 +250,9 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
                     _get_all_matching_prefixes(dirname, iternum, file_prefixes))
 
         for p in prefixes:
-            # use a generator to loop through the possible files
+            # use a generator to loop through the variables in each file
             for (vname, dims, data, attrs) in self.load_from_prefix(p, iternum):
+                #print(vname, dims, data.shape)
                 self._variables[vname] = xr.Variable(dims, data, attrs)
 
     def load_from_prefix(self, prefix, iternum=None):
@@ -296,25 +302,33 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             metadata = (self._all_grid_variables[vname]
                         if vname in self._all_grid_variables
                         else self._all_data_variables[vname])
+
             # maybe slice and squeeze the data
             if 'slice' in metadata:
                 sl = metadata['slice']
-                # TODO: lots of this logic is leftover...is is still necessary?
-                # # have to reslice and reshape the data
-                # if data.ndim != ndim_expected:
-                #     # if there is only one vertical level, some variables
-                #     # are squeeze at the mds level and need to get a dimension back
-                #     if data.ndim==2 and ndim_expected==3:
-                #         data.shape = (1,) + data.shape
-                #     else:
-                #         raise ValueError("Don't know how to handle data shape")
-                # # now apply the slice
+                # need to promote the variable to higher dimensions in the
+                # to handle certain 2D model outputs
+                if len(sl)==3 and data.ndim==2:
+                    data.shape = (1,) + data.shape
                 data = np.atleast_1d(data[sl])
-            else:
-                data = np.atleast_1d(data.squeeze())
 
             dims = metadata['dims']
             attrs = metadata['attrs']
+
+            # Some 2D output squeezes one of the dimensions out (e.g. hFacC).
+            # How should we handle this? Can either eliminate one of the dims
+            # or add an extra axis to the data. Let's try the former, on the
+            # grounds that it is simpler for the user.
+            if len(dims)==3 and data.ndim==2:
+                # Deleting the first dimension (z) assumes that 2D data always
+                # corresponds to x,y horizontal data. Is this really true?
+                # The answer appears to be yes: 2D (x,z) data retains the
+                # missing dimension as an axis of length 1.
+                dims = dims[1:]
+            elif len(dims)==1 and (data.ndim==2 or data.ndim==3):
+                # this is for certain profile data like RC, PHrefC, etc.
+                data = np.atleast_1d(data.squeeze())
+
             # need to add an extra dimension at the beginning if we have a time
             # variable
             if iternum is not None:

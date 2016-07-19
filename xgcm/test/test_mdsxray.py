@@ -25,22 +25,49 @@ _xc_meta_content = """ simulation = { 'global_oce_latlon' };
  nrecords = [     1 ];
 """
 
-@pytest.fixture(scope='module')
-def mds_datadir(tmpdir_factory, request):
-    # find the tar archive in the test directory
-    # http://stackoverflow.com/questions/29627341/pytest-where-to-store-expected-data
-    filename = request.module.__file__
-    datafile = os.path.join(os.path.dirname(filename), _TESTDATA_FILENAME)
+def _untar(datafile, target_dir):
+    """Unzip a tar file into the target directory. Return path to unzipped
+    directory."""
     if not os.path.exists(datafile):
         raise IOError('Could not find data file %s' % datafile)
-    # tmpdir_factory returns LocalPath objects
-    # for stuff to work, has to be converted to string
-    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
     tar = tarfile.open(datafile)
     tar.extractall(target_dir)
     tar.close()
+    # subdirectory where file should have been untarred.
+    # assumes the directory is the same name as the tar file itself.
+    # e.g. testdata.tar.gz --> testdata/
+    basedir = os.path.basename(datafile).split('.tar.gz')[0]
+    fulldir = os.path.join(target_dir, basedir)
+    if not os.path.exists(fulldir):
+        raise IOError('Could not find tar file output dir %s' % basedir)
     # the actual data lives in a file called testdata
-    return os.path.join(target_dir, 'testdata')
+    return fulldir
+
+# find the tar archive in the test directory
+# http://stackoverflow.com/questions/29627341/pytest-where-to-store-expected-data
+@pytest.fixture(scope='module')
+def mds_datadir(tmpdir_factory, request):
+    """The standard, 3D, spherical polar dataset."""
+    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
+    filename = request.module.__file__
+    datafile = os.path.join(os.path.dirname(filename), 'testdata.tar.gz')
+    return _untar(datafile, target_dir)
+
+@pytest.fixture(scope='module')
+def barotropic_gyre_datadir(tmpdir_factory, request):
+    """2D (x,y) dataset."""
+    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
+    filename = request.module.__file__
+    datafile = os.path.join(os.path.dirname(filename), 'barotropic_gyre.tar.gz')
+    return _untar(datafile, target_dir)
+
+@pytest.fixture(scope='module')
+def barotropic_gyre_datadir(tmpdir_factory, request):
+    """2D (x,z) dataset."""
+    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
+    filename = request.module.__file__
+    datafile = os.path.join(os.path.dirname(filename), 'internal_wave.tar.gz')
+    return _untar(datafile, target_dir)
 
 def test_parse_meta(tmpdir):
     """Check the parsing of MITgcm .meta into python dictionary."""
