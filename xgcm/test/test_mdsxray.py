@@ -25,9 +25,10 @@ _xc_meta_content = """ simulation = { 'global_oce_latlon' };
  nrecords = [     1 ];
 """
 
-def _untar(datafile, target_dir):
+def _untar(data_dir, basename, target_dir):
     """Unzip a tar file into the target directory. Return path to unzipped
     directory."""
+    datafile = os.path.join(data_dir, basename + '.tar.gz')
     if not os.path.exists(datafile):
         raise IOError('Could not find data file %s' % datafile)
     tar = tarfile.open(datafile)
@@ -36,38 +37,48 @@ def _untar(datafile, target_dir):
     # subdirectory where file should have been untarred.
     # assumes the directory is the same name as the tar file itself.
     # e.g. testdata.tar.gz --> testdata/
-    basedir = os.path.basename(datafile).split('.tar.gz')[0]
-    fulldir = os.path.join(target_dir, basedir)
+    fulldir = os.path.join(target_dir, basename)
     if not os.path.exists(fulldir):
         raise IOError('Could not find tar file output dir %s' % basedir)
     # the actual data lives in a file called testdata
     return fulldir
 
+# parameterized fixture are complicated
+# http://docs.pytest.org/en/latest/fixture.html#fixture-parametrize
+
+# dictionary of archived experiments and some expected properties
+_experiments = {
+    'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600},
+    'barotropic_gyre': {'shape': (1,60,60), 'test_iternum': 10},
+    'internal_wave': {'shape': (20,1,30), 'test_iternum': 100}
+}
+
 # find the tar archive in the test directory
 # http://stackoverflow.com/questions/29627341/pytest-where-to-store-expected-data
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='module', params=_experiments.keys())
 def mds_datadir(tmpdir_factory, request):
-    """The standard, 3D, spherical polar dataset."""
+    """The datasets."""
+    expt_name = request.param
+    expected_results = _experiments[expt_name]
     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-    filename = request.module.__file__
-    datafile = os.path.join(os.path.dirname(filename), 'testdata.tar.gz')
-    return _untar(datafile, target_dir)
+    data_dir = os.path.dirname(request.module.__file__)
+    return _untar(data_dir, expt_name, target_dir), expected_results
 
-@pytest.fixture(scope='module')
-def barotropic_gyre_datadir(tmpdir_factory, request):
-    """2D (x,y) dataset."""
-    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-    filename = request.module.__file__
-    datafile = os.path.join(os.path.dirname(filename), 'barotropic_gyre.tar.gz')
-    return _untar(datafile, target_dir)
-
-@pytest.fixture(scope='module')
-def barotropic_gyre_datadir(tmpdir_factory, request):
-    """2D (x,z) dataset."""
-    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-    filename = request.module.__file__
-    datafile = os.path.join(os.path.dirname(filename), 'internal_wave.tar.gz')
-    return _untar(datafile, target_dir)
+# @pytest.fixture(scope='module')
+# def barotropic_gyre_datadir(tmpdir_factory, request):
+#     """2D (x,y) dataset."""
+#     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
+#     filename = request.module.__file__
+#     datafile = os.path.join(os.path.dirname(filename), 'barotropic_gyre.tar.gz')
+#     return _untar(datafile, target_dir)
+#
+# @pytest.fixture(scope='module')
+# def barotropic_gyre_datadir(tmpdir_factory, request):
+#     """2D (x,z) dataset."""
+#     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
+#     filename = request.module.__file__
+#     datafile = os.path.join(os.path.dirname(filename), 'internal_wave.tar.gz')
+#     return _untar(datafile, target_dir)
 
 def test_parse_meta(tmpdir):
     """Check the parsing of MITgcm .meta into python dictionary."""
@@ -116,10 +127,12 @@ def test_read_raw_data(tmpdir):
 def test_read_mds(mds_datadir):
     """Check that we can read mds data from .meta / .data pairs"""
 
+    dirname, expected = mds_datadir
+
     from xgcm.models.mitgcm.utils import read_mds
 
     prefix = 'XC'
-    basename = os.path.join(mds_datadir, prefix)
+    basename = os.path.join(dirname, prefix)
     res = read_mds(basename)
     assert isinstance(res, dict)
     assert prefix in res
@@ -133,21 +146,26 @@ def test_read_mds(mds_datadir):
     assert isinstance(res, np.ndarray)
 
     # try reading with iteration number
-    prefix = 'Ttave'
-    basename = os.path.join(mds_datadir, prefix)
-    iternum = 39600
+    prefix = 'T'
+    basename = os.path.join(dirname, prefix)
+    iternum = expected['test_iternum']
     res = read_mds(basename, iternum=iternum)
-    assert 'Ttave' in res
+    assert prefix in res
+
+# @pytest.mark.parametrize("datadir,expected_shape", [
+#     (mds_datadir, (90, 40, 15)),
+# ])
 
 def test_open_mdsdataset_minimal(mds_datadir):
     """Create a minimal xarray object with only dimensions in it."""
 
+    dirname, expected = mds_datadir
+
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                mds_datadir,
-                read_grid=False)
+            dirname, read_grid=False)
 
     # the expected dimensions of the dataset
-    nx, ny, nz = 90, 40, 15
+    nz, ny, nx = expected['shape']
     ds_expected = xr.Dataset(coords={
         'i': np.arange(nx),
         'i_g': np.arange(nx),
@@ -163,30 +181,33 @@ def test_open_mdsdataset_minimal(mds_datadir):
 
     assert ds_expected.equals(ds)
 
-def test_open_mdsdataset_read_grid(mds_datadir):
+def test_read_grid(mds_datadir):
     """Make sure we read all the grid variables."""
-
+    dirname, expected = mds_datadir
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                mds_datadir, read_grid=True)
+                dirname, read_grid=True)
 
     for vname in _EXPECTED_GRID_VARS:
         assert vname in ds
 
-def test_open_mdsdataset_swap_dims(mds_datadir):
+def test_swap_dims(mds_datadir):
     """Make sure we read all the grid variables."""
 
+    dirname, expected = mds_datadir
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                mds_datadir, read_grid=True, swap_dims=True)
+                dirname, read_grid=True, swap_dims=True)
 
     expected_dims = ['XC', 'XG', 'YC', 'YG', 'Z', 'Zl', 'Zp1', 'Zu']
     assert ds.dims.keys() == expected_dims
 
-def test_open_mdsdataset_with_prefixes(mds_datadir):
+def test_prefixes(mds_datadir):
     """Make sure we read all the grid variables."""
 
-    prefixes = ['U', 'V', 'W', 'T', 'S', 'PH', 'PHL', 'Eta']
+    dirname, expected = mds_datadir
+    prefixes = ['U', 'V', 'W', 'T', 'S', 'PH'] #, 'PHL', 'Eta']
+    iters = [expected['test_iternum']]
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                mds_datadir, iters=_TESTDATA_ITERS, prefix=prefixes,
+                dirname, iters=iters, prefix=prefixes,
                 read_grid=False)
 
     for p in prefixes:
@@ -195,25 +216,25 @@ def test_open_mdsdataset_with_prefixes(mds_datadir):
 
     # try with dim swapping
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                mds_datadir, iters=_TESTDATA_ITERS, prefix=prefixes,
+                dirname, iters=iters, prefix=prefixes,
                 read_grid=True, swap_dims=True)
 
     for p in prefixes:
         assert p in ds
 
 
-@pytest.mark.skipif(True, reason="Not ready")
-def test_open_mdsdataset_full(mds_datadir):
-    # most basic test: make sure we can open an mds dataset
-    ds = xgcm.open_mdsdataset(mds_datadir,
-            _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT)
-    #print(ds)
-
-    # check just a single value
-    assert ds['X'][0].values == 2.0
-
-    # check little endianness
-    ds = xgcm.open_mdsdataset(mds_datadir,
-            _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT, endian="<")
-    assert ds['X'][0].values == 8.96831017167883e-44
-    #print(ds)
+# @pytest.mark.skipif(True, reason="Not ready")
+# def test_open_mdsdataset_full(mds_datadir):
+#     # most basic test: make sure we can open an mds dataset
+#     ds = xgcm.open_mdsdataset(mds_datadir,
+#             _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT)
+#     #print(ds)
+#
+#     # check just a single value
+#     assert ds['X'][0].values == 2.0
+#
+#     # check little endianness
+#     ds = xgcm.open_mdsdataset(mds_datadir,
+#             _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT, endian="<")
+#     assert ds['X'][0].values == 8.96831017167883e-44
+#     #print(ds)
