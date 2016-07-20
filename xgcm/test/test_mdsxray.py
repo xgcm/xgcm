@@ -50,35 +50,20 @@ def _untar(data_dir, basename, target_dir):
 _experiments = {
     'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600},
     'barotropic_gyre': {'shape': (1,60,60), 'test_iternum': 10},
-    'internal_wave': {'shape': (20,1,30), 'test_iternum': 100}
+    'internal_wave': {'shape': (20,1,30), 'test_iternum': 100,
+                      'multiple_iters': [0,100,200]}
 }
 
 # find the tar archive in the test directory
 # http://stackoverflow.com/questions/29627341/pytest-where-to-store-expected-data
 @pytest.fixture(scope='module', params=_experiments.keys())
-def mds_datadir(tmpdir_factory, request):
+def all_mds_datadirs(tmpdir_factory, request):
     """The datasets."""
     expt_name = request.param
     expected_results = _experiments[expt_name]
     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
     data_dir = os.path.dirname(request.module.__file__)
     return _untar(data_dir, expt_name, target_dir), expected_results
-
-# @pytest.fixture(scope='module')
-# def barotropic_gyre_datadir(tmpdir_factory, request):
-#     """2D (x,y) dataset."""
-#     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-#     filename = request.module.__file__
-#     datafile = os.path.join(os.path.dirname(filename), 'barotropic_gyre.tar.gz')
-#     return _untar(datafile, target_dir)
-#
-# @pytest.fixture(scope='module')
-# def barotropic_gyre_datadir(tmpdir_factory, request):
-#     """2D (x,z) dataset."""
-#     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-#     filename = request.module.__file__
-#     datafile = os.path.join(os.path.dirname(filename), 'internal_wave.tar.gz')
-#     return _untar(datafile, target_dir)
 
 def test_parse_meta(tmpdir):
     """Check the parsing of MITgcm .meta into python dictionary."""
@@ -124,10 +109,10 @@ def test_read_raw_data(tmpdir):
     with pytest.raises(IOError):
         _ = read_raw_data(fname, dtype, wrongshape)
 
-def test_read_mds(mds_datadir):
+def test_read_mds(all_mds_datadirs):
     """Check that we can read mds data from .meta / .data pairs"""
 
-    dirname, expected = mds_datadir
+    dirname, expected = all_mds_datadirs
 
     from xgcm.models.mitgcm.utils import read_mds
 
@@ -153,13 +138,13 @@ def test_read_mds(mds_datadir):
     assert prefix in res
 
 # @pytest.mark.parametrize("datadir,expected_shape", [
-#     (mds_datadir, (90, 40, 15)),
+#     (all_mds_datadirs, (90, 40, 15)),
 # ])
 
-def test_open_mdsdataset_minimal(mds_datadir):
+def test_open_mdsdataset_minimal(all_mds_datadirs):
     """Create a minimal xarray object with only dimensions in it."""
 
-    dirname, expected = mds_datadir
+    dirname, expected = all_mds_datadirs
 
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
             dirname, read_grid=False)
@@ -181,29 +166,29 @@ def test_open_mdsdataset_minimal(mds_datadir):
 
     assert ds_expected.equals(ds)
 
-def test_read_grid(mds_datadir):
+def test_read_grid(all_mds_datadirs):
     """Make sure we read all the grid variables."""
-    dirname, expected = mds_datadir
+    dirname, expected = all_mds_datadirs
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
                 dirname, read_grid=True)
 
     for vname in _EXPECTED_GRID_VARS:
         assert vname in ds
 
-def test_swap_dims(mds_datadir):
+def test_swap_dims(all_mds_datadirs):
     """Make sure we read all the grid variables."""
 
-    dirname, expected = mds_datadir
+    dirname, expected = all_mds_datadirs
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
                 dirname, read_grid=True, swap_dims=True)
 
     expected_dims = ['XC', 'XG', 'YC', 'YG', 'Z', 'Zl', 'Zp1', 'Zu']
     assert ds.dims.keys() == expected_dims
 
-def test_prefixes(mds_datadir):
+def test_prefixes(all_mds_datadirs):
     """Make sure we read all the grid variables."""
 
-    dirname, expected = mds_datadir
+    dirname, expected = all_mds_datadirs
     prefixes = ['U', 'V', 'W', 'T', 'S', 'PH'] #, 'PHL', 'Eta']
     iters = [expected['test_iternum']]
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
@@ -212,7 +197,6 @@ def test_prefixes(mds_datadir):
 
     for p in prefixes:
         assert p in ds
-    print ds
 
     # try with dim swapping
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
@@ -224,9 +208,9 @@ def test_prefixes(mds_datadir):
 
 
 # @pytest.mark.skipif(True, reason="Not ready")
-# def test_open_mdsdataset_full(mds_datadir):
+# def test_open_mdsdataset_full(all_mds_datadirs):
 #     # most basic test: make sure we can open an mds dataset
-#     ds = xgcm.open_mdsdataset(mds_datadir,
+#     ds = xgcm.open_mdsdataset(all_mds_datadirs,
 #             _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT)
 #     #print(ds)
 #
@@ -234,7 +218,7 @@ def test_prefixes(mds_datadir):
 #     assert ds['X'][0].values == 2.0
 #
 #     # check little endianness
-#     ds = xgcm.open_mdsdataset(mds_datadir,
+#     ds = xgcm.open_mdsdataset(all_mds_datadirs,
 #             _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT, endian="<")
 #     assert ds['X'][0].values == 8.96831017167883e-44
 #     #print(ds)

@@ -30,7 +30,7 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                  prefix=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='sphericalpolar',
                  grid_vars_to_coords=True, swap_dims=False,
-                 skip_vars=[], endian=">"):
+                 skip_vars=[], endian=">", chunks=None):
     """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
 
     Parameters
@@ -72,25 +72,81 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
     .. [1] http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html
     """
 
-    if iters is not None:
-        if len(iters) > 1:
-            raise NotImplementedError("Can't handle more than one iteration yet.")
-        iternum=iters[0]
-    else:
+    # We either have a single iter, in which case we create a fresh store,
+    # or a list of iters, in which case we combine.
+    if iters=='all':
+        iters = _get_all_iternums(dirname, file_prefixes=prefix)
+    if iters is None:
         iternum = None
+    else:
+        try:
+            iternum = int(iters)
+        # if not we probably have some kind of list
+        except TypeError:
+            if len(iters) == 1:
+                iternum=int(iters[0])
+            else:
+                # We have to check to make sure we have the same prefixes at
+                # each timestep...otherwise we can't combine the datasets.
+                first_prefixes = prefix or _get_all_matching_prefixes(
+                                                        dirname, iters[0])
+                for iternum in iters:
+                    these_prefixes = _get_all_matching_prefixes(
+                        dirname, iternum, prefix
+                    )
+                    if these_prefixes != first_prefixes:
+                        raise IOError("Could not find the expected file "
+                                      "prefixes %s at iternum %g. (Instead "
+                                      "found %s)" % (repr(first_prefixes),
+                                                     iternum,
+                                                     repr(these_prefixes)))
 
+                # chunk at least by time
+                chunks = chunks or {}
+
+                # recursively open each dataset at a time
+                datasets = [open_mdsdataset(
+                        dirname, iters=iternum, delta_t=delta_t,
+                        read_grid=False, swap_dims=False,
+                        prefix=prefix, ref_date=ref_date, calendar=calendar,
+                        ignore_pickup=ignore_pickup, geometry=geometry,
+                        grid_vars_to_coords=grid_vars_to_coords,
+                        skip_vars=skip_vars, endian=endian, chunks=chunks)
+                    for iternum in iters]
+                # now add the grid
+                if read_grid:
+                    datasets.insert(0,open_mdsdataset(
+                        dirname, iters=None, delta_t=delta_t,
+                        read_grid=True, swap_dims=False,
+                        prefix=prefix, ref_date=ref_date, calendar=calendar,
+                        ignore_pickup=ignore_pickup, geometry=geometry,
+                        grid_vars_to_coords=grid_vars_to_coords,
+                        skip_vars=skip_vars, endian=endian, chunks=chunks))
+                # apply chunking
+                ds = xr.auto_combine(datasets)
+                if swap_dims:
+                    ds = _swap_dimensions(ds, geometry)
+                return ds
+
+    #print("Doing iternum %g" % iternum)
     store = _MDSDataStore(dirname, iternum, delta_t, read_grid,
                              prefix, ref_date, calendar,
                              ignore_pickup, geometry, skip_vars, endian)
-    # turn all the auxilliary grid variables into coordinates
     ds = xr.Dataset.load_store(store)
+
+    if swap_dims:
+        ds = _swap_dimensions(ds, geometry)
+
+    # turn all the auxilliary grid variables into coordinates
     # if grid_vars_to_coords:
     #     for k in _grid_variables:
     #         ds.set_coords(k, inplace=True)
     #     ds.set_coords('iter', inplace=True)
 
-    if swap_dims:
-        ds = _swap_dimensions(ds, geometry)
+    # do we need more fancy logic (like open_dataset), or is this enough
+    if chunks is not None:
+        ds = ds.chunk(chunks)
+
     return ds
 
 
