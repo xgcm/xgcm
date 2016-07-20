@@ -51,13 +51,22 @@ _experiments = {
     'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600},
     'barotropic_gyre': {'shape': (1,60,60), 'test_iternum': 10},
     'internal_wave': {'shape': (20,1,30), 'test_iternum': 100,
-                      'multiple_iters': [0,100,200]}
+                      'all_iters': [0,100,200]}
 }
 
 # find the tar archive in the test directory
 # http://stackoverflow.com/questions/29627341/pytest-where-to-store-expected-data
 @pytest.fixture(scope='module', params=_experiments.keys())
 def all_mds_datadirs(tmpdir_factory, request):
+    """The datasets."""
+    expt_name = request.param
+    expected_results = _experiments[expt_name]
+    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
+    data_dir = os.path.dirname(request.module.__file__)
+    return _untar(data_dir, expt_name, target_dir), expected_results
+
+@pytest.fixture(scope='module', params=['internal_wave'])
+def multidim_mds_datadirs(tmpdir_factory, request):
     """The datasets."""
     expt_name = request.param
     expected_results = _experiments[expt_name]
@@ -99,7 +108,8 @@ def test_read_raw_data(tmpdir):
         # now test the function
         data = read_raw_data(fname, dtype, shape)
         np.testing.assert_allclose(data, testdata)
-        assert isinstance(data, np.ndarray)
+        # interestingly, memmaps are also ndarrays, but not vice versa
+        assert isinstance(data, np.ndarray) and not isinstance(data, np.memmap)
         # check memmap
         mdata = read_raw_data(fname, dtype, shape, use_mmap=True)
         assert isinstance(mdata, np.memmap)
@@ -206,6 +216,15 @@ def test_prefixes(all_mds_datadirs):
     for p in prefixes:
         assert p in ds
 
+def test_multiple_iters(multidim_mds_datadirs):
+    """Test ability to load multiple iters into a single dataset."""
+
+    dirname, expected = multidim_mds_datadirs
+    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+        dirname, read_grid=False, iters='all',
+        prefix=['S', 'Eta', 'U', 'T', 'W', 'V'])
+
+    assert list(ds.iter.values) == expected['all_iters']
 
 # @pytest.mark.skipif(True, reason="Not ready")
 # def test_open_mdsdataset_full(all_mds_datadirs):

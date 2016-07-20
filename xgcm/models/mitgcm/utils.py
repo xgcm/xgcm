@@ -100,8 +100,10 @@ def read_raw_data(datafile, dtype, shape, use_mmap=False):
                       '(expected %g, found %g)' % (datafile,
                         expected_number_of_bytes, actual_number_of_bytes))
     if use_mmap:
+        #print("Reading %s using memmap" % datafile)
         d = np.memmap(datafile, dtype, 'r')
     else:
+        #print("Reading %s using fromfile" % datafile)
         d = np.fromfile(datafile, dtype)
     d.shape = shape
     return d

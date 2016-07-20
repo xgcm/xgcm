@@ -15,6 +15,10 @@ import xarray as xr
 #from xarray import backends
 #from xarray import core
 
+# delete later
+from xarray.core.variable import as_compatible_data
+
+
 # we keep the metadata in its own module to keep this one cleaner
 from .variables import dimensions, \
     horizontal_coordinates_spherical, horizontal_coordinates_cartesian, \
@@ -309,7 +313,10 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             # use a generator to loop through the variables in each file
             for (vname, dims, data, attrs) in self.load_from_prefix(p, iternum):
                 #print(vname, dims, data.shape)
-                self._variables[vname] = xr.Variable(dims, data, attrs)
+                thisvar = xr.Variable(dims, data, attrs)
+                self._variables[vname] = thisvar
+                #print(type(data), type(thisvar._data), thisvar._in_memory)
+
 
     def load_from_prefix(self, prefix, iternum=None):
         """Read data and look up metadata for grid variable `name`.
@@ -441,7 +448,8 @@ def _get_all_iternums(dirname, file_prefixes=None):
         else:
             if prefix in file_prefixes:
                 iternums.add(iternum)
-    return list(iternums)
+    iterlist = sorted(iternums)
+    return iterlist
 
 def _get_all_matching_prefixes(dirname, iternum, file_prefixes=None):
     """Scan a directory and return all file prefixes matching a certain
