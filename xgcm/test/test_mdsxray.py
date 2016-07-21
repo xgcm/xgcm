@@ -3,6 +3,10 @@ import os
 import tarfile
 import xarray as xr
 import numpy as np
+from contextlib import contextmanager
+import py
+import tempfile
+from glob import glob
 
 import xgcm
 
@@ -25,7 +29,7 @@ _xc_meta_content = """ simulation = { 'global_oce_latlon' };
  nrecords = [     1 ];
 """
 
-def _untar(data_dir, basename, target_dir):
+def untar(data_dir, basename, target_dir):
     """Unzip a tar file into the target directory. Return path to unzipped
     directory."""
     datafile = os.path.join(data_dir, basename + '.tar.gz')
@@ -43,15 +47,38 @@ def _untar(data_dir, basename, target_dir):
     # the actual data lives in a file called testdata
     return fulldir
 
+@contextmanager
+def hide_file(origdir, *basenames):
+    """Temporarily hide files within the context."""
+    # make everything a py.path.local
+    tmpdir = py.path.local(tempfile.mkdtemp())
+    origdir = py.path.local(origdir)
+    oldpaths = [origdir.join(basename) for basename in basenames]
+    newpaths = [tmpdir.join(basename) for basename in basenames]
+
+    # move the files
+    for oldpath, newpath in zip(oldpaths, newpaths):
+        oldpath.rename(newpath)
+
+    yield
+
+    # move them back
+    for oldpath, newpath in zip(oldpaths, newpaths):
+        newpath.rename(oldpath)
+
+
 # parameterized fixture are complicated
 # http://docs.pytest.org/en/latest/fixture.html#fixture-parametrize
 
 # dictionary of archived experiments and some expected properties
 _experiments = {
     'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600},
-    'barotropic_gyre': {'shape': (1,60,60), 'test_iternum': 10},
+    'barotropic_gyre': {'shape': (1,60,60), 'test_iternum': 10,
+                        'all_iters': [0,10],
+                        'prefixes':['T', 'S', 'Eta', 'U', 'V', 'W']},
     'internal_wave': {'shape': (20,1,30), 'test_iternum': 100,
-                      'all_iters': [0,100,200]}
+                      'all_iters': [0,100,200],
+                      'prefixes':['T', 'S', 'Eta', 'U', 'V', 'W']}
 }
 
 # find the tar archive in the test directory
@@ -63,16 +90,16 @@ def all_mds_datadirs(tmpdir_factory, request):
     expected_results = _experiments[expt_name]
     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
     data_dir = os.path.dirname(request.module.__file__)
-    return _untar(data_dir, expt_name, target_dir), expected_results
+    return untar(data_dir, expt_name, target_dir), expected_results
 
-@pytest.fixture(scope='module', params=['internal_wave'])
+@pytest.fixture(scope='module', params=['barotropic_gyre','internal_wave'])
 def multidim_mds_datadirs(tmpdir_factory, request):
     """The datasets."""
     expt_name = request.param
     expected_results = _experiments[expt_name]
     target_dir = str(tmpdir_factory.mktemp('mdsdata'))
     data_dir = os.path.dirname(request.module.__file__)
-    return _untar(data_dir, expt_name, target_dir), expected_results
+    return untar(data_dir, expt_name, target_dir), expected_results
 
 def test_parse_meta(tmpdir):
     """Check the parsing of MITgcm .meta into python dictionary."""
@@ -119,6 +146,18 @@ def test_read_raw_data(tmpdir):
     with pytest.raises(IOError):
         _ = read_raw_data(fname, dtype, wrongshape)
 
+# a meta test
+def test_file_hiding(all_mds_datadirs):
+    dirname, _ = all_mds_datadirs
+    basenames = ['XC.data', 'XC.meta']
+    for basename in basenames:
+        assert os.path.exists(os.path.join(dirname, basename))
+    with hide_file(dirname, *basenames):
+        for basename in basenames:
+            assert not os.path.exists(os.path.join(dirname, basename))
+    for basename in basenames:
+        assert os.path.exists(os.path.join(dirname, basename))
+
 def test_read_mds(all_mds_datadirs):
     """Check that we can read mds data from .meta / .data pairs"""
 
@@ -146,10 +185,6 @@ def test_read_mds(all_mds_datadirs):
     iternum = expected['test_iternum']
     res = read_mds(basename, iternum=iternum)
     assert prefix in res
-
-# @pytest.mark.parametrize("datadir,expected_shape", [
-#     (all_mds_datadirs, (90, 40, 15)),
-# ])
 
 def test_open_mdsdataset_minimal(all_mds_datadirs):
     """Create a minimal xarray object with only dimensions in it."""
@@ -220,11 +255,34 @@ def test_multiple_iters(multidim_mds_datadirs):
     """Test ability to load multiple iters into a single dataset."""
 
     dirname, expected = multidim_mds_datadirs
+    # first try specifying the iters
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-        dirname, read_grid=False, iters='all',
-        prefix=['S', 'Eta', 'U', 'T', 'W', 'V'])
-
+        dirname, read_grid=False,
+        iters=expected['all_iters'],
+        prefix=expected['prefixes'])
     assert list(ds.iter.values) == expected['all_iters']
+
+    # now infer the iters, should be the same
+    ds2 = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+        dirname, read_grid=False, iters='all',
+        prefix=expected['prefixes'])
+    assert ds.equals(ds2)
+
+    # In the test datasets, there is no PHL.0000000000.data file.
+    # By default we infer the prefixes from the first iteration number, so this
+    # leads to an error.
+    # (Need to specify iters because there is some diagnostics output with
+    # weird iterations numbers present in some experiments.)
+    with pytest.raises(IOError):
+        _ = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+            dirname, read_grid=False, iters=expected['all_iters'])
+
+    # now hide all the PH and PHL files
+    missing_files = [os.path.basename(f)
+                     for f in glob(os.path.join(dirname, 'PH*.0*data'))]
+    with hide_file(dirname, *missing_files):
+        ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+            dirname, read_grid=False, iters=expected['all_iters'])
 
 # @pytest.mark.skipif(True, reason="Not ready")
 # def test_open_mdsdataset_full(all_mds_datadirs):

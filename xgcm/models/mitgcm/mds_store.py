@@ -34,7 +34,8 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                  prefix=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='sphericalpolar',
                  grid_vars_to_coords=True, swap_dims=False,
-                 skip_vars=[], endian=">", chunks=None):
+                 skip_vars=[], endian=">", chunks=None,
+                 ignore_unknown_vars=False):
     """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
 
     Parameters
@@ -98,7 +99,8 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                     these_prefixes = _get_all_matching_prefixes(
                         dirname, iternum, prefix
                     )
-                    if these_prefixes != first_prefixes:
+                    # don't care about order
+                    if set(these_prefixes) != set(first_prefixes):
                         raise IOError("Could not find the expected file "
                                       "prefixes %s at iternum %g. (Instead "
                                       "found %s)" % (repr(first_prefixes),
@@ -115,7 +117,8 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                         prefix=prefix, ref_date=ref_date, calendar=calendar,
                         ignore_pickup=ignore_pickup, geometry=geometry,
                         grid_vars_to_coords=grid_vars_to_coords,
-                        skip_vars=skip_vars, endian=endian, chunks=chunks)
+                        skip_vars=skip_vars, endian=endian, chunks=chunks,
+                        ignore_unknown_vars=ignore_unknown_vars)
                     for iternum in iters]
                 # now add the grid
                 if read_grid:
@@ -125,7 +128,8 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                         prefix=prefix, ref_date=ref_date, calendar=calendar,
                         ignore_pickup=ignore_pickup, geometry=geometry,
                         grid_vars_to_coords=grid_vars_to_coords,
-                        skip_vars=skip_vars, endian=endian, chunks=chunks))
+                        skip_vars=skip_vars, endian=endian, chunks=chunks,
+                        ignore_unknown_vars=ignore_unknown_vars))
                 # apply chunking
                 ds = xr.auto_combine(datasets)
                 if swap_dims:
@@ -135,7 +139,8 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
     #print("Doing iternum %g" % iternum)
     store = _MDSDataStore(dirname, iternum, delta_t, read_grid,
                              prefix, ref_date, calendar,
-                             ignore_pickup, geometry, skip_vars, endian)
+                             ignore_pickup, geometry, skip_vars, endian,
+                             ignore_unknown_vars=ignore_unknown_vars)
     ds = xr.Dataset.load_store(store)
 
     if swap_dims:
@@ -187,7 +192,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
     def __init__(self, dirname, iternum=None, delta_t=1, read_grid=True,
                  file_prefixes=None, ref_date=None, calendar=None,
                  ignore_pickup=True, geometry='sphericalpolar',
-                 skip_vars=[], endian='>'):
+                 skip_vars=[], endian='>', ignore_unknown_vars=False):
         """
 
         Parameters
@@ -217,6 +222,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
 
         # the directory where the files live
         self.dirname = dirname
+        self._ignore_unknown_vars = ignore_unknown_vars
 
         # build lookup tables for variable metadata
         self._all_grid_variables = _get_all_grid_variables(self.geometry)
@@ -362,9 +368,19 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             # we now have to revert to the original prefix once the file is read
             if fname_base != prefix:
                 vname = prefix
-            metadata = (self._all_grid_variables[vname]
+
+            try:
+                metadata = (self._all_grid_variables[vname]
                         if vname in self._all_grid_variables
                         else self._all_data_variables[vname])
+            except KeyError:
+                if self._ignore_unknown_vars:
+                    # we didn't find any metadata, so we just skip this var
+                    continue
+                else:
+                    raise KeyError("Couln't find metadata for variable %s "
+                                   "and `ignore_unknown_vars`==True." % vname)
+
 
             # maybe slice and squeeze the data
             if 'slice' in metadata:
@@ -385,7 +401,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             if len(dims)==3 and data.ndim==2:
                 # Deleting the first dimension (z) assumes that 2D data always
                 # corresponds to x,y horizontal data. Is this really true?
-                # The answer appears to be yes: 2D (x,z) data retains the
+                # The answer appears to be yes: 2D (x|y,z) data retains the
                 # missing dimension as an axis of length 1.
                 dims = dims[1:]
             elif len(dims)==1 and (data.ndim==2 or data.ndim==3):
@@ -412,6 +428,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
 
     def close(self):
         pass
+        # do we actually need to close the memmaps?
 
 def _get_all_grid_variables(geometry):
     """"Put all the relevant grid metadata into one big dictionary."""
