@@ -374,7 +374,6 @@ def test_layers_diagnostics(layers_mds_datadirs):
         assert ds[var].dims == dims
 
 
-
 # @pytest.mark.skipif(True, reason="Not ready")
 # def test_open_mdsdataset_full(all_mds_datadirs):
 #     # most basic test: make sure we can open an mds dataset
