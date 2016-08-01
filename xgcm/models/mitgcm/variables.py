@@ -18,42 +18,45 @@ from xarray.core.pycompat import OrderedDict
 # There is no "data" to go with these. They are just indices.
 dimensions = OrderedDict(
     # x direction
-    i = dict(dims=['i'], swap_dim='XC', attrs=dict(
+    i = dict(dims=['i'], attrs=dict(
                 standard_name="x_grid_index", axis='X',
-                long_name="x-dimension of the t grid")),
-    i_g = dict(dims=['i_g'], swap_dim='XG', attrs=dict(
+                long_name="x-dimension of the t grid",
+                swap_dim='XC')),
+    i_g = dict(dims=['i_g'], attrs=dict(
                 standard_name="x_grid_index_at_u_location", axis='X',
-                long_name="x-dimension of the u grid", c_grid_axis_shift=-0.5)),
+                long_name="x-dimension of the u grid", c_grid_axis_shift=-0.5,
+                swap_dim='XG')),
     # i_z = dict(dims=['i_z'], swap_dim='XG', attrs=dict(
     #             standard_name="x_grid_index_at_f_location", axis='X',
     #             long_name="x-dimension of the f grid", c_grid_axis_shift=-0.5)),
     # y direction
-    j = dict(dims=['j'], swap_dim='YC', attrs=dict(
+    j = dict(dims=['j'], attrs=dict(
                 standard_name="y_grid_index", axis='Y',
-                long_name="y-dimension of the t grid")),
-    j_g = dict(dims=['j_g'], swap_dim='YG', attrs=dict(
+                long_name="y-dimension of the t grid", swap_dim='YC')),
+    j_g = dict(dims=['j_g'], attrs=dict(
                 standard_name="y_grid_index_at_v_location", axis='Y',
-                long_name="y-dimension of the v grid", c_grid_axis_shift=-0.5)),
+                long_name="y-dimension of the v grid", c_grid_axis_shift=-0.5,
+                swap_dim='YG')),
     # j_z = dict(dims=['j_z'], swap_dim='YG', attrs=dict(
     #             standard_name="y_grid_index_at_f_location", axis='Y',
     #             long_name="y-dimension of the f grid", c_grid_axis_shift=-0.5)),
     # x direction
-    k = dict(dims=['k'], swap_dim='Z', attrs=dict(
+    k = dict(dims=['k'], attrs=dict(
                 standard_name="z_grid_index", axis="Z",
-                long_name="z-dimension of the t grid")),
-    k_u = dict(dims=['k_u'], swap_dim='Zu', attrs=dict(
+                long_name="z-dimension of the t grid", swap_dim='Z')),
+    k_u = dict(dims=['k_u'], attrs=dict(
                 standard_name="z_grid_index_at_lower_w_location",
                 axis="Z", long_name="z-dimension of the w grid",
-                c_grid_axis_shift=-0.5)),
-    k_l = dict(dims=['k_l'], swap_dim='Zl', attrs=dict(
+                c_grid_axis_shift=-0.5, swap_dim='Zu')),
+    k_l = dict(dims=['k_l'], attrs=dict(
                 standard_name="z_grid_index_at_upper_w_location",
                 axis="Z", long_name="z-dimension of the w grid",
-                c_grid_axis_shift=0.5)),
+                c_grid_axis_shift=0.5, swap_dim='Zl')),
     # this is complicated because it is offset in both directions - allowed by comodo?
-    k_p1 = dict(dims=['k_p1'], swap_dim='Zp1', attrs=dict(
+    k_p1 = dict(dims=['k_p1'], attrs=dict(
                 standard_name="z_grid_index_at_w_location",
                 axis="Z", long_name="z-dimension of the w grid",
-                c_grid_axis_shift=(-0.5,0.5)))
+                c_grid_axis_shift=(-0.5,0.5), swap_dim='Zp1'))
 )
 
 horizontal_coordinates_spherical = OrderedDict(
@@ -173,6 +176,23 @@ volume_grid_variables = OrderedDict(
                     long_name="vertical fraction of open cell"))
 )
 
+# this a template: NAME gets replaced with the layer name (e.g. 1RHO)
+#                  dim gets prepended with the layer number (e.g. l1_b)
+layers_grid_variables = OrderedDict(
+    layer_NAME_bounds = dict(dims=['l_b'], attrs=dict(
+                standard_name="ocean_layer_coordinate_NAME_bounds",
+                long_name="boundaries points of layer NAME"),
+            filename="layersNAME", slice=(slice(None),0,0)),
+    layer_NAME_center = dict(dims=['l_c'], attrs=dict(
+                standard_name="ocean_layer_coordinate_NAME_center",
+                long_name="center points of layer NAME"),
+            filename="layersNAME", slice=(slice(None),0,0),
+            transform=(lambda x: 0.5*(x[1:] + x[:-1]))),
+    layer_NAME_interface = dict(dims=['l_i'], attrs=dict(
+                standard_name="ocean_layer_coordinate_NAME_interface",
+                long_name="interface points of layer NAME"),
+            filename="layersNAME", slice=(slice(1,-1),0,0))
+)
 
 # _grid_special_mapping = {
 # # name: (file_name, slice_to_extract, expecting_3D_field)
@@ -327,18 +347,35 @@ state_variables = OrderedDict(
                 standard_name="product_of_sea_water_z_velocity_and_"
                               "potential_temperature",
                 long_name="Vertical Transport of Potential Temperature",
-                units="K m s-1"))
+                units="K m s-1")),
 )
 
-# should find a better way to inlude the package variables
-# _state_variables['GM_Kwx-T'] = (
-#         dims=['k_l','j','i'], 'K_31 element (W.point, X.dir) of GM-Redi tensor','m^2/s')
-# _state_variables['GM_Kwy-T'] = (
-#         dims=['k_l','j','i'], 'K_33 element (W.point, X.dir) of GM-Redi tensor','m^2/s')
-# _state_variables['GM_Kwz-T'] = (
-#         dims=['k_l','j','i'], 'K_33 element (W.point, X.dir) of GM-Redi tensor','m^2/s')
+# these variable names have hyphens and need a different syntax
+# state_variables['GM_Kwx-T'] = dict(
+#     dims=['k_l','j','i'], attrs=dict(
+#         standard_name="K_31_element_of_GMRedi_tensor",
+#         long_name="K_31 element (W.point, X.dir) of GM-Redi tensor",
+#         units="m2 s-1"
+#     )
+# )
 #
+# state_variables['GM_Kwy-T'] = dict(
+#     dims=['k_l','j','i'], attrs=dict(
+#         standard_name="K_32_element_of_GMRedi_tensor",
+#         long_name="K_32 element (W.point, Y.dir) of GM-Redi tensor",
+#         units="m2 s-1"
+#     )
+# )
 #
+# state_variables['GM_Kwy-T'] = dict(
+#     dims=['k_l','j','i'], attrs=dict(
+#         standard_name="K_33_element_of_GMRedi_tensor",
+#         long_name="K_33 element (W.point, Z.dir) of GM-Redi tensor",
+#         units="m2 s-1"
+#     )
+# )
+
+
 # Nptracers=99
 # _ptracers = { 'PTRACER%02d' % n :
 #                (dims=['k','j','i'], 'PTRACER%02d Concentration' % n, "tracer units/m^3")
