@@ -107,7 +107,7 @@ vertical_coordinates = OrderedDict(
             filename="RF", slice=(slice(1,None),0,0)),
     Zl= dict(dims=["k_l"], attrs=dict(
                 standard_name="depth_at_upper_w_location",
-                long_name="vertical coordinate of upp cell interface",
+                long_name="vertical coordinate of upper cell interface",
                 units="m", positive="down"),
             filename="RF", slice=(slice(None,-1),0,0))
 )
