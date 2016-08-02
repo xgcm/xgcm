@@ -30,26 +30,6 @@ _xc_meta_content = """ simulation = { 'global_oce_latlon' };
  nrecords = [     1 ];
 """
 
-
-def untar(data_dir, basename, target_dir):
-    """Unzip a tar file into the target directory. Return path to unzipped
-    directory."""
-    datafile = os.path.join(data_dir, basename + '.tar.gz')
-    if not os.path.exists(datafile):
-        raise IOError('Could not find data file %s' % datafile)
-    tar = tarfile.open(datafile)
-    tar.extractall(target_dir)
-    tar.close()
-    # subdirectory where file should have been untarred.
-    # assumes the directory is the same name as the tar file itself.
-    # e.g. testdata.tar.gz --> testdata/
-    fulldir = os.path.join(target_dir, basename)
-    if not os.path.exists(fulldir):
-        raise IOError('Could not find tar file output dir %s' % fulldir)
-    # the actual data lives in a file called testdata
-    return fulldir
-
-
 @contextmanager
 def hide_file(origdir, *basenames):
     """Temporarily hide files within the context."""
@@ -76,46 +56,72 @@ def hide_file(origdir, *basenames):
 # dictionary of archived experiments and some expected properties
 _experiments = {
     'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600,
-                          'layers': {'1RHO': 31}},
+                          'layers': {'1RHO': 31},
+                          'diagnostics': ('DiagGAD-T',
+                              ['TOTTTEND', 'ADVr_TH', 'ADVx_TH', 'ADVy_TH',
+                               'DFrE_TH', 'DFxE_TH', 'DFyE_TH', 'DFrI_TH',
+                               'UTHMASS', 'VTHMASS', 'WTHMASS'])},
     'barotropic_gyre': {'shape': (1, 60, 60), 'test_iternum': 10,
                         'all_iters': [0, 10],
                         'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
     'internal_wave': {'shape': (20, 1, 30), 'test_iternum': 100,
                       'all_iters': [0, 100, 200],
+                      # these diagnostics won't load because not all levels
+                      # where output...no idea how to overcome that bug
+                      #'diagnostics': ('diagout1', ['UVEL', 'VVEL']),
                       'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']}
 }
+
+
+def setup_mds_dir(tmpdir_factory, request):
+    """Helper function for setting up test cases."""
+    expt_name = request.param
+    expected_results = _experiments[expt_name]
+    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
+    data_dir = os.path.dirname(request.module.__file__)
+    return untar(data_dir, expt_name, target_dir), expected_results
+
+
+def untar(data_dir, basename, target_dir):
+    """Unzip a tar file into the target directory. Return path to unzipped
+    directory."""
+    datafile = os.path.join(data_dir, basename + '.tar.gz')
+    if not os.path.exists(datafile):
+        raise IOError('Could not find data file %s' % datafile)
+    tar = tarfile.open(datafile)
+    tar.extractall(target_dir)
+    tar.close()
+    # subdirectory where file should have been untarred.
+    # assumes the directory is the same name as the tar file itself.
+    # e.g. testdata.tar.gz --> testdata/
+    fulldir = os.path.join(target_dir, basename)
+    if not os.path.exists(fulldir):
+        raise IOError('Could not find tar file output dir %s' % fulldir)
+    # the actual data lives in a file called testdata
+    return fulldir
+
 
 
 # find the tar archive in the test directory
 # http://stackoverflow.com/questions/29627341/pytest-where-to-store-expected-data
 @pytest.fixture(scope='module', params=_experiments.keys())
 def all_mds_datadirs(tmpdir_factory, request):
-    """The datasets."""
-    expt_name = request.param
-    expected_results = _experiments[expt_name]
-    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-    data_dir = os.path.dirname(request.module.__file__)
-    return untar(data_dir, expt_name, target_dir), expected_results
+    return setup_mds_dir(tmpdir_factory, request)
 
 
 @pytest.fixture(scope='module', params=['barotropic_gyre', 'internal_wave'])
 def multidim_mds_datadirs(tmpdir_factory, request):
-    """The datasets."""
-    expt_name = request.param
-    expected_results = _experiments[expt_name]
-    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-    data_dir = os.path.dirname(request.module.__file__)
-    return untar(data_dir, expt_name, target_dir), expected_results
+    return setup_mds_dir(tmpdir_factory, request)
+
+
+@pytest.fixture(scope='module', params=['global_oce_latlon'])
+def mds_datadirs_with_diagnostics(tmpdir_factory, request):
+    return setup_mds_dir(tmpdir_factory, request)
 
 
 @pytest.fixture(scope='module', params=['global_oce_latlon'])
 def layers_mds_datadirs(tmpdir_factory, request):
-    """The datasets."""
-    expt_name = request.param
-    expected_results = _experiments[expt_name]
-    target_dir = str(tmpdir_factory.mktemp('mdsdata'))
-    data_dir = os.path.dirname(request.module.__file__)
-    return untar(data_dir, expt_name, target_dir), expected_results
+    return setup_mds_dir(tmpdir_factory, request)
 
 
 def test_parse_meta(tmpdir):
@@ -351,6 +357,18 @@ def test_parse_diagnostics(all_mds_datadirs):
     for key, val in expected_diags.items():
         assert ad[key] == val
 
+
+def test_diagnostics(mds_datadirs_with_diagnostics):
+    """Try reading dataset with diagnostics output."""
+    dirname, expected = mds_datadirs_with_diagnostics
+
+    diag_prefix, expected_diags = expected['diagnostics']
+    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(dirname,
+                                                      read_grid=False,
+                                                      iters='all',
+                                                      prefix=[diag_prefix])
+    for diagname in expected_diags:
+        assert diagname in ds
 
 def test_layers_diagnostics(layers_mds_datadirs):
     """Try reading dataset with layers output."""
