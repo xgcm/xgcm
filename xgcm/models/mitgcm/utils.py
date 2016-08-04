@@ -113,10 +113,7 @@ def read_raw_data(datafile, dtype, shape, use_mmap=False):
         d = np.fromfile(datafile, dtype)
     d.shape = shape
     return d
-
-def _layer_coord_from_diagname(diagname):
-    layers_suffix = key.ljust(8)[-4:].strip()
-
+    
 
 def parse_available_diagnostics(fname, layers={}):
     """Examine the available_diagnostics.log file and translate it into

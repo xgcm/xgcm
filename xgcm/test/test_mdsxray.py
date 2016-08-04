@@ -30,6 +30,7 @@ _xc_meta_content = """ simulation = { 'global_oce_latlon' };
  nrecords = [     1 ];
 """
 
+
 @contextmanager
 def hide_file(origdir, *basenames):
     """Temporarily hide files within the context."""
@@ -56,19 +57,22 @@ def hide_file(origdir, *basenames):
 # dictionary of archived experiments and some expected properties
 _experiments = {
     'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600,
+                          'first_values': {'XC': 2},
                           'layers': {'1RHO': 31},
                           'diagnostics': ('DiagGAD-T',
                               ['TOTTTEND', 'ADVr_TH', 'ADVx_TH', 'ADVy_TH',
                                'DFrE_TH', 'DFxE_TH', 'DFyE_TH', 'DFrI_TH',
                                'UTHMASS', 'VTHMASS', 'WTHMASS'])},
     'barotropic_gyre': {'shape': (1, 60, 60), 'test_iternum': 10,
+                          'first_values': {'XC': 10000.0},
                         'all_iters': [0, 10],
                         'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
     'internal_wave': {'shape': (20, 1, 30), 'test_iternum': 100,
+                      'first_values': {'XC': 109.01639344262296},
                       'all_iters': [0, 100, 200],
                       # these diagnostics won't load because not all levels
                       # where output...no idea how to overcome that bug
-                      #'diagnostics': ('diagout1', ['UVEL', 'VVEL']),
+                      # 'diagnostics': ('diagout1', ['UVEL', 'VVEL']),
                       'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']}
 }
 
@@ -99,7 +103,6 @@ def untar(data_dir, basename, target_dir):
         raise IOError('Could not find tar file output dir %s' % fulldir)
     # the actual data lives in a file called testdata
     return fulldir
-
 
 
 # find the tar archive in the test directory
@@ -205,6 +208,13 @@ def test_read_mds(all_mds_datadirs):
     res = read_mds(basename, force_dict=False, use_mmap=False)
     assert isinstance(res, np.ndarray)
 
+    # make sure endianness works
+    testval = res.ravel()[0]
+    res_endian = read_mds(basename, force_dict=False, use_mmap=False,
+                          endian='<')
+    testval_endian = res_endian.ravel()[0]
+    assert testval != testval_endian
+
     # try reading with iteration number
     prefix = 'T'
     basename = os.path.join(dirname, prefix)
@@ -223,18 +233,16 @@ def test_open_mdsdataset_minimal(all_mds_datadirs):
 
     # the expected dimensions of the dataset
     nz, ny, nx = expected['shape']
-    coords={
-        'i': np.arange(nx),
-        'i_g': np.arange(nx),
-        # 'i_z': np.arange(nx),
-        'j': np.arange(ny),
-        'j_g': np.arange(ny),
-        # 'j_z': np.arange(ny),
-        'k': np.arange(nz),
-        'k_u': np.arange(nz),
-        'k_l': np.arange(nz),
-        'k_p1': np.arange(nz+1)
-    }
+    coords = {'i': np.arange(nx),
+              'i_g': np.arange(nx),
+              # 'i_z': np.arange(nx),
+              'j': np.arange(ny),
+              'j_g': np.arange(ny),
+              # 'j_z': np.arange(ny),
+              'k': np.arange(nz),
+              'k_u': np.arange(nz),
+              'k_l': np.arange(nz),
+              'k_p1': np.arange(nz+1)}
 
     if 'layers' in expected:
         for layer_name, n_layers in expected['layers'].items():
@@ -257,6 +265,23 @@ def test_read_grid(all_mds_datadirs):
 
     for vname in _EXPECTED_GRID_VARS:
         assert vname in ds
+
+
+def test_values_and_endianness(all_mds_datadirs):
+    """Make sure we read all the grid variables."""
+    dirname, expected = all_mds_datadirs
+
+    # default endianness
+    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+                dirname, read_grid=True)
+    # now reverse endianness
+    ds_le = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+                dirname, read_grid=True, endian='<')
+
+    for vname, val in expected['first_values'].items():
+        assert ds[vname].values.ravel()[0] == val
+        val_le = np.array(val, ds[vname].dtype).newbyteorder('<').squeeze()
+        assert ds_le[vname].values.ravel()[0] == val_le
 
 
 def test_swap_dims(all_mds_datadirs):
@@ -370,6 +395,7 @@ def test_diagnostics(mds_datadirs_with_diagnostics):
     for diagname in expected_diags:
         assert diagname in ds
 
+
 def test_layers_diagnostics(layers_mds_datadirs):
     """Try reading dataset with layers output."""
     dirname, expected = layers_mds_datadirs
@@ -382,11 +408,11 @@ def test_layers_diagnostics(layers_mds_datadirs):
 
     # a few random expected variables
     expected_vars = {'LaUH' + layer_name:
-                        ('time', layer_id + '_c', 'j', 'i_g'),
+                     ('time', layer_id + '_c', 'j', 'i_g'),
                      'LaVH' + layer_name:
-                        ('time', layer_id + '_c', 'j_g', 'i'),
+                     ('time', layer_id + '_c', 'j_g', 'i'),
                      'LaTs' + layer_name:
-                        ('time', layer_id + '_i', 'j', 'i')}
+                     ('time', layer_id + '_i', 'j', 'i')}
     for var, dims in expected_vars.items():
         assert var in ds
         assert ds[var].dims == dims

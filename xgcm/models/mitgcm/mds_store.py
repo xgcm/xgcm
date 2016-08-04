@@ -8,7 +8,6 @@ from glob import glob
 import os
 import numpy as np
 import xarray as xr
-import warnings
 
 # we keep the metadata in its own module to keep this one cleaner
 from .variables import dimensions, \
@@ -22,7 +21,7 @@ from .utils import parse_meta_file, read_mds, parse_available_diagnostics
 
 
 def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
-                    prefix=None, ref_date=None, calendar=None,
+                    prefix=None, ref_date=None, calendar='gregorian',
                     ignore_pickup=True, geometry='sphericalpolar',
                     grid_vars_to_coords=True, swap_dims=False,
                     skip_vars=[], endian=">", chunks=None,
@@ -144,6 +143,9 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
     #         ds.set_coords(k, inplace=True)
     #     ds.set_coords('iter', inplace=True)
 
+    if ref_date:
+        ds = xr.decode_cf(ds)
+
     # do we need more fancy logic (like open_dataset), or is this enough
     if chunks is not None:
         ds = ds.chunk(chunks)
@@ -162,7 +164,6 @@ def _swap_dimensions(ds, geometry, drop_old=True):
 
     # first squeeze all the coordinates
     for orig_dim in ds.dims:
-        #new_dim = dimensions[orig_dim]['swap_dim']
         if 'swap_dim' in ds[orig_dim].attrs:
             new_dim = ds[orig_dim].attrs['swap_dim']
             coord_var = ds[new_dim]
@@ -220,6 +221,12 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         self.dirname = dirname
         self._ignore_unknown_vars = ignore_unknown_vars
 
+        # The endianness of the files
+        # By default, MITgcm does big endian
+        if endian not in ['>', '<', '=']:
+            raise ValueError("Invalid byte order (endian=%s)" % endian)
+        self.endian = endian
+
         # storage dicts for variables and attributes
         self._variables = xr.core.pycompat.OrderedDict()
         self._attributes = xr.core.pycompat.OrderedDict()
@@ -272,7 +279,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             for suffix, offset in zip(['bounds', 'center', 'interface'],
                                       [0, -1, -2]):
                 # e.g. "layer_1RHO_bounds"
-                #dimname = 'layer_' + layer_name + '_' + suffix
+                # dimname = 'layer_' + layer_name + '_' + suffix
                 # e.g. "l1_b"
                 dimname = 'l' + layer_name[0] + '_' + suffix[0]
                 self._dimensions.append(dimname)
@@ -296,7 +303,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
                         {'standard_name': 'timestep',
                          'long_name': 'model timestep number'})
             self._variables[self.time_dim_name] = _iternum_to_datetime_variable(
-                iternum, delta_t, ref_date, self.time_dim_name
+                iternum, delta_t, ref_date, calendar, self.time_dim_name
             )
 
         # build lookup tables for variable metadata
@@ -363,7 +370,8 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             assert iternum is not None
 
         # get a dict of variables and their data
-        vardata = read_mds(os.path.join(self.dirname, fname_base), iternum)
+        vardata = read_mds(os.path.join(self.dirname, fname_base), iternum,
+                           endian=self.endian)
         for vname, data in vardata.items():
             # we now have to revert to the original prefix once the file is read
             if fname_base != prefix:
@@ -458,7 +466,6 @@ def _guess_layers(dirname):
     for fname in layers_files:
         # should turn "foo/bar/layers1RHO.meta" into "1RHO"
         layers_suf = os.path.splitext(os.path.basename(fname))[0][6:]
-        layers_num = int(layers_suf[0])
         meta = parse_meta_file(fname)
         Nlayers = meta['dimList'][2][2]
         all_layers[layers_suf] = Nlayers
@@ -499,6 +506,7 @@ def _make_layers_variables(layer_name):
         lvars[varname] = metadata
     return lvars
 
+
 def _recursively_replace(item, search, replace):
     """Recursively search and replace all strings in dictionary values."""
     if isinstance(item, dict):
@@ -509,6 +517,7 @@ def _recursively_replace(item, search, replace):
     except AttributeError:
         # probably no such method
         return item
+
 
 def _get_all_data_variables(dirname, layers):
     """"Put all the relevant data metadata into one big dictionary."""
