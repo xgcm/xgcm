@@ -70,6 +70,11 @@ _experiments = {
     'internal_wave': {'shape': (20, 1, 30), 'test_iternum': 100,
                       'first_values': {'XC': 109.01639344262296},
                       'all_iters': [0, 100, 200],
+                      'ref_date': "1990-1-1 0:0:0",
+                      'delta_t': 60,
+                      'expected_time':[
+                        (0, np.datetime64('1990-01-01T00:00:00.000000000')),
+                        (1, np.datetime64('1990-01-01T01:40:00.000000000'))],
                       # these diagnostics won't load because not all levels
                       # where output...no idea how to overcome that bug
                       # 'diagnostics': ('diagout1', ['UVEL', 'VVEL']),
@@ -116,9 +121,13 @@ def all_mds_datadirs(tmpdir_factory, request):
 def multidim_mds_datadirs(tmpdir_factory, request):
     return setup_mds_dir(tmpdir_factory, request)
 
-
 @pytest.fixture(scope='module', params=['global_oce_latlon'])
 def mds_datadirs_with_diagnostics(tmpdir_factory, request):
+    return setup_mds_dir(tmpdir_factory, request)
+
+
+@pytest.fixture(scope='module', params=['internal_wave'])
+def mds_datadirs_with_refdate(tmpdir_factory, request):
     return setup_mds_dir(tmpdir_factory, request)
 
 
@@ -357,6 +366,18 @@ def test_multiple_iters(multidim_mds_datadirs):
     with hide_file(dirname, *missing_files):
         ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
             dirname, read_grid=False, iters=expected['all_iters'])
+
+
+def test_date_parsing(mds_datadirs_with_refdate):
+    """Verify that time information is decoded properly."""
+    dirname, expected = mds_datadirs_with_refdate
+
+    ds = xgcm.open_mdsdataset(dirname, iters='all', prefix=['S'],
+                              ref_date=expected['ref_date'], read_grid=False,
+                              delta_t=expected['delta_t'])
+
+    for i, date in expected['expected_time']:
+        assert ds.time[i].values == date
 
 
 def test_parse_diagnostics(all_mds_datadirs):
