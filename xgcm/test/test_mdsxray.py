@@ -238,7 +238,7 @@ def test_open_mdsdataset_minimal(all_mds_datadirs):
     dirname, expected = all_mds_datadirs
 
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-            dirname, read_grid=False)
+            dirname, iters=None, read_grid=False)
 
     # the expected dimensions of the dataset
     nz, ny, nx = expected['shape']
@@ -270,7 +270,7 @@ def test_read_grid(all_mds_datadirs):
     """Make sure we read all the grid variables."""
     dirname, expected = all_mds_datadirs
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, read_grid=True)
+                dirname, iters=None, read_grid=True)
 
     for vname in _EXPECTED_GRID_VARS:
         assert vname in ds
@@ -282,10 +282,10 @@ def test_values_and_endianness(all_mds_datadirs):
 
     # default endianness
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, read_grid=True)
+                dirname, iters=None, read_grid=True)
     # now reverse endianness
     ds_le = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, read_grid=True, endian='<')
+                dirname, iters=None, read_grid=True, endian='<')
 
     for vname, val in expected['first_values'].items():
         assert ds[vname].values.ravel()[0] == val
@@ -298,7 +298,7 @@ def test_swap_dims(all_mds_datadirs):
 
     dirname, expected = all_mds_datadirs
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, read_grid=True, swap_dims=True)
+                dirname, iters=None, read_grid=True, swap_dims=True)
 
     expected_dims = ['XC', 'XG', 'YC', 'YG', 'Z', 'Zl', 'Zp1', 'Zu']
 

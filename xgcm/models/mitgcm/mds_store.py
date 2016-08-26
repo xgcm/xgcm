@@ -20,11 +20,11 @@ from .variables import dimensions, \
 from .utils import parse_meta_file, read_mds, parse_available_diagnostics
 
 
-def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
-                    prefix=None, ref_date=None, calendar='gregorian',
-                    ignore_pickup=True, geometry='sphericalpolar',
+def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
+                    delta_t=1, ref_date=None, calendar='gregorian',
+                    geometry='sphericalpolar',
                     grid_vars_to_coords=True, swap_dims=False,
-                    skip_vars=[], endian=">", chunks=None,
+                    endian=">", chunks=None,
                     ignore_unknown_vars=False):
     """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
 
@@ -33,41 +33,45 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
     dirname : string
         Path to the directory where the mds .data and .meta files are stored
     iters : list, optional
-        The iterations numbers of the files to be read
-    deltaT : number, optional
-        The timestep used in the model (can't be inferred)
-    read_grid : bool, optional
-        Whether to try to read the grid data
+        The iterations numbers of the files to be read. If `None`, no data
+        files will be read.
     prefix : list, optional
         List of different filename prefixes to read. Default is to read all
-        files.
+        available files.
+    read_grid : bool, optional
+        Whether to read the grid data
+    deltaT : number, optional
+        The timestep used in the model. (Can't be inferred.)
     ref_date : string, optional
-        A date string corresponding to the zero timestep. See CF conventions
-        [1]_
+        A date string corresponding to the zero timestep. E.g. "1990-1-1 0:0:0".
+        See CF conventions [1]_
     calendar : string, optional
         A calendar allowed by CF conventions [1]_
-    ignore_pickup : boolean, optional
-        Whether to read the pickup files
-    geometry : string
-        MITgcm grid geometry. (Not really used yet.)
-    grid_vars_to_coords : boolean, optional
-        If `True`, all grid related variables will be promoted to coordinates
+    geometry : {'sphericalpolar', 'cartesian', 'llc'}
+        MITgcm grid geometry specifier.
     swap_dims : boolean, optional
         Whether to swap the logical dimensions for physical ones.
-    skip_vars : list
-        Names of variables to ignore.
     endian : {'=', '>', '<'}, optional
         Endianness of variables. Default for MITgcm is ">" (big endian)
+    chunks : int or dict, optional
+        If chunks is provided, it used to load the new dataset into dask arrays.
+    ignore_unknown_vars : boolean, optional
+        Don't raise an error if unknown variables are encountered while reading
+        the dataset.
 
     Returns
     -------
     dset : xarray.Dataset
-        Dataset object containing all coordinate and variables
+        Dataset object containing all coordinates and variables.
 
     References
     ----------
     .. [1] http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html
     """
+
+    # some checks for argument consistency
+    if swap_dims and not read_grid:
+        raise ValueError("If swap_dims==True, read_grid must be True.")
 
     # We either have a single iter, in which case we create a fresh store,
     # or a list of iters, in which case we combine.
@@ -107,9 +111,9 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                         dirname, iters=iternum, delta_t=delta_t,
                         read_grid=False, swap_dims=False,
                         prefix=prefix, ref_date=ref_date, calendar=calendar,
-                        ignore_pickup=ignore_pickup, geometry=geometry,
+                        geometry=geometry,
                         grid_vars_to_coords=grid_vars_to_coords,
-                        skip_vars=skip_vars, endian=endian, chunks=chunks,
+                        endian=endian, chunks=chunks,
                         ignore_unknown_vars=ignore_unknown_vars)
                     for iternum in iters]
                 # now add the grid
@@ -118,9 +122,9 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
                         dirname, iters=None, delta_t=delta_t,
                         read_grid=True, swap_dims=False,
                         prefix=prefix, ref_date=ref_date, calendar=calendar,
-                        ignore_pickup=ignore_pickup, geometry=geometry,
+                        geometry=geometry,
                         grid_vars_to_coords=grid_vars_to_coords,
-                        skip_vars=skip_vars, endian=endian, chunks=chunks,
+                        endian=endian, chunks=chunks,
                         ignore_unknown_vars=ignore_unknown_vars))
                 # apply chunking
                 ds = xr.auto_combine(datasets)
@@ -130,7 +134,7 @@ def open_mdsdataset(dirname, iters=None, delta_t=1, read_grid=True,
 
     store = _MDSDataStore(dirname, iternum, delta_t, read_grid,
                           prefix, ref_date, calendar,
-                          ignore_pickup, geometry, skip_vars, endian,
+                          geometry, endian,
                           ignore_unknown_vars=ignore_unknown_vars)
     ds = xr.Dataset.load_store(store)
 
@@ -185,29 +189,21 @@ def _swap_dimensions(ds, geometry, drop_old=True):
 
 class _MDSDataStore(xr.backends.common.AbstractDataStore):
     """Representation of MITgcm mds binary file storage format for a specific
-    model instance."""
+    model instance and a specific timestep iteration number."""
     def __init__(self, dirname, iternum=None, delta_t=1, read_grid=True,
                  file_prefixes=None, ref_date=None, calendar=None,
-                 ignore_pickup=True, geometry='sphericalpolar',
-                 skip_vars=[], endian='>', ignore_unknown_vars=False):
+                 geometry='sphericalpolar',
+                 endian='>', ignore_unknown_vars=False):
         """
+        This is not a user-facing class. See open_mdsdataset for argument
+        documentation. The only ones which are distinct are.
 
         Parameters
         ----------
-        dirname : string
-            Location of the output files. Usually the "run" directory.
-        iternum : list
-            The iteration numbers corresponding with the files to read. If
-            None, don't read any data files.
-        deltaT : float
-            Numerical timestep of MITgcm model. Used to infer actual time
-        prefix : list
-            Prefixes (string) of files to read. (If None, read all)
-        ref_date : datetime or string
-        calendar :
-        ignore_pickup :
-        skip_vars :
-        endian :
+        iternum : int, optional
+            The iteration timestep number to read.
+        file_prefixes : list
+            The prefixes of the data files to be read.
         """
 
         self.geometry = geometry.lower()
