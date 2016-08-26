@@ -156,10 +156,10 @@ horizontal_grid_variables = OrderedDict(
 vertical_grid_variables = OrderedDict(
     drC = dict(dims=['k_p1'], attrs=dict(
                 standard_name="cell_z_size_at_w_location",
-                long_name="cell z size", units="m")),
+                long_name="cell z size", units="m"), filename='DRC'),
     drF = dict(dims=['k'], attrs=dict(
                 standard_name="cell_z_size",
-                long_name="cell z size", units="m")),
+                long_name="cell z size", units="m"), filename='DRF'),
     PHrefC = dict(dims=['k'], attrs=dict(
                 standard_name="cell_reference_pressure",
                 long_name='Reference Hydrostatic Pressure', units='m2 s-2')),
