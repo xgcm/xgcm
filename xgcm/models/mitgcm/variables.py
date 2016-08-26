@@ -120,10 +120,12 @@ horizontal_grid_variables = OrderedDict(
                filename='RAC'),
     dxG = dict(dims=["j_g", "i"], attrs=dict(
                 standard_name="cell_x_size_at_v_location",
-                long_name="cell x size", units="m", coordinate="YG XC")),
+                long_name="cell x size", units="m", coordinate="YG XC"),
+               filename='DXG'),
     dyG = dict(dims=["j", "i_g"], attrs=dict(
                 standard_name="cell_y_size_at_u_location",
-                long_name="cell y size", units="m", coordinate="YC XG")),
+                long_name="cell y size", units="m", coordinate="YC XG"),
+               filename='DYG'),
     Depth=dict(dims=["j", "i"], attrs=dict( standard_name="ocean_depth",
                 long_name="ocean depth", units="m", coordinate="XC YC")),
     # vorticity cell
@@ -133,10 +135,12 @@ horizontal_grid_variables = OrderedDict(
                filename='RAZ'),
     dxC = dict(dims=["j", "i_g"], attrs=dict(
                 standard_name="cell_x_size_at_u_location",
-                long_name="cell x size", units="m", coordinate="YC XG")),
+                long_name="cell x size", units="m", coordinate="YC XG"),
+               filename='DXC'),
     dyC = dict(dims=["j_g", "i"], attrs=dict(
                 standard_name="cell_y_size_at_v_location",
-                long_name="cell y size", units="m", coordinate="YG XC")),
+                long_name="cell y size", units="m", coordinate="YG XC"),
+               filename='DYC'),
     # u cell
     rAw = dict(dims=["j", "i_g"], attrs=dict(
                 standard_name="cell_area_at_u_location",
