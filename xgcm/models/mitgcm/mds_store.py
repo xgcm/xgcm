@@ -314,7 +314,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         # while some are multi-variable diagnostics files.
         prefixes = []
         if read_grid:
-            prefixes = prefixes + self._all_grid_variables.keys()
+            prefixes = prefixes + list(self._all_grid_variables.keys())
 
         # add data files
         prefixes = (prefixes +
@@ -527,9 +527,12 @@ def _get_all_data_variables(dirname, layers):
 
     # Now add the suffix '-T' to every diagnostic. This is a somewhat hacky
     # way to increase the coverage of possible output filenames.
+    # But it doesn't work in python3!!!
+    extra_metadata = xr.core.pycompat.OrderedDict()
     for name, val in metadata.items():
         newname = name + '-T'
-        metadata[newname] = val
+        extra_metadata[newname] = val
+    metadata = _concat_dicts([metadata, extra_metadata])
 
     return metadata
 

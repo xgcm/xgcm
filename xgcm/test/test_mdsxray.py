@@ -309,7 +309,7 @@ def test_swap_dims(all_mds_datadirs):
                           ['_bounds', '_center', '_interface']]
             expected_dims += extra_dims
 
-    assert ds.dims.keys() == expected_dims
+    assert list(ds.dims.keys()) == expected_dims
 
 
 def test_prefixes(all_mds_datadirs):
@@ -421,7 +421,7 @@ def test_layers_diagnostics(layers_mds_datadirs):
     """Try reading dataset with layers output."""
     dirname, expected = layers_mds_datadirs
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(dirname, iters='all')
-    layer_name = expected['layers'].keys()[0]
+    layer_name = list(expected['layers'].keys())[0]
     layer_id = 'l' + layer_name[0]
     for suf in ['bounds', 'center', 'interface']:
         assert ('layer_' + layer_name + '_' + suf) in ds

@@ -8,6 +8,7 @@ import re
 import os
 import numpy as np
 import warnings
+from functools import reduce
 
 
 def parse_meta_file(fname):
@@ -113,7 +114,7 @@ def read_raw_data(datafile, dtype, shape, use_mmap=False):
         d = np.fromfile(datafile, dtype)
     d.shape = shape
     return d
-    
+
 
 def parse_available_diagnostics(fname, layers={}):
     """Examine the available_diagnostics.log file and translate it into
