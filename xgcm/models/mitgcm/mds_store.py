@@ -19,6 +19,8 @@ from .variables import dimensions, \
 
 from .utils import parse_meta_file, read_mds, parse_available_diagnostics
 
+# should we hard code this?
+LLC_NUM_FACES=13
 
 def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
                     delta_t=1, ref_date=None, calendar='gregorian',
@@ -230,14 +232,14 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
 
         # the dimensions are theoretically the same for all datasets
         [self._dimensions.append(k) for k in dimensions]
-        if self.geometry == 'llc':
-            self._dimensions.append('face')
+        self.llc = (self.geometry == 'llc')
 
         # TODO: and maybe here a check for the presence of layers?
 
         # Now we need to figure out the dimensions of the numerical domain,
         # i.e. nx, ny, nz. We do this by peeking at the grid file metadata
-        self.nz, self.ny, self.nx = _guess_model_dimensions(dirname)
+        self.nz, self.nface, self.ny, self.nx = (
+            _guess_model_dimensions(dirname, self.llc))
         self.layers = _guess_layers(dirname)
 
         # Now set up the corresponding coordinates.
@@ -269,6 +271,16 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             data = dimension_data[attrs['standard_name']]
             dim_variable = xr.Variable(dims, data, attrs)
             self._variables[dim] = dim_variable
+
+        # possibly add the llc dimension
+        # seems sloppy to hard code this here
+        # TODO: move this metadata to variables.py
+        if self.llc:
+            self._dimensions.append('face')
+            data = np.arange(self.nface)
+            attrs = {'standard_name': 'face_index'}
+            dims = ['face']
+            self._variables['face'] = xr.Variable(dims, data, attrs)
 
         # do the same for layers
         for layer_name, n_layer in self.layers.items():
@@ -437,7 +449,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         # do we actually need to close the memmaps?
 
 
-def _guess_model_dimensions(dirname):
+def _guess_model_dimensions(dirname, is_llc=False):
     try:
         rc_meta = parse_meta_file(os.path.join(dirname, 'RC.meta'))
         if len(rc_meta['dimList']) == 2:
@@ -452,7 +464,12 @@ def _guess_model_dimensions(dirname):
         ny = xc_meta['dimList'][1][0]
     except IOError:
         raise IOError("Couldn't find XC.meta file to infer nx and ny.")
-    return nz, ny, nx
+    if is_llc:
+        nface = LLC_NUM_FACES
+        ny /= nface
+    else:
+        nface = None
+    return nz, nface, ny, nx
 
 
 def _guess_layers(dirname):

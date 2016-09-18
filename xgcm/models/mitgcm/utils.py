@@ -193,3 +193,29 @@ def parse_available_diagnostics(fname, layers={}):
                                              'long_name': desc,
                                              'units': units})
     return all_diags
+
+
+def llc_face_shape(llc_id):
+    """Given an integer identifier for the llc grid, return the face shape."""
+
+    # known valid LLC configurations
+    if llc_id in (90, 270, 1080, 2160, 4320):
+        return (llc_id, llc_id)
+    else:
+        raise ValueError("%g is not a valid llc identifier" % llc_id)
+
+def llc_data_shape(llc_id, nz=None):
+    """Given an integer identifier for the llc grid, and possibly a number of
+    vertical grid points, return the expected shape of the full data field."""
+
+    # this is a constant for all LLC setups
+    NUM_FACES = 13
+
+    tile_shape = llc_face_shape(llc_id)
+    data_shape = (NUM_FACES,) + face_shape
+    if nz is not None:
+        data_shape = (nz,) + data_shape
+
+    # should we accomodate multiple records?
+    # no, not in this function
+    return data_shape

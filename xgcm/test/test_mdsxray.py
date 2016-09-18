@@ -76,9 +76,12 @@ _experiments = {
                         (0, np.datetime64('1990-01-01T00:00:00.000000000')),
                         (1, np.datetime64('1990-01-01T01:40:00.000000000'))],
                       # these diagnostics won't load because not all levels
-                      # where output...no idea how to overcome that bug
+                      # were output...no idea how to overcome that bug
                       # 'diagnostics': ('diagout1', ['UVEL', 'VVEL']),
-                      'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']}
+                      'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
+    'global_oce_llc90': {'geometry': 'llc',
+                         'shape': (50, 13, 90, 90), 'test_iternum': 8,
+                         'first_values': {'XC': 2}}
 }
 
 
@@ -237,11 +240,19 @@ def test_open_mdsdataset_minimal(all_mds_datadirs):
 
     dirname, expected = all_mds_datadirs
 
+    geometry = expected['geometry'] if 'geometry' in expected else 'sphericalpolar'
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-            dirname, iters=None, read_grid=False)
+            dirname, iters=None, read_grid=False, geometry=geometry)
 
     # the expected dimensions of the dataset
-    nz, ny, nx = expected['shape']
+    eshape = expected['shape']
+    if len(eshape)==3:
+        nz, ny, nx = eshape
+        nface = None
+    elif len(eshape)==4:
+        nz, nface, ny, nx = eshape
+    else:
+        raise ValueError("Invalid expected shape")
     coords = {'i': np.arange(nx),
               'i_g': np.arange(nx),
               # 'i_z': np.arange(nx),
@@ -252,6 +263,8 @@ def test_open_mdsdataset_minimal(all_mds_datadirs):
               'k_u': np.arange(nz),
               'k_l': np.arange(nz),
               'k_p1': np.arange(nz+1)}
+    if nface is not None:
+        coords['face'] = np.arange(nface)
 
     if 'layers' in expected:
         for layer_name, n_layers in expected['layers'].items():
@@ -262,7 +275,8 @@ def test_open_mdsdataset_minimal(all_mds_datadirs):
                 coords[dimname] = index
 
     ds_expected = xr.Dataset(coords=coords)
-
+    print ds
+    print ds_expected
     assert ds_expected.equals(ds)
 
 
