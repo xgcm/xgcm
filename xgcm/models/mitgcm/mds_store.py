@@ -21,6 +21,7 @@ from .utils import parse_meta_file, read_mds, parse_available_diagnostics
 
 # should we hard code this?
 LLC_NUM_FACES=13
+LLC_FACE_DIMNAME = 'face'
 
 def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
                     delta_t=1, ref_date=None, calendar='gregorian',
@@ -276,11 +277,11 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         # seems sloppy to hard code this here
         # TODO: move this metadata to variables.py
         if self.llc:
-            self._dimensions.append('face')
+            self._dimensions.append(LLC_FACE_DIMNAME)
             data = np.arange(self.nface)
             attrs = {'standard_name': 'face_index'}
-            dims = ['face']
-            self._variables['face'] = xr.Variable(dims, data, attrs)
+            dims = [LLC_FACE_DIMNAME]
+            self._variables[LLC_FACE_DIMNAME] = xr.Variable(dims, data, attrs)
 
         # do the same for layers
         for layer_name, n_layer in self.layers.items():
@@ -425,6 +426,9 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             elif len(dims) == 1 and (data.ndim == 2 or data.ndim == 3):
                 # this is for certain profile data like RC, PHrefC, etc.
                 data = np.atleast_1d(data.squeeze())
+
+            if self.llc:
+                dims, data = _reshape_for_llc(dims, data)
 
             # need to add an extra dimension at the beginning if we have a time
             # variable
@@ -609,3 +613,25 @@ def _iternum_to_datetime_variable(iternum, delta_t, ref_date,
         time_attrs['calendar'] = calendar
     timevar = xr.Variable((time_dim_name,), timedata, time_attrs)
     return timevar
+
+
+def _reshape_for_llc(dims, data):
+    """Take dims and data and return modified / reshaped dims and data for
+    llc geometry."""
+
+    # this won't work otherwise
+    assert len(dims)==data.ndim
+
+    # the only dimensions that get expanded into faces
+    expand_dims = ['j', 'j_g']
+    for dim in expand_dims:
+        if dim in dims:
+            # add face dimension to dims
+            jdim = dims.index(dim)
+            dims.insert(jdim, LLC_FACE_DIMNAME)
+            # reshape data
+            newshape = list(data.shape)
+            newshape[jdim] = newshape[jdim]/LLC_NUM_FACES
+            newshape.insert(jdim, LLC_NUM_FACES)
+            data = data.reshape(newshape)
+    return dims, data
