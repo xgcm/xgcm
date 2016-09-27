@@ -3,6 +3,7 @@ All of the metadata related to MITgcm variables, grids, naming conventions, etc.
 """
 # python 3 compatiblity
 from __future__ import print_function, division
+import numpy as np
 
 from xarray.core.pycompat import OrderedDict
 
@@ -191,7 +192,9 @@ layers_grid_variables = OrderedDict(
                 standard_name="ocean_layer_coordinate_NAME_center",
                 long_name="center points of layer NAME"),
             filename="layersNAME", slice=(slice(None),0,0),
-            transform=(lambda x: 0.5*(x[1:] + x[:-1]))),
+            # if we don't convert to array, dask can't tokenize
+            # https://github.com/pydata/xarray/issues/1014
+            transform=(lambda x: np.asarray(0.5*(x[1:] + x[:-1])))),
     layer_NAME_interface = dict(dims=['l_i'], attrs=dict(
                 standard_name="ocean_layer_coordinate_NAME_interface",
                 long_name="interface points of layer NAME"),

@@ -6,6 +6,7 @@ from __future__ import print_function, division
 
 from glob import glob
 import os
+import re
 import numpy as np
 import xarray as xr
 
@@ -460,11 +461,14 @@ def _guess_layers(dirname):
     layers_files = glob(os.path.join(dirname, 'layers*.meta'))
     all_layers = {}
     for fname in layers_files:
-        # should turn "foo/bar/layers1RHO.meta" into "1RHO"
-        layers_suf = os.path.splitext(os.path.basename(fname))[0][6:]
-        meta = parse_meta_file(fname)
-        Nlayers = meta['dimList'][2][2]
-        all_layers[layers_suf] = Nlayers
+        # make sure to exclude filenames such as
+        # "layers_surfflux.01.0000000001.meta"
+        if not re.search('\.\d{10}\.', fname):
+            # should turn "foo/bar/layers1RHO.meta" into "1RHO"
+            layers_suf = os.path.splitext(os.path.basename(fname))[0][6:]
+            meta = parse_meta_file(fname)
+            Nlayers = meta['dimList'][2][2]
+            all_layers[layers_suf] = Nlayers
     return all_layers
 
 
