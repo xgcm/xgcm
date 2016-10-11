@@ -8,7 +8,9 @@ from glob import glob
 import os
 import re
 import numpy as np
+import inspect
 import xarray as xr
+import dask.array as da
 
 # we keep the metadata in its own module to keep this one cleaner
 from .variables import dimensions, \
@@ -20,13 +22,16 @@ from .variables import dimensions, \
 
 from .utils import parse_meta_file, read_mds, parse_available_diagnostics
 
+# should we hard code this?
+LLC_NUM_FACES = 13
+LLC_FACE_DIMNAME = 'face'
 
 def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
                     delta_t=1, ref_date=None, calendar='gregorian',
                     geometry='sphericalpolar',
                     grid_vars_to_coords=True, swap_dims=False,
                     endian=">", chunks=None,
-                    ignore_unknown_vars=False):
+                    ignore_unknown_vars=False,):
     """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
 
     Parameters
@@ -69,6 +74,12 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
     ----------
     .. [1] http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html
     """
+
+    # get frame info for history
+    frame = inspect.currentframe()
+    _, _, _, arg_values = inspect.getargvalues(frame)
+    del arg_values['frame']
+    function_name = inspect.getframeinfo(frame)[2]
 
     # some checks for argument consistency
     if swap_dims and not read_grid:
@@ -142,6 +153,9 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
     if swap_dims:
         ds = _swap_dimensions(ds, geometry)
 
+    if grid_vars_to_coords:
+        ds = _set_coords(ds)
+
     # turn all the auxilliary grid variables into coordinates
     # if grid_vars_to_coords:
     #     for k in _grid_variables:
@@ -155,7 +169,25 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
     if chunks is not None:
         ds = ds.chunk(chunks)
 
+    # set attributes for CF conventions
+    ds.attrs['Conventions'] = "CF-1.6"
+    ds.attrs['title'] = "netCDF wrapper of MITgcm MDS binary data"
+    ds.attrs['source'] = "MITgcm"
+    arg_string = ', '.join(['%s=%s' % (str(k), repr(v))
+                            for (k, v) in arg_values.items()])
+    ds.attrs['history'] = ('Created by calling '
+                           '`%s(%s)`'% (function_name, arg_string))
+
     return ds
+
+
+def _set_coords(ds):
+    """Turn all variables without `time` dimensions into coordinates."""
+    coords = set()
+    for vname in ds:
+        if ('time' not in ds[vname].dims) or (ds[vname].dims == ('time',)):
+            coords.add(vname)
+    return ds.set_coords(list(coords))
 
 
 def _swap_dimensions(ds, geometry, drop_old=True):
@@ -165,7 +197,7 @@ def _swap_dimensions(ds, geometry, drop_old=True):
     # still conform to comodo conventions
 
     if geometry.lower() == 'llc':
-        raise ValueError("Can't swap dimensions if geometry is `llc`")
+        raise ValueError("Can't swap dimensions if `geometry` is `llc`")
 
     # first squeeze all the coordinates
     for orig_dim in ds.dims:
@@ -231,14 +263,14 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
 
         # the dimensions are theoretically the same for all datasets
         [self._dimensions.append(k) for k in dimensions]
-        if self.geometry == 'llc':
-            self._dimensions.append('face')
+        self.llc = (self.geometry == 'llc')
 
         # TODO: and maybe here a check for the presence of layers?
 
         # Now we need to figure out the dimensions of the numerical domain,
         # i.e. nx, ny, nz. We do this by peeking at the grid file metadata
-        self.nz, self.ny, self.nx = _guess_model_dimensions(dirname)
+        self.nz, self.nface, self.ny, self.nx = (
+            _guess_model_dimensions(dirname, self.llc))
         self.layers = _guess_layers(dirname)
 
         # Now set up the corresponding coordinates.
@@ -270,6 +302,16 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             data = dimension_data[attrs['standard_name']]
             dim_variable = xr.Variable(dims, data, attrs)
             self._variables[dim] = dim_variable
+
+        # possibly add the llc dimension
+        # seems sloppy to hard code this here
+        # TODO: move this metadata to variables.py
+        if self.llc:
+            self._dimensions.append(LLC_FACE_DIMNAME)
+            data = np.arange(self.nface)
+            attrs = {'standard_name': 'face_index'}
+            dims = [LLC_FACE_DIMNAME]
+            self._variables[LLC_FACE_DIMNAME] = xr.Variable(dims, data, attrs)
 
         # do the same for layers
         for layer_name, n_layer in self.layers.items():
@@ -398,8 +440,9 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
                 # transform is a function to be called on the data
                 data = metadata['transform'](data)
 
-            dims = metadata['dims']
-            attrs = metadata['attrs']
+            # make sure we copy these things
+            dims = list(metadata['dims'])
+            attrs = dict(metadata['attrs'])
 
             # Some 2D output squeezes one of the dimensions out (e.g. hFacC).
             # How should we handle this? Can either eliminate one of the dims
@@ -414,6 +457,9 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
             elif len(dims) == 1 and (data.ndim == 2 or data.ndim == 3):
                 # this is for certain profile data like RC, PHrefC, etc.
                 data = np.atleast_1d(data.squeeze())
+
+            if self.llc:
+                dims, data = _reshape_for_llc(dims, data)
 
             # need to add an extra dimension at the beginning if we have a time
             # variable
@@ -438,7 +484,7 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
         # do we actually need to close the memmaps?
 
 
-def _guess_model_dimensions(dirname):
+def _guess_model_dimensions(dirname, is_llc=False):
     try:
         rc_meta = parse_meta_file(os.path.join(dirname, 'RC.meta'))
         if len(rc_meta['dimList']) == 2:
@@ -453,7 +499,12 @@ def _guess_model_dimensions(dirname):
         ny = xc_meta['dimList'][1][0]
     except IOError:
         raise IOError("Couldn't find XC.meta file to infer nx and ny.")
-    return nz, ny, nx
+    if is_llc:
+        nface = LLC_NUM_FACES
+        ny /= nface
+    else:
+        nface = None
+    return nz, nface, ny, nx
 
 
 def _guess_layers(dirname):
@@ -596,3 +647,72 @@ def _iternum_to_datetime_variable(iternum, delta_t, ref_date,
         time_attrs['calendar'] = calendar
     timevar = xr.Variable((time_dim_name,), timedata, time_attrs)
     return timevar
+
+
+def _reshape_for_llc(dims, data):
+    """Take dims and data and return modified / reshaped dims and data for
+    llc geometry."""
+
+    # this won't work otherwise
+    assert len(dims)==data.ndim
+
+    # the only dimensions that get expanded into faces
+    expand_dims = ['j', 'j_g']
+    for dim in expand_dims:
+        if dim in dims:
+            # add face dimension to dims
+            jdim = dims.index(dim)
+            dims.insert(jdim, LLC_FACE_DIMNAME)
+            data = _reshape_llc_data(data, jdim)
+    return dims, data
+
+
+def _reshape_llc_data(data, jdim):
+    """Fix the weird problem with llc data array order."""
+    # Can we do this without copying any data?
+    # If not, we need to go upstream and implement this at the MDS level
+    # Or can we fudge it with dask?
+    # this is all very specific to the llc file output
+    # would be nice to generalize more, but how?
+    nside = data.shape[jdim] / LLC_NUM_FACES
+    # how the LLC data is laid out along the j dimension
+    strides = ((0,3), (3,6), (6,7), (7,10), (10,13))
+    # whether to reshape each face
+    reshape = (False, False, False, True, True)
+    # this will slice the data into 5 facets
+    slices = [jdim * (slice(None),) + (slice(nside*st[0], nside*st[1]),)
+              for st in strides]
+    facet_arrays = [data[sl] for sl in slices]
+    face_arrays = []
+    for ar, rs, st in zip(facet_arrays, reshape, strides):
+        nfaces_in_facet = st[1] - st[0]
+        shape = list(ar.shape)
+        if rs:
+            # we assume the other horizontal dimension is immediately after jdim
+            shape[jdim] = ar.shape[jdim+1]
+            shape[jdim+1] = ar.shape[jdim]
+        # insert a length-1 dimension along which to concatenate
+        shape.insert(jdim, 1)
+        # modify the array shape in place, no copies allowed
+        ar.shape = shape
+        # now ar is propery shaped, but we still need to slice it into faces
+        face_slice_dim = jdim + 1 + rs
+        for n in range(nfaces_in_facet):
+            face_slice = (face_slice_dim * (slice(None),) +
+                          (slice(nside*n, nside*(n+1)),))
+            data_face = ar[face_slice]
+            face_arrays.append(data_face)
+
+    # We can't concatenate using numpy (hcat etc.) because it makes a copy,
+    # presumably loading the memmaps into memory.
+    # Using dask gets around this.
+    # But what if we want different chunks, or already chunked the data
+    # upstream? Doesn't seem like this is ideal
+    # TODO: Refactor handling of dask arrays and chunking
+    #return np.concatenate(face_arrays, axis=jdim)
+    # the dask version doesn't work because of this:
+    # https://github.com/dask/dask/issues/1645
+    face_arrays_dask = [da.from_array(fa, chunks=fa.shape)
+                        for fa in face_arrays]
+    concat = da.concatenate(face_arrays_dask, axis=jdim)
+    return concat
