@@ -58,7 +58,7 @@ def hide_file(origdir, *basenames):
 _experiments = {
     'global_oce_latlon': {'geometry': 'sphericalpolar',
                           'shape': (15, 40, 90), 'test_iternum': 39600,
-                          'expected_values': {'XC': (0, 2)},
+                          'expected_values': {'XC': ((0,0), 2)},
                           'layers': {'1RHO': 31},
                           'diagnostics': ('DiagGAD-T',
                               ['TOTTTEND', 'ADVr_TH', 'ADVx_TH', 'ADVy_TH',
@@ -66,12 +66,12 @@ _experiments = {
                                'UTHMASS', 'VTHMASS', 'WTHMASS'])},
     'barotropic_gyre': {'geometry': 'cartesian',
                         'shape': (1, 60, 60), 'test_iternum': 10,
-                          'expected_values': {'XC': (0, 10000.0)},
+                          'expected_values': {'XC': ((0,0), 10000.0)},
                         'all_iters': [0, 10],
                         'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
     'internal_wave': {'geometry': 'sphericalpolar',
                       'shape': (20, 1, 30), 'test_iternum': 100,
-                      'expected_values': {'XC': (0, 109.01639344262296)},
+                      'expected_values': {'XC': ((0,0), 109.01639344262296)},
                       'all_iters': [0, 100, 200],
                       'ref_date': "1990-1-1",
                       'delta_t': 60,
@@ -89,8 +89,7 @@ _experiments = {
                              (0, np.datetime64('1948-01-01T12:00:00.000000000')),
                              (1, np.datetime64('1948-01-01T20:00:00.000000000'))],
                          'shape': (50, 13, 90, 90), 'test_iternum': 8,
-                         'expected_values': {#'XC': (100000, -96.5),
-                                             'YC': (20000, 46.448257)},
+                         'expected_values': {'XC': ((2,3,5), -32.5)},
                          'diagnostics': ('state_2d_set1', ['ETAN', 'SIarea',
                             'SIheff', 'SIhsnow', 'DETADT2', 'PHIBOT',
                             'sIceLoad', 'MXLDEPTH', 'oceSPDep', 'SIatmQnt',
@@ -241,10 +240,10 @@ def test_read_mds(all_mds_datadirs):
     assert isinstance(res, np.ndarray)
 
     # make sure endianness works
-    testval = res.newbyteorder('<').ravel()[0]
+    testval = res.newbyteorder('<')[0,0]
     res_endian = read_mds(basename, force_dict=False, use_mmap=False,
                           endian='<')
-    val_endian = res_endian.ravel()[0]
+    val_endian = res_endian[0,0]
     np.testing.assert_allclose(testval, val_endian)
 
     # try reading with iteration number
@@ -295,8 +294,6 @@ def test_open_mdsdataset_minimal(all_mds_datadirs):
                 coords[dimname] = index
 
     ds_expected = xr.Dataset(coords=coords)
-    print ds
-    print ds_expected
     assert ds_expected.equals(ds)
 
 
@@ -325,12 +322,12 @@ def test_values_and_endianness(all_mds_datadirs):
                 geometry=expected['geometry'])
 
     for vname, (idx, val) in expected['expected_values'].items():
-        np.testing.assert_allclose(ds[vname].values.ravel()[idx], val)
+        np.testing.assert_allclose(ds[vname].values[idx], val)
         # dask arrays that have been concatenated revert to native endianness
         # https://github.com/dask/dask/issues/1647
         if ds[vname].dtype.byteorder=='>':
-            val_le = ds[vname].values.newbyteorder('<').ravel()[idx]
-            np.testing.assert_allclose(ds_le[vname].values.ravel()[idx], val_le)
+            val_le = ds[vname].values.newbyteorder('<')[idx]
+            np.testing.assert_allclose(ds_le[vname].values[idx], val_le)
 
 
 def test_swap_dims(all_mds_datadirs):
