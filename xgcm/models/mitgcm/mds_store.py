@@ -7,6 +7,7 @@ from __future__ import print_function, division
 from glob import glob
 import os
 import numpy as np
+import inspect
 import xarray as xr
 import dask.array as da
 
@@ -72,6 +73,12 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
     ----------
     .. [1] http://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s04.html
     """
+
+    # get frame info for history
+    frame = inspect.currentframe()
+    _, _, _, arg_values = inspect.getargvalues(frame)
+    del arg_values['frame']
+    function_name = inspect.getframeinfo(frame)[2]
 
     # some checks for argument consistency
     if swap_dims and not read_grid:
@@ -157,6 +164,15 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
     # do we need more fancy logic (like open_dataset), or is this enough
     if chunks is not None:
         ds = ds.chunk(chunks)
+
+    # set attributes for CF conventions
+    ds.attrs['Conventions'] = "CF-1.6"
+    ds.attrs['title'] = "netCDF wrapper of MITgcm MDS binary data"
+    ds.attrs['source'] = "MITgcm"
+    arg_string = ', '.join(['%s=%s' % (str(k), repr(v))
+                            for (k, v) in arg_values.items()])
+    ds.attrs['history'] = ('Created by calling '
+                           '`%s(%s)`'% (function_name, arg_string))
 
     return ds
 
