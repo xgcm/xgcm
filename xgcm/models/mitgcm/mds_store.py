@@ -30,7 +30,7 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
                     geometry='sphericalpolar',
                     grid_vars_to_coords=True, swap_dims=False,
                     endian=">", chunks=None,
-                    ignore_unknown_vars=False):
+                    ignore_unknown_vars=False,):
     """Open MITgcm-style mds (.data / .meta) file output as xarray datset.
 
     Parameters
@@ -152,6 +152,9 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
     if swap_dims:
         ds = _swap_dimensions(ds, geometry)
 
+    if grid_vars_to_coords:
+        ds = _set_coords(ds)
+
     # turn all the auxilliary grid variables into coordinates
     # if grid_vars_to_coords:
     #     for k in _grid_variables:
@@ -175,6 +178,15 @@ def open_mdsdataset(dirname, iters='all', prefix=None, read_grid=True,
                            '`%s(%s)`'% (function_name, arg_string))
 
     return ds
+
+
+def _set_coords(ds):
+    """Turn all variables without `time` dimensions into coordinates."""
+    coords = set()
+    for vname in ds:
+        if ('time' not in ds[vname].dims) or (ds[vname].dims == ('time',)):
+            coords.add(vname)
+    return ds.set_coords(list(coords))
 
 
 def _swap_dimensions(ds, geometry, drop_old=True):
