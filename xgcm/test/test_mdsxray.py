@@ -73,7 +73,7 @@ _experiments = {
                       'shape': (20, 1, 30), 'test_iternum': 100,
                       'expected_values': {'XC': (0, 109.01639344262296)},
                       'all_iters': [0, 100, 200],
-                      'ref_date': "1990-1-1 0:0:0",
+                      'ref_date': "1990-1-1",
                       'delta_t': 60,
                       'expected_time':[
                         (0, np.datetime64('1990-01-01T00:00:00.000000000')),
@@ -83,6 +83,11 @@ _experiments = {
                       # 'diagnostics': ('diagout1', ['UVEL', 'VVEL']),
                       'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
     'global_oce_llc90': {'geometry': 'llc',
+                         'ref_date': "1948-01-01 12:00:00",
+                         'delta_t': 3600,
+                         'expected_time':[
+                             (0, np.datetime64('1948-01-01T12:00:00.000000000')),
+                             (1, np.datetime64('1948-01-01T20:00:00.000000000'))],
                          'shape': (50, 13, 90, 90), 'test_iternum': 8,
                          'expected_values': {#'XC': (100000, -96.5),
                                              'YC': (20000, 46.448257)}}
@@ -133,7 +138,7 @@ def mds_datadirs_with_diagnostics(tmpdir_factory, request):
     return setup_mds_dir(tmpdir_factory, request)
 
 
-@pytest.fixture(scope='module', params=['internal_wave'])
+@pytest.fixture(scope='module', params=['internal_wave', 'global_oce_llc90'])
 def mds_datadirs_with_refdate(tmpdir_factory, request):
     return setup_mds_dir(tmpdir_factory, request)
 
