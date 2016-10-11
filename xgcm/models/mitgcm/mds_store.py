@@ -168,7 +168,7 @@ def _swap_dimensions(ds, geometry, drop_old=True):
     # still conform to comodo conventions
 
     if geometry.lower() == 'llc':
-        raise ValueError("Can't swap dimensions if geometry is `llc`")
+        raise ValueError("Can't swap dimensions if `geometry` is `llc`")
 
     # first squeeze all the coordinates
     for orig_dim in ds.dims:
@@ -682,4 +682,5 @@ def _reshape_llc_data(data, jdim):
     # https://github.com/dask/dask/issues/1645
     face_arrays_dask = [da.from_array(fa, chunks=fa.shape)
                         for fa in face_arrays]
-    return da.concatenate(face_arrays_dask, axis=jdim)
+    concat = da.concatenate(face_arrays_dask, axis=jdim)
+    return concat

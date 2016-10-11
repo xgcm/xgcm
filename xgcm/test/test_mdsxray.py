@@ -56,18 +56,21 @@ def hide_file(origdir, *basenames):
 
 # dictionary of archived experiments and some expected properties
 _experiments = {
-    'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600,
+    'global_oce_latlon': {'geometry': 'sphericalpolar',
+                          'shape': (15, 40, 90), 'test_iternum': 39600,
                           'expected_values': {'XC': (0, 2)},
                           'layers': {'1RHO': 31},
                           'diagnostics': ('DiagGAD-T',
                               ['TOTTTEND', 'ADVr_TH', 'ADVx_TH', 'ADVy_TH',
                                'DFrE_TH', 'DFxE_TH', 'DFyE_TH', 'DFrI_TH',
                                'UTHMASS', 'VTHMASS', 'WTHMASS'])},
-    'barotropic_gyre': {'shape': (1, 60, 60), 'test_iternum': 10,
+    'barotropic_gyre': {'geometry': 'cartesian',
+                        'shape': (1, 60, 60), 'test_iternum': 10,
                           'expected_values': {'XC': (0, 10000.0)},
                         'all_iters': [0, 10],
                         'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
-    'internal_wave': {'shape': (20, 1, 30), 'test_iternum': 100,
+    'internal_wave': {'geometry': 'sphericalpolar',
+                      'shape': (20, 1, 30), 'test_iternum': 100,
                       'expected_values': {'XC': (0, 109.01639344262296)},
                       'all_iters': [0, 100, 200],
                       'ref_date': "1990-1-1 0:0:0",
@@ -244,9 +247,9 @@ def test_open_mdsdataset_minimal(all_mds_datadirs):
 
     dirname, expected = all_mds_datadirs
 
-    geometry = expected['geometry'] if 'geometry' in expected else 'sphericalpolar'
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-            dirname, iters=None, read_grid=False, geometry=geometry)
+            dirname, iters=None, read_grid=False,
+            geometry=expected['geometry'])
 
     # the expected dimensions of the dataset
     eshape = expected['shape']
@@ -288,7 +291,8 @@ def test_read_grid(all_mds_datadirs):
     """Make sure we read all the grid variables."""
     dirname, expected = all_mds_datadirs
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, iters=None, read_grid=True)
+                dirname, iters=None, read_grid=True,
+                geometry=expected['geometry'])
 
     for vname in _EXPECTED_GRID_VARS:
         assert vname in ds
@@ -300,34 +304,47 @@ def test_values_and_endianness(all_mds_datadirs):
 
     # default endianness
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, iters=None, read_grid=True)
+                dirname, iters=None, read_grid=True,
+                geometry=expected['geometry'])
     # now reverse endianness
     ds_le = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, iters=None, read_grid=True, endian='<')
+                dirname, iters=None, read_grid=True, endian='<',
+                geometry=expected['geometry'])
 
     for vname, (idx, val) in expected['expected_values'].items():
         np.testing.assert_allclose(ds[vname].values.ravel()[idx], val)
-        val_le = np.array(val, ds[vname].dtype).newbyteorder('<').squeeze()
-        np.testing.assert_allclose(ds_le[vname].values.ravel()[idx], val_le)
+        # dask arrays that have been concatenated revert to native endianness
+        # https://github.com/dask/dask/issues/1647
+        if ds[vname].dtype.byteorder=='>':
+            val_le = ds[vname].values.newbyteorder('<').ravel()[idx]
+            np.testing.assert_allclose(ds_le[vname].values.ravel()[idx], val_le)
 
 
 def test_swap_dims(all_mds_datadirs):
-    """Make sure we read all the grid variables."""
+    """See if we can swap dimensions."""
 
     dirname, expected = all_mds_datadirs
-    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, iters=None, read_grid=True, swap_dims=True)
 
-    expected_dims = ['XC', 'XG', 'YC', 'YG', 'Z', 'Zl', 'Zp1', 'Zu']
+    if expected['geometry'] == 'llc':
+        with pytest.raises(ValueError) as excinfo:
+            ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+                        dirname, geometry=expected['geometry'],
+                        iters=None, read_grid=True, swap_dims=True)
+    else:
+        ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
+                    dirname, geometry=expected['geometry'],
+                    iters=None, read_grid=True, swap_dims=True)
 
-    # add extra layers dimensions if needed
-    if 'layers' in expected:
-        for layer_name in expected['layers']:
-            extra_dims = ['layer_' + layer_name + suffix for suffix in
-                          ['_bounds', '_center', '_interface']]
-            expected_dims += extra_dims
+        expected_dims = ['XC', 'XG', 'YC', 'YG', 'Z', 'Zl', 'Zp1', 'Zu']
 
-    assert list(ds.dims.keys()) == expected_dims
+        # add extra layers dimensions if needed
+        if 'layers' in expected:
+            for layer_name in expected['layers']:
+                extra_dims = ['layer_' + layer_name + suffix for suffix in
+                              ['_bounds', '_center', '_interface']]
+                expected_dims += extra_dims
+
+        assert list(ds.dims.keys()) == expected_dims
 
 
 def test_prefixes(all_mds_datadirs):
@@ -338,15 +355,7 @@ def test_prefixes(all_mds_datadirs):
     iters = [expected['test_iternum']]
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
                 dirname, iters=iters, prefix=prefixes,
-                read_grid=False)
-
-    for p in prefixes:
-        assert p in ds
-
-    # try with dim swapping
-    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-                dirname, iters=iters, prefix=prefixes,
-                read_grid=True, swap_dims=True)
+                read_grid=False, geometry=expected['geometry'])
 
     for p in prefixes:
         assert p in ds
@@ -358,14 +367,14 @@ def test_multiple_iters(multidim_mds_datadirs):
     dirname, expected = multidim_mds_datadirs
     # first try specifying the iters
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-        dirname, read_grid=False,
+        dirname, read_grid=False, geometry=expected['geometry'],
         iters=expected['all_iters'],
         prefix=expected['prefixes'])
     assert list(ds.iter.values) == expected['all_iters']
 
     # now infer the iters, should be the same
     ds2 = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-        dirname, read_grid=False, iters='all',
+        dirname, read_grid=False, iters='all', geometry=expected['geometry'],
         prefix=expected['prefixes'])
     assert ds.equals(ds2)
 
@@ -376,14 +385,16 @@ def test_multiple_iters(multidim_mds_datadirs):
     # weird iterations numbers present in some experiments.)
     with pytest.raises(IOError):
         ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-            dirname, read_grid=False, iters=expected['all_iters'])
+            dirname, read_grid=False, iters=expected['all_iters'],
+            geometry=expected['geometry'])
 
     # now hide all the PH and PHL files: should be able to infer prefixes fine
     missing_files = [os.path.basename(f)
                      for f in glob(os.path.join(dirname, 'PH*.0*data'))]
     with hide_file(dirname, *missing_files):
         ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
-            dirname, read_grid=False, iters=expected['all_iters'])
+            dirname, read_grid=False, iters=expected['all_iters'],
+            geometry=expected['geometry'])
 
 
 def test_date_parsing(mds_datadirs_with_refdate):
@@ -392,7 +403,8 @@ def test_date_parsing(mds_datadirs_with_refdate):
 
     ds = xgcm.open_mdsdataset(dirname, iters='all', prefix=['S'],
                               ref_date=expected['ref_date'], read_grid=False,
-                              delta_t=expected['delta_t'])
+                              delta_t=expected['delta_t'],
+                              geometry=expected['geometry'])
 
     for i, date in expected['expected_time']:
         assert ds.time[i].values == date
@@ -430,7 +442,8 @@ def test_diagnostics(mds_datadirs_with_diagnostics):
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(dirname,
                                                       read_grid=False,
                                                       iters='all',
-                                                      prefix=[diag_prefix])
+                                                      prefix=[diag_prefix],
+                                              geometry=expected['geometry'])
     for diagname in expected_diags:
         assert diagname in ds
 
@@ -438,7 +451,8 @@ def test_diagnostics(mds_datadirs_with_diagnostics):
 def test_layers_diagnostics(layers_mds_datadirs):
     """Try reading dataset with layers output."""
     dirname, expected = layers_mds_datadirs
-    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(dirname, iters='all')
+    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(dirname, iters='all',
+                            geometry=expected['geometry'])
     layer_name = list(expected['layers'].keys())[0]
     layer_id = 'l' + layer_name[0]
     for suf in ['bounds', 'center', 'interface']:
@@ -456,19 +470,14 @@ def test_layers_diagnostics(layers_mds_datadirs):
         assert var in ds
         assert ds[var].dims == dims
 
+def test_llc_dims(llc_mds_datadirs):
+    """Check that the LLC file dimensions are correct."""
+    dirname, expected = llc_mds_datadirs
+    ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(dirname,
+                            iters=expected['test_iternum'],
+                            geometry=expected['geometry'])
 
-# @pytest.mark.skipif(True, reason="Not ready")
-# def test_open_mdsdataset_full(all_mds_datadirs):
-#     # most basic test: make sure we can open an mds dataset
-#     ds = xgcm.open_mdsdataset(all_mds_datadirs,
-#             _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT)
-#     #print(ds)
-#
-#     # check just a single value
-#     assert ds['X'][0].values == 2.0
-#
-#     # check little endianness
-#     ds = xgcm.open_mdsdataset(all_mds_datadirs,
-#             _TESTDATA_ITERS, deltaT=_TESTDATA_DELTAT, endian="<")
-#     assert ds['X'][0].values == 8.96831017167883e-44
-#     #print(ds)
+    assert ds.dims['face'] == 13
+    assert ds.rA.dims == ('face', 'j', 'i')
+    assert ds.U.dims == ('time', 'k', 'face', 'j', 'i_g')
+    assert ds.V.dims == ('time', 'k', 'face', 'j_g', 'i')
