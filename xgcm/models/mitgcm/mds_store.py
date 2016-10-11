@@ -411,8 +411,9 @@ class _MDSDataStore(xr.backends.common.AbstractDataStore):
                 # transform is a function to be called on the data
                 data = metadata['transform'](data)
 
-            dims = metadata['dims']
-            attrs = metadata['attrs']
+            # make sure we copy these things
+            dims = list(metadata['dims'])
+            attrs = dict(metadata['attrs'])
 
             # Some 2D output squeezes one of the dimensions out (e.g. hFacC).
             # How should we handle this? Can either eliminate one of the dims
@@ -681,6 +682,4 @@ def _reshape_llc_data(data, jdim):
     # https://github.com/dask/dask/issues/1645
     face_arrays_dask = [da.from_array(fa, chunks=fa.shape)
                         for fa in face_arrays]
-    for fad in face_arrays_dask:
-        print(fad.token)
     return da.concatenate(face_arrays_dask, axis=jdim)

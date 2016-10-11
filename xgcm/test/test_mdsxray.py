@@ -57,18 +57,18 @@ def hide_file(origdir, *basenames):
 # dictionary of archived experiments and some expected properties
 _experiments = {
     'global_oce_latlon': {'shape': (15, 40, 90), 'test_iternum': 39600,
-                          'first_values': {'XC': 2},
+                          'expected_values': {'XC': (0, 2)},
                           'layers': {'1RHO': 31},
                           'diagnostics': ('DiagGAD-T',
                               ['TOTTTEND', 'ADVr_TH', 'ADVx_TH', 'ADVy_TH',
                                'DFrE_TH', 'DFxE_TH', 'DFyE_TH', 'DFrI_TH',
                                'UTHMASS', 'VTHMASS', 'WTHMASS'])},
     'barotropic_gyre': {'shape': (1, 60, 60), 'test_iternum': 10,
-                          'first_values': {'XC': 10000.0},
+                          'expected_values': {'XC': (0, 10000.0)},
                         'all_iters': [0, 10],
                         'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
     'internal_wave': {'shape': (20, 1, 30), 'test_iternum': 100,
-                      'first_values': {'XC': 109.01639344262296},
+                      'expected_values': {'XC': (0, 109.01639344262296)},
                       'all_iters': [0, 100, 200],
                       'ref_date': "1990-1-1 0:0:0",
                       'delta_t': 60,
@@ -81,7 +81,8 @@ _experiments = {
                       'prefixes': ['T', 'S', 'Eta', 'U', 'V', 'W']},
     'global_oce_llc90': {'geometry': 'llc',
                          'shape': (50, 13, 90, 90), 'test_iternum': 8,
-                         'first_values': {'XC': 2}}
+                         'expected_values': {#'XC': (100000, -96.5),
+                                             'YC': (20000, 46.448257)}}
 }
 
 
@@ -138,6 +139,9 @@ def mds_datadirs_with_refdate(tmpdir_factory, request):
 def layers_mds_datadirs(tmpdir_factory, request):
     return setup_mds_dir(tmpdir_factory, request)
 
+@pytest.fixture(scope='module', params=['global_oce_llc90'])
+def llc_mds_datadirs(tmpdir_factory, request):
+    return setup_mds_dir(tmpdir_factory, request)
 
 def test_parse_meta(tmpdir):
     """Check the parsing of MITgcm .meta into python dictionary."""
@@ -221,11 +225,11 @@ def test_read_mds(all_mds_datadirs):
     assert isinstance(res, np.ndarray)
 
     # make sure endianness works
-    testval = res.ravel()[0]
+    testval = res.newbyteorder('<').ravel()[0]
     res_endian = read_mds(basename, force_dict=False, use_mmap=False,
                           endian='<')
-    testval_endian = res_endian.ravel()[0]
-    assert testval != testval_endian
+    val_endian = res_endian.ravel()[0]
+    np.testing.assert_allclose(testval, val_endian)
 
     # try reading with iteration number
     prefix = 'T'
@@ -301,10 +305,10 @@ def test_values_and_endianness(all_mds_datadirs):
     ds_le = xgcm.models.mitgcm.mds_store.open_mdsdataset(
                 dirname, iters=None, read_grid=True, endian='<')
 
-    for vname, val in expected['first_values'].items():
-        assert ds[vname].values.ravel()[0] == val
+    for vname, (idx, val) in expected['expected_values'].items():
+        np.testing.assert_allclose(ds[vname].values.ravel()[idx], val)
         val_le = np.array(val, ds[vname].dtype).newbyteorder('<').squeeze()
-        assert ds_le[vname].values.ravel()[0] == val_le
+        np.testing.assert_allclose(ds_le[vname].values.ravel()[idx], val_le)
 
 
 def test_swap_dims(all_mds_datadirs):
