@@ -223,10 +223,10 @@ layers_grid_variables = OrderedDict(
 state_variables = OrderedDict(
     # default state variables
     U = dict(dims=['k','j','i_g'], attrs=dict(
-                standard_name='sea_water_x_velocity',
+                standard_name='sea_water_x_velocity', mate='V',
                 long_name='Zonal Component of Velocity', units='m s-1')),
     V = dict(dims=['k','j_g','i'], attrs=dict(
-                standard_name='sea_water_y_velocity',
+                standard_name='sea_water_y_velocity', mate='U',
                 long_name='Meridional Component of Velocity', units='m s-1')),
     W = dict(dims=['k_l','j','i'], attrs=dict(
                 standard_name='sea_water_z_velocity',
@@ -250,10 +250,10 @@ state_variables = OrderedDict(
                 long_name='Surface Height Anomaly', units='m')),
     # default tave variables
     uVeltave = dict(dims=['k','j','i_g'], attrs=dict(
-                standard_name='sea_water_x_velocity',
+                standard_name='sea_water_x_velocity', mate='vVeltave',
                 long_name='Zonal Component of Velocity', units='m s-1')),
     vVeltave = dict(dims=['k','j_g','i'], attrs=dict(
-                standard_name='sea_water_y_velocity',
+                standard_name='sea_water_y_velocity', mate='uVeltave',
                 long_name='Meridional Component of Velocity', units='m s-1')),
     wVeltave = dict(dims=['k_l','j','i'], attrs=dict(
                 standard_name='sea_water_z_velocity',
@@ -306,16 +306,16 @@ state_variables = OrderedDict(
     uFluxtave=dict(dims=['j','i_g'], attrs=dict(
                 standard_name="surface_downward_x_stress",
                 long_name='surface zonal momentum flux, positive -> increase u',
-                units='N m-2')),
+                units='N m-2', mate='vFluxtave')),
     UStave=dict(dims=['k','j','i_g'], attrs=dict(
                 standard_name="product_of_sea_water_x_velocity_and_salinity",
                 long_name="Zonal Transport of Salinity",
-                units="psu m s-1")),
+                units="psu m s-1", mate='VStave')),
     UTtave=dict(dims=['k','j','i_g'], attrs=dict(
                 standard_name="product_of_sea_water_x_velocity_and_"
                               "potential_temperature",
                 long_name="Zonal Transport of Potential Temperature",
-                units="K m s-1")),
+                units="K m s-1", mate='VTtave')),
     UUtave = dict(dims=['k','j','i_g'], attrs=dict(
                 standard_name='square_of_sea_water_x_velocity',
                 long_name='Square of Zonal Component of Velocity',
@@ -329,16 +329,16 @@ state_variables = OrderedDict(
                 standard_name="surface_downward_y_stress",
                 long_name='surface meridional momentum flux, '
                           'positive -> increase u',
-                units='N m-2')),
+                units='N m-2', mate='uFluxtave')),
     VStave=dict(dims=['k','j_g','i'], attrs=dict(
                 standard_name="product_of_sea_water_y_velocity_and_salinity",
                 long_name="Meridional Transport of Salinity",
-                units="psu m s-1")),
+                units="psu m s-1", mate='UStave')),
     VTtave=dict(dims=['k','j_g','i'], attrs=dict(
                 standard_name="product_of_sea_water_y_velocity_and_"
                               "potential_temperature",
                 long_name="Meridional Transport of Potential Temperature",
-                units="K m s-1")),
+                units="K m s-1", mate='UTtave')),
     VVtave = dict(dims=['k','j_g','i'], attrs=dict(
                 standard_name='square_of_sea_water_y_velocity',
                 long_name='Square of Meridional Component of Velocity',

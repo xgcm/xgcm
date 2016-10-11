@@ -90,7 +90,14 @@ _experiments = {
                              (1, np.datetime64('1948-01-01T20:00:00.000000000'))],
                          'shape': (50, 13, 90, 90), 'test_iternum': 8,
                          'expected_values': {#'XC': (100000, -96.5),
-                                             'YC': (20000, 46.448257)}}
+                                             'YC': (20000, 46.448257)},
+                         'diagnostics': ('state_2d_set1', ['ETAN', 'SIarea',
+                            'SIheff', 'SIhsnow', 'DETADT2', 'PHIBOT',
+                            'sIceLoad', 'MXLDEPTH', 'oceSPDep', 'SIatmQnt',
+                            'SIatmFW', 'oceQnet', 'oceFWflx', 'oceTAUX',
+                            'oceTAUY', 'ADVxHEFF', 'ADVyHEFF', 'DFxEHEFF',
+                            'DFyEHEFF', 'ADVxSNOW', 'ADVySNOW', 'DFxESNOW',
+                            'DFyESNOW', 'SIuice', 'SIvice'])}
 }
 
 
@@ -133,7 +140,8 @@ def all_mds_datadirs(tmpdir_factory, request):
 def multidim_mds_datadirs(tmpdir_factory, request):
     return setup_mds_dir(tmpdir_factory, request)
 
-@pytest.fixture(scope='module', params=['global_oce_latlon'])
+@pytest.fixture(scope='module', params=['global_oce_latlon',
+                                        'global_oce_llc90'])
 def mds_datadirs_with_diagnostics(tmpdir_factory, request):
     return setup_mds_dir(tmpdir_factory, request)
 
@@ -427,7 +435,8 @@ def test_parse_diagnostics(all_mds_datadirs):
         'UVEL': {'dims': ['k', 'j', 'i_g'],
                  'attrs': {'units': 'm/s',
                            'long_name': 'Zonal Component of Velocity (m/s)',
-                           'standard_name': 'UVEL'}},
+                           'standard_name': 'UVEL',
+                           'mate': 'VVEL'}},
         'TFLUX': {'dims': ['j', 'i'],
                   'attrs': {'units': 'W/m^2',
                             'long_name': 'total heat flux (match heat-content '
@@ -445,12 +454,16 @@ def test_diagnostics(mds_datadirs_with_diagnostics):
 
     diag_prefix, expected_diags = expected['diagnostics']
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(dirname,
-                                                      read_grid=False,
-                                                      iters='all',
-                                                      prefix=[diag_prefix],
+                                              read_grid=False,
+                                              iters=expected['test_iternum'],
+                                              prefix=[diag_prefix],
                                               geometry=expected['geometry'])
     for diagname in expected_diags:
         assert diagname in ds
+        # check vector mates
+        if 'mate' in ds[diagname].attrs:
+            mate = ds[diagname].attrs['mate']
+            assert ds[mate].attrs['mate'] == diagname
 
 
 def test_layers_diagnostics(layers_mds_datadirs):

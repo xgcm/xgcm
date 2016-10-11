@@ -133,6 +133,8 @@ def parse_available_diagnostics(fname, layers={}):
         (coords, description, units)
     """
     all_diags = {}
+    diag_id_lookup = {}
+    mate_lookup = {}
 
     # mapping between the available_diagnostics.log codes and the actual
     # coordinate names
@@ -148,10 +150,13 @@ def parse_available_diagnostics(fname, layers={}):
             if len(c) == 7 and c[0].strip() != 'Num':
                 # parse the line to extract the relevant variables
                 key = c[1].strip()
+                diag_id = int(c[0].strip())
+                diag_id_lookup[diag_id] = key
                 levs = int(c[2].strip())
                 mate = c[3].strip()
                 if mate:
                     mate = int(mate)
+                    mate_lookup[key] = mate
                 code = c[4]
                 units = c[5].strip()
                 desc = c[6].strip()
@@ -192,6 +197,9 @@ def parse_available_diagnostics(fname, layers={}):
                                       attrs={'standard_name': key,
                                              'long_name': desc,
                                              'units': units})
+    # add mate information
+    for key, mate_id in mate_lookup.items():
+        all_diags[key]['attrs']['mate'] = diag_id_lookup[mate_id]
     return all_diags
 
 
