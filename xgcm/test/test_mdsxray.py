@@ -3,6 +3,7 @@ import os
 import tarfile
 import xarray as xr
 import numpy as np
+import dask
 from contextlib import contextmanager
 import py
 import tempfile
@@ -311,6 +312,9 @@ def test_read_grid(all_mds_datadirs):
 def test_values_and_endianness(all_mds_datadirs):
     """Make sure we read all the grid variables."""
     dirname, expected = all_mds_datadirs
+
+    if expected['geometry']=='llc' and (dask.__version__ < '0.11.2'):
+        pytest.xfail("LLC value tests require fixed dask")
 
     # default endianness
     ds = xgcm.models.mitgcm.mds_store.open_mdsdataset(
