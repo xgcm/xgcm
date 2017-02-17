@@ -63,6 +63,8 @@ def test_interp(input_dataset):
 
     # check that the dimensions are right
     assert data_u.dims == ('ni_u',)
+    xr.testing.assert_equal(data_u.ni_u, ds.ni_u)
+    assert len(data_u.ni_u)==len(data_u)
 
     # check that the values are right
     # what do we do about the boundary conditions?
