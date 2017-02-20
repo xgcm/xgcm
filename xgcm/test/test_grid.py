@@ -41,7 +41,7 @@ def input_dataset():
                          'c_grid_dynamic_range': '2:8'}),
                 'ni_u': (['ni_u',], np.arange(0.5,10),
                          {'axis': 'X',
-                         'standard_name': 'x_grid_index_at_u_location',
+                          'standard_name': 'x_grid_index_at_u_location',
                           'long_name': 'x-dimension of the grid',
                           'c_grid_dynamic_range': '3:8',
                           'c_grid_axis_shift': -0.5})
@@ -58,17 +58,17 @@ def test_interp(input_dataset):
     grad = 0.24
     data_c = grad * ds['ni']
 
-    grid = Grid(ds)
-    data_u = grid.interp_c_to_g(data_c, 'X')
+    grid = Grid(ds, x_periodic=False)
+    data_u = grid.interp(data_c, 'X')
 
     # check that the dimensions are right
     assert data_u.dims == ('ni_u',)
-    xr.testing.assert_equal(data_u.ni_u, ds.ni_u)
+    xr.testing.assert_equal(data_u.ni_u, ds.ni_u[1:-1])
     assert len(data_u.ni_u)==len(data_u)
 
     # check that the values are right
     # what do we do about the boundary conditions?
     np.testing.assert_allclose(
-        data_u.values[1:-1],
-        0.5 * (data_c.values[1:-1] + data_c.values[:-2])
+        data_u.values,
+        0.5 * (data_c.values[1:] + data_c.values[:-1])
     )

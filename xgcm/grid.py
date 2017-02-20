@@ -11,7 +11,8 @@ from . import comodo
 class Grid:
     """An object that knows how to interpolate and take derivatives."""
 
-    def __init__(self, ds, check_dims=True):
+    def __init__(self, ds, check_dims=True, x_periodic=True, y_periodic=True,
+                 z_periodic=False):
         """Create a new Grid object from an input dataset
 
         PARAMETERS
@@ -21,10 +22,12 @@ class Grid:
         check_dims : bool, optional
             Whether to check the compatibility of input data dimensions before
             performing grid operations.
+        x_periodic : bool, optional
+            Whether the domain is periodic in the X direction.
         """
         self._ds = ds
         self._check_dims = check_dims
-
+        self._periodic = {'X': x_periodic, 'Y': y_periodic, 'Z': z_periodic}
 
         self._axes = OrderedDict()
         for ax in ['X', 'Y']:
@@ -47,6 +50,7 @@ class Grid:
                         axis_data['c'] = name
                         axis_data['c_coord'] = coord
                     elif (axis_shift==0.5) or (axis_shift==-0.5):
+                        # we found the face coordinate
                         axis_data['g'] = name
                         axis_data['g_coord'] = coord
                         # TODO: clearly document the sign convention
@@ -56,13 +60,39 @@ class Grid:
                                          'coord %s' % (axis_shift, name))
                 self._axes[ax] = axis_data
 
+        # check grid size consistency
+        # we can deal with two cases:
+        #  * the c dim and g dim are the same size
+        #  * the g dim is one element longer than the c dim
+        # define a slice used to subset
+        for ax, info in iteritems(self._axes):
+            clen = len(info['c_coord'])
+            glen = len(info['g_coord'])
+            if clen==glen:
+                # all good
+                self._axes[ax]['pad'] = 0
+            elif clen==(glen - 1):
+                self._axes[ax]['pad'] = 1
+            else:
+                raise ValueError("Incompatible c and g dimension lengths on "
+                                 "axis %s (%g, %g)" % (ax, clen, glen))
+
+
 
     def __repr__(self):
         summary = ['<xgcm.Grid>']
 
         for ax, info in iteritems(self._axes):
-            axis_info = ('%s-axis: %s (cell center), %s (cell face, shift %g)' %
-                         (ax, info['c'], info['g'], info['shift']))
+            axis_info = ('%s-axis:     %s: %g (cell center), %s: %g '
+                         '(cell face, shift %g)' %
+                         (ax, info['c'], len(info['c_coord']),
+                          info['g'], len(info['g_coord']), info['shift']))
+            if info['pad']:
+                axis_info += ' padded,'
+            if self._periodic[ax]:
+                axis_info += ' periodic'
+            else:
+                axis_info += ' non-periodic'
             summary.append(axis_info)
         return '\n'.join(summary)
 
@@ -81,15 +111,63 @@ class Grid:
         da_i : xarray.dataarray
             Interpolated data on the u grid
         """
+        pass
 
+    def interp(self, da, axis):
+        # figure out of it's a c or g variable
         ax = self._axes[axis]
-        da_shift = self.shift(da, ax['c'], -ax['shift'])
+        is_cgrid = ax['c'] in da.dims
+        is_ggrid = ax['g'] in da.dims
+
+        if is_cgrid:
+            ax_name = ax['c']
+            new_coord = ax['g_coord']
+            shift = -ax['shift']
+
+        elif is_ggrid:
+            ax_name = ax['g']
+            new_coord = ax['c_coord']
+            shift = ax['shift']
+        else:
+            raise ValueError("Couldn't find an %s axis dimension in da" % axis)
+
+        # shift data appropriately
+        # if the grid is not periodic, we will discard the invalid points later
+        da_shift = self.shift(da, ax_name, ax['shift'])
+        # linear, centered interpolation
         # TODO: generalize to higher order interpolation
         data_interp = 0.5*(da.data + da_shift.data)
+
         # wrap in a new DataArray
         da_i = da.copy()
         da_i.data = data_interp
-        da_i = _replace_dim(da_i, ax['c'], ax['g_coord'])
+
+        # we might need to truncate or pad the data
+        if is_ggrid:
+            if ax['pad']:
+                # truncate
+                if ax['shift']==1:
+                    da_i = da_i.isel(**{ax_name: slice(1,None)})
+                elif ax['shift']==-1:
+                    da_i = da_i.isel(**{ax_name: slice(0,-1)})
+            else:
+                # deal with non-periodic case
+                pass
+        elif is_cgrid:
+            # here the behavior depends on whether the data is periodic
+            if ax['pad'] and self._periodic[axis]:
+                raise NotImplementedError("Don't know how to pad periodic "
+                                          "dims.")
+            elif ax['pad'] and not self._periodic[axis]:
+                # keep the data as is but reduce the length of the coordinates
+                # need to snip from both sides
+                new_coord = new_coord[1:-1]
+                if ax['shift']==1:
+                    da_i = da_i.isel(**{ax_name: slice(1,None)})
+                elif ax['shift']==-1:
+                    da_i = da_i.isel(**{ax_name: slice(0,-1)})
+
+        da_i = _replace_dim(da_i, ax_name, new_coord)
         return da_i
 
     def shift(self, da, dim, shift):
@@ -98,6 +176,7 @@ class Grid:
         # TODO: generalize rolling function, allow custom shifts, handle
         # boundary conditions, etc.
         return da.roll(**{dim: shift})
+
 
 def _replace_dim(da, olddim, newdim, drop=True):
     """Replace a dimension with a new dimension
