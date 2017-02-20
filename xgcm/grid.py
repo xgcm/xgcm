@@ -95,23 +95,7 @@ class Grid:
                 axis_info += ' non-periodic'
             summary.append(axis_info)
         return '\n'.join(summary)
-
-    def interp_c_to_g(self, da, axis):
-        """Interpolate dataarray from c grid to u grid.
-
-        Parameters
-        ----------
-        da : xarray.dataarray
-            Original data on the t grid
-        axis : {'X', 'Y'}
-            Dimension along which to interpolate
-
-        Returns
-        -------
-        da_i : xarray.dataarray
-            Interpolated data on the u grid
-        """
-        pass
+        
 
     def interp(self, da, axis):
         # figure out of it's a c or g variable
