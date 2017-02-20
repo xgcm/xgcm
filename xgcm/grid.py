@@ -95,7 +95,9 @@ class Grid:
                 axis_info += ' non-periodic'
             summary.append(axis_info)
         return '\n'.join(summary)
-        
+
+
+
 
     def interp(self, da, axis):
         # figure out of it's a c or g variable
@@ -106,18 +108,18 @@ class Grid:
         if is_cgrid:
             ax_name = ax['c']
             new_coord = ax['g_coord']
-            shift = -ax['shift']
+            shift = ax['shift']
 
         elif is_ggrid:
             ax_name = ax['g']
             new_coord = ax['c_coord']
-            shift = ax['shift']
+            shift = -ax['shift']
         else:
             raise ValueError("Couldn't find an %s axis dimension in da" % axis)
 
         # shift data appropriately
         # if the grid is not periodic, we will discard the invalid points later
-        da_shift = self.shift(da, ax_name, ax['shift'])
+        da_shift = self.shift(da, ax_name, shift)
         # linear, centered interpolation
         # TODO: generalize to higher order interpolation
         data_interp = 0.5*(da.data + da_shift.data)
@@ -130,9 +132,9 @@ class Grid:
         if is_ggrid:
             if ax['pad']:
                 # truncate
-                if ax['shift']==1:
+                if ax['shift']==-1:
                     da_i = da_i.isel(**{ax_name: slice(1,None)})
-                elif ax['shift']==-1:
+                elif ax['shift']==1:
                     da_i = da_i.isel(**{ax_name: slice(0,-1)})
             else:
                 # deal with non-periodic case

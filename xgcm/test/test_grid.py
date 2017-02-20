@@ -6,22 +6,22 @@ import numpy as np
 
 from xgcm.grid import Grid
 
-from . datasets import all_datasets, nonperiodic_1d
+from . datasets import all_datasets, nonperiodic_1d, periodic_1d
 
 def test_create_grid(all_datasets):
     grid = Grid(all_datasets)
 
 def test_grid_repr(all_datasets):
     grid = Grid(all_datasets)
+    print(grid)
     r = repr(grid).split('\n')
     assert r[0] == "<xgcm.Grid>"
     # all datasets should have at least an X axis
     assert r[1].startswith('X-axis:')
 
 
-def test_interp_c_to_g(periodic_1d):
+def test_interp_c_to_g_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""
-
     ds = periodic_1d
 
     # a linear gradient in the ni direction
@@ -37,11 +37,32 @@ def test_interp_c_to_g(periodic_1d):
 
     # check that the values are right
     np.testing.assert_allclose(
-        data_u.values,
-        0.5 * (data_c.values + np.roll(data_g.values, -1))
+        data_g.values,
+        0.5 * (data_c.values + np.roll(data_c.values, -1))
     )
 
-def test_interp_c_to_g(nonperiodic_1d):
+def test_interp_g_to_c_periodic(periodic_1d):
+    """Interpolate from c grid to g grid."""
+    ds = periodic_1d
+
+    # a linear gradient in the ni direction
+    data_g = np.sin(ds['XG'])
+
+    grid = Grid(ds)
+    data_c = grid.interp(data_g, 'X')
+
+    # check that the dimensions are right
+    assert data_c.dims == ('XC',)
+    xr.testing.assert_equal(data_c.XC, ds.XC)
+    assert len(data_c.XC)==len(data_c)
+
+    # check that the values are right
+    np.testing.assert_allclose(
+        data_c.values,
+        0.5 * (data_g.values + np.roll(data_g.values, 1))
+    )
+
+def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
     """Interpolate from c grid to g grid."""
 
     ds = nonperiodic_1d
@@ -64,7 +85,7 @@ def test_interp_c_to_g(nonperiodic_1d):
         0.5 * (data_c.values[1:] + data_c.values[:-1])
     )
 
-def test_interp_g_to_c(nonperiodic_1d):
+def test_interp_g_to_c_nonperiodic(nonperiodic_1d):
     """Interpolate from g grid to c grid."""
 
     ds = nonperiodic_1d

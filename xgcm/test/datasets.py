@@ -61,3 +61,7 @@ def all_datasets(request):
 @pytest.fixture(scope="module", params=['nonperiodic_1d'])
 def nonperiodic_1d(request):
     return datasets[request.param]
+
+@pytest.fixture(scope="module", params=['periodic_1d'])
+def periodic_1d(request):
+    return datasets[request.param]
