@@ -27,7 +27,7 @@ def test_interp_c_to_g(periodic_1d):
     # a linear gradient in the ni direction
     data_c = np.sin(ds['XC'])
 
-    grid = Grid(ds, x_periodic=False)
+    grid = Grid(ds)
     data_g = grid.interp(data_c, 'X')
 
     # check that the dimensions are right
