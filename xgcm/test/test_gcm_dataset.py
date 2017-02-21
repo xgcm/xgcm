@@ -1,8 +1,16 @@
 import numpy as np
 from xarray import Dataset, DataArray
 #from xray.core.ops import allclose_or_equiv
-from xgcm import GCMDataset
 import pytest
+
+# skip everythong
+pytestmark = pytest.mark.xfail(True, reason='deprecated')
+
+try:
+    from xgcm import GCMDataset
+except ImportError:
+    # this import syntax is old
+    pass
 
 @pytest.fixture
 def test_dataset():
