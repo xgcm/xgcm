@@ -5,5 +5,6 @@ dependencies:
   - dask
   - numpy
   - future
+  - pytest
   - numpydoc
   - sphinx
