@@ -1,7 +1,7 @@
 name: test_env
 dependencies:
   - python=2.7
-  - xray
+  - xarray
   - dask
   - numpy
   - pytest
