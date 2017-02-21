@@ -34,7 +34,7 @@ CLASSIFIERS = [
     'Topic :: Scientific/Engineering',
 ]
 
-INSTALL_REQUIRES = ['xray']
+INSTALL_REQUIRES = ['xarray']
 SETUP_REQUIRES = ['pytest-runner']
 TESTS_REQUIRE = ['pytest >= 2.8', 'coverage']
 
