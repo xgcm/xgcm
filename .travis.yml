@@ -39,7 +39,7 @@ install:
 # It is very complicated and confusing.
 
 script:
-  - py.test xgcm --cov=xgcm --cov-config .coveragerc --cov-report term-missing
+  - py.test xgcm -v --cov=xgcm --cov-config .coveragerc --cov-report term-missing
 #  - py.test -v
 
 after_success:
