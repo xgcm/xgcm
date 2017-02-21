@@ -13,17 +13,26 @@ class Grid:
 
     def __init__(self, ds, check_dims=True, x_periodic=True, y_periodic=True,
                  z_periodic=False):
-        """Create a new Grid object from an input dataset
+        """Create a new Grid object from an input dataset.
 
         PARAMETERS
         ----------
         ds : xarray.Dataset
-            Contains the relevant grid information
+            Contains the relevant grid information. Coordinate attributes
+            should conform to Comodo conventions [1]_.
         check_dims : bool, optional
             Whether to check the compatibility of input data dimensions before
             performing grid operations.
         x_periodic : bool, optional
             Whether the domain is periodic in the X direction.
+        y_periodic : bool, optional
+            Whether the domain is periodic in the Y direction.
+        y_periodic : bool, optional
+            Whether the domain is periodic in the Z direction.
+
+        REFERENCES
+        ----------
+        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
         """
         self._ds = ds
         self._check_dims = check_dims
