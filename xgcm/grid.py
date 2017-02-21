@@ -97,9 +97,69 @@ class Grid:
         return '\n'.join(summary)
 
 
-
-
     def interp(self, da, axis):
+        """Interpolate neighboring points to the intermediate grid point.
+
+        PARAMETERS
+        ----------
+        da : xarray.DataArray
+            The data to interpolate
+        axis: {'X', 'Y'}
+            The name of the axis along which to interpolate
+
+        RETURNS
+        -------
+        da_i : xarray.DataArray
+            The interpolated data
+        """
+
+        def interp_function(data_left, data_right, shift):
+            # linear, centered interpolation
+            # TODO: generalize to higher order interpolation
+            return 0.5*(data_left + data_right)
+        return self._neighbor_binary_func(da, axis, interp_function)
+
+
+    def diff(self, da, axis):
+        """Difference neighboring points to the intermediate grid point.
+
+        PARAMETERS
+        ----------
+        da : xarray.DataArray
+            The data to difference
+        axis: {'X', 'Y'}
+            The name of the axis along which to difference
+
+        RETURNS
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+        """
+
+        def interp_function(data_left, data_right, shift):
+            # linear, centered interpolation
+            # TODO: generalize to higher order interpolation
+            return shift*(data_right - data_left)
+        return self._neighbor_binary_func(da, axis, interp_function)
+
+
+    def _neighbor_binary_func(self, da, axis, f):
+        """Apply a function to neighboring points.
+
+        PARAMETERS
+        ----------
+        da : xarray.DataArray
+            The data to difference
+        axis: {'X', 'Y'}
+            The name of the axis along which to difference
+        f : function
+            With signature f(da_left, da_right, shift)
+
+        RETURNS
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+        """
         # figure out of it's a c or g variable
         ax = self._axes[axis]
         is_cgrid = ax['c'] in da.dims
@@ -108,33 +168,32 @@ class Grid:
         if is_cgrid:
             ax_name = ax['c']
             new_coord = ax['g_coord']
-            shift = ax['shift']
+            shift = -ax['shift']
 
         elif is_ggrid:
             ax_name = ax['g']
             new_coord = ax['c_coord']
-            shift = -ax['shift']
+            shift = ax['shift']
         else:
             raise ValueError("Couldn't find an %s axis dimension in da" % axis)
 
         # shift data appropriately
         # if the grid is not periodic, we will discard the invalid points later
         da_shift = self.shift(da, ax_name, shift)
-        # linear, centered interpolation
-        # TODO: generalize to higher order interpolation
-        data_interp = 0.5*(da.data + da_shift.data)
+
+        data_new = f(da_shift.data, da.data, shift)
 
         # wrap in a new DataArray
         da_i = da.copy()
-        da_i.data = data_interp
+        da_i.data = data_new
 
         # we might need to truncate or pad the data
         if is_ggrid:
             if ax['pad']:
                 # truncate
-                if ax['shift']==-1:
+                if ax['shift']==1:
                     da_i = da_i.isel(**{ax_name: slice(1,None)})
-                elif ax['shift']==1:
+                elif ax['shift']==-1:
                     da_i = da_i.isel(**{ax_name: slice(0,-1)})
             else:
                 # deal with non-periodic case
@@ -145,13 +204,13 @@ class Grid:
                 raise NotImplementedError("Don't know how to pad periodic "
                                           "dims.")
             elif ax['pad'] and not self._periodic[axis]:
-                # keep the data as is but reduce the length of the coordinates
-                # need to snip from both sides
+                # need to snip data from both sides
                 new_coord = new_coord[1:-1]
+                # and coordinate from one side
                 if ax['shift']==1:
-                    da_i = da_i.isel(**{ax_name: slice(1,None)})
-                elif ax['shift']==-1:
                     da_i = da_i.isel(**{ax_name: slice(0,-1)})
+                elif ax['shift']==-1:
+                    da_i = da_i.isel(**{ax_name: slice(1,None)})
 
         da_i = _replace_dim(da_i, ax_name, new_coord)
         return da_i

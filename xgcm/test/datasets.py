@@ -27,6 +27,7 @@ import numpy as np
 #                 ni_u = 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5 ;
 # }
 
+N = 100
 datasets = {
     # the comodo example
     'nonperiodic_1d': xr.Dataset(
@@ -44,15 +45,14 @@ datasets = {
         }),
     # my own invention
     'periodic_1d': xr.Dataset(
-        coords={'XG': (['XG',], 2*np.pi/100*np.arange(0,100),
+        coords={'XG': (['XG',], 2*np.pi/N*np.arange(0,N),
                         {'axis': 'X',
                          'c_grid_axis_shift': -0.5}),
-                'XC': (['XC',], 2*np.pi/100*(np.arange(0,100)+0.005),
+                'XC': (['XC',], 2*np.pi/N*(np.arange(0,N)+0.5),
                                 {'axis': 'X'})
 
         })
 }
-
 
 @pytest.fixture(scope="module", params=datasets.keys())
 def all_datasets(request):
