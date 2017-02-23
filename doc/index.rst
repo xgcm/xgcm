@@ -17,7 +17,7 @@ operators suited to these grids, and a toolbox of common analysis functions.
 ocean, atmosphere, and climate models. While highly parallel supercomputers can
 now easily generate tera- and petascale datasets, common post-processing
 workflows struggle with these volumes. Furthermore, we believe that a flexible,
-evoliving, open-source, python-based framework for GCM analysis will enhance
+evolving, open-source, python-based framework for GCM analysis will enhance
 the productivity of the field as a whole, accelerating the rate of discovery in
 climate science.
 
@@ -31,13 +31,8 @@ Contents
 .. toctree::
    :maxdepth: 1
 
-   installing
-   examples
-   supported-models
+   installation
    grids
-   fluxes
-   budgets
-   coordinate-transformation
    api
    faq
    contributing
