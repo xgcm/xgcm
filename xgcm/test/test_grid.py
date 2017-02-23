@@ -4,7 +4,8 @@ import pytest
 import xarray as xr
 import numpy as np
 
-from xgcm.grid import Grid, _replace_dim
+from xgcm import Grid
+from xgcm.grid import _replace_dim
 
 from . datasets import all_datasets, nonperiodic_1d, periodic_1d
 
