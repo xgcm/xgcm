@@ -33,7 +33,7 @@ Installation from github
 
 xgcm is under active development. To obtain the latest development version,
 you may clone the `source repository <https://github.com/xgcm/xgcm>`_
-and install it::
+and install it:
 
     git clone https://github.com/xgcm/xgcm.git
     cd xgcm
