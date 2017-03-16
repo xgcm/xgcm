@@ -5,7 +5,7 @@ General Concepts
 ~~~~~~~~~~~~~~~~
 
 Most finite volume ocean models use `Arakawa Grids`_, in which different
-variables are offset from one another and sitatated at different locations with
+variables are offset from one another and situated at different locations with
 respect to the cell center and edge points. `xgcm` currently supports only
 *C-grid geometry*. As illustrated below, C-grids place scalars (such as
 temperature) at the cell center and vector components (such as velocity) at
