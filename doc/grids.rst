@@ -86,8 +86,8 @@ else the cell-edge coordinate should have one more point than the cell-center.
 ``Grid`` Objects
 ~~~~~~~~~~~~~~~~
 
-The core object in xgcm is a :class:`xgcm.Grid`. To create a grid, first we need an
-``xarray.DataSet`` with proper attributes. We can create one as follows.
+The core object in xgcm is a :class:`xgcm.Grid`. To create a grid, first we need
+an ``xarray.DataSet`` with proper attributes. We can create one as follows.
 
 .. code-block:: python
 
