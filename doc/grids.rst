@@ -42,7 +42,7 @@ defined as
 
    \overline{\Phi} = (\Phi_{i+1/2} + \Phi_{i-1/2})/2
 
-Both operators returns a variable that is shifted by half a gridpoint
+Both operators return a variable that is shifted by half a gridpoint
 with respect to the input variable.
 With these two operators, the entire suite of finite volume vector calculus
 operations can be represented.
