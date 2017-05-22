@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/xgcm/xgcm.svg?branch=master)](https://travis-ci.org/xgcm/xgcm)
 [![codecov.io](https://codecov.io/github/xgcm/xgcm/coverage.svg?branch=master)](https://codecov.io/github/xgcm/xgcm?branch=master)
+[![Documentation Status](http://readthedocs.org/projects/xgcm/badge/?version=latest)](http://xgcm.readthedocs.io/en/latest/?badge=latest)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/xgcm/xgcm)
 
 xgcm is a python package for analyzing general circulation model (GCM) output data.
 xgcm is built on top of [xray](http://github.com/xray/xray).
