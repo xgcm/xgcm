@@ -5,9 +5,12 @@ import xarray as xr
 import numpy as np
 
 from xgcm import Grid
-from xgcm.grid import _replace_dim
+from xgcm.grid import _replace_dim, Axis
 
 from . datasets import all_datasets, nonperiodic_1d, periodic_1d
+
+def test_create_axis(all_datasets):
+    axis = Axis(all_datasets, 'X')
 
 def test_create_grid(all_datasets):
     grid = Grid(all_datasets)

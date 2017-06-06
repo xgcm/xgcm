@@ -106,6 +106,120 @@ class Grid:
         return '\n'.join(summary)
 
 
+class Axis:
+    """An object that knows how to interpolate and take derivatives.
+    There are four types of variable positions we can have::
+
+         Centered
+         |------o-------|------o-------|------o-------|------o-------|
+               [0]            [1]            [2]            [3]
+
+         Left face
+         |------o-------|------o-------|------o-------|------o-------|
+        [0]            [1]            [2]            [3]
+
+         Right face
+         |------o-------|------o-------|------o-------|------o-------|
+                       [0]            [1]            [2]            [3]
+
+         Face
+         |------o-------|------o-------|------o-------|------o-------|
+        [0]            [1]            [2]            [3]            [4]
+
+    The first three have the same length and are thus distinguished by
+    the `c_grid_axis_shift` attribute.
+    """
+
+    def __init__(self, ds, axis_name, periodic=True):
+        """Create a new Axis object from an input dataset.
+
+        PARAMETERS
+        ----------
+        ds : xarray.Dataset
+            Contains the relevant grid information. Coordinate attributes
+            should conform to Comodo conventions [1]_.
+        axis_name : str
+            The name of the axis (should match axis attribute)
+        periodic : bool, optional
+            Whether the domain is periodic along this axis
+        """
+        self._ds = ds
+        self._name = axis_name
+        self._periodic = periodic
+
+        # figure out what the grid dimensions are
+        coord_names = comodo.get_axis_coords(ds, axis_name)
+        ncoords = len(coord_names)
+        if ncoords == 0:
+            # didn't find anything for this axis
+            raise ValueError("Couldn't find any coordinates for axis %s"
+                             % axis_name)
+
+        # now figure out what type of coordinates these are:
+        # center, left, right, or face
+        coords = {name: ds[name] for name in coord_names}
+        axis_shift = {name: coord.attrs.get('c_grid_axis_shift')
+                      for name, coord in coords.items()}
+        coord_len = {name: len(coord) for name, coord in coords.items()}
+
+        # look for the center coord, which is required
+        # this list will potential contain "center" and "face" points
+        coords_without_axis_shift = {name: coord_len[name]
+                                     for name, shift in axis_shift.items()
+                                     if not shift}
+        if len(coords_without_axis_shift) == 0:
+            raise ValueError("Couldn't find a center coordinate for axis %s"
+                             % axis_name)
+        center_coord_name = min(coords_without_axis_shift,
+                                key=coords_without_axis_shift.get)
+        # knowing the length of the center coord is key to decoding the other
+        # coords
+        axis_len = coord_len[center_coord_name]
+
+        # now we can start filling in the information about the different coords
+        axis_coords = OrderedDict()
+        axis_coords['center'] = coords[center_coord_name]
+
+        # now check the other coords
+        coord_names.remove(center_coord_name)
+        for name in coord_names:
+            shift = axis_shift[name]
+            clen = coord_len[name]
+            # face coordinate is characterized by the following property
+            if clen == axis_len + 1:
+                # we neglect the shift attribute completely here, since it is
+                # irrelevant
+                axis_coords['face'] = coords[name]
+            elif shift == -0.5:
+                if clen == axis_len:
+                    axis_coords['left'] = coords[name]
+                else:
+                    raise ValueError("Left coordinate %s has incompatible "
+                                     "length %g (axis_len=%g)"
+                                     % (name, clen, axis_len))
+            elif shift == 0.5:
+                if clen == axis_len:
+                    axis_coords['right'] = coords[name]
+                else:
+                    raise ValueError("Right coordinate %s has incompatible "
+                                     "length %g (axis_len=%g)"
+                                     % (name, clen, axis_len))
+            else:
+                raise ValueError("Coordinate %s has invalid c_grid_axis_shift "
+                                 "attribute `%g`" % (name, shift))
+
+        self._coords = axis_coords
+
+    def __repr__(self):
+        is_periodic = 'periodic' if self._periodic else 'not periodic'
+        summary = ["<xgcm.Axis '%s' %s>" % (self._name, is_periodic)]
+        summary.append('Axis Coodinates:')
+        for name, coord in iteritems(self._coords):
+            coord_info = ('  * %-8s %s (%g)' % (name, coord.name, len(coord)))
+            summary.append(coord_info)
+        return '\n'.join(summary)
+
+
     def interp(self, da, axis):
         """Interpolate neighboring points to the intermediate grid point.
 
@@ -254,6 +368,6 @@ def _replace_dim(da, olddim, newdim, drop=True):
     da_new = da.rename({olddim: newdim.name})
     # note that alignment along a dimension is skipped when you are overriding
     # the relevant coordinate values
-    da_new .coords[newdim.name] = newdim
+    da_new.coords[newdim.name] = newdim
     da_new  = da_new.reset_coords(drop=drop)
     return da_new
