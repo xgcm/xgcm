@@ -9,14 +9,43 @@ from xgcm.grid import _replace_dim, Axis
 
 from . datasets import all_datasets, nonperiodic_1d, periodic_1d
 
+# helper function to produce axes from datasets
+def _get_axes(ds):
+    all_axes = {ds[c].attrs['axis'] for c in ds.dims if 'axis' in ds[c].attrs}
+    axis_objs = {ax: Axis(ds, ax) for ax in all_axes}
+    return axis_objs
+
+
 def test_create_axis(all_datasets):
-    axis = Axis(all_datasets, 'X')
+    ds, expected = all_datasets
+    axis_objs = _get_axes(ds)
+    for ax_expected, coords_expected in expected['axes'].items():
+        assert ax_expected in axis_objs
+        this_axis = axis_objs[ax_expected]
+        for axis_name, coord_name in coords_expected.items():
+            assert axis_name in this_axis.coords
+            assert this_axis.coords[axis_name].name == coord_name
+
+
+def test_get_axis_coord(all_datasets):
+    ds, expected = all_datasets
+    axis_objs = _get_axes(ds)
+    for ax_name, axis in axis_objs.items():
+        # create a dataarray with each axis coordinate
+        for position, coord in axis.coords.items():
+            da = 1 * ds[coord.name]
+            assert axis._get_axis_coord(da) == (position, coord.name)
+
+
+
 
 def test_create_grid(all_datasets):
-    grid = Grid(all_datasets)
+    ds, expected = all_datasets
+    grid = Grid(ds)
 
 def test_grid_repr(all_datasets):
-    grid = Grid(all_datasets)
+    ds, expected = all_datasets
+    grid = Grid(ds)
     print(grid)
     r = repr(grid).split('\n')
     assert r[0] == "<xgcm.Grid>"
@@ -34,7 +63,7 @@ def test_replace_dim():
 
 def test_interp_c_to_g_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""
-    ds = periodic_1d
+    ds, expected = periodic_1d
 
     data_c = np.sin(ds['XC'])
     # np.roll(np.arange(5), 1) --> [4, 0, 1, 2, 3]
@@ -59,7 +88,7 @@ def test_interp_c_to_g_periodic(periodic_1d):
     np.testing.assert_allclose(data_g.values, data_expected)
 
 def test_diff_c_to_g_periodic(periodic_1d):
-    ds = periodic_1d
+    ds, expected = periodic_1d
 
     # a linear gradient in the ni direction
     data_c = np.sin(ds['XC'])
@@ -84,7 +113,7 @@ def test_diff_c_to_g_periodic(periodic_1d):
 
 def test_interp_g_to_c_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""
-    ds = periodic_1d
+    ds, expected = periodic_1d
 
     # a linear gradient in the ni direction
     data_g = np.sin(ds['XG'])
@@ -102,7 +131,7 @@ def test_interp_g_to_c_periodic(periodic_1d):
     np.testing.assert_allclose(data_c.values, data_expected)
 
 def test_diff_g_to_c_periodic(periodic_1d):
-    ds = periodic_1d
+    ds, expected = periodic_1d
 
     # a linear gradient in the ni direction
     data_g = np.sin(ds['XG'])
@@ -125,7 +154,7 @@ def test_diff_g_to_c_periodic(periodic_1d):
 def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
     """Interpolate from c grid to g grid."""
 
-    ds = nonperiodic_1d
+    ds, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.24
@@ -145,7 +174,7 @@ def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
 
 
 def test_diff_c_to_g_nonperiodic(nonperiodic_1d):
-    ds = nonperiodic_1d
+    ds, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.24
@@ -167,7 +196,7 @@ def test_diff_c_to_g_nonperiodic(nonperiodic_1d):
 def test_interp_g_to_c_nonperiodic(nonperiodic_1d):
     """Interpolate from g grid to c grid."""
 
-    ds = nonperiodic_1d
+    ds, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.43
@@ -189,7 +218,7 @@ def test_interp_g_to_c_nonperiodic(nonperiodic_1d):
 def test_diff_g_to_c_nonperiodic(nonperiodic_1d):
     """Interpolate from g grid to c grid."""
 
-    ds = nonperiodic_1d
+    ds, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.43

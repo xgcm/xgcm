@@ -6,7 +6,7 @@ import xarray as xr
 import numpy as np
 
 from . import comodo
-
+from .duck_array_ops import concatenate
 
 class Grid:
     """An object that knows how to interpolate and take derivatives."""
@@ -208,27 +208,29 @@ class Axis:
                 raise ValueError("Coordinate %s has invalid c_grid_axis_shift "
                                  "attribute `%g`" % (name, shift))
 
-        self._coords = axis_coords
+        self.coords = axis_coords
 
     def __repr__(self):
         is_periodic = 'periodic' if self._periodic else 'not periodic'
         summary = ["<xgcm.Axis '%s' %s>" % (self._name, is_periodic)]
         summary.append('Axis Coodinates:')
-        for name, coord in iteritems(self._coords):
+        for name, coord in iteritems(self.coords):
             coord_info = ('  * %-8s %s (%g)' % (name, coord.name, len(coord)))
             summary.append(coord_info)
         return '\n'.join(summary)
 
 
-    def interp(self, da, axis):
-        """Interpolate neighboring points to the intermediate grid point.
+    def interp(self, da, to=None):
+        """Interpolate neighboring points to the intermediate grid point along
+        this axis.
 
         PARAMETERS
         ----------
         da : xarray.DataArray
             The data to interpolate
-        axis: {'X', 'Y'}
-            The name of the axis along which to interpolate
+        to : {'face', 'left', 'right', 'face'}, optional
+            The grid position to which to interpolate. If not specified,
+            defaults will be inferred.
 
         RETURNS
         -------
@@ -243,15 +245,16 @@ class Axis:
         return self._neighbor_binary_func(da, axis, interp_function)
 
 
-    def diff(self, da, axis):
+    def diff(self, da, to=None):
         """Difference neighboring points to the intermediate grid point.
 
         PARAMETERS
         ----------
         da : xarray.DataArray
             The data to difference
-        axis: {'X', 'Y'}
-            The name of the axis along which to difference
+        to : {'face', 'left', 'right', 'face'}, optional
+            The grid position to which to interpolate. If not specified,
+            defaults will be inferred.
 
         RETURNS
         -------
@@ -266,84 +269,90 @@ class Axis:
         return self._neighbor_binary_func(da, axis, interp_function)
 
 
-    def _neighbor_binary_func(self, da, axis, f):
+    def _neighbor_binary_func(self, da, f, to):
         """Apply a function to neighboring points.
 
         PARAMETERS
         ----------
         da : xarray.DataArray
             The data to difference
-        axis: {'X', 'Y'}
-            The name of the axis along which to difference
         f : function
             With signature f(da_left, da_right, shift)
+        to : {'face', 'left', 'right', 'face'}
+            The grid position to which to interpolate. If not specified,
+            defaults will be inferred.
 
         RETURNS
         -------
         da_i : xarray.DataArray
             The differenced data
         """
-        # figure out of it's a c or g variable
-        ax = self._axes[axis]
-        is_cgrid = ax['c'] in da.dims
-        is_ggrid = ax['g'] in da.dims
 
-        if is_cgrid:
-            ax_name = ax['c']
-            new_coord = ax['g_coord']
-            shift = -ax['shift']
+        # get the two neighboring sets of raw data
+        data_left, data_right = self._get_neighbor_data_pairs(da, to)
+        # apply the function
+        data_new = f(data_left, data_right)
 
-        elif is_ggrid:
-            ax_name = ax['g']
-            new_coord = ax['c_coord']
-            shift = ax['shift']
+        # wrap in a new xarray wrapper
+        da_new = self._wrap_and_replace_coords(da, data_new, to)
+
+        return da_new
+
+
+    def _get_neighbor_data_pairs(self, da, position_to, boundary_cond=None):
+        """Returns da_left, da_right."""
+        position_from, dim = self._get_axis_coord(da)
+        # different cases for different relationships between coordinates
+        if position_from == position_to:
+            raise ValueError("Can't get neighbor pairs for the same position.")
+
+        transition = (position_from, position_to)
+
+        if transition == ('face', 'center'):
+            # doesn't matter if domain is periodic or not
+            left = da.isel(**{dim: slice(None, -1)}).data
+            right = da.isel(**{dim: slice(1, None)}).data
+        elif (self._periodic and (transition == ('face', 'left') or
+                                  (transition == ('right', 'face')))):
+            left = da.roll(**{dim: 1}).data
+            right = da.data
+        elif (self._periodic and (transition == ('face', 'right') or
+                                  (transition == ('left', 'face')))):
+            left = da.data
+            right = da.roll(**{dim: -1}).data
         else:
-            raise ValueError("Couldn't find an %s axis dimension in da" % axis)
+            is_periodic = 'periodic' if self._periodic else 'non-periodic'
+            raise NotImplementedError(' to '.join(transition) +
+                                      ' (%s) transition not yet supported.'
+                                      % is_periodic)
 
-        # shift data appropriately
-        # if the grid is not periodic, we will discard the invalid points later
-        da_shift = self.shift(da, ax_name, shift)
+    def _wrap_and_replace_coords(self, da, data_new, position_to):
+        position_from, old_dim = self._get_axis_coord(da)
+        new_coord = self.coords[position_to]
+        new_dim = new_coord.name
 
-        data_new = f(da_shift.data, da.data, shift)
+        orig_dims = da.dims
 
-        # wrap in a new DataArray
-        da_i = da.copy()
-        da_i.data = data_new
-
-        # we might need to truncate or pad the data
-        if is_ggrid:
-            if ax['pad']:
-                # truncate
-                if ax['shift']==1:
-                    da_i = da_i.isel(**{ax_name: slice(1,None)})
-                elif ax['shift']==-1:
-                    da_i = da_i.isel(**{ax_name: slice(0,-1)})
+        coords = OrderedDict()
+        dims = []
+        for d in orig_dims:
+            if d == old_dim:
+                dims.append[new_dim]
+                coords[new_dim] = new_coord
             else:
-                # deal with non-periodic case
-                pass
-        elif is_cgrid:
-            # here the behavior depends on whether the data is periodic
-            if ax['pad'] and self._periodic[axis]:
-                raise NotImplementedError("Don't know how to pad periodic "
-                                          "dims.")
-            elif ax['pad'] and not self._periodic[axis]:
-                # need to snip data from both sides
-                new_coord = new_coord[1:-1]
-                # and coordinate from one side
-                if ax['shift']==1:
-                    da_i = da_i.isel(**{ax_name: slice(0,-1)})
-                elif ax['shift']==-1:
-                    da_i = da_i.isel(**{ax_name: slice(1,None)})
+                dims.append[d]
+                coords[d] = da.coords[d]
 
-        da_i = _replace_dim(da_i, ax_name, new_coord)
-        return da_i
+        return xr.DataArray(data_new, dims=dims, coords=coords)
 
-    def shift(self, da, dim, shift):
-        """Shift the values of da along the specified dimension.
+
+    def _get_axis_coord(self, da):
+        """Return the position and name of the axis coordiante in a DataArray.
         """
-        # TODO: generalize rolling function, allow custom shifts, handle
-        # boundary conditions, etc.
-        return da.roll(**{dim: shift})
+        for position, coord in iteritems(self.coords):
+            # TODO: should we have more careful checking of alignment here?
+            if coord.name in da.dims:
+                return position, coord.name
 
 
 def _replace_dim(da, olddim, newdim, drop=True):
