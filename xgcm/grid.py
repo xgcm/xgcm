@@ -238,11 +238,11 @@ class Axis:
             The interpolated data
         """
 
-        def interp_function(data_left, data_right, shift):
+        def interp_function(data_left, data_right):
             # linear, centered interpolation
             # TODO: generalize to higher order interpolation
             return 0.5*(data_left + data_right)
-        return self._neighbor_binary_func(da, axis, interp_function)
+        return self._neighbor_binary_func(da, interp_function, to)
 
 
     def diff(self, da, to=None):
@@ -262,11 +262,9 @@ class Axis:
             The differenced data
         """
 
-        def interp_function(data_left, data_right, shift):
-            # linear, centered interpolation
-            # TODO: generalize to higher order interpolation
-            return shift*(data_right - data_left)
-        return self._neighbor_binary_func(da, axis, interp_function)
+        def diff_function(data_left, data_right):
+            return data_right - data_left
+        return self._neighbor_binary_func(da, diff_function, to)
 
 
     def _neighbor_binary_func(self, da, f, to):
@@ -300,7 +298,7 @@ class Axis:
 
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary_cond=None):
-        """Returns da_left, da_right."""
+        """Returns data_left, data_right."""
         position_from, dim = self._get_axis_coord(da)
         # different cases for different relationships between coordinates
         if position_from == position_to:
@@ -312,12 +310,12 @@ class Axis:
             # doesn't matter if domain is periodic or not
             left = da.isel(**{dim: slice(None, -1)}).data
             right = da.isel(**{dim: slice(1, None)}).data
-        elif (self._periodic and (transition == ('face', 'left') or
-                                  (transition == ('right', 'face')))):
+        elif (self._periodic and (transition == ('center', 'left') or
+                                  (transition == ('right', 'center')))):
             left = da.roll(**{dim: 1}).data
             right = da.data
-        elif (self._periodic and (transition == ('face', 'right') or
-                                  (transition == ('left', 'face')))):
+        elif (self._periodic and (transition == ('center', 'right') or
+                                  (transition == ('left', 'center')))):
             left = da.data
             right = da.roll(**{dim: -1}).data
         else:
@@ -326,9 +324,17 @@ class Axis:
                                       ' (%s) transition not yet supported.'
                                       % is_periodic)
 
+        return left, right
+
     def _wrap_and_replace_coords(self, da, data_new, position_to):
+        """Take the base coords from da, the data from data_new, and return
+        a new DataArray with a coordinate on position_to."""
         position_from, old_dim = self._get_axis_coord(da)
-        new_coord = self.coords[position_to]
+        try:
+            new_coord = self.coords[position_to]
+        except KeyError:
+            raise KeyError("Position '%s' was not found in axis.coords."
+                           % position_to)
         new_dim = new_coord.name
 
         orig_dims = da.dims
@@ -337,10 +343,10 @@ class Axis:
         dims = []
         for d in orig_dims:
             if d == old_dim:
-                dims.append[new_dim]
+                dims.append(new_dim)
                 coords[new_dim] = new_coord
             else:
-                dims.append[d]
+                dims.append(d)
                 coords[d] = da.coords[d]
 
         return xr.DataArray(data_new, dims=dims, coords=coords)

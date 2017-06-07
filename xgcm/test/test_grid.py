@@ -7,7 +7,7 @@ import numpy as np
 from xgcm import Grid
 from xgcm.grid import _replace_dim, Axis
 
-from . datasets import all_datasets, nonperiodic_1d, periodic_1d
+from . datasets import all_datasets, nonperiodic_1d, periodic_1d, periodic_2d
 
 # helper function to produce axes from datasets
 def _get_axes(ds):
@@ -37,7 +37,92 @@ def test_get_axis_coord(all_datasets):
             assert axis._get_axis_coord(da) == (position, coord.name)
 
 
+def test_axis_wrap_and_replace_2d(periodic_2d):
+    ds, expected = periodic_2d
+    axis_objs = _get_axes(ds)
 
+    da_xc_yc = 0 * ds.XC * ds.YC + 1
+    da_xc_yg = 0 * ds.XC * ds.YG + 1
+    da_xg_yc = 0 * ds.XG * ds.YC + 1
+
+    da_xc_yg_test = axis_objs['Y']._wrap_and_replace_coords(
+                        da_xc_yc, da_xc_yc.data, 'left')
+    assert da_xc_yg.equals(da_xc_yg_test)
+
+    da_xg_yc_test = axis_objs['X']._wrap_and_replace_coords(
+                        da_xc_yc, da_xc_yc.data, 'left')
+    assert da_xg_yc.equals(da_xg_yc_test)
+
+
+def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
+    ds, expected = nonperiodic_1d
+    axis = Axis(ds, 'X')
+
+    da_ni = 0 * ds.ni + 1
+    da_ni_u = 0 * ds.ni_u + 1
+
+    da_ni_u_test = axis._wrap_and_replace_coords(da_ni, da_ni_u.data, 'face')
+    assert da_ni_u.equals(da_ni_u_test)
+
+    da_ni_test = axis._wrap_and_replace_coords(da_ni_u, da_ni.data, 'center')
+    assert da_ni.equals(da_ni_test)
+
+
+def test_axis_neighbor_pairs(nonperiodic_1d):
+    ds, expected = nonperiodic_1d
+    axis = Axis(ds, 'X')
+
+    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni_u, 'center')
+    np.testing.assert_allclose(data_left, ds.data_ni_u.data[:-1])
+    np.testing.assert_allclose(data_right, ds.data_ni_u.data[1:])
+
+    with pytest.raises(NotImplementedError):
+        _, _ = axis._get_neighbor_data_pairs(ds.data_ni, 'face')
+
+
+def test_axis_neighbor_pairs_2d(periodic_2d):
+    ds, expected = periodic_2d
+
+    x_axis = Axis(ds, 'X')
+    y_axis = Axis(ds, 'Y')
+
+    cases = [
+        # varname   #axis    #to   #roll args # order
+        ('data_cc', x_axis, 'left', 1, 1, False),
+        ('data_cc', y_axis, 'left', 1, 0, False),
+        ('data_gg', x_axis, 'center', -1, 1, True),
+        ('data_gg', y_axis, 'center', -1, 0, True)
+    ]
+
+    for varname, axis, to, roll, roll_axis, swap_order in cases:
+        data = ds[varname]
+        data_left, data_right = axis._get_neighbor_data_pairs(data, to)
+        if swap_order:
+            data_left, data_right = data_right, data_left
+        np.testing.assert_allclose(data_left, np.roll(data.data,
+                                                      roll, axis=roll_axis))
+        np.testing.assert_allclose(data_right, data.data)
+
+
+def test_axis_diff_and_interp(nonperiodic_1d):
+    ds, expected = nonperiodic_1d
+    axis = Axis(ds, 'X')
+
+    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni_u, 'center')
+    data_left = ds.data_ni_u.data[:-1]
+    data_right = ds.data_ni_u.data[1:]
+
+    # interpolate
+    data_interp_expected = xr.DataArray(0.5 * (data_left + data_right),
+                                        dims=['ni'], coords={'ni': ds.ni})
+    data_interp = axis.interp(ds.data_ni_u, 'center')
+    assert data_interp_expected.equals(data_interp)
+
+    # difference
+    data_diff_expected = xr.DataArray(data_right - data_left,
+                                      dims=['ni'], coords={'ni': ds.ni})
+    data_diff = axis.diff(ds.data_ni_u, 'center')
+    assert data_diff_expected.equals(data_diff)
 
 def test_create_grid(all_datasets):
     ds, expected = all_datasets
