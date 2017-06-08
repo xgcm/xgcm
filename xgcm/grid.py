@@ -11,8 +11,7 @@ from .duck_array_ops import concatenate
 class Grid:
     """An object that knows how to interpolate and take derivatives."""
 
-    def __init__(self, ds, check_dims=True, x_periodic=True, y_periodic=True,
-                 z_periodic=False):
+    def __init__(self, ds, check_dims=True, periodic=True):
         """Create a new Grid object from an input dataset.
 
         PARAMETERS
@@ -23,12 +22,10 @@ class Grid:
         check_dims : bool, optional
             Whether to check the compatibility of input data dimensions before
             performing grid operations.
-        x_periodic : bool, optional
-            Whether the domain is periodic in the X direction.
-        y_periodic : bool, optional
-            Whether the domain is periodic in the Y direction.
-        y_periodic : bool, optional
-            Whether the domain is periodic in the Z direction.
+        periodic : {True, False, list}
+            Whether the grid is periodic (i.e. "wrap-around"). If a list is
+            specified (e.g. `['X', 'Y']`), the axis names in the list will be
+            be periodic and any other axes founds will be assumed non-periodic.
 
         REFERENCES
         ----------
@@ -36,73 +33,24 @@ class Grid:
         """
         self._ds = ds
         self._check_dims = check_dims
-        self._periodic = {'X': x_periodic, 'Y': y_periodic, 'Z': z_periodic}
 
-        self._axes = OrderedDict()
-        for ax in ['X', 'Y']:
-            # figure out what the grid dimensions are
-            coord_names = comodo.get_axis_coords(ds, ax)
-            ncoords = len(coord_names)
-            if ncoords == 0:
-                # didn't find anything for this axis
-                pass
-            else:
-                if ncoords != 2:
-                    raise ValueError('Must have two different %s coordinates. '
-                                     'Instead got %s' % (ax, repr(coord_names)))
-                axis_data = OrderedDict()
-                for name in coord_names:
-                    coord = ds[name]
-                    axis_shift = coord.attrs.get('c_grid_axis_shift')
-                    if (axis_shift is None) or (axis_shift == 0):
-                        # we found the center coordinate
-                        axis_data['c'] = name
-                        axis_data['c_coord'] = coord
-                    elif (axis_shift==0.5) or (axis_shift==-0.5):
-                        # we found the face coordinate
-                        axis_data['g'] = name
-                        axis_data['g_coord'] = coord
-                        # TODO: clearly document the sign convention
-                        axis_data['shift'] = 1 if axis_shift==0.5 else -1
-                    else:
-                        raise ValueError('Invalid c_grid_axis_shift (%g) for '
-                                         'coord %s' % (axis_shift, name))
-                self._axes[ax] = axis_data
+        all_axes = comodo.get_all_axes(ds)
 
-        # check grid size consistency
-        # we can deal with two cases:
-        #  * the c dim and g dim are the same size
-        #  * the g dim is one element longer than the c dim
-        # define a slice used to subset
-        for ax, info in iteritems(self._axes):
-            clen = len(info['c_coord'])
-            glen = len(info['g_coord'])
-            if clen==glen:
-                # all good
-                self._axes[ax]['pad'] = 0
-            elif clen==(glen - 1):
-                self._axes[ax]['pad'] = 1
-            else:
-                raise ValueError("Incompatible c and g dimension lengths on "
-                                 "axis %s (%g, %g)" % (ax, clen, glen))
-
+        self.axes = OrderedDict()
+        for axis_name in all_axes:
+            try:
+                is_periodic = axis_name in periodic
+            except TypeError:
+                is_periodic = periodic
+            self.axes[axis_name] = Axis(ds, axis_name, is_periodic)
 
 
     def __repr__(self):
         summary = ['<xgcm.Grid>']
-
-        for ax, info in iteritems(self._axes):
-            axis_info = ('%s-axis:     %s: %g (cell center), %s: %g '
-                         '(cell face, shift %g)' %
-                         (ax, info['c'], len(info['c_coord']),
-                          info['g'], len(info['g_coord']), info['shift']))
-            if info['pad']:
-                axis_info += ' padded,'
-            if self._periodic[ax]:
-                axis_info += ' periodic'
-            else:
-                axis_info += ' non-periodic'
-            summary.append(axis_info)
+        for name, axis in iteritems(self.axes):
+            is_periodic = 'periodic' if axis._periodic else 'not periodic'
+            summary.append('%s Axis (%s):' % (name, is_periodic))
+            summary += axis._coord_desc()
         return '\n'.join(summary)
 
 
@@ -130,7 +78,7 @@ class Axis:
     the `c_grid_axis_shift` attribute.
     """
 
-    def __init__(self, ds, axis_name, periodic=True):
+    def __init__(self, ds, axis_name, periodic=True, default_shifts={}):
         """Create a new Axis object from an input dataset.
 
         PARAMETERS
@@ -142,6 +90,9 @@ class Axis:
             The name of the axis (should match axis attribute)
         periodic : bool, optional
             Whether the domain is periodic along this axis
+        default_shifts : dict, optional
+            Default mapping from and to grid positions (e.g. {'XC': 'XG'}).
+            Will be inferred if not specified.
         """
         self._ds = ds
         self._name = axis_name
@@ -210,14 +161,36 @@ class Axis:
 
         self.coords = axis_coords
 
+        # set default position shifts
+        fallback_shifts = {'center': ('left', 'right', 'face'),
+                           'left': ('center',), 'right': ('center',),
+                           'face': ('center',)}
+        self._default_shifts = {}
+        for pos in axis_coords:
+            # use user-specified value if present
+            if pos in default_shifts:
+                self._default_shifts[pos] = default_shifts[pos]
+            else:
+                for possible_shift in fallback_shifts[pos]:
+                    if possible_shift in axis_coords:
+                        self._default_shifts[pos] = possible_shift
+                        break
+
     def __repr__(self):
         is_periodic = 'periodic' if self._periodic else 'not periodic'
         summary = ["<xgcm.Axis '%s' %s>" % (self._name, is_periodic)]
         summary.append('Axis Coodinates:')
+        summary += self._coord_desc()
+        return '\n'.join(summary)
+
+    def _coord_desc(self):
+        summary = []
         for name, coord in iteritems(self.coords):
             coord_info = ('  * %-8s %s (%g)' % (name, coord.name, len(coord)))
+            if name in self._default_shifts:
+                coord_info += ' --> %s' % self._default_shifts[name]
             summary.append(coord_info)
-        return '\n'.join(summary)
+        return summary
 
 
     def interp(self, da, to=None):

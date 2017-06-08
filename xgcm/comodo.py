@@ -14,6 +14,14 @@ def assert_valid_comodo(ds):
     assert True
 
 
+def get_all_axes(ds):
+    axes = set()
+    for d in ds.dims:
+        if 'axis' in ds[d].attrs:
+            axes.add(ds[d].attrs['axis'])
+    return axes
+
+
 def get_axis_coords(ds, axis_name):
     """Find the name of the coordinates associated with a comodo axis.
 
