@@ -104,7 +104,7 @@ def test_axis_neighbor_pairs_2d(periodic_2d):
         np.testing.assert_allclose(data_right, data.data)
 
 
-def test_axis_diff_and_interp(nonperiodic_1d):
+def test_axis_diff_and_interp_nonperiodic(nonperiodic_1d):
     ds, expected = nonperiodic_1d
     axis = Axis(ds, 'X')
 
@@ -124,9 +124,59 @@ def test_axis_diff_and_interp(nonperiodic_1d):
     data_diff = axis.diff(ds.data_ni_u, 'center')
     assert data_diff_expected.equals(data_diff)
 
+
+def test_axis_diff_and_interp_periodic_2d(periodic_2d):
+    ds, expected = periodic_2d
+
+    x_axis = Axis(ds, 'X')
+    y_axis = Axis(ds, 'Y')
+
+    cases = [
+        # varname   #axis    #to   #roll args # order
+        ('data_cc', x_axis, 'left', 1, 1, False),
+        ('data_cc', y_axis, 'left', 1, 0, False),
+        ('data_gg', x_axis, 'center', -1, 1, True),
+        ('data_gg', y_axis, 'center', -1, 0, True)
+    ]
+
+    axis_lookups = {'XC': 'XG', 'XG': 'XC', 'YC': 'YG', 'YG': 'YG'}
+    for varname, axis, to, roll, roll_axis, swap_order in cases:
+        da = ds[varname]
+        data = da.data
+        data_roll = np.roll(data.data, roll, axis=roll_axis)
+        if swap_order:
+            data, data_roll = data_roll, data
+        data_interp = 0.5 * (data + data_roll)
+        data_diff = data - data_roll
+
+        # determine new dims
+        dims = list(da.dims)
+        dims[roll_axis] = axis_lookups[dims[roll_axis]]
+        coords = {dim: ds[dim] for dim in dims}
+
+        da_interp_expected = xr.DataArray(data_interp, dims=dims, coords=coords)
+        da_diff_expected = xr.DataArray(data_diff, dims=dims, coords=coords)
+
+        assert da_interp_expected.equals(axis.interp(da, to))
+        assert da_diff_expected.equals(axis.diff(da, to))
+
+
+    # interpolate
+    data_interp_expected = xr.DataArray(0.5 * (data_left + data_right),
+                                        dims=['ni'], coords={'ni': ds.ni})
+    data_interp = axis.interp(ds.data_ni_u, 'center')
+    assert data_interp_expected.equals(data_interp)
+
+    # difference
+    data_diff_expected = xr.DataArray(data_right - data_left,
+                                      dims=['ni'], coords={'ni': ds.ni})
+    data_diff = axis.diff(ds.data_ni_u, 'center')
+    assert data_diff_expected.equals(data_diff)
+
 def test_create_grid(all_datasets):
     ds, expected = all_datasets
     grid = Grid(ds)
+
 
 def test_grid_repr(all_datasets):
     ds, expected = all_datasets
