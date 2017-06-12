@@ -117,12 +117,16 @@ def test_axis_diff_and_interp_nonperiodic(nonperiodic_1d):
                                         dims=['ni'], coords={'ni': ds.ni})
     data_interp = axis.interp(ds.data_ni_u, 'center')
     assert data_interp_expected.equals(data_interp)
+    # check without "to" specified
+    assert data_interp.equals(axis.interp(ds.data_ni_u))
 
     # difference
     data_diff_expected = xr.DataArray(data_right - data_left,
                                       dims=['ni'], coords={'ni': ds.ni})
     data_diff = axis.diff(ds.data_ni_u, 'center')
     assert data_diff_expected.equals(data_diff)
+    # check without "to" specified
+    assert data_diff.equals(axis.diff(ds.data_ni_u))
 
 
 def test_axis_diff_and_interp_periodic_2d(periodic_2d):
@@ -163,6 +167,10 @@ def test_axis_diff_and_interp_periodic_2d(periodic_2d):
         assert da_interp_expected.equals(da_interp)
         assert da_diff_expected.equals(da_diff)
 
+        # now make sure the defaults work (don't specify to)
+        assert da_interp.equals(axis.interp(da))
+        assert da_diff.equals(axis.diff(da))
+
 
 def test_create_grid(all_datasets):
     ds, expected = all_datasets
@@ -175,8 +183,7 @@ def test_grid_repr(all_datasets):
     print(grid)
     r = repr(grid).split('\n')
     assert r[0] == "<xgcm.Grid>"
-    # all datasets should have at least an X axis
-    assert r[1].startswith('X-axis:')
+
 
 def test_replace_dim():
     orig = xr.DataArray(np.random.rand(10),
@@ -287,7 +294,7 @@ def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
     data_c = grad * ds['ni']
     data_expected = 0.5 * (data_c.values[1:] + data_c.values[:-1])
 
-    grid = Grid(ds, x_periodic=False)
+    grid = Grid(ds, periodic=False)
     data_u = grid.interp(data_c, 'X')
 
     # check that the dimensions are right
@@ -307,7 +314,7 @@ def test_diff_c_to_g_nonperiodic(nonperiodic_1d):
     data_c = grad * ds['ni']
     data_expected = data_c.values[1:] - data_c.values[:-1]
 
-    grid = Grid(ds, x_periodic=False)
+    grid = Grid(ds, periodic=False)
     data_u = grid.diff(data_c, 'X')
 
     # check that the dimensions are right
@@ -329,7 +336,7 @@ def test_interp_g_to_c_nonperiodic(nonperiodic_1d):
     data_u = grad * ds['ni_u']
     data_expected = 0.5 * (data_u.values[1:] + data_u.values[:-1])
 
-    grid = Grid(ds, x_periodic=False)
+    grid = Grid(ds, periodic=False)
     data_c = grid.interp(data_u, 'X')
 
     # check that the dimensions are right
@@ -351,7 +358,7 @@ def test_diff_g_to_c_nonperiodic(nonperiodic_1d):
     data_u = grad * ds['ni_u']
     data_expected = data_u.values[1:] - data_u.values[:-1]
 
-    grid = Grid(ds, x_periodic=False)
+    grid = Grid(ds, periodic=False)
     data_c = grid.diff(data_u, 'X')
 
     # check that the dimensions are right

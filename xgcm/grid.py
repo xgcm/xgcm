@@ -11,7 +11,7 @@ from .duck_array_ops import concatenate
 class Grid:
     """An object that knows how to interpolate and take derivatives."""
 
-    def __init__(self, ds, check_dims=True, periodic=True):
+    def __init__(self, ds, check_dims=True, periodic=True, default_shifts={}):
         """Create a new Grid object from an input dataset.
 
         PARAMETERS
@@ -26,6 +26,9 @@ class Grid:
             Whether the grid is periodic (i.e. "wrap-around"). If a list is
             specified (e.g. `['X', 'Y']`), the axis names in the list will be
             be periodic and any other axes founds will be assumed non-periodic.
+        default_shifts : dict
+            A dictionary of dictionaries specifying default grid position
+            shifts (e.g. `{'X': {'center': 'left', 'left': 'center'}}`)
 
         REFERENCES
         ----------
@@ -42,7 +45,12 @@ class Grid:
                 is_periodic = axis_name in periodic
             except TypeError:
                 is_periodic = periodic
-            self.axes[axis_name] = Axis(ds, axis_name, is_periodic)
+            if axis_name in default_shifts:
+                axis_default_shifts = default_shifts[axis_name]
+            else:
+                axis_default_shifts = {}
+            self.axes[axis_name] = Axis(ds, axis_name, is_periodic,
+                                        default_shifts=axis_default_shifts)
 
 
     def __repr__(self):
@@ -52,6 +60,53 @@ class Grid:
             summary.append('%s Axis (%s):' % (name, is_periodic))
             summary += axis._coord_desc()
         return '\n'.join(summary)
+
+
+    def interp(self, da, axis, to=None):
+        """Interpolate neighboring points to the intermediate grid point along
+        this axis.
+
+        PARAMETERS
+        ----------
+        da : xarray.DataArray
+            The data to interpolate
+        axis : str
+            Name of the axis on whhich ot act
+        to : {'face', 'left', 'right', 'face'}, optional
+            The grid position to which to interpolate. If not specified,
+            defaults will be inferred.
+
+        RETURNS
+        -------
+        da_i : xarray.DataArray
+            The interpolated data
+        """
+
+        ax = self.axes[axis]
+        return ax.interp(da, to=to)
+
+
+    def diff(self, da, axis, to=None):
+        """Difference neighboring points to the intermediate grid point.
+
+        PARAMETERS
+        ----------
+        da : xarray.DataArray
+            The data to difference
+        axis : str
+            Name of the axis on whhich ot act
+        to : {'face', 'left', 'right', 'face'}, optional
+            The grid position to which to interpolate. If not specified,
+            defaults will be inferred.
+
+        RETURNS
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+        """
+
+        ax = self.axes[axis]
+        return ax.diff(da, to=to)
 
 
 class Axis:
@@ -91,8 +146,8 @@ class Axis:
         periodic : bool, optional
             Whether the domain is periodic along this axis
         default_shifts : dict, optional
-            Default mapping from and to grid positions (e.g. {'XC': 'XG'}).
-            Will be inferred if not specified.
+            Default mapping from and to grid positions
+            (e.g. `{'center': 'left'}`). Will be inferred if not specified.
         """
         self._ds = ds
         self._name = axis_name
@@ -259,6 +314,10 @@ class Axis:
             The differenced data
         """
 
+        position_from, dim = self._get_axis_coord(da)
+        if to is None:
+            to = self._default_shifts[position_from]
+
         # get the two neighboring sets of raw data
         data_left, data_right = self._get_neighbor_data_pairs(da, to)
         # apply the function
@@ -272,7 +331,9 @@ class Axis:
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary_cond=None):
         """Returns data_left, data_right."""
+
         position_from, dim = self._get_axis_coord(da)
+
         # different cases for different relationships between coordinates
         if position_from == position_to:
             raise ValueError("Can't get neighbor pairs for the same position.")
