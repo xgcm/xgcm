@@ -86,7 +86,8 @@ datasets = {
 expected_values = {
     'nonperiodic_1d': {'axes': {'X': {'center': 'ni', 'face': 'ni_u'}}},
     'periodic_1d_left': {'axes': {'X': {'center': 'XC', 'left': 'XG'}}},
-    'periodic_1d_right': {'axes': {'X': {'center': 'XC', 'right': 'XG'}}},
+    'periodic_1d_right': {'axes': {'X': {'center': 'XC', 'right': 'XG'}},
+                          'shift': True},
     'periodic_2d_left': {'axes': {'X': {'center': 'XC', 'left': 'XG'},
                              'Y': {'center': 'YC', 'left': 'YG'}}}
 }

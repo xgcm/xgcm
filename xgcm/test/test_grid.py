@@ -197,11 +197,13 @@ def test_replace_dim():
 def test_interp_c_to_g_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""
     ds, expected = periodic_1d
+    reverse_shift = expected.get('shift') or False
+    roll = -1 if reverse_shift else 1
 
     data_c = np.sin(ds['XC'])
     # np.roll(np.arange(5), 1) --> [4, 0, 1, 2, 3]
     # positive roll shifts left
-    data_expected = 0.5 * (data_c.values + np.roll(data_c.values, 1))
+    data_expected = 0.5 * (data_c.values + np.roll(data_c.values, roll))
 
     grid = Grid(ds)
     data_g = grid.interp(data_c, 'X')
@@ -222,10 +224,12 @@ def test_interp_c_to_g_periodic(periodic_1d):
 
 def test_diff_c_to_g_periodic(periodic_1d):
     ds, expected = periodic_1d
+    reverse_shift = expected.get('shift') or False
+    roll = -1 if reverse_shift else 1
 
     # a linear gradient in the ni direction
     data_c = np.sin(ds['XC'])
-    data_expected = data_c.values - np.roll(data_c.values, 1)
+    data_expected = roll*(data_c.values - np.roll(data_c.values, roll))
 
     grid = Grid(ds)
     data_g = grid.diff(data_c, 'X')
@@ -248,9 +252,12 @@ def test_interp_g_to_c_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""
     ds, expected = periodic_1d
 
+    reverse_shift = expected.get('shift') or False
+    roll = 1 if reverse_shift else -1
+
     # a linear gradient in the ni direction
     data_g = np.sin(ds['XG'])
-    data_expected = 0.5 * (data_g.values + np.roll(data_g.values, -1))
+    data_expected = 0.5 * (data_g.values + np.roll(data_g.values, roll))
 
     grid = Grid(ds)
     data_c = grid.interp(data_g, 'X')
@@ -266,11 +273,13 @@ def test_interp_g_to_c_periodic(periodic_1d):
 def test_diff_g_to_c_periodic(periodic_1d):
     ds, expected = periodic_1d
 
+    reverse_shift = expected.get('shift') or False
     # a linear gradient in the ni direction
     data_g = np.sin(ds['XG'])
     # np.roll(np.arange(5), -1) --> [1, 2, 3, 4, 0]
     # negative roll shifts right
-    data_expected = np.roll(data_g.values, -1) - data_g.values
+    roll = 1 if reverse_shift else -1
+    data_expected = (-roll)*(np.roll(data_g.values, roll) - data_g.values)
     #data_expected = np.cos(ds['XC']).values * (2*np.pi) / 100.
 
     grid = Grid(ds)
@@ -284,6 +293,7 @@ def test_diff_g_to_c_periodic(periodic_1d):
     # check that the values are right
     np.testing.assert_allclose(data_c.values, data_expected)
 
+@pytest.mark.xfail(reason='Not implemented yet')
 def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
     """Interpolate from c grid to g grid."""
 
@@ -305,7 +315,7 @@ def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
     # check that the values are right
     np.testing.assert_allclose(data_u.values, data_expected)
 
-
+@pytest.mark.xfail(reason='Not implemented yet')
 def test_diff_c_to_g_nonperiodic(nonperiodic_1d):
     ds, expected = nonperiodic_1d
 
