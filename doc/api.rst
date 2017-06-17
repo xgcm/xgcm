@@ -4,5 +4,5 @@ API
 Grid
 ====
 
-.. autoclass:: xgcm.Grid
+.. automodule:: xgcm.grid
    :members:
