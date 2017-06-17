@@ -4,8 +4,7 @@ import pytest
 import xarray as xr
 import numpy as np
 
-from xgcm import Grid
-from xgcm.grid import _replace_dim, Axis
+from xgcm.grid import Grid, Axis
 
 from . datasets import all_datasets, nonperiodic_1d, periodic_1d, periodic_2d
 
@@ -184,15 +183,6 @@ def test_grid_repr(all_datasets):
     r = repr(grid).split('\n')
     assert r[0] == "<xgcm.Grid>"
 
-
-def test_replace_dim():
-    orig = xr.DataArray(np.random.rand(10),
-                        coords={'x': (['x'], np.arange(10))},
-                        dims=['x'])
-    new_ds = xr.Dataset(coords={'xnew': (['xnew'], 5*np.arange(10))})
-    new = _replace_dim(orig, 'x', new_ds.xnew, drop=True)
-    assert new.dims == ('xnew',)
-    assert new_ds.xnew.equals(new.xnew)
 
 def test_interp_c_to_g_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""

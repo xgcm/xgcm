@@ -1,12 +1,15 @@
 from __future__ import print_function
+from __future__ import absolute_import
 from future.utils import iteritems
 from collections import OrderedDict
-import pytest
+import docrep
 import xarray as xr
 import numpy as np
 
 from . import comodo
 from .duck_array_ops import concatenate
+
+docstrings = docrep.DocstringProcessor(doc_key='My doc string')
 
 class Grid:
     """An object that knows how to interpolate and take derivatives."""
@@ -14,7 +17,7 @@ class Grid:
     def __init__(self, ds, check_dims=True, periodic=True, default_shifts={}):
         """Create a new Grid object from an input dataset.
 
-        PARAMETERS
+        Parameters
         ----------
         ds : xarray.Dataset
             Contains the relevant grid information. Coordinate attributes
@@ -66,7 +69,7 @@ class Grid:
         """Interpolate neighboring points to the intermediate grid point along
         this axis.
 
-        PARAMETERS
+        Parameters
         ----------
         da : xarray.DataArray
             The data to interpolate
@@ -76,7 +79,7 @@ class Grid:
             The grid position to which to interpolate. If not specified,
             defaults will be inferred.
 
-        RETURNS
+        Returns
         -------
         da_i : xarray.DataArray
             The interpolated data
@@ -89,7 +92,7 @@ class Grid:
     def diff(self, da, axis, to=None):
         """Difference neighboring points to the intermediate grid point.
 
-        PARAMETERS
+        Parameters
         ----------
         da : xarray.DataArray
             The data to difference
@@ -99,7 +102,7 @@ class Grid:
             The grid position to which to interpolate. If not specified,
             defaults will be inferred.
 
-        RETURNS
+        Returns
         -------
         da_i : xarray.DataArray
             The differenced data
@@ -136,7 +139,7 @@ class Axis:
     def __init__(self, ds, axis_name, periodic=True, default_shifts={}):
         """Create a new Axis object from an input dataset.
 
-        PARAMETERS
+        Parameters
         ----------
         ds : xarray.Dataset
             Contains the relevant grid information. Coordinate attributes
@@ -248,67 +251,38 @@ class Axis:
         return summary
 
 
-    def interp(self, da, to=None):
-        """Interpolate neighboring points to the intermediate grid point along
-        this axis.
 
-        PARAMETERS
-        ----------
-        da : xarray.DataArray
-            The data to interpolate
-        to : {'face', 'left', 'right', 'face'}, optional
-            The grid position to which to interpolate. If not specified,
-            defaults will be inferred.
-
-        RETURNS
-        -------
-        da_i : xarray.DataArray
-            The interpolated data
-        """
-
-        def interp_function(data_left, data_right):
-            # linear, centered interpolation
-            # TODO: generalize to higher order interpolation
-            return 0.5*(data_left + data_right)
-        return self._neighbor_binary_func(da, interp_function, to)
-
-
-    def diff(self, da, to=None):
-        """Difference neighboring points to the intermediate grid point.
-
-        PARAMETERS
-        ----------
-        da : xarray.DataArray
-            The data to difference
-        to : {'face', 'left', 'right', 'face'}, optional
-            The grid position to which to interpolate. If not specified,
-            defaults will be inferred.
-
-        RETURNS
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-
-        def diff_function(data_left, data_right):
-            return data_right - data_left
-        return self._neighbor_binary_func(da, diff_function, to)
-
-
+    @docstrings.get_sectionsf('neighbor_binary_func')
+    @docstrings.dedent
     def _neighbor_binary_func(self, da, f, to):
-        """Apply a function to neighboring points.
+        """
+        Apply a function to neighboring points.
 
-        PARAMETERS
+        Parameters
         ----------
         da : xarray.DataArray
-            The data to difference
+            The data on which to operate
         f : function
             With signature f(da_left, da_right, shift)
         to : {'face', 'left', 'right', 'face'}
-            The grid position to which to interpolate. If not specified,
-            defaults will be inferred.
+            The direction in which to shift the array. If not specified,
+            default will be used.
+        boundary : {None, 'dirichlet', 'neumann'}
+            A flag indicating how to handle boundaries:
+            * None
+               Do not apply any boundary conditions. Raise an error if boundary
+               conditions are required for the operation.
+            * 'dirichlet'
+               The value of the array at the boundary point is specified by
+               `fill_value`.
+            * 'neumann'
+               The value of the array diff at the boundary point is
+               specified[1]_ by `fill_value`.
+        fill_value : float, optional
+             The value to use outside the array when using `boundary='dirichlet'`
+             or `boundary='neumann'`
 
-        RETURNS
+        Returns
         -------
         da_i : xarray.DataArray
             The differenced data
@@ -327,6 +301,54 @@ class Axis:
         da_new = self._wrap_and_replace_coords(da, data_new, to)
 
         return da_new
+
+    docstrings.delete_params('neighbor_binary_func.parameters', 'f')
+
+
+    @docstrings.dedent
+    def interp(self, da, to=None):
+        """
+        Interpolate neighboring points to the intermediate grid point along
+        this axis.
+
+        Parameters
+        ----------
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The interpolated data
+
+        .. [1] https://en.wikipedia.org/wiki/Dirichlet_boundary_condition
+        .. [2] https://en.wikipedia.org/wiki/Neumann_boundary_condition
+        """
+
+        def interp_function(data_left, data_right):
+            # linear, centered interpolation
+            # TODO: generalize to higher order interpolation
+            return 0.5*(data_left + data_right)
+        return self._neighbor_binary_func(da, interp_function, to)
+
+
+    @docstrings.dedent
+    def diff(self, da, to=None):
+        """
+        Difference neighboring points to the intermediate grid point.
+
+        Parameters
+        ----------
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+        """
+
+        def diff_function(data_left, data_right):
+            return data_right - data_left
+        return self._neighbor_binary_func(da, diff_function, to)
 
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary_cond=None):
@@ -361,8 +383,10 @@ class Axis:
         return left, right
 
     def _wrap_and_replace_coords(self, da, data_new, position_to):
-        """Take the base coords from da, the data from data_new, and return
-        a new DataArray with a coordinate on position_to."""
+        """
+        Take the base coords from da, the data from data_new, and return
+        a new DataArray with a coordinate on position_to.
+        """
         position_from, old_dim = self._get_axis_coord(da)
         try:
             new_coord = self.coords[position_to]
@@ -395,28 +419,21 @@ class Axis:
                 return position, coord.name
 
 
-def _replace_dim(da, olddim, newdim, drop=True):
-    """Replace a dimension with a new dimension
+class Something:
+    @docstrings.get_sectionsf('do_something')
+    @docstrings.dedent
+    def do_something(a, b):
+        """
+         Add two numbers
 
-    PARAMETERS
-    ----------
-    da : xarray.DataArray
-    olddim : str
-        name of the dimension to replace
-    newdim : xarray.DataArray
-        dimension to replace it with
-    drop : bool, optional
-        whether to drop other coords. This is a good idea, because the other
-        coords are probably not valid in the new dimension
+         Parameters
+         ----------
+         a : int
+             The first number
+         b : int
+             The second number
 
-    RETURNS
-    -------
-    da_new : xarray.DataArray
-    """
-
-    da_new = da.rename({olddim: newdim.name})
-    # note that alignment along a dimension is skipped when you are overriding
-    # the relevant coordinate values
-    da_new.coords[newdim.name] = newdim
-    da_new  = da_new.reset_coords(drop=drop)
-    return da_new
+         Returns
+         -------
+         int
+             `a` + `b`"""
