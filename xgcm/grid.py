@@ -254,7 +254,7 @@ class Axis:
 
     @docstrings.get_sectionsf('neighbor_binary_func')
     @docstrings.dedent
-    def _neighbor_binary_func(self, da, f, to):
+    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=None):
         """
         Apply a function to neighboring points.
 
@@ -267,20 +267,19 @@ class Axis:
         to : {'face', 'left', 'right', 'face'}
             The direction in which to shift the array. If not specified,
             default will be used.
-        boundary : {None, 'dirichlet', 'neumann'}
+        boundary : {None, 'dirichlet', 'neumann', 'extend'}
             A flag indicating how to handle boundaries:
             * None
                Do not apply any boundary conditions. Raise an error if boundary
                conditions are required for the operation.
-            * 'dirichlet'
-               The value of the array at the boundary point is specified by
-               `fill_value`.
-            * 'neumann'
-               The value of the array diff at the boundary point is
-               specified[1]_ by `fill_value`.
+            * 'fill'
+               Set values outside the array boundary to fill_value (i.e. a
+               Neumann boundary condition.)
+            * 'extend'
+               Set values outside the array to the nearest array value. (i.e.
+               a limited form of Dirichlet boundary condition.)
         fill_value : float, optional
-             The value to use outside the array when using `boundary='dirichlet'`
-             or `boundary='neumann'`
+             The value to use in the boundary condition with `boundary='fill'`.
 
         Returns
         -------
@@ -293,7 +292,8 @@ class Axis:
             to = self._default_shifts[position_from]
 
         # get the two neighboring sets of raw data
-        data_left, data_right = self._get_neighbor_data_pairs(da, to)
+        data_left, data_right = self._get_neighbor_data_pairs(da, to,
+                                      boundary=boundary, fill_value=fill_value)
         # apply the function
         data_new = f(data_left, data_right)
 
@@ -303,6 +303,44 @@ class Axis:
         return da_new
 
     docstrings.delete_params('neighbor_binary_func.parameters', 'f')
+
+
+    def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
+                                 fill_value=None):
+        """Returns data_left, data_right."""
+
+        position_from, dim = self._get_axis_coord(da)
+
+        if self._periodic and boundary:
+            raise ValueError("`boundary=%s` is not allowed with periodic "
+                             "axis %g." % (boundary, self._name))
+
+        if position_from == position_to:
+            raise ValueError("Can't get neighbor pairs for the same position.")
+
+
+
+        transition = (position_from, position_to)
+
+        if transition == ('face', 'center'):
+            # doesn't matter if domain is periodic or not
+            left = da.isel(**{dim: slice(None, -1)}).data
+            right = da.isel(**{dim: slice(1, None)}).data
+        elif (self._periodic and (transition == ('center', 'left') or
+                                  (transition == ('right', 'center')))):
+            left = da.roll(**{dim: 1}).data
+            right = da.data
+        elif (self._periodic and (transition == ('center', 'right') or
+                                  (transition == ('left', 'center')))):
+            left = da.data
+            right = da.roll(**{dim: -1}).data
+        else:
+            is_periodic = 'periodic' if self._periodic else 'non-periodic'
+            raise NotImplementedError(' to '.join(transition) +
+                                      ' (%s) transition not yet supported.'
+                                      % is_periodic)
+
+        return left, right
 
 
     @docstrings.dedent
@@ -351,36 +389,7 @@ class Axis:
         return self._neighbor_binary_func(da, diff_function, to)
 
 
-    def _get_neighbor_data_pairs(self, da, position_to, boundary_cond=None):
-        """Returns data_left, data_right."""
 
-        position_from, dim = self._get_axis_coord(da)
-
-        # different cases for different relationships between coordinates
-        if position_from == position_to:
-            raise ValueError("Can't get neighbor pairs for the same position.")
-
-        transition = (position_from, position_to)
-
-        if transition == ('face', 'center'):
-            # doesn't matter if domain is periodic or not
-            left = da.isel(**{dim: slice(None, -1)}).data
-            right = da.isel(**{dim: slice(1, None)}).data
-        elif (self._periodic and (transition == ('center', 'left') or
-                                  (transition == ('right', 'center')))):
-            left = da.roll(**{dim: 1}).data
-            right = da.data
-        elif (self._periodic and (transition == ('center', 'right') or
-                                  (transition == ('left', 'center')))):
-            left = da.data
-            right = da.roll(**{dim: -1}).data
-        else:
-            is_periodic = 'periodic' if self._periodic else 'non-periodic'
-            raise NotImplementedError(' to '.join(transition) +
-                                      ' (%s) transition not yet supported.'
-                                      % is_periodic)
-
-        return left, right
 
     def _wrap_and_replace_coords(self, da, data_new, position_to):
         """
@@ -419,21 +428,11 @@ class Axis:
                 return position, coord.name
 
 
-class Something:
-    @docstrings.get_sectionsf('do_something')
-    @docstrings.dedent
-    def do_something(a, b):
-        """
-         Add two numbers
-
-         Parameters
-         ----------
-         a : int
-             The first number
-         b : int
-             The second number
-
-         Returns
-         -------
-         int
-             `a` + `b`"""
+_other_docstring_options="""
+    * 'dirichlet'
+       The value of the array at the boundary point is specified by
+       `fill_value`.
+    * 'neumann'
+       The value of the array diff at the boundary point is
+       specified[1]_ by `fill_value`.
+"""
