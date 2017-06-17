@@ -15,7 +15,8 @@ class Grid:
     """An object that knows how to interpolate and take derivatives."""
 
     def __init__(self, ds, check_dims=True, periodic=True, default_shifts={}):
-        """Create a new Grid object from an input dataset.
+        """
+        Create a new Grid object from an input dataset.
 
         Parameters
         ----------
@@ -66,7 +67,8 @@ class Grid:
 
 
     def interp(self, da, axis, to=None):
-        """Interpolate neighboring points to the intermediate grid point along
+        """
+        Interpolate neighboring points to the intermediate grid point along
         this axis.
 
         Parameters
@@ -113,7 +115,8 @@ class Grid:
 
 
 class Axis:
-    """An object that knows how to interpolate and take derivatives.
+    """
+    An object that knows how to interpolate and take derivatives.
     There are four types of variable positions we can have::
 
          Centered
@@ -137,7 +140,8 @@ class Axis:
     """
 
     def __init__(self, ds, axis_name, periodic=True, default_shifts={}):
-        """Create a new Axis object from an input dataset.
+        """
+        Create a new Axis object from an input dataset.
 
         Parameters
         ----------
@@ -269,15 +273,14 @@ class Axis:
             default will be used.
         boundary : {None, 'dirichlet', 'neumann', 'extend'}
             A flag indicating how to handle boundaries:
-            * None
-               Do not apply any boundary conditions. Raise an error if boundary
-               conditions are required for the operation.
-            * 'fill'
-               Set values outside the array boundary to fill_value (i.e. a
-               Neumann boundary condition.)
-            * 'extend'
-               Set values outside the array to the nearest array value. (i.e.
-               a limited form of Dirichlet boundary condition.)
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
+
         fill_value : float, optional
              The value to use in the boundary condition with `boundary='fill'`.
 
@@ -358,8 +361,6 @@ class Axis:
         da_i : xarray.DataArray
             The interpolated data
 
-        .. [1] https://en.wikipedia.org/wiki/Dirichlet_boundary_condition
-        .. [2] https://en.wikipedia.org/wiki/Neumann_boundary_condition
         """
 
         def interp_function(data_left, data_right):
@@ -435,4 +436,7 @@ _other_docstring_options="""
     * 'neumann'
        The value of the array diff at the boundary point is
        specified[1]_ by `fill_value`.
+
+        .. [1] https://en.wikipedia.org/wiki/Dirichlet_boundary_condition
+        .. [2] https://en.wikipedia.org/wiki/Neumann_boundary_condition
 """
