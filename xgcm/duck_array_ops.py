@@ -74,7 +74,7 @@ def _pad_array(da, dim, left=False, boundary=None, fill_value=0.):
     shape[axis_num] = 1
 
     base_array = da.data
-    index = slice(0,1) if left else slice(-1,None)
+    index = slice(0,1) if left else slice(-1, None)
     edge_array = da.isel(**{dim: index}).data
 
     use_dask = has_dask and isinstance(base_array, dsa.Array)
