@@ -7,7 +7,7 @@ import xarray as xr
 import numpy as np
 
 from . import comodo
-from .duck_array_ops import concatenate
+from .duck_array_ops import _pad_array
 
 docstrings = docrep.DocstringProcessor(doc_key='My doc string')
 
@@ -258,7 +258,7 @@ class Axis:
 
     @docstrings.get_sectionsf('neighbor_binary_func')
     @docstrings.dedent
-    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=None):
+    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0):
         """
         Apply a function to neighboring points.
 
@@ -271,7 +271,7 @@ class Axis:
         to : {'face', 'left', 'right', 'face'}
             The direction in which to shift the array. If not specified,
             default will be used.
-        boundary : {None, 'dirichlet', 'neumann', 'extend'}
+        boundary : {None, 'fill', 'extend'}
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -321,14 +321,18 @@ class Axis:
         if position_from == position_to:
             raise ValueError("Can't get neighbor pairs for the same position.")
 
-
-
         transition = (position_from, position_to)
 
         if transition == ('face', 'center'):
             # doesn't matter if domain is periodic or not
             left = da.isel(**{dim: slice(None, -1)}).data
             right = da.isel(**{dim: slice(1, None)}).data
+        elif transition == ('center', 'face'):
+            # pad both sides of the array
+            left = _pad_array(da, dim, left=true,
+                              boundary=boundary, fill_value=fill_value)
+            right = _pad_array(da, dim, boundary=boundary,
+                               fill_value=fill_value)
         elif (self._periodic and (transition == ('center', 'left') or
                                   (transition == ('right', 'center')))):
             left = da.roll(**{dim: 1}).data
@@ -427,6 +431,10 @@ class Axis:
             # TODO: should we have more careful checking of alignment here?
             if coord.name in da.dims:
                 return position, coord.name
+
+
+
+
 
 
 _other_docstring_options="""
