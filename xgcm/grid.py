@@ -11,107 +11,6 @@ from .duck_array_ops import _pad_array
 
 docstrings = docrep.DocstringProcessor(doc_key='My doc string')
 
-class Grid:
-    """An object that knows how to interpolate and take derivatives."""
-
-    def __init__(self, ds, check_dims=True, periodic=True, default_shifts={}):
-        """
-        Create a new Grid object from an input dataset.
-
-        Parameters
-        ----------
-        ds : xarray.Dataset
-            Contains the relevant grid information. Coordinate attributes
-            should conform to Comodo conventions [1]_.
-        check_dims : bool, optional
-            Whether to check the compatibility of input data dimensions before
-            performing grid operations.
-        periodic : {True, False, list}
-            Whether the grid is periodic (i.e. "wrap-around"). If a list is
-            specified (e.g. `['X', 'Y']`), the axis names in the list will be
-            be periodic and any other axes founds will be assumed non-periodic.
-        default_shifts : dict
-            A dictionary of dictionaries specifying default grid position
-            shifts (e.g. `{'X': {'center': 'left', 'left': 'center'}}`)
-
-        REFERENCES
-        ----------
-        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
-        """
-        self._ds = ds
-        self._check_dims = check_dims
-
-        all_axes = comodo.get_all_axes(ds)
-
-        self.axes = OrderedDict()
-        for axis_name in all_axes:
-            try:
-                is_periodic = axis_name in periodic
-            except TypeError:
-                is_periodic = periodic
-            if axis_name in default_shifts:
-                axis_default_shifts = default_shifts[axis_name]
-            else:
-                axis_default_shifts = {}
-            self.axes[axis_name] = Axis(ds, axis_name, is_periodic,
-                                        default_shifts=axis_default_shifts)
-
-
-    def __repr__(self):
-        summary = ['<xgcm.Grid>']
-        for name, axis in iteritems(self.axes):
-            is_periodic = 'periodic' if axis._periodic else 'not periodic'
-            summary.append('%s Axis (%s):' % (name, is_periodic))
-            summary += axis._coord_desc()
-        return '\n'.join(summary)
-
-
-    def interp(self, da, axis, to=None):
-        """
-        Interpolate neighboring points to the intermediate grid point along
-        this axis.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data to interpolate
-        axis : str
-            Name of the axis on whhich ot act
-        to : {'face', 'left', 'right', 'face'}, optional
-            The grid position to which to interpolate. If not specified,
-            defaults will be inferred.
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The interpolated data
-        """
-
-        ax = self.axes[axis]
-        return ax.interp(da, to=to)
-
-
-    def diff(self, da, axis, to=None):
-        """Difference neighboring points to the intermediate grid point.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data to difference
-        axis : str
-            Name of the axis on whhich ot act
-        to : {'face', 'left', 'right', 'face'}, optional
-            The grid position to which to interpolate. If not specified,
-            defaults will be inferred.
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-
-        ax = self.axes[axis]
-        return ax.diff(da, to=to)
 
 
 class Axis:
@@ -309,14 +208,14 @@ class Axis:
 
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
-                                 fill_value=None):
+                                 fill_value=0.0):
         """Returns data_left, data_right."""
 
         position_from, dim = self._get_axis_coord(da)
 
         if self._periodic and boundary:
             raise ValueError("`boundary=%s` is not allowed with periodic "
-                             "axis %g." % (boundary, self._name))
+                             "axis %s." % (boundary, self._name))
 
         if position_from == position_to:
             raise ValueError("Can't get neighbor pairs for the same position.")
@@ -329,7 +228,7 @@ class Axis:
             right = da.isel(**{dim: slice(1, None)}).data
         elif transition == ('center', 'face'):
             # pad both sides of the array
-            left = _pad_array(da, dim, left=true,
+            left = _pad_array(da, dim, left=True,
                               boundary=boundary, fill_value=fill_value)
             right = _pad_array(da, dim, boundary=boundary,
                                fill_value=fill_value)
@@ -351,7 +250,7 @@ class Axis:
 
 
     @docstrings.dedent
-    def interp(self, da, to=None):
+    def interp(self, da, to=None, boundary=None, fill_value=0.0):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -371,11 +270,12 @@ class Axis:
             # linear, centered interpolation
             # TODO: generalize to higher order interpolation
             return 0.5*(data_left + data_right)
-        return self._neighbor_binary_func(da, interp_function, to)
+        return self._neighbor_binary_func(da, interp_function, to,
+                                          boundary, fill_value)
 
 
     @docstrings.dedent
-    def diff(self, da, to=None):
+    def diff(self, da, to=None, boundary=None, fill_value=0.0):
         """
         Difference neighboring points to the intermediate grid point.
 
@@ -391,7 +291,8 @@ class Axis:
 
         def diff_function(data_left, data_right):
             return data_right - data_left
-        return self._neighbor_binary_func(da, diff_function, to)
+        return self._neighbor_binary_func(da, diff_function, to,
+                                          boundary, fill_value)
 
 
 
@@ -434,6 +335,99 @@ class Axis:
 
 
 
+class Grid:
+    """An object that knows how to interpolate and take derivatives."""
+
+    def __init__(self, ds, check_dims=True, periodic=True, default_shifts={}):
+        """
+        Create a new Grid object from an input dataset.
+
+        Parameters
+        ----------
+        ds : xarray.Dataset
+            Contains the relevant grid information. Coordinate attributes
+            should conform to Comodo conventions [1]_.
+        check_dims : bool, optional
+            Whether to check the compatibility of input data dimensions before
+            performing grid operations.
+        periodic : {True, False, list}
+            Whether the grid is periodic (i.e. "wrap-around"). If a list is
+            specified (e.g. `['X', 'Y']`), the axis names in the list will be
+            be periodic and any other axes founds will be assumed non-periodic.
+        default_shifts : dict
+            A dictionary of dictionaries specifying default grid position
+            shifts (e.g. `{'X': {'center': 'left', 'left': 'center'}}`)
+
+        REFERENCES
+        ----------
+        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
+        """
+        self._ds = ds
+        self._check_dims = check_dims
+
+        all_axes = comodo.get_all_axes(ds)
+
+        self.axes = OrderedDict()
+        for axis_name in all_axes:
+            try:
+                is_periodic = axis_name in periodic
+            except TypeError:
+                is_periodic = periodic
+            if axis_name in default_shifts:
+                axis_default_shifts = default_shifts[axis_name]
+            else:
+                axis_default_shifts = {}
+            self.axes[axis_name] = Axis(ds, axis_name, is_periodic,
+                                        default_shifts=axis_default_shifts)
+
+
+    def __repr__(self):
+        summary = ['<xgcm.Grid>']
+        for name, axis in iteritems(self.axes):
+            is_periodic = 'periodic' if axis._periodic else 'not periodic'
+            summary.append('%s Axis (%s):' % (name, is_periodic))
+            summary += axis._coord_desc()
+        return '\n'.join(summary)
+
+    @docstrings.dedent
+    def interp(self, da, axis, **kwargs):
+        """
+        Interpolate neighboring points to the intermediate grid point along
+        this axis.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which ot act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The interpolated data
+        """
+
+        ax = self.axes[axis]
+        return ax.interp(da, **kwargs)
+
+
+    def diff(self, da, axis, **kwargs):
+        """Difference neighboring points to the intermediate grid point.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which ot act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+        """
+
+        ax = self.axes[axis]
+        return ax.diff(da, **kwargs)
 
 
 

@@ -69,14 +69,27 @@ def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
 
 def test_axis_neighbor_pairs(nonperiodic_1d):
     ds, expected = nonperiodic_1d
-    axis = Axis(ds, 'X')
+    axis = Axis(ds, 'X', periodic=False)
 
     data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni_u, 'center')
     np.testing.assert_allclose(data_left, ds.data_ni_u.data[:-1])
     np.testing.assert_allclose(data_right, ds.data_ni_u.data[1:])
 
-    with pytest.raises(NotImplementedError):
-        _, _ = axis._get_neighbor_data_pairs(ds.data_ni, 'face')
+    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni, 'face',
+                                                            boundary='extend')
+    np.testing.assert_allclose(data_left[0], data_left[1])
+    np.testing.assert_allclose(data_right[-2], data_left[-1])
+
+    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni, 'face',
+                                                            boundary='fill')
+    np.testing.assert_allclose(data_left[0], 0.)
+    np.testing.assert_allclose(data_right[-1], 0.)
+
+    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni, 'face',
+                                                            boundary='fill',
+                                                            fill_value=1.0)
+    np.testing.assert_allclose(data_left[0], 1.0)
+    np.testing.assert_allclose(data_right[-1], 1.0)
 
 
 def test_axis_neighbor_pairs_2d(periodic_2d):
@@ -103,11 +116,10 @@ def test_axis_neighbor_pairs_2d(periodic_2d):
         np.testing.assert_allclose(data_right, data.data)
 
 
-def test_axis_diff_and_interp_nonperiodic(nonperiodic_1d):
+def test_axis_diff_and_interp_nonperiodic_face_to_center(nonperiodic_1d):
     ds, expected = nonperiodic_1d
     axis = Axis(ds, 'X')
 
-    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni_u, 'center')
     data_left = ds.data_ni_u.data[:-1]
     data_right = ds.data_ni_u.data[1:]
 
@@ -126,6 +138,41 @@ def test_axis_diff_and_interp_nonperiodic(nonperiodic_1d):
     assert data_diff_expected.equals(data_diff)
     # check without "to" specified
     assert data_diff.equals(axis.diff(ds.data_ni_u))
+
+
+@pytest.mark.parametrize('boundary', ['extend', 'fill'])
+def test_axis_diff_and_interp_nonperiodic_center_to_face(nonperiodic_1d,
+                boundary):
+    ds, expected = nonperiodic_1d
+    axis = Axis(ds, 'X', periodic=False)
+
+    data = ds.data_ni.data
+
+    if boundary=='extend':
+        pad_left = data[0]
+        pad_right = data[-1]
+    elif boundary=='fill':
+        pad_left = np.array([0.])
+        pad_right = np.array([0.])
+
+    data_left = np.hstack([pad_left,  data])
+    data_right = np.hstack([data, pad_right])
+
+    # interpolate
+    data_interp_expected = xr.DataArray(0.5 * (data_left + data_right),
+                                        dims=['ni_u'], coords={'ni_u': ds.ni_u})
+    data_interp = axis.interp(ds.data_ni, 'face', boundary=boundary)
+    assert data_interp_expected.equals(data_interp)
+    # # check without "to" specified
+    assert data_interp.equals(axis.interp(ds.data_ni, boundary=boundary))
+
+    # difference
+    data_diff_expected = xr.DataArray(data_right - data_left,
+                                       dims=['ni_u'], coords={'ni_u': ds.ni_u})
+    data_diff = axis.diff(ds.data_ni, 'face', boundary=boundary)
+    assert data_diff_expected.equals(data_diff)
+    # # check without "to" specified
+    assert data_diff.equals(axis.diff(ds.data_ni, boundary=boundary))
 
 
 def test_axis_diff_and_interp_periodic_2d(periodic_2d):
@@ -283,8 +330,9 @@ def test_diff_g_to_c_periodic(periodic_1d):
     # check that the values are right
     np.testing.assert_allclose(data_c.values, data_expected)
 
-@pytest.mark.xfail(reason='Not implemented yet')
-def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
+
+@pytest.mark.parametrize('boundary', ['extend', 'fill'])
+def test_interp_c_to_g_nonperiodic(nonperiodic_1d, boundary):
     """Interpolate from c grid to g grid."""
 
     ds, expected = nonperiodic_1d
@@ -292,39 +340,57 @@ def test_interp_c_to_g_nonperiodic(nonperiodic_1d):
     # a linear gradient in the ni direction
     grad = 0.24
     data_c = grad * ds['ni']
-    data_expected = 0.5 * (data_c.values[1:] + data_c.values[:-1])
+
+    data = data_c.data
+    if boundary=='extend':
+        pad_left, pad_right = data[0], data[-1]
+    elif boundary=='fill':
+        pad_left, pad_right = 0, 0
+    data_left = np.hstack([pad_left, data])
+    data_right = np.hstack([data, pad_right])
+    data_expected = 0.5*(data_right + data_left)
 
     grid = Grid(ds, periodic=False)
-    data_u = grid.interp(data_c, 'X')
+    data_u = grid.interp(data_c, 'X', boundary=boundary)
 
     # check that the dimensions are right
     assert data_u.dims == ('ni_u',)
-    xr.testing.assert_equal(data_u.ni_u, ds.ni_u[1:-1])
+    xr.testing.assert_equal(data_u.ni_u, ds.ni_u)
     assert len(data_u.ni_u)==len(data_u)
 
     # check that the values are right
     np.testing.assert_allclose(data_u.values, data_expected)
 
-@pytest.mark.xfail(reason='Not implemented yet')
-def test_diff_c_to_g_nonperiodic(nonperiodic_1d):
+
+@pytest.mark.parametrize('boundary', ['extend', 'fill'])
+def test_diff_c_to_g_nonperiodic(nonperiodic_1d, boundary):
     ds, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.24
     data_c = grad * ds['ni']
-    data_expected = data_c.values[1:] - data_c.values[:-1]
+
+    data = data_c.data
+    if boundary=='extend':
+        pad_left, pad_right = data[0], data[-1]
+    elif boundary=='fill':
+        pad_left, pad_right = 0, 0
+    data_left = np.hstack([pad_left, data])
+    data_right = np.hstack([data, pad_right])
+    data_expected = data_right - data_left
 
     grid = Grid(ds, periodic=False)
-    data_u = grid.diff(data_c, 'X')
+    data_u = grid.diff(data_c, 'X', boundary=boundary)
 
     # check that the dimensions are right
     assert data_u.dims == ('ni_u',)
-    xr.testing.assert_equal(data_u.ni_u, ds.ni_u[1:-1])
+    xr.testing.assert_equal(data_u.ni_u, ds.ni_u)
     assert len(data_u.ni_u)==len(data_u)
 
     # check that the values are right
     np.testing.assert_allclose(data_u.values, data_expected)
-    np.testing.assert_allclose(data_u.values, grad)
+    np.testing.assert_allclose(data_u.values[1:-1], grad)
+
 
 def test_interp_g_to_c_nonperiodic(nonperiodic_1d):
     """Interpolate from g grid to c grid."""
