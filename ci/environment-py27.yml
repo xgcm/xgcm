@@ -7,5 +7,6 @@ dependencies:
   - pytest
   - future
   - pip:
+    - docrep
     - codecov
     - pytest-cov
