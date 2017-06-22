@@ -132,3 +132,9 @@ def periodic_1d(request):
 def periodic_2d(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
+
+@pytest.fixture(scope="module", params=['nonperiodic_2d_left',
+                 'xperiodic_2d_left', 'yperiodic_2d_left'])
+def nonperiodic_2d(request):
+    ds, periodic = datasets_with_periodicity[request.param]
+    return ds, periodic, expected_values[request.param]
