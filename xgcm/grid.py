@@ -232,11 +232,25 @@ class Axis:
                               boundary=boundary, fill_value=fill_value)
             right = _pad_array(da, dim, boundary=boundary,
                                fill_value=fill_value)
-        elif (self._periodic and (transition == ('center', 'left') or
+        # TODO: figure out if it matters whether we slice the original array
+        # before or after padding
+        elif (not self._periodic and ((transition == ('center', 'left')) or
+                                       (transition == ('right', 'center')))):
+            # pad only left
+            left = _pad_array(da, dim, left=True,
+                              boundary=boundary, fill_value=fill_value)[:-1]
+            right = da.data
+        elif (not self._periodic and ((transition == ('center', 'right')) or
+                                      (transition == ('left', 'center')))):
+            # pad only left
+            right = _pad_array(da, dim, boundary=boundary,
+                               fill_value=fill_value)[1:]
+            left = da.data
+        elif (self._periodic and ((transition == ('center', 'left')) or
                                   (transition == ('right', 'center')))):
             left = da.roll(**{dim: 1}).data
             right = da.data
-        elif (self._periodic and (transition == ('center', 'right') or
+        elif (self._periodic and ((transition == ('center', 'right')) or
                                   (transition == ('left', 'center')))):
             left = da.data
             right = da.roll(**{dim: -1}).data

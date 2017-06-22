@@ -16,7 +16,7 @@ def _get_axes(ds):
 
 
 def test_create_axis(all_datasets):
-    ds, expected = all_datasets
+    ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
     for ax_expected, coords_expected in expected['axes'].items():
         assert ax_expected in axis_objs
@@ -27,7 +27,7 @@ def test_create_axis(all_datasets):
 
 
 def test_get_axis_coord(all_datasets):
-    ds, expected = all_datasets
+    ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
     for ax_name, axis in axis_objs.items():
         # create a dataarray with each axis coordinate
@@ -37,7 +37,7 @@ def test_get_axis_coord(all_datasets):
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
-    ds, expected = periodic_2d
+    ds, periodic, expected = periodic_2d
     axis_objs = _get_axes(ds)
 
     da_xc_yc = 0 * ds.XC * ds.YC + 1
@@ -54,46 +54,73 @@ def test_axis_wrap_and_replace_2d(periodic_2d):
 
 
 def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
-    ds, expected = nonperiodic_1d
+    ds, periodic, expected = nonperiodic_1d
     axis = Axis(ds, 'X')
 
-    da_ni = 0 * ds.ni + 1
-    da_ni_u = 0 * ds.ni_u + 1
+    da_c = 0 * ds.XC + 1
+    da_g = 0 * ds.XG + 1
 
-    da_ni_u_test = axis._wrap_and_replace_coords(da_ni, da_ni_u.data, 'face')
-    assert da_ni_u.equals(da_ni_u_test)
+    to = (set(expected['axes']['X'].keys()) - {'center'}).pop()
 
-    da_ni_test = axis._wrap_and_replace_coords(da_ni_u, da_ni.data, 'center')
-    assert da_ni.equals(da_ni_test)
+    da_g_test = axis._wrap_and_replace_coords(da_c, da_g.data, to)
+    assert da_g.equals(da_g_test)
+
+    da_c_test = axis._wrap_and_replace_coords(da_g, da_c.data, 'center')
+    assert da_c.equals(da_c_test)
 
 
 def test_axis_neighbor_pairs(nonperiodic_1d):
-    ds, expected = nonperiodic_1d
-    axis = Axis(ds, 'X', periodic=False)
+    ds, periodic, expected = nonperiodic_1d
+    axis = Axis(ds, 'X', periodic=periodic)
 
-    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni_u, 'center')
-    np.testing.assert_allclose(data_left, ds.data_ni_u.data[:-1])
-    np.testing.assert_allclose(data_right, ds.data_ni_u.data[1:])
+    padded = len(ds.XG) > len(ds.XC)
 
-    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni, 'face',
-                                                            boundary='extend')
-    np.testing.assert_allclose(data_left[0], data_left[1])
-    np.testing.assert_allclose(data_right[-2], data_left[-1])
+    to = (set(expected['axes']['X'].keys()) - {'center'}).pop()
+    shift = expected.get('shift') or False
 
-    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni, 'face',
-                                                            boundary='fill')
-    np.testing.assert_allclose(data_left[0], 0.)
-    np.testing.assert_allclose(data_right[-1], 0.)
+    for boundary in [None, 'extend', 'fill']:
+        if (boundary is None) and not padded:
+            with pytest.raises(ValueError):
+                data_left, data_right = axis._get_neighbor_data_pairs(ds.data_g,
+                                            'center', boundary=boundary)
+        else:
+            data_left, data_right = axis._get_neighbor_data_pairs(ds.data_g,
+                                        'center', boundary=boundary)
+            if padded:
+                expected_left = ds.data_g.data[:-1]
+                expected_right = ds.data_g.data[1:]
+            else:
+                if shift:
+                    expected_right = ds.data_g.data
+                    pad_val = ds.data_g.data[0] if boundary=='extend' else 0.
+                    expected_left = np.hstack([pad_val, ds.data_g[:-1]])
+                else:
+                    expected_left = ds.data_g.data
+                    pad_val = ds.data_g.data[-1] if boundary=='extend' else 0.
+                    expected_right = np.hstack([ds.data_g[1:],  pad_val])
 
-    data_left, data_right = axis._get_neighbor_data_pairs(ds.data_ni, 'face',
-                                                            boundary='fill',
-                                                            fill_value=1.0)
-    np.testing.assert_allclose(data_left[0], 1.0)
-    np.testing.assert_allclose(data_right[-1], 1.0)
+            np.testing.assert_allclose(data_left, expected_left)
+            np.testing.assert_allclose(data_right, expected_right)
+
+    # data_left, data_right = axis._get_neighbor_data_pairs(ds.data_c, to,
+    #                                                         boundary='extend')
+    # np.testing.assert_allclose(data_left[0], data_left[1])
+    # np.testing.assert_allclose(data_right[-2], data_left[-1])
+    #
+    # data_left, data_right = axis._get_neighbor_data_pairs(ds.data_c, to,
+    #                                                         boundary='fill')
+    # np.testing.assert_allclose(data_left[0], 0.)
+    # np.testing.assert_allclose(data_right[-1], 0.)
+    #
+    # data_left, data_right = axis._get_neighbor_data_pairs(ds.data_c, to,
+    #                                                         boundary='fill',
+    #                                                         fill_value=1.0)
+    # np.testing.assert_allclose(data_left[0], 1.0)
+    # np.testing.assert_allclose(data_right[-1], 1.0)
 
 
 def test_axis_neighbor_pairs_2d(periodic_2d):
-    ds, expected = periodic_2d
+    ds, periodic, expected = periodic_2d
 
     x_axis = Axis(ds, 'X')
     y_axis = Axis(ds, 'Y')
@@ -117,36 +144,36 @@ def test_axis_neighbor_pairs_2d(periodic_2d):
 
 
 def test_axis_diff_and_interp_nonperiodic_face_to_center(nonperiodic_1d):
-    ds, expected = nonperiodic_1d
+    ds, periodic, expected = nonperiodic_1d
     axis = Axis(ds, 'X')
 
-    data_left = ds.data_ni_u.data[:-1]
-    data_right = ds.data_ni_u.data[1:]
+    data_left = ds.data_g.data[:-1]
+    data_right = ds.data_g.data[1:]
 
     # interpolate
     data_interp_expected = xr.DataArray(0.5 * (data_left + data_right),
-                                        dims=['ni'], coords={'ni': ds.ni})
-    data_interp = axis.interp(ds.data_ni_u, 'center')
+                                        dims=['XC'], coords={'XC': ds.XC})
+    data_interp = axis.interp(ds.data_g, 'center')
     assert data_interp_expected.equals(data_interp)
     # check without "to" specified
-    assert data_interp.equals(axis.interp(ds.data_ni_u))
+    assert data_interp.equals(axis.interp(ds.data_g))
 
     # difference
     data_diff_expected = xr.DataArray(data_right - data_left,
-                                      dims=['ni'], coords={'ni': ds.ni})
-    data_diff = axis.diff(ds.data_ni_u, 'center')
+                                      dims=['XC'], coords={'XC': ds.XC})
+    data_diff = axis.diff(ds.data_g, 'center')
     assert data_diff_expected.equals(data_diff)
     # check without "to" specified
-    assert data_diff.equals(axis.diff(ds.data_ni_u))
+    assert data_diff.equals(axis.diff(ds.data_g))
 
 
 @pytest.mark.parametrize('boundary', ['extend', 'fill'])
 def test_axis_diff_and_interp_nonperiodic_center_to_face(nonperiodic_1d,
                 boundary):
-    ds, expected = nonperiodic_1d
-    axis = Axis(ds, 'X', periodic=False)
+    ds, periodic, expected = nonperiodic_1d
+    axis = Axis(ds, 'X', periodic=periodic)
 
-    data = ds.data_ni.data
+    data = ds.data_c.data
 
     if boundary=='extend':
         pad_left = data[0]
@@ -160,23 +187,23 @@ def test_axis_diff_and_interp_nonperiodic_center_to_face(nonperiodic_1d,
 
     # interpolate
     data_interp_expected = xr.DataArray(0.5 * (data_left + data_right),
-                                        dims=['ni_u'], coords={'ni_u': ds.ni_u})
-    data_interp = axis.interp(ds.data_ni, 'face', boundary=boundary)
+                                        dims=['XG'], coords={'XG': ds.XG})
+    data_interp = axis.interp(ds.data_c, 'face', boundary=boundary)
     assert data_interp_expected.equals(data_interp)
     # # check without "to" specified
-    assert data_interp.equals(axis.interp(ds.data_ni, boundary=boundary))
+    assert data_interp.equals(axis.interp(ds.data_c, boundary=boundary))
 
     # difference
     data_diff_expected = xr.DataArray(data_right - data_left,
-                                       dims=['ni_u'], coords={'ni_u': ds.ni_u})
-    data_diff = axis.diff(ds.data_ni, 'face', boundary=boundary)
+                                       dims=['XG'], coords={'XG': ds.XG})
+    data_diff = axis.diff(ds.data_c, 'face', boundary=boundary)
     assert data_diff_expected.equals(data_diff)
     # # check without "to" specified
-    assert data_diff.equals(axis.diff(ds.data_ni, boundary=boundary))
+    assert data_diff.equals(axis.diff(ds.data_c, boundary=boundary))
 
 
 def test_axis_diff_and_interp_periodic_2d(periodic_2d):
-    ds, expected = periodic_2d
+    ds, periodic, expected = periodic_2d
 
     x_axis = Axis(ds, 'X')
     y_axis = Axis(ds, 'Y')
@@ -219,12 +246,12 @@ def test_axis_diff_and_interp_periodic_2d(periodic_2d):
 
 
 def test_create_grid(all_datasets):
-    ds, expected = all_datasets
+    ds, periodic, expected = all_datasets
     grid = Grid(ds)
 
 
 def test_grid_repr(all_datasets):
-    ds, expected = all_datasets
+    ds, periodic, expected = all_datasets
     grid = Grid(ds)
     print(grid)
     r = repr(grid).split('\n')
@@ -233,7 +260,7 @@ def test_grid_repr(all_datasets):
 
 def test_interp_c_to_g_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""
-    ds, expected = periodic_1d
+    ds, periodic, expected = periodic_1d
     reverse_shift = expected.get('shift') or False
     roll = -1 if reverse_shift else 1
 
@@ -260,7 +287,7 @@ def test_interp_c_to_g_periodic(periodic_1d):
     np.testing.assert_allclose(data_g.values, data_expected)
 
 def test_diff_c_to_g_periodic(periodic_1d):
-    ds, expected = periodic_1d
+    ds, periodic, expected = periodic_1d
     reverse_shift = expected.get('shift') or False
     roll = -1 if reverse_shift else 1
 
@@ -287,7 +314,7 @@ def test_diff_c_to_g_periodic(periodic_1d):
 
 def test_interp_g_to_c_periodic(periodic_1d):
     """Interpolate from c grid to g grid."""
-    ds, expected = periodic_1d
+    ds, periodic, expected = periodic_1d
 
     reverse_shift = expected.get('shift') or False
     roll = 1 if reverse_shift else -1
@@ -308,7 +335,7 @@ def test_interp_g_to_c_periodic(periodic_1d):
     np.testing.assert_allclose(data_c.values, data_expected)
 
 def test_diff_g_to_c_periodic(periodic_1d):
-    ds, expected = periodic_1d
+    ds, periodic, expected = periodic_1d
 
     reverse_shift = expected.get('shift') or False
     # a linear gradient in the ni direction
@@ -335,11 +362,11 @@ def test_diff_g_to_c_periodic(periodic_1d):
 def test_interp_c_to_g_nonperiodic(nonperiodic_1d, boundary):
     """Interpolate from c grid to g grid."""
 
-    ds, expected = nonperiodic_1d
+    ds, periodic, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.24
-    data_c = grad * ds['ni']
+    data_c = grad * ds['XC']
 
     data = data_c.data
     if boundary=='extend':
@@ -350,13 +377,13 @@ def test_interp_c_to_g_nonperiodic(nonperiodic_1d, boundary):
     data_right = np.hstack([data, pad_right])
     data_expected = 0.5*(data_right + data_left)
 
-    grid = Grid(ds, periodic=False)
+    grid = Grid(ds, periodic=periodic)
     data_u = grid.interp(data_c, 'X', boundary=boundary)
 
     # check that the dimensions are right
-    assert data_u.dims == ('ni_u',)
-    xr.testing.assert_equal(data_u.ni_u, ds.ni_u)
-    assert len(data_u.ni_u)==len(data_u)
+    assert data_u.dims == ('XG',)
+    xr.testing.assert_equal(data_u.XG, ds.XG)
+    assert len(data_u.XG)==len(data_u)
 
     # check that the values are right
     np.testing.assert_allclose(data_u.values, data_expected)
@@ -364,11 +391,11 @@ def test_interp_c_to_g_nonperiodic(nonperiodic_1d, boundary):
 
 @pytest.mark.parametrize('boundary', ['extend', 'fill'])
 def test_diff_c_to_g_nonperiodic(nonperiodic_1d, boundary):
-    ds, expected = nonperiodic_1d
+    ds, periodic, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.24
-    data_c = grad * ds['ni']
+    data_c = grad * ds['XC']
 
     data = data_c.data
     if boundary=='extend':
@@ -379,13 +406,13 @@ def test_diff_c_to_g_nonperiodic(nonperiodic_1d, boundary):
     data_right = np.hstack([data, pad_right])
     data_expected = data_right - data_left
 
-    grid = Grid(ds, periodic=False)
+    grid = Grid(ds, periodic=periodic)
     data_u = grid.diff(data_c, 'X', boundary=boundary)
 
     # check that the dimensions are right
-    assert data_u.dims == ('ni_u',)
-    xr.testing.assert_equal(data_u.ni_u, ds.ni_u)
-    assert len(data_u.ni_u)==len(data_u)
+    assert data_u.dims == ('XG',)
+    xr.testing.assert_equal(data_u.XG, ds.XG)
+    assert len(data_u.XG)==len(data_u)
 
     # check that the values are right
     np.testing.assert_allclose(data_u.values, data_expected)
@@ -395,20 +422,20 @@ def test_diff_c_to_g_nonperiodic(nonperiodic_1d, boundary):
 def test_interp_g_to_c_nonperiodic(nonperiodic_1d):
     """Interpolate from g grid to c grid."""
 
-    ds, expected = nonperiodic_1d
+    ds, periodic, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.43
-    data_u = grad * ds['ni_u']
+    data_u = grad * ds['XG']
     data_expected = 0.5 * (data_u.values[1:] + data_u.values[:-1])
 
-    grid = Grid(ds, periodic=False)
+    grid = Grid(ds, periodic=periodic)
     data_c = grid.interp(data_u, 'X')
 
     # check that the dimensions are right
-    assert data_c.dims == ('ni',)
-    xr.testing.assert_equal(data_c.ni, ds.ni)
-    assert len(data_c.ni)==len(data_c)
+    assert data_c.dims == ('XC',)
+    xr.testing.assert_equal(data_c.XC, ds.XC)
+    assert len(data_c.XC)==len(data_c)
 
     # check that the values are right
     np.testing.assert_allclose(data_c.values, data_expected)
@@ -417,20 +444,20 @@ def test_interp_g_to_c_nonperiodic(nonperiodic_1d):
 def test_diff_g_to_c_nonperiodic(nonperiodic_1d):
     """Interpolate from g grid to c grid."""
 
-    ds, expected = nonperiodic_1d
+    ds, periodic, expected = nonperiodic_1d
 
     # a linear gradient in the ni direction
     grad = 0.43
-    data_u = grad * ds['ni_u']
+    data_u = grad * ds['XG']
     data_expected = data_u.values[1:] - data_u.values[:-1]
 
-    grid = Grid(ds, periodic=False)
+    grid = Grid(ds, periodic=periodic)
     data_c = grid.diff(data_u, 'X')
 
     # check that the dimensions are right
-    assert data_c.dims == ('ni',)
-    xr.testing.assert_equal(data_c.ni, ds.ni)
-    assert len(data_c.ni)==len(data_c)
+    assert data_c.dims == ('XC',)
+    xr.testing.assert_equal(data_c.XC, ds.XC)
+    assert len(data_c.XC)==len(data_c)
 
     # check that the values are right
     np.testing.assert_allclose(data_c.values, data_expected)
