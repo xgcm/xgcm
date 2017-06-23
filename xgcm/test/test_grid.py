@@ -27,6 +27,15 @@ def test_create_axis(all_datasets):
             assert this_axis.coords[axis_name].name == coord_name
 
 
+def test_axis_repr(all_datasets):
+    ds, periodic, expected = all_datasets
+    axis_objs = _get_axes(ds)
+    for ax_name, axis in axis_objs.items():
+        r = repr(axis).split('\n')
+        assert r[0].startswith("<xgcm.Axis")
+    # TODO: make this more complete
+
+
 def test_get_axis_coord(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
