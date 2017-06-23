@@ -117,8 +117,9 @@ class Axis:
                                      "length %g (axis_len=%g)"
                                      % (name, clen, axis_len))
             else:
-                raise ValueError("Coordinate %s has invalid c_grid_axis_shift "
-                                 "attribute `%g`" % (name, shift))
+                raise ValueError("Coordinate %s has invalid or missing "
+                                 "c_grid_axis_shift attribute `%s`" %
+                                 (name, repr(shift)))
 
         self.coords = axis_coords
 
@@ -213,6 +214,10 @@ class Axis:
 
         position_from, dim = self._get_axis_coord(da)
 
+        valid_positions = ['face', 'left', 'right', 'center']
+        if position_to not in valid_positions:
+            raise ValueError("`%s` is not a valid axis position" % position_to)
+
         if self._periodic and boundary:
             raise ValueError("`boundary=%s` is not allowed with periodic "
                              "axis %s." % (boundary, self._name))
@@ -237,14 +242,14 @@ class Axis:
         elif (not self._periodic and ((transition == ('center', 'left')) or
                                        (transition == ('right', 'center')))):
             # pad only left
-            left = _pad_array(da, dim, left=True,
-                              boundary=boundary, fill_value=fill_value)[:-1]
+            left = _pad_array(da.isel(**{dim: slice(0,-1)}), dim, left=True,
+                              boundary=boundary, fill_value=fill_value)
             right = da.data
         elif (not self._periodic and ((transition == ('center', 'right')) or
                                       (transition == ('left', 'center')))):
             # pad only left
-            right = _pad_array(da, dim, boundary=boundary,
-                               fill_value=fill_value)[1:]
+            right = _pad_array(da.isel(**{dim: slice(1,None)}), dim, boundary=boundary,
+                               fill_value=fill_value)
             left = da.data
         elif (self._periodic and ((transition == ('center', 'left')) or
                                   (transition == ('right', 'center')))):

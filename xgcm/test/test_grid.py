@@ -7,7 +7,7 @@ import numpy as np
 from xgcm.grid import Grid, Axis
 
 from . datasets import (all_datasets, nonperiodic_1d, periodic_1d, periodic_2d,
-                        nonperiodic_2d)
+                        nonperiodic_2d, all_2d, datasets)
 
 # helper function to produce axes from datasets
 def _get_axes(ds):
@@ -136,10 +136,10 @@ def test_axis_neighbor_pairs_2d(periodic_2d):
 
     cases = [
         # varname   #axis    #to   #roll args # order
-        ('data_cc', x_axis, 'left', 1, 1, False),
-        ('data_cc', y_axis, 'left', 1, 0, False),
-        ('data_gg', x_axis, 'center', -1, 1, True),
-        ('data_gg', y_axis, 'center', -1, 0, True)
+        ('data_c', x_axis, 'left', 1, 1, False),
+        ('data_c', y_axis, 'left', 1, 0, False),
+        ('data_g', x_axis, 'center', -1, 1, True),
+        ('data_g', y_axis, 'center', -1, 0, True)
     ]
 
     for varname, axis, to, roll, roll_axis, swap_order in cases:
@@ -229,56 +229,16 @@ def test_axis_diff_and_interp_nonperiodic_center_to_face(nonperiodic_1d,
     assert data_diff.equals(axis.diff(ds.data_c, boundary=boundary))
 
 
-@pytest.mark.parametrize("varname, axis_name, to, roll, roll_axis, swap_order",
-            [('data_cc', 'X', 'left', 1, 1, False),
-            ('data_cc', 'Y', 'left', 1, 0, False),
-            ('data_gg', 'X', 'center', -1, 1, True),
-            ('data_gg', 'Y', 'center', -1, 0, True)]
-)
-def test_axis_diff_and_interp_periodic_2d(periodic_2d, varname, axis_name, to, roll,
-                                          roll_axis, swap_order):
-    ds, periodic, expected = periodic_2d
-
-    axis = Axis(ds, axis_name)
-
-    axis_lookups = {'XC': 'XG', 'XG': 'XC', 'YC': 'YG', 'YG': 'YC'}
-
-    da = ds[varname]
-    data = da.data
-    data_roll = np.roll(data, roll, axis=roll_axis)
-    if swap_order:
-        data, data_roll = data_roll, data
-    data_interp = 0.5 * (data + data_roll)
-    data_diff = data - data_roll
-
-    # determine new dims
-    dims = list(da.dims)
-    dims[roll_axis] = axis_lookups[dims[roll_axis]]
-    coords = {dim: ds[dim] for dim in dims}
-
-    da_interp_expected = xr.DataArray(data_interp, dims=dims, coords=coords)
-    da_diff_expected = xr.DataArray(data_diff, dims=dims, coords=coords)
-
-    da_interp = axis.interp(da, to)
-    da_diff = axis.diff(da, to)
-
-    assert da_interp_expected.equals(da_interp)
-    assert da_diff_expected.equals(da_diff)
-
-    # now make sure the defaults work (don't specify to)
-    assert da_interp.equals(axis.interp(da))
-    assert da_diff.equals(axis.diff(da))
-
-
+# this mega test covers all options for 2D data
 
 @pytest.mark.parametrize('boundary', ['extend', 'fill'])
 @pytest.mark.parametrize('axis_name', ['X', 'Y'])
 @pytest.mark.parametrize('varname, this, to',
-                         [('data_cc', 'center', 'left'),
-                          ('data_gg', 'left', 'center')])
-def test_axis_diff_and_interp_nonperiodic_2d(nonperiodic_2d, boundary, axis_name,
+                         [('data_c', 'center', 'left'),
+                          ('data_g', 'left', 'center')])
+def test_axis_diff_and_interp_nonperiodic_2d(all_2d, boundary, axis_name,
                                              varname, this, to,):
-    ds, periodic, expected = nonperiodic_2d
+    ds, periodic, expected = all_2d
 
     try:
         ax_periodic = axis_name in periodic
@@ -292,7 +252,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(nonperiodic_2d, boundary, axis_name
     data = ds[varname].data
 
     axis_num = da.get_axis_num(axis.coords[this].name)
-    print(axis_num)
+    print(axis_num, ax_periodic)
 
     # lookups for numpy.pad
     numpy_pad_arg = {'extend': 'edge', 'fill': 'constant'}
@@ -300,22 +260,31 @@ def test_axis_diff_and_interp_nonperiodic_2d(nonperiodic_2d, boundary, axis_name
     pad_left = (1,0)
     pad_right = (0,1)
     pad_none = (0,0)
+
     if this=='center':
-        pad_width = [pad_left if i==axis_num else pad_none
-                     for i in range(data.ndim)]
-        the_slice = [slice(0,-1) if i==axis_num else slice(None)
-                     for i in range(data.ndim)]
-        data_left = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
-        data_right = data
+        if ax_periodic:
+            data_left = np.roll(data, 1, axis=axis_num)
+            data_right = data
+        else:
+            pad_width = [pad_left if i==axis_num else pad_none
+                         for i in range(data.ndim)]
+            the_slice = [slice(0,-1) if i==axis_num else slice(None)
+                         for i in range(data.ndim)]
+            data_left = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
+            data_right = data
     elif this=='left':
-        pad_width = [pad_right if i==axis_num else pad_none
-                     for i in range(data.ndim)]
-        the_slice = [slice(1,None) if i==axis_num else slice(None)
-                     for i in range(data.ndim)]
-        print(the_slice)
-        data_right = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
-        print(data_right.shape)
-        data_left = data
+        if ax_periodic:
+            data_left = data
+            data_right = np.roll(data, -1, axis=axis_num)
+        else:
+            pad_width = [pad_right if i==axis_num else pad_none
+                         for i in range(data.ndim)]
+            the_slice = [slice(1,None) if i==axis_num else slice(None)
+                         for i in range(data.ndim)]
+            print(the_slice)
+            data_right = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
+            print(data_right.shape)
+            data_left = data
 
     data_interp = 0.5 * (data_left + data_right)
     data_diff = data_right - data_left
@@ -328,24 +297,100 @@ def test_axis_diff_and_interp_nonperiodic_2d(nonperiodic_2d, boundary, axis_name
     da_interp_expected = xr.DataArray(data_interp, dims=dims, coords=coords)
     da_diff_expected = xr.DataArray(data_diff, dims=dims, coords=coords)
 
-    da_interp = axis.interp(da, to, boundary=boundary)
-    da_diff = axis.diff(da, to, boundary=boundary)
+    boundary_arg = boundary if not ax_periodic else None
+    da_interp = axis.interp(da, to, boundary=boundary_arg)
+    da_diff = axis.diff(da, to, boundary=boundary_arg)
 
     assert da_interp_expected.equals(da_interp)
     assert da_diff_expected.equals(da_diff)
 
 
-def test_create_grid(all_datasets):
+def test_axis_errors():
+    ds = datasets['1d_left']
+
+    ds_noattr = ds.copy()
+    del ds_noattr.XC.attrs['axis']
+    with pytest.raises(ValueError,
+                       message="Couldn't find a center coordinate for axis X"):
+        x_axis = Axis(ds_noattr, 'X', periodic=True)
+
+    del ds_noattr.XG.attrs['axis']
+    with pytest.raises(ValueError,
+                       message="Couldn't find any coordinates for axis X"):
+        x_axis = Axis(ds_noattr, 'X', periodic=True)
+
+    ds_chopped = ds.copy()
+    del ds_chopped['data_g']
+    ds_chopped['XG'] = ds_chopped['XG'][:-3]
+    with pytest.raises(ValueError, message="Left coordinate XG has"
+                                    "incompatible length 7 (axis_len=9)"):
+        x_axis = Axis(ds_chopped, 'X', periodic=True)
+
+    ds_chopped.XG.attrs['c_grid_axis_shift'] = -0.5
+    with pytest.raises(ValueError, message="Right coordinate XG has"
+                                    "incompatible length 7 (axis_len=9)"):
+        x_axis = Axis(ds_chopped, 'X', periodic=True)
+
+    del ds_chopped.XG.attrs['c_grid_axis_shift']
+    with pytest.raises(ValueError, message="Coordinate XC has invalid or "
+                                "missing c_grid_axis_shift attribute `None`"):
+        x_axis = Axis(ds_chopped, 'X', periodic=True)
+
+    ax = Axis(ds, 'X', periodic=True)
+
+    with pytest.raises(ValueError, message="Can't get neighbor pairs for"
+                                   "the same position."):
+        ax.interp(ds.data_c, 'center')
+
+    with pytest.raises(KeyError,
+                    message="Position 'right' was not found in axis.coords."):
+        ax.interp(ds.data_c, 'right')
+
+    with pytest.raises(ValueError, message="`boundary=fill` is not allowed "
+                                    "with periodic axis X."):
+        ax.interp(ds.data_c, 'right', boundary='fill')
+
+
+
+def test_grid_create(all_datasets):
     ds, periodic, expected = all_datasets
-    grid = Grid(ds)
+    grid = Grid(ds, periodic=periodic)
 
 
 def test_grid_repr(all_datasets):
     ds, periodic, expected = all_datasets
-    grid = Grid(ds)
+    grid = Grid(ds, periodic=periodic)
     print(grid)
     r = repr(grid).split('\n')
     assert r[0] == "<xgcm.Grid>"
+
+
+def test_grid_ops(all_datasets):
+    """
+    Check that we get the same answer using Axis or Grid objects
+    """
+    ds, periodic, expected = all_datasets
+    grid = Grid(ds, periodic=periodic)
+
+    for axis_name in grid.axes.keys():
+        try:
+            ax_periodic = axis_name in periodic
+        except TypeError:
+            ax_periodic = periodic
+        axis = Axis(ds, axis_name, periodic=ax_periodic)
+
+        bcs = [None] if ax_periodic else ['fill', 'extend']
+        for varname in ['data_c', 'data_g']:
+            for boundary in bcs:
+                da_interp = grid.interp(ds[varname], axis_name,
+                    boundary=boundary)
+                da_interp_ax = axis.interp(ds[varname], boundary=boundary)
+                assert da_interp.equals(da_interp_ax)
+                da_diff = grid.diff(ds[varname], axis_name,
+                    boundary=boundary)
+                da_diff_ax = axis.diff(ds[varname], boundary=boundary)
+                assert da_diff.equals(da_diff_ax)
+
 
 
 @pytest.mark.skip(reason="Depracting grid tests")

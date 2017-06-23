@@ -67,8 +67,8 @@ datasets = {
 
         }),
     '2d_left': xr.Dataset(
-        {'data_gg': (['YG', 'XG'], np.random.rand(2*N, N)),
-         'data_cc': (['YC', 'XC'], np.random.rand(2*N, N))},
+        {'data_g': (['YG', 'XG'], np.random.rand(2*N, N)),
+         'data_c': (['YC', 'XC'], np.random.rand(2*N, N))},
         coords={'XG': (['XG',], 2*np.pi/N*np.arange(0,N),
                         {'axis': 'X',
                          'c_grid_axis_shift': -0.5}),
@@ -125,6 +125,13 @@ def nonperiodic_1d(request):
 
 @pytest.fixture(scope="module", params=['periodic_1d_left', 'periodic_1d_right'])
 def periodic_1d(request):
+    ds, periodic = datasets_with_periodicity[request.param]
+    return ds, periodic, expected_values[request.param]
+
+@pytest.fixture(scope="module", params=['periodic_2d_left',
+                 'nonperiodic_2d_left', 'xperiodic_2d_left',
+                 'yperiodic_2d_left'])
+def all_2d(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
 
