@@ -67,7 +67,7 @@ def _pad_array(da, dim, left=False, boundary=None, fill_value=0.):
     """
 
     if boundary not in ['fill', 'extend']:
-        raise ValueError("`bounday` must be `'fill'` or `'extend'`")
+        raise ValueError("`boundary` must be `'fill'` or `'extend'`")
 
     axis_num = da.get_axis_num(dim)
     shape = list(da.shape)
