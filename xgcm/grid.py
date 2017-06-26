@@ -168,7 +168,7 @@ class Axis:
             The data on which to operate
         f : function
             With signature f(da_left, da_right, shift)
-        to : {'face', 'left', 'right', 'face'}
+        to : {'center', 'left', 'right', 'face'}
             The direction in which to shift the array. If not specified,
             default will be used.
         boundary : {None, 'fill', 'extend'}
@@ -429,7 +429,7 @@ class Grid:
         ax = self.axes[axis]
         return ax.interp(da, **kwargs)
 
-
+    @docstrings.dedent
     def diff(self, da, axis, **kwargs):
         """Difference neighboring points to the intermediate grid point.
 
