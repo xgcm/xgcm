@@ -15,27 +15,34 @@ docstrings = docrep.DocstringProcessor(doc_key='My doc string')
 
 class Axis:
     """
-    An object that knows how to interpolate and take derivatives.
-    There are four types of variable positions we can have::
+    An object that represents a group of coodinates that all lie along the same
+    physical dimension but at different positions with respect to a grid cell.
+    There are four possible possition::
 
-         Centered
+         Center
          |------o-------|------o-------|------o-------|------o-------|
                [0]            [1]            [2]            [3]
 
-         Left face
+         Left
          |------o-------|------o-------|------o-------|------o-------|
         [0]            [1]            [2]            [3]
 
-         Right face
+         Right
          |------o-------|------o-------|------o-------|------o-------|
                        [0]            [1]            [2]            [3]
 
-         Face
+         Inner
+         |------o-------|------o-------|------o-------|------o-------|
+                       [0]            [1]            [2]
+
+         Outer
          |------o-------|------o-------|------o-------|------o-------|
         [0]            [1]            [2]            [3]            [4]
 
-    The first three have the same length and are thus distinguished by
-    the `c_grid_axis_shift` attribute.
+    The `center` position is the only one without the `c_grid_axis_shift`
+    attribute, which must be present for the other four. However, the actual
+    value of `c_grid_axis_shift` is ignored for `inner` and `outer`, which are
+    differentiated by their length.
     """
 
     def __init__(self, ds, axis_name, periodic=True, default_shifts={}):
@@ -54,7 +61,13 @@ class Axis:
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
+
+
+        REFERENCES
+        ----------
+        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
         """
+
         self._ds = ds
         self._name = axis_name
         self._periodic = periodic
@@ -68,7 +81,7 @@ class Axis:
                              % axis_name)
 
         # now figure out what type of coordinates these are:
-        # center, left, right, or face
+        # center, left, right, or outer
         coords = {name: ds[name] for name in coord_names}
         axis_shift = {name: coord.attrs.get('c_grid_axis_shift')
                       for name, coord in coords.items()}
@@ -82,8 +95,11 @@ class Axis:
         if len(coords_without_axis_shift) == 0:
             raise ValueError("Couldn't find a center coordinate for axis %s"
                              % axis_name)
-        center_coord_name = min(coords_without_axis_shift,
-                                key=coords_without_axis_shift.get)
+        elif len(coords_without_axis_shift) > 1:
+            raise ValueError("Found two coordinates without "
+                             "`c_grid_axis_shift` attribute for axis %s"
+                             % axis_name)
+        center_coord_name = coords_without_axis_shift.keys()[0]
         # knowing the length of the center coord is key to decoding the other
         # coords
         axis_len = coord_len[center_coord_name]
@@ -97,11 +113,10 @@ class Axis:
         for name in coord_names:
             shift = axis_shift[name]
             clen = coord_len[name]
-            # face coordinate is characterized by the following property
             if clen == axis_len + 1:
-                # we neglect the shift attribute completely here, since it is
-                # irrelevant
-                axis_coords['face'] = coords[name]
+                axis_coords['outer'] = coords[name]
+            elif clen == axis_len - 1:
+                axis_coords['inner'] = coords[name]
             elif shift == -0.5:
                 if clen == axis_len:
                     axis_coords['left'] = coords[name]
@@ -118,15 +133,15 @@ class Axis:
                                      % (name, clen, axis_len))
             else:
                 raise ValueError("Coordinate %s has invalid or missing "
-                                 "c_grid_axis_shift attribute `%s`" %
+                                 "`c_grid_axis_shift` attribute `%s`" %
                                  (name, repr(shift)))
 
         self.coords = axis_coords
 
         # set default position shifts
-        fallback_shifts = {'center': ('left', 'right', 'face'),
+        fallback_shifts = {'center': ('left', 'right', 'outer', 'inner'),
                            'left': ('center',), 'right': ('center',),
-                           'face': ('center',)}
+                           'outer': ('center',), 'inner': ('center')}
         self._default_shifts = {}
         for pos in axis_coords:
             # use user-specified value if present
@@ -168,7 +183,7 @@ class Axis:
             The data on which to operate
         f : function
             With signature f(da_left, da_right, shift)
-        to : {'center', 'left', 'right', 'face'}
+        to : {'center', 'left', 'right', 'outer'}
             The direction in which to shift the array. If not specified,
             default will be used.
         boundary : {None, 'fill', 'extend'}
@@ -214,7 +229,7 @@ class Axis:
 
         position_from, dim = self._get_axis_coord(da)
 
-        valid_positions = ['face', 'left', 'right', 'center']
+        valid_positions = ['outer', 'inner', 'left', 'right', 'center']
         if position_to not in valid_positions:
             raise ValueError("`%s` is not a valid axis position" % position_to)
 
@@ -227,11 +242,13 @@ class Axis:
 
         transition = (position_from, position_to)
 
-        if transition == ('face', 'center'):
+        if ((transition == ('outer', 'center')) or
+            (transition == ('center', 'inner'))):
             # doesn't matter if domain is periodic or not
             left = da.isel(**{dim: slice(None, -1)}).data
             right = da.isel(**{dim: slice(1, None)}).data
-        elif transition == ('center', 'face'):
+        elif ((transition == ('center', 'outer')) or
+              (transition == ('inner', 'center'))):
             # pad both sides of the array
             left = _pad_array(da, dim, left=True,
                               boundary=boundary, fill_value=fill_value)
@@ -355,7 +372,10 @@ class Axis:
 
 
 class Grid:
-    """An object that knows how to interpolate and take derivatives."""
+    """
+    An object with multiple :class:`xgcm.Axis` objects representing different
+    independent axes.
+    """
 
     def __init__(self, ds, check_dims=True, periodic=True, default_shifts={}):
         """
@@ -431,7 +451,8 @@ class Grid:
 
     @docstrings.dedent
     def diff(self, da, axis, **kwargs):
-        """Difference neighboring points to the intermediate grid point.
+        """
+        Difference neighboring points to the intermediate grid point.
 
         Parameters
         ----------

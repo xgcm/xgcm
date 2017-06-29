@@ -91,31 +91,49 @@ def _pad_right(data, boundary, fill_value=0.):
 
 
 @pytest.mark.parametrize('boundary', [None, 'extend', 'fill'])
-def test_axis_neighbor_pairs_face_to_center(nonperiodic_1d, boundary):
+@pytest.mark.parametrize('from_center', [True, False])
+def test_axis_neighbor_pairs_nonperiodic_1d(nonperiodic_1d, boundary, from_center):
     ds, periodic, expected = nonperiodic_1d
     axis = Axis(ds, 'X', periodic=periodic)
 
-    padded = len(ds.XG) > len(ds.XC)
-    to = (set(expected['axes']['X'].keys()) - {'center'}).pop()
+    # detect whether this is an outer or inner case
+    # outer --> dim_line_diff = 1
+    # inner --> dim_line_diff = -1
+    dim_len_diff = len(ds.XG) - len(ds.XC)
+
+    if from_center:
+        to = (set(expected['axes']['X'].keys()) - {'center'}).pop()
+        da = ds.data_c
+    else:
+        to = 'center'
+        da = ds.data_g
+
     shift = expected.get('shift') or False
 
-    if (boundary is None) and not padded:
+    # need boundary condition for everything but outer to center
+    if (boundary is None) and (dim_len_diff == 0 or
+        (dim_len_diff == 1 and from_center) or
+        (dim_len_diff == -1 and not from_center)):
         with pytest.raises(ValueError):
-            data_left, data_right = axis._get_neighbor_data_pairs(ds.data_g,
-                                        'center', boundary=boundary)
+            data_left, data_right = axis._get_neighbor_data_pairs(da, to,
+                                                boundary=boundary)
     else:
-        data_left, data_right = axis._get_neighbor_data_pairs(ds.data_g,
-                                    'center', boundary=boundary)
-        if padded:
-            expected_left = ds.data_g.data[:-1]
-            expected_right = ds.data_g.data[1:]
+        data_left, data_right = axis._get_neighbor_data_pairs(da, to,
+                                                boundary=boundary)
+        if (((dim_len_diff == 1) and not from_center) or
+            ((dim_len_diff == -1) and from_center)):
+            expected_left = da.data[:-1]
+            expected_right = da.data[1:]
+        elif (((dim_len_diff == 1) and from_center) or
+              ((dim_len_diff == -1) and not from_center)):
+            expected_left = _pad_left(da.data, boundary)
+            expected_right = _pad_right(da.data, boundary)
+        elif (shift and not from_center) or (not shift and from_center):
+            expected_right = da.data
+            expected_left = _pad_left(da.data, boundary)[:-1]
         else:
-            if shift:
-                expected_right = ds.data_g.data
-                expected_left = _pad_left(ds.data_g.data, boundary)[:-1]
-            else:
-                expected_left = ds.data_g.data
-                expected_right = _pad_right(ds.data_g.data, boundary)[1:]
+            expected_left = da.data
+            expected_right = _pad_right(da.data, boundary)[1:]
 
         np.testing.assert_allclose(data_left, expected_left)
         np.testing.assert_allclose(data_right, expected_right)
@@ -162,7 +180,7 @@ def test_axis_neighbor_pairs_2d(periodic_2d):
 
 
 @pytest.mark.parametrize('boundary', ['extend', 'fill'])
-def test_axis_diff_and_interp_nonperiodic_face_to_center(nonperiodic_1d, boundary):
+def test_axis_diff_and_interp_nonperiodic_outer_to_center(nonperiodic_1d, boundary):
     ds, periodic, expected = nonperiodic_1d
     axis = Axis(ds, 'X', periodic=periodic)
 
@@ -201,7 +219,7 @@ def test_axis_diff_and_interp_nonperiodic_face_to_center(nonperiodic_1d, boundar
 
 
 @pytest.mark.parametrize('boundary', ['extend', 'fill'])
-def test_axis_diff_and_interp_nonperiodic_center_to_face(nonperiodic_1d,
+def test_axis_diff_and_interp_nonperiodic_center_to_outer(nonperiodic_1d,
                 boundary):
     ds, periodic, expected = nonperiodic_1d
     axis = Axis(ds, 'X', periodic=periodic)

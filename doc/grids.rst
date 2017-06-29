@@ -6,8 +6,9 @@ General Concepts
 
 Most finite volume ocean models use `Arakawa Grids`_, in which different
 variables are offset from one another and situated at different locations with
-respect to the cell center and edge points. `xgcm` currently supports only
-*C-grid geometry*. As illustrated below, C-grids place scalars (such as
+respect to the cell center and edge points.
+As an example, we will consider *C-grid geometry*.
+As illustrated in the figure below, C-grids place scalars (such as
 temperature) at the cell center and vector components (such as velocity) at
 the cell faces. This type of grid is widely used because of its favorable
 conservation properties.
@@ -24,7 +25,7 @@ These grids present a dilemma for the `xarray`_ data model. The ``u`` and ``t``
 points in the example above are located at different points along the x-axis,
 meaning they can't be represented using a single coordinate. But they are
 clearly related and can be transformed via well defined interpolation and
-difference operators. One goal of ``xgcm`` is to provide these interpolation
+difference operators. One goal of xgcm is to provide these interpolation
 and difference operators.
 
 We use `MITgcm notation`_ to denote the basic operators that transform between
@@ -47,12 +48,54 @@ with respect to the input variable.
 With these two operators, the entire suite of finite volume vector calculus
 operations can be represented.
 
+An important consideration for both interpolation and different operators is
+boundary conditions.
+xgcm currently supports periodic,
+`Dirichlet <https://en.wikipedia.org/wiki/Dirichlet_boundary_condition>`_, and
+`Neumann <https://en.wikipedia.org/wiki/Neumann_boundary_condition>`_ boundary
+conditions, although the latter two are limited to simple cases.
+
+
+Axes and Positions
+~~~~~~~~~~~~~~~~~~
+
+A fundamental concept in xgcm is the notion of an "axis". An axis is a group
+of coordinates that all lie along the same physical dimension but describe
+different positions relative to a grid cell. There are currently four
+possible positions supported by xgcm.
+
+    ``center``
+        The variable values are located at the cell center.
+
+    ``left``
+        The variable values are located at the left (i.e. lower) face of the
+        cell.
+
+    ``right``
+        The variable values are located at the right (i.e. upper) face of the
+        cell.
+
+    ``face``
+        The variable values are located on the cell faces, including both
+        outer boundaries.
+
+The first three (``center``, ``left``, and ``right``) all have the same length
+along the axis dimension, while ``face`` has one extra point. These positions
+are visualized in the figure below.
+
+.. figure:: images/axis_positions.svg
+   :alt: axis positions
+
+   The different possible positions of a variable ``f`` along an axis.
+
+xgcm represents an axis using the :class:`xgcm.Axis` class.
+
 Grid Metadata
 ~~~~~~~~~~~~~
 
-``xgcm`` works with ``xarray.DataSet`` and ``xarray.DataArray`` objects. In
+xgcm works with ``xarray.DataSet`` and ``xarray.DataArray`` objects. In
 order to understand the relationship between different coordinates within
-these objects, ``xgcm`` looks for metadata in the form of variable attributes.
+these objects, xgcm looks for metadata in the form of variable attributes.
 Wherever possible, we try to follow established metadata conventions, rather
 than defining new metadata conventions. The two main established conventions
 are the `CF Conventions`_, which apply broadly to Climate and Forecast datasets
@@ -61,13 +104,13 @@ specific attributes relevant to C-grids.
 
 .. note::
 
-  ``xgcm`` never requires datasets to have specific variable names. Rather,
+  xgcm never requires datasets to have specific variable names. Rather,
   the grid geometry is inferred through the attributes, allowing users to use
   the variable names they prefer.
 
-When creating a grid, ``xgcm`` looks for the ``axis`` in all the dimensions.
+When creating a grid, xgcm looks for the ``axis`` in all the dimensions.
 Currently the only allowable values are ``X`` and ``Y``, corresponding to the
-two horizontal dimensions. ``xgcm`` will search through the dataset dimensions
+two horizontal dimensions. xgcm will search through the dataset dimensions
 and look for dimensions with the ``axis`` parameter in order to determine the
 the relevant coordinates. The next attribute is ``c_grid_axis_shift``, which
 determines the position of the coordinate with respect to the cell center. If
@@ -76,7 +119,7 @@ The only acceptable values of ``c_grid_axis_shift`` are ``-0.5`` and ``0.5``.
 
 .. warning::
 
-  ``xgcm`` can currently only handle two different coordinates per axis: a cell
+  xgcm can currently only handle two different coordinates per axis: a cell
   center and a cell edge. Datasets that have more than two dimensions with the
   same values of ``axis`` will raise errors.
 
@@ -117,9 +160,9 @@ We now create a ``Grid`` object from this dataset:
     <xgcm.Grid>
     X-axis:     x_c: 9 (cell center), x_g: 9 (cell face, shift -1) periodic
 
-We see that ``xgcm`` successfully parsed the metadata and inferred the relative
+We see that xgcm successfully parsed the metadata and inferred the relative
 location of the different coordinates along the x axis. Because we did not
-specify the ``x_periodic`` keyword argument, ``xgcm`` assumed that the data
+specify the ``x_periodic`` keyword argument, xgcm assumed that the data
 is periodic along the X axis. Now we can use this grid to interpolate or
 take differences along the axis. First we create some test data:
 
@@ -160,7 +203,7 @@ points. The same transformation happens with a diffrence
 
 .. warning::
 
-    ``xgcm`` does not perform input validation to verify that ``f`` is
+    xgcm does not perform input validation to verify that ``f`` is
     compatible with ``grid``.
 
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
