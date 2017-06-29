@@ -141,7 +141,7 @@ class Axis:
         # set default position shifts
         fallback_shifts = {'center': ('left', 'right', 'outer', 'inner'),
                            'left': ('center',), 'right': ('center',),
-                           'outer': ('center',), 'inner': ('center')}
+                           'outer': ('center',), 'inner': ('center',)}
         self._default_shifts = {}
         for pos in axis_coords:
             # use user-specified value if present

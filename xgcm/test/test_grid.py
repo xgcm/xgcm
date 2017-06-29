@@ -180,19 +180,34 @@ def test_axis_neighbor_pairs_2d(periodic_2d):
 
 
 @pytest.mark.parametrize('boundary', ['extend', 'fill'])
-def test_axis_diff_and_interp_nonperiodic_outer_to_center(nonperiodic_1d, boundary):
+@pytest.mark.parametrize('from_center', [True, False])
+def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_center):
     ds, periodic, expected = nonperiodic_1d
     axis = Axis(ds, 'X', periodic=periodic)
 
-    padded = len(ds.XG) > len(ds.XC)
-    to = (set(expected['axes']['X'].keys()) - {'center'}).pop()
+    dim_len_diff = len(ds.XG) - len(ds.XC)
+
+    if from_center:
+        to = (set(expected['axes']['X'].keys()) - {'center'}).pop()
+        coord_to = 'XG'
+        da = ds.data_c
+    else:
+        to = 'center'
+        coord_to = 'XC'
+        da = ds.data_g
+
     shift = expected.get('shift') or False
 
-    data = ds.data_g.data
-    if padded:
+    data = da.data
+    if ((dim_len_diff==1 and not from_center) or
+        (dim_len_diff==-1 and from_center)):
         data_left = data[:-1]
         data_right = data[1:]
-    elif shift:
+    elif ((dim_len_diff==1 and from_center) or
+          (dim_len_diff==-1 and not from_center)):
+        data_left = _pad_left(data, boundary)
+        data_right = _pad_right(data, boundary)
+    elif (shift and not from_center) or (not shift and from_center):
         data_left = _pad_left(data[:-1], boundary)
         data_right = data
     else:
@@ -201,59 +216,23 @@ def test_axis_diff_and_interp_nonperiodic_outer_to_center(nonperiodic_1d, bounda
 
     # interpolate
     data_interp_expected = xr.DataArray(0.5 * (data_left + data_right),
-                                        dims=['XC'], coords={'XC': ds.XC})
-    data_interp = axis.interp(ds.data_g, 'center', boundary=boundary)
+                                        dims=[coord_to],
+                                        coords={coord_to: ds[coord_to]})
+    data_interp = axis.interp(da, to, boundary=boundary)
     print(data_interp_expected)
     print(data_interp)
     assert data_interp_expected.equals(data_interp)
     # check without "to" specified
-    assert data_interp.equals(axis.interp(ds.data_g, boundary=boundary))
+    assert data_interp.equals(axis.interp(da, boundary=boundary))
 
     # difference
     data_diff_expected = xr.DataArray(data_right - data_left,
-                                      dims=['XC'], coords={'XC': ds.XC})
-    data_diff = axis.diff(ds.data_g, 'center', boundary=boundary)
+                                      dims=[coord_to],
+                                      coords={coord_to: ds[coord_to]})
+    data_diff = axis.diff(da, to, boundary=boundary)
     assert data_diff_expected.equals(data_diff)
     # check without "to" specified
-    assert data_diff.equals(axis.diff(ds.data_g, boundary=boundary))
-
-
-@pytest.mark.parametrize('boundary', ['extend', 'fill'])
-def test_axis_diff_and_interp_nonperiodic_center_to_outer(nonperiodic_1d,
-                boundary):
-    ds, periodic, expected = nonperiodic_1d
-    axis = Axis(ds, 'X', periodic=periodic)
-
-    padded = len(ds.XG) > len(ds.XC)
-    to = (set(expected['axes']['X'].keys()) - {'center'}).pop()
-    shift = expected.get('shift') or False
-
-    data = ds.data_c.data
-    if padded:
-        data_left = _pad_left(data, boundary)
-        data_right = _pad_right(data, boundary)
-    elif shift:
-        data_left = data
-        data_right = _pad_right(data[1:], boundary)
-    else:
-        data_left = _pad_left(data[:-1], boundary)
-        data_right = data
-
-    # interpolate
-    data_interp_expected = xr.DataArray(0.5 * (data_left + data_right),
-                                        dims=['XG'], coords={'XG': ds.XG})
-    data_interp = axis.interp(ds.data_c, to, boundary=boundary)
-    assert data_interp_expected.equals(data_interp)
-    # # check without "to" specified
-    assert data_interp.equals(axis.interp(ds.data_c, boundary=boundary))
-
-    # difference
-    data_diff_expected = xr.DataArray(data_right - data_left,
-                                       dims=['XG'], coords={'XG': ds.XG})
-    data_diff = axis.diff(ds.data_c, to, boundary=boundary)
-    assert data_diff_expected.equals(data_diff)
-    # # check without "to" specified
-    assert data_diff.equals(axis.diff(ds.data_c, boundary=boundary))
+    assert data_diff.equals(axis.diff(da, boundary=boundary))
 
 
 # this mega test covers all options for 2D data
