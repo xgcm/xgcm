@@ -1,0 +1,2 @@
+testdata.tar.gz filter=lfs diff=lfs merge=lfs -text
+datasets/*.nc filter=lfs diff=lfs merge=lfs -text
