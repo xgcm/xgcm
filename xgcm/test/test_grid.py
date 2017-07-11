@@ -138,45 +138,25 @@ def test_axis_neighbor_pairs_nonperiodic_1d(nonperiodic_1d, boundary, from_cente
         np.testing.assert_allclose(data_left, expected_left)
         np.testing.assert_allclose(data_right, expected_right)
 
-    # data_left, data_right = axis._get_neighbor_data_pairs(ds.data_c, to,
-    #                                                         boundary='extend')
-    # np.testing.assert_allclose(data_left[0], data_left[1])
-    # np.testing.assert_allclose(data_right[-2], data_left[-1])
-    #
-    # data_left, data_right = axis._get_neighbor_data_pairs(ds.data_c, to,
-    #                                                         boundary='fill')
-    # np.testing.assert_allclose(data_left[0], 0.)
-    # np.testing.assert_allclose(data_right[-1], 0.)
-    #
-    # data_left, data_right = axis._get_neighbor_data_pairs(ds.data_c, to,
-    #                                                         boundary='fill',
-    #                                                         fill_value=1.0)
-    # np.testing.assert_allclose(data_left[0], 1.0)
-    # np.testing.assert_allclose(data_right[-1], 1.0)
-
-
-def test_axis_neighbor_pairs_2d(periodic_2d):
+@pytest.mark.parametrize('varname, axis_name, to, roll, roll_axis, swap_order',
+    [('data_c', 'X', 'left', 1, 1, False),
+    ('data_c', 'Y', 'left', 1, 0, False),
+    ('data_g', 'X', 'center', -1, 1, True),
+    ('data_g', 'Y', 'center', -1, 0, True)]
+)
+def test_axis_neighbor_pairs_2d(periodic_2d, varname, axis_name, to, roll,
+                                roll_axis, swap_order):
     ds, periodic, expected = periodic_2d
 
-    x_axis = Axis(ds, 'X')
-    y_axis = Axis(ds, 'Y')
+    axis = Axis(ds, axis_name)
 
-    cases = [
-        # varname   #axis    #to   #roll args # order
-        ('data_c', x_axis, 'left', 1, 1, False),
-        ('data_c', y_axis, 'left', 1, 0, False),
-        ('data_g', x_axis, 'center', -1, 1, True),
-        ('data_g', y_axis, 'center', -1, 0, True)
-    ]
-
-    for varname, axis, to, roll, roll_axis, swap_order in cases:
-        data = ds[varname]
-        data_left, data_right = axis._get_neighbor_data_pairs(data, to)
-        if swap_order:
-            data_left, data_right = data_right, data_left
-        np.testing.assert_allclose(data_left, np.roll(data.data,
-                                                      roll, axis=roll_axis))
-        np.testing.assert_allclose(data_right, data.data)
+    data = ds[varname]
+    data_left, data_right = axis._get_neighbor_data_pairs(data, to)
+    if swap_order:
+        data_left, data_right = data_right, data_left
+    np.testing.assert_allclose(data_left, np.roll(data.data,
+                                                  roll, axis=roll_axis))
+    np.testing.assert_allclose(data_right, data.data)
 
 
 @pytest.mark.parametrize('boundary', ['extend', 'fill'])

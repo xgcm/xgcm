@@ -53,7 +53,7 @@ datasets = {
                          'standard_name': 'x_grid_index',
                          'long_name': 'x-dimension of the grid',
                          'c_grid_dynamic_range': '2:8'}),
-                'XG': (['XG',], np.arange(1.5,9),
+                'XG': (['XG',], np.arange(1.5, 9),
                          {'axis': 'X',
                           'standard_name': 'x_grid_index_at_u_location',
                           'long_name': 'x-dimension of the grid',
