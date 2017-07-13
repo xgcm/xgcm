@@ -83,7 +83,21 @@ class Axis:
         # now figure out what type of coordinates these are:
         # center, left, right, or outer
         coords = {name: ds[name] for name in coord_names}
-        axis_shift = {name: coord.attrs.get('c_grid_axis_shift')
+
+        # some tortured logic for dealing with malforme c_grid_axis_shift
+        # attributes such as produced by old versions of xmitgcm.
+        # This should be a float (either -0.5 or 0.5)
+        # this function returns that, or True of the attribute is set to
+        # anything at all
+        def _maybe_fix_type(attr):
+            if attr is not None:
+                try:
+                    return float(attr)
+                except TypeError:
+                    return True
+
+        axis_shift = {name:
+                          _maybe_fix_type(coord.attrs.get('c_grid_axis_shift'))
                       for name, coord in coords.items()}
         coord_len = {name: len(coord) for name, coord in coords.items()}
 

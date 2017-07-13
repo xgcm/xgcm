@@ -61,7 +61,7 @@ Axes and Positions
 
 A fundamental concept in xgcm is the notion of an "axis". An axis is a group
 of coordinates that all lie along the same physical dimension but describe
-different positions relative to a grid cell. There are currently four
+different positions relative to a grid cell. There are currently five
 possible positions supported by xgcm.
 
     ``center``
@@ -69,19 +69,23 @@ possible positions supported by xgcm.
 
     ``left``
         The variable values are located at the left (i.e. lower) face of the
-        cell.
+        cell. The ``c_grid_axis_shift``
 
     ``right``
         The variable values are located at the right (i.e. upper) face of the
         cell.
 
-    ``face``
+    ``inner``
+        The variable values are located on the cell faces, excluding both
+        outer boundaries.
+
+    ``outer``
         The variable values are located on the cell faces, including both
         outer boundaries.
 
 The first three (``center``, ``left``, and ``right``) all have the same length
-along the axis dimension, while ``face`` has one extra point. These positions
-are visualized in the figure below.
+along the axis dimension, while ``inner`` has one fewer point and ``outer`` has
+one extra point. These positions are visualized in the figure below.
 
 .. figure:: images/axis_positions.svg
    :alt: axis positions
@@ -100,31 +104,48 @@ Wherever possible, we try to follow established metadata conventions, rather
 than defining new metadata conventions. The two main established conventions
 are the `CF Conventions`_, which apply broadly to Climate and Forecast datasets
 that follow the netCDF data model, and the `COMODO conventions`_, which define
-specific attributes relevant to C-grids.
+specific attributes relevant to Arakawa grids. While the COMODO conventions
+were designed with C-grids in mind, we find they are general enough to support
+all the different Arakawa grids.
+
+The key attribute xgcm looks for is ``axis``.
+When creating a new grid, xgcm will search through the dataset dimensions
+looking for dimensions with the ``axis`` attribute defined.
+All coordinates with the same value of ``axis`` are presumed to belong to the
+same logical axis.
+To determine the positions of the different coordinates, xgcm considers both
+the length of the coordinate variable and the ``c_grid_axis_shift`` attribute,
+which determines the position of the coordinate with respect to the cell center.
+The only acceptable values of ``c_grid_axis_shift`` are ``-0.5`` and ``0.5``.
+If the ``c_grid_axis_shift`` attribute attribute is absent, the coordinate is
+assumed to describe a cell center.
+The cell center coordinate is identified first; the length of other coordinates
+relative to the cell center coordinate is used in conjunction with
+``c_grid_axis_shift`` to infer the coordinate positions, as summarized by the
+table below.
+
++--------+--------------------------+----------+
+| length | ``c_grid_axis_shift``    | position |
++========+==========================+==========+
+| n      | *None*                   | center   |
++--------+--------------------------+----------+
+| n      | -0.5                     | left     |
++--------+--------------------------+----------+
+| n      | 0.5                      | right    |
++--------+--------------------------+----------+
+| n-1    | 0.5 or -0.5              | inner    |
++--------+--------------------------+----------+
+| n+1    | 0.5 or -0.5              | outer    |
++--------+--------------------------+----------+
+
+If your dataset does not conform to CF and COMODO conventions already, you
+must set these attributes manually before passing it to xgcm.
 
 .. note::
 
   xgcm never requires datasets to have specific variable names. Rather,
-  the grid geometry is inferred through the attributes, allowing users to use
-  the variable names they prefer.
+  the grid geometry is inferred through the attributes.
 
-When creating a grid, xgcm looks for the ``axis`` in all the dimensions.
-Currently the only allowable values are ``X`` and ``Y``, corresponding to the
-two horizontal dimensions. xgcm will search through the dataset dimensions
-and look for dimensions with the ``axis`` parameter in order to determine the
-the relevant coordinates. The next attribute is ``c_grid_axis_shift``, which
-determines the position of the coordinate with respect to the cell center. If
-this attribute is absent, the coordinate is assumed to describe a cell center.
-The only acceptable values of ``c_grid_axis_shift`` are ``-0.5`` and ``0.5``.
-
-.. warning::
-
-  xgcm can currently only handle two different coordinates per axis: a cell
-  center and a cell edge. Datasets that have more than two dimensions with the
-  same values of ``axis`` will raise errors.
-
-The cell-center and cell-edge coordinates should either have the same length, or
-else the cell-edge coordinate should have one more point than the cell-center.
 
 ``Grid`` Objects
 ~~~~~~~~~~~~~~~~
@@ -142,7 +163,7 @@ an ``xarray.DataSet`` with proper attributes. We can create one as follows.
                                {'axis': 'X', 'c_grid_axis_shift': -0.5})})
     >>> ds
     <xarray.Dataset>
-    Dimensions:  (x_c: 9, x_g: 10)
+    Dimensions:  (x_c: 9, x_g: 9)
     Coordinates:
       * x_g      (x_g) float64 0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
       * x_c      (x_c) int64 1 2 3 4 5 6 7 8 9
@@ -158,12 +179,19 @@ We now create a ``Grid`` object from this dataset:
     >>> grid = Grid(ds)
     >>> grid
     <xgcm.Grid>
-    X-axis:     x_c: 9 (cell center), x_g: 9 (cell face, shift -1) periodic
+    X Axis (periodic):
+      * center   x_c (9) --> left
+      * left     x_g (9) --> center
 
 We see that xgcm successfully parsed the metadata and inferred the relative
-location of the different coordinates along the x axis. Because we did not
-specify the ``x_periodic`` keyword argument, xgcm assumed that the data
-is periodic along the X axis. Now we can use this grid to interpolate or
+location of the different coordinates along the x axis.
+Because we did not
+specify the ``periodic`` keyword argument, xgcm assumed that the data
+is periodic along all dimensions.
+The arrows after each coordinate indicate the default shift positions for
+interpolation and difference operations: operating on the center coordinate
+(``x_c``) shifts to the left coordinate (``x_g``), and vice versa.
+Now we can use this grid to interpolate or
 take differences along the axis. First we create some test data:
 
 .. code-block:: python
@@ -182,7 +210,7 @@ We interpolate as follows:
 .. code-block:: python
 
     >>> grid.interp(f, axis='X')
-    <xarray.DataArray 'x_c' (x_g: 9)>
+    <xarray.DataArray (x_g: 9)>
     array([  3.213938e-01,   8.137977e-01,   9.254166e-01,   6.040228e-01,
              1.110223e-16,  -6.040228e-01,  -9.254166e-01,  -8.137977e-01,
             -3.213938e-01])
@@ -190,12 +218,12 @@ We interpolate as follows:
       * x_g      (x_g) float64 0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
 
 We see that the output is on the ``x_g`` points rather than the original ``xc``
-points. The same transformation happens with a diffrence
+points. The same transformation happens with a difference:
 
 .. code-block:: python
 
     >>> grid.diff(f, axis='X')
-    <xarray.DataArray 'x_c' (x_g: 9)>
+    <xarray.DataArray (x_g: 9)>
     array([ 0.642788,  0.34202 , -0.118782, -0.524005, -0.68404 , -0.524005,
            -0.118782,  0.34202 ,  0.642788])
     Coordinates:
@@ -205,6 +233,8 @@ points. The same transformation happens with a diffrence
 
     xgcm does not perform input validation to verify that ``f`` is
     compatible with ``grid``.
+
+For more advanced usage of xgcm, see the examples.
 
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
 .. _xarray: http://xarray.pydata.org

@@ -43,6 +43,7 @@ Contents
 
    installation
    grids
+   example_mitgcm
    api
    faq
    contributing
