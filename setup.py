@@ -6,7 +6,7 @@ import warnings
 
 from setuptools import setup, find_packages
 
-VERSION = '0.0.0'
+VERSION = '0.1.0'
 DISTNAME = 'xgcm'
 LICENSE = 'MIT'
 AUTHOR = 'xgcm Developers'
