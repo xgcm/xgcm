@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+
+<!-- Page 1 -->
+<svg x="0" y="0" width="650" height="230" viewBox="0 0 650 230" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+style="display: block;margin-left: auto;margin-right: auto;">
+<defs>
+
+<style type="text/css"><![CDATA[
+
+.g1_1{
+fill: #FFFFFF;
+}
+.g2_1{
+fill: #EBEBEB;
+}
+.g3_1{
+fill: none;
+stroke: #000000;
+stroke-width: 3.0555556;
+stroke-linecap: butt;
+stroke-linejoin: miter;
+stroke-miterlimit: 4;
+}
+.g4_1{
+fill: none;
+stroke: #000000;
+stroke-width: 1.5277778;
+stroke-linecap: butt;
+stroke-linejoin: miter;
+stroke-miterlimit: 4;
+stroke-dasharray: 4,4;
+}
+
+.s1_1{
+font-size: 16.81px;
+font-family: Helvetica, sans-serif;
+fill: #000000;
+}
+.s2_1{
+font-size: 16.81px;
+font-family: "Lucida Console", Monaco, monospace;
+fill: #175778;
+}
+.s3_1{
+font-size: 16.81px;
+font-family: Helvetica, sans-serif;
+font-weight: bold;
+fill: #000000;
+}
+]]></style>
+
+</defs>
+<path d="M0,0
+L0,230
+L650,230
+L650,0 Z " 
+fill="#FFFFFF" stroke="none" />
+<path d="M-269.8,-219.3l1209.9,0l0,934.9l-1209.9,0Z" class="g1_1" />
+<path d="M11.2,183.9l631.9,0l0,32.4l-631.9,0Z" class="g2_1" />
+<path d="M12.7,118.4l631.9,0l0,32.4l-631.9,0Z" class="g2_1" />
+<path d="M13.5,56.6l631.9,0l0,34.1l-631.9,0Z" class="g2_1" />
+<path d="M108,31.6l481.9,0" class="g3_1" />
+<path d="M178.4,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.3,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.7,-4.7,12.3,-4.7,17,0Z" class="g1_1" />
+<path d="M178.4,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.3,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.7,-4.7,12.3,-4.7,17,0Z" class="g3_1" />
+<path d="M299.1,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.3,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.7,-4.7,12.3,-4.7,17,0Z" class="g1_1" />
+<path d="M299.1,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.3,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.7,-4.7,12.3,-4.7,17,0Z" class="g3_1" />
+<path d="M419.8,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.3,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.7,-4.7,12.3,-4.7,17,0Z" class="g1_1" />
+<path d="M419.8,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.3,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.7,-4.7,12.3,-4.7,17,0Z" class="g3_1" />
+<path d="M540.5,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.4,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.6,-4.7,12.3,-4.7,17,0Z" class="g1_1" />
+<path d="M540.5,24.7c4.7,4.7,4.7,12.3,0,17c-4.7,4.7,-12.4,4.7,-17,0c-4.7,-4.7,-4.7,-12.3,0,-17c4.6,-4.7,12.3,-4.7,17,0Z" class="g3_1" />
+<path d="M108,52.7l0,-42.1" class="g4_1" />
+<path d="M228.6,51.5l0,-42.2" class="g4_1" />
+<path d="M349.2,51.5l0,-42.2" class="g4_1" />
+<path d="M469.9,51.5l0,-42.2" class="g4_1" />
+<path d="M590.6,51.5l0,-42.2" class="g4_1" />
+<text 
+x="28" 
+y="80" 
+dx="0,0,0,0,0,0" 
+class="s1_1"
+>center</text>
+
+<text 
+x="148" 
+y="80" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[0] </text>
+
+<text 
+x="270" 
+y="80" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[1] </text>
+
+<text 
+x="401" 
+y="80" 
+dx="0,0" 
+class="s2_1"
+>… </text>
+
+<text 
+x="503" 
+y="80" 
+dx="0,0,0,0,0,0,0" 
+class="s2_1"
+>f[n-1] </text>
+
+<text 
+x="53" 
+y="111" 
+dx="0,0,0,0" 
+class="s1_1"
+>left</text>
+
+<text 
+x="89" 
+y="110" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[0] </text>
+
+<text 
+x="210" 
+y="110" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[1] </text>
+
+<text 
+x="342" 
+y="110" 
+dx="0,0" 
+class="s2_1"
+>… </text>
+
+<text 
+x="443" 
+y="110" 
+dx="0,0,0,0,0,0,0" 
+class="s2_1"
+>f[n-1] </text>
+
+<text 
+x="42" 
+y="142" 
+dx="0,0,0,0,0" 
+class="s1_1"
+>right</text>
+
+<text 
+x="209" 
+y="141" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[0] </text>
+
+<text 
+x="331" 
+y="141" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[1] </text>
+
+<text 
+x="462" 
+y="141" 
+dx="0,0" 
+class="s2_1"
+>… </text>
+
+<text 
+x="564" 
+y="141" 
+dx="0,0,0,0,0,0,0" 
+class="s2_1"
+>f[n-1] </text>
+
+<text 
+x="38" 
+y="172" 
+dx="0,0,0,0,0" 
+class="s1_1"
+>inner</text>
+
+<text 
+x="210" 
+y="171" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[0] </text>
+
+<text 
+x="342" 
+y="171" 
+dx="0,0" 
+class="s2_1"
+>… </text>
+
+<text 
+x="443" 
+y="171" 
+dx="0,0,0,0,0,0" 
+class="s2_1"
+>f[n-2]</text>
+
+<text 
+x="16" 
+y="49" 
+dx="0,0,0,0,0,0,0,0" 
+class="s3_1"
+>position</text>
+
+<text 
+x="37" 
+y="203" 
+dx="0,0,0,0,0" 
+class="s1_1"
+>outer</text>
+
+<text 
+x="89" 
+y="202" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[0] </text>
+
+<text 
+x="210" 
+y="202" 
+dx="0,0,0,0,0" 
+class="s2_1"
+>f[1] </text>
+
+<text 
+x="342" 
+y="202" 
+dx="0,0" 
+class="s2_1"
+>… </text>
+
+<text 
+x="443" 
+y="202" 
+dx="0,0,0,0,0,0,0" 
+class="s2_1"
+>f[n-1] </text>
+
+<text 
+x="575" 
+y="202" 
+dx="0,0,0,0" 
+class="s2_1"
+>f[n]</text>
+
+
+
+<!-- Any embedded fonts defined here -->
+<style type="text/css" ><![CDATA[
+
+@font-face {
+	font-family: LucidaConsole_9;
+	src: url("fonts/LucidaConsole_9.woff") format("woff");
+}
+
+@font-face {
+	font-family: Helvetica-Bold_a;
+	src: url("fonts/Helvetica-Bold_a.woff") format("woff");
+}
+
+@font-face {
+	font-family: Helvetica_8;
+	src: url("fonts/Helvetica_8.woff") format("woff");
+}
+
+]]></style>
+
+</svg>

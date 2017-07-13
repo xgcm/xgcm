@@ -10,3 +10,4 @@ dependencies:
   - sphinx
   - pip:
     - docrep
+    - nbsphinx
