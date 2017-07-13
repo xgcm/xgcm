@@ -33,8 +33,8 @@ climate science. xgcm is part of the Pangeo_ initiative.
 .. _xarray: http://xarray.pydata.org
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grid
 
-.. |DOI| image:: https://zenodo.org/badge/70649781.svg
-   :target: https://zenodo.org/badge/latestdoi/70649781
+.. |DOI| image:: https://zenodo.org/badge/41581350.svg
+   :target: https://zenodo.org/badge/latestdoi/41581350
 .. |Build Status| image:: https://travis-ci.org/xgcm/xgcm.svg?branch=master
    :target: https://travis-ci.org/xgcm/xgcm
    :alt: travis-ci build status
