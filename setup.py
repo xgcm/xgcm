@@ -6,9 +6,7 @@ import warnings
 
 from setuptools import setup, find_packages
 
-ISRELEASED = False
-VERSION = '0.0.0'
-
+VERSION = '0.1.0'
 DISTNAME = 'xgcm'
 LICENSE = 'MIT'
 AUTHOR = 'xgcm Developers'
@@ -32,9 +30,11 @@ INSTALL_REQUIRES = ['xarray', 'dask', 'numpy', 'future', 'docrep']
 SETUP_REQUIRES = ['pytest-runner']
 TESTS_REQUIRE = ['pytest >= 2.8', 'coverage']
 
-DESCRIPTION = "General circulation model analysis in python with xarray"
-LONG_DESCRIPTION = """To be written.
-"""
+DESCRIPTION = "General Circulation Model Postprocessing with xarray"
+def readme():
+    with open('README.rst') as f:
+        return f.read()
+
 
 setup(name=DISTNAME,
       version=VERSION,
@@ -43,7 +43,7 @@ setup(name=DISTNAME,
       author_email=AUTHOR_EMAIL,
       classifiers=CLASSIFIERS,
       description=DESCRIPTION,
-      long_description=LONG_DESCRIPTION,
+      long_description=readme(),
       install_requires=INSTALL_REQUIRES,
       setup_requires=SETUP_REQUIRES,
       tests_require=TESTS_REQUIRE,

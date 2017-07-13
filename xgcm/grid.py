@@ -197,7 +197,7 @@ class Axis:
             The data on which to operate
         f : function
             With signature f(da_left, da_right, shift)
-        to : {'center', 'left', 'right', 'outer'}
+        to : {'center', 'left', 'right', 'inner', 'outer'}
             The direction in which to shift the array. If not specified,
             default will be used.
         boundary : {None, 'fill', 'extend'}
