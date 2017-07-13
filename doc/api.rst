@@ -1,8 +1,14 @@
 API
 ###
 
+Axis
+====
+
+.. autoclass:: xgcm.Axis
+   :members:
+
 Grid
 ====
 
-.. automodule:: xgcm.grid
+.. autoclass:: xgcm.Grid
    :members:

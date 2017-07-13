@@ -6,16 +6,11 @@ import warnings
 
 from setuptools import setup, find_packages
 
-MAJOR = 0
-MINOR = 0
-MICRO = 0
 ISRELEASED = False
-VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
-QUALIFIER = ''
-
+VERSION = '0.0.0'
 
 DISTNAME = 'xgcm'
-LICENSE = 'Apache'
+LICENSE = 'MIT'
 AUTHOR = 'xgcm Developers'
 AUTHOR_EMAIL = 'rpa@ldeo.columbia.edu'
 URL = 'https://github.com/xgcm/xgcm'
@@ -26,11 +21,10 @@ CLASSIFIERS = [
     'Intended Audience :: Science/Research',
     'Programming Language :: Python',
     'Programming Language :: Python :: 2',
-    'Programming Language :: Python :: 2.6',
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.3',
-    'Programming Language :: Python :: 3.4',
+    'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
     'Topic :: Scientific/Engineering',
 ]
 
@@ -38,10 +32,7 @@ INSTALL_REQUIRES = ['xarray', 'dask', 'numpy', 'future', 'docrep']
 SETUP_REQUIRES = ['pytest-runner']
 TESTS_REQUIRE = ['pytest >= 2.8', 'coverage']
 
-if sys.version_info[:2] < (2, 7):
-    TESTS_REQUIRE += ["unittest2 == 0.5.1"]
-
-DESCRIPTION = "General circulation model analysis in python with xray"
+DESCRIPTION = "General circulation model analysis in python with xarray"
 LONG_DESCRIPTION = """To be written.
 """
 
