@@ -113,7 +113,7 @@ class Axis:
             raise ValueError("Found two coordinates without "
                              "`c_grid_axis_shift` attribute for axis %s"
                              % axis_name)
-        center_coord_name = coords_without_axis_shift.keys()[0]
+        center_coord_name = list(coords_without_axis_shift)[0]
         # knowing the length of the center coord is key to decoding the other
         # coords
         axis_len = coord_len[center_coord_name]
