@@ -40,6 +40,7 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.viewcode',
     'numpydoc',
+    'nbsphinx',
 ]
 
 # http://stackoverflow.com/questions/5599254/how-to-use-sphinxs-autodoc-to-document-a-classs-init-self-method
