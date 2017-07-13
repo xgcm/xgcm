@@ -30,7 +30,7 @@ import numpy as np
 N = 100
 datasets = {
     # the comodo example, with renamed dimensions
-    '1d_face': xr.Dataset(
+    '1d_outer': xr.Dataset(
         {'data_c': (['XC'], np.random.rand(9)),
          'data_g': (['XG'], np.random.rand(10))},
         coords={'XC': (['XC',], np.arange(1,10),
@@ -39,6 +39,21 @@ datasets = {
                          'long_name': 'x-dimension of the grid',
                          'c_grid_dynamic_range': '2:8'}),
                 'XG': (['XG',], np.arange(0.5,10),
+                         {'axis': 'X',
+                          'standard_name': 'x_grid_index_at_u_location',
+                          'long_name': 'x-dimension of the grid',
+                          'c_grid_dynamic_range': '3:8',
+                          'c_grid_axis_shift': -0.5})
+        }),
+    '1d_inner': xr.Dataset(
+        {'data_c': (['XC'], np.random.rand(9)),
+         'data_g': (['XG'], np.random.rand(8))},
+        coords={'XC': (['XC',], np.arange(1,10),
+                        {'axis': 'X',
+                         'standard_name': 'x_grid_index',
+                         'long_name': 'x-dimension of the grid',
+                         'c_grid_dynamic_range': '2:8'}),
+                'XG': (['XG',], np.arange(1.5, 9),
                          {'axis': 'X',
                           'standard_name': 'x_grid_index_at_u_location',
                           'long_name': 'x-dimension of the grid',
@@ -84,7 +99,8 @@ datasets = {
 
 # include periodicity
 datasets_with_periodicity ={
-    'nonperiodic_1d': (datasets['1d_face'], False),
+    'nonperiodic_1d_outer': (datasets['1d_outer'], False),
+    'nonperiodic_1d_inner': (datasets['1d_inner'], False),
     'periodic_1d_left': (datasets['1d_left'], True),
     'nonperiodic_1d_left': (datasets['1d_left'], False),
     'periodic_1d_right': (datasets['1d_right'], True),
@@ -96,7 +112,8 @@ datasets_with_periodicity ={
 }
 
 expected_values = {
-    'nonperiodic_1d': {'axes': {'X': {'center': 'XC', 'face': 'XG'}}},
+    'nonperiodic_1d_outer': {'axes': {'X': {'center': 'XC', 'outer': 'XG'}}},
+    'nonperiodic_1d_inner': {'axes': {'X': {'center': 'XC', 'inner': 'XG'}}},
     'periodic_1d_left': {'axes': {'X': {'center': 'XC', 'left': 'XG'}}},
     'nonperiodic_1d_left': {'axes': {'X': {'center': 'XC', 'left': 'XG'}}},
     'periodic_1d_right': {'axes': {'X': {'center': 'XC', 'right': 'XG'}},
@@ -118,7 +135,8 @@ def all_datasets(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
 
-@pytest.fixture(scope="module", params=['nonperiodic_1d', 'nonperiodic_1d_left', 'nonperiodic_1d_right'])
+@pytest.fixture(scope="module", params=['nonperiodic_1d_outer',
+                'nonperiodic_1d_inner','nonperiodic_1d_left', 'nonperiodic_1d_right'])
 def nonperiodic_1d(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
