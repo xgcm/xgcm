@@ -44,8 +44,8 @@ climate science. xgcm is part of the Pangeo_ initiative.
 .. |pypi| image:: https://badge.fury.io/py/xgcm.svg
    :target: https://badge.fury.io/py/xgcm
    :alt: pypi package
-.. |docs| image:: http://readthedocs.org/projects/xgcm/badge/?version=stable
-   :target: http://xgcm.readthedocs.org/en/stable/?badge=stable
+.. |docs| image:: http://readthedocs.org/projects/xgcm/badge/?version=latest
+   :target: http://xgcm.readthedocs.org/en/stable/?badge=latest
    :alt: documentation status
 .. |license| image:: https://img.shields.io/github/license/mashape/apistatus.svg
    :target: https://github.com/xgcm/xgcm
