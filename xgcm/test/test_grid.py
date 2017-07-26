@@ -138,6 +138,44 @@ def test_axis_neighbor_pairs_nonperiodic_1d(nonperiodic_1d, boundary, from_cente
         np.testing.assert_allclose(data_left, expected_left)
         np.testing.assert_allclose(data_right, expected_right)
 
+
+@pytest.mark.parametrize('boundary', ['extend', 'fill'])
+def test_axis_cumsum(nonperiodic_1d, boundary):
+    ds, periodic, expected = nonperiodic_1d
+    axis = Axis(ds, 'X', periodic=periodic)
+
+    axis_expected = expected['axes']['X']
+
+    cumsum_g = axis.cumsum(ds.data_g, boundary=boundary)
+    assert cumsum_g.dims == ds.data_c.dims
+
+    cumsum_c = axis.cumsum(ds.data_c, boundary=boundary)
+    assert cumsum_c.dims == ds.data_g.dims
+
+    cumsum_c_raw = np.cumsum(ds.data_c.data)
+    cumsum_g_raw = np.cumsum(ds.data_g.data)
+    if 'right' in axis_expected:
+        np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw)
+        fill_value = 0. if boundary=='fill' else cumsum_g_raw[0]
+        np.testing.assert_allclose(cumsum_g.data,
+            np.hstack([fill_value, cumsum_g_raw[:-1]]))
+    elif 'left' in axis_expected:
+        np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw)
+        fill_value = 0. if boundary=='fill' else cumsum_c_raw[0]
+        np.testing.assert_allclose(cumsum_c.data,
+            np.hstack([fill_value, cumsum_c_raw[:-1]]))
+    elif 'inner' in axis_expected:
+        np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw[:-1])
+        fill_value = 0. if boundary=='fill' else cumsum_g_raw[0]
+        np.testing.assert_allclose(cumsum_g.data,
+            np.hstack([fill_value, cumsum_g_raw]))
+    elif 'outer' in axis_expected:
+        np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw[:-1])
+        fill_value = 0. if boundary=='fill' else cumsum_c_raw[0]
+        np.testing.assert_allclose(cumsum_c.data,
+            np.hstack([fill_value, cumsum_c_raw]))
+
+
 @pytest.mark.parametrize('varname, axis_name, to, roll, roll_axis, swap_order',
     [('data_c', 'X', 'left', 1, 1, False),
     ('data_c', 'Y', 'left', 1, 0, False),
