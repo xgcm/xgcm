@@ -146,34 +146,47 @@ def test_axis_cumsum(nonperiodic_1d, boundary):
 
     axis_expected = expected['axes']['X']
 
-    cumsum_g = axis.cumsum(ds.data_g, boundary=boundary)
+    cumsum_g = axis.cumsum(ds.data_g, to='center', boundary=boundary)
     assert cumsum_g.dims == ds.data_c.dims
+    # check default "to"
+    assert cumsum_g.equals(axis.cumsum(ds.data_g, boundary=boundary))
 
-    cumsum_c = axis.cumsum(ds.data_c, boundary=boundary)
+    to = set(axis_expected).difference({'center'}).pop()
+    cumsum_c = axis.cumsum(ds.data_c, to=to, boundary=boundary)
     assert cumsum_c.dims == ds.data_g.dims
+    # check default "to"
+    assert cumsum_c.equals(axis.cumsum(ds.data_c, boundary=boundary))
 
     cumsum_c_raw = np.cumsum(ds.data_c.data)
     cumsum_g_raw = np.cumsum(ds.data_g.data)
-    if 'right' in axis_expected:
+
+    if to == 'right':
         np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw)
         fill_value = 0. if boundary=='fill' else cumsum_g_raw[0]
         np.testing.assert_allclose(cumsum_g.data,
             np.hstack([fill_value, cumsum_g_raw[:-1]]))
-    elif 'left' in axis_expected:
+    elif to == 'left':
         np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw)
         fill_value = 0. if boundary=='fill' else cumsum_c_raw[0]
         np.testing.assert_allclose(cumsum_c.data,
             np.hstack([fill_value, cumsum_c_raw[:-1]]))
-    elif 'inner' in axis_expected:
+    elif to == 'inner':
         np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw[:-1])
         fill_value = 0. if boundary=='fill' else cumsum_g_raw[0]
         np.testing.assert_allclose(cumsum_g.data,
             np.hstack([fill_value, cumsum_g_raw]))
-    elif 'outer' in axis_expected:
+    elif to == 'outer':
         np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw[:-1])
         fill_value = 0. if boundary=='fill' else cumsum_c_raw[0]
         np.testing.assert_allclose(cumsum_c.data,
             np.hstack([fill_value, cumsum_c_raw]))
+
+    ## not much point doing this...we don't have the right test datasets
+    ## to really test the errors
+    # other_positions = {'left', 'right', 'inner', 'outer'}.difference({to})
+    # for pos in other_positions:
+    #     with pytest.raises(KeyError):
+    #         axis.cumsum(ds.data_c, to=pos, boundary=boundary)
 
 
 @pytest.mark.parametrize('varname, axis_name, to, roll, roll_axis, swap_order',
@@ -414,3 +427,8 @@ def test_grid_ops(all_datasets):
                     boundary=boundary)
                 da_diff_ax = axis.diff(ds[varname], boundary=boundary)
                 assert da_diff.equals(da_diff_ax)
+                if boundary is not None:
+                    da_cumsum = grid.cumsum(ds[varname], axis_name,
+                        boundary=boundary)
+                    da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
+                    assert da_cumsum.equals(da_cumsum_ax)
