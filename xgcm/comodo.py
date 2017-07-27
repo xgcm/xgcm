@@ -46,25 +46,3 @@ def get_axis_coords(ds, axis_name):
 
 def _assert_data_on_grid(da):
     pass
-
-def _get_vars_by_attrs(ds, **attrs):
-    """Return all variable / coordiante names matching an attribute dict.
-
-    Parameters
-    ----------
-    ds : xarray.dataset or xarray.dataarray
-    attrs: dict
-        Attributes to match
-
-    Returns
-    -------
-    varnames : list
-    """
-
-    matches = []
-    for varname in ds:
-        var = ds[varname]
-        for key, val in iteritems(attrs):
-            if key in var.attrs:
-                if var.attrs[key] == val:
-                    pass
