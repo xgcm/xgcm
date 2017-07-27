@@ -8,6 +8,7 @@ dependencies:
   - pytest
   - numpydoc
   - sphinx
+  - jupyter
   - pip:
     - docrep
     - nbsphinx
