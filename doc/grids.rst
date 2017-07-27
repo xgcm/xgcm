@@ -55,6 +55,9 @@ xgcm currently supports periodic,
 `Neumann <https://en.wikipedia.org/wiki/Neumann_boundary_condition>`_ boundary
 conditions, although the latter two are limited to simple cases.
 
+The inverse of differentiation is integration. For finite volume grids, the
+inverse of the difference operator is a discrete cumulative sum. xgcm also
+provides a grid-aware version of the ``cumsum`` operator.
 
 Axes and Positions
 ~~~~~~~~~~~~~~~~~~
@@ -209,7 +212,8 @@ We interpolate as follows:
 
 .. code-block:: python
 
-    >>> grid.interp(f, axis='X')
+    >>> f_interp = grid.interp(f, axis='X')
+    >>> f_interp
     <xarray.DataArray (x_g: 9)>
     array([  3.213938e-01,   8.137977e-01,   9.254166e-01,   6.040228e-01,
              1.110223e-16,  -6.040228e-01,  -9.254166e-01,  -8.137977e-01,
@@ -218,21 +222,38 @@ We interpolate as follows:
       * x_g      (x_g) float64 0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
 
 We see that the output is on the ``x_g`` points rather than the original ``xc``
-points. The same transformation happens with a difference:
+points.
+
+.. warning::
+
+    xgcm does not perform input validation to verify that ``f`` is
+    compatible with ``grid``.
+
+The same position shift happens with a difference operation:
 
 .. code-block:: python
 
-    >>> grid.diff(f, axis='X')
+    >>> f_diff = grid.diff(f, axis='X')
+    >>> f_diff
     <xarray.DataArray (x_g: 9)>
     array([ 0.642788,  0.34202 , -0.118782, -0.524005, -0.68404 , -0.524005,
            -0.118782,  0.34202 ,  0.642788])
     Coordinates:
       * x_g      (x_g) float64 0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
 
-.. warning::
+We can reverse the difference operation by taking a cumsum:
 
-    xgcm does not perform input validation to verify that ``f`` is
-    compatible with ``grid``.
+.. code-block:: python
+
+    >>> grid.cumsum(f_diff, 'X')
+    <xarray.DataArray (x_c: 9)>
+    array([ 0.642788,  0.984808,  0.866025,  0.34202 , -0.34202 , -0.866025,
+           -0.984808, -0.642788,  0.      ])
+    Coordinates:
+      * x_c      (x_c) int64 1 2 3 4 5 6 7 8 9
+
+Which is approximately equal to the original ``f``, modulo the numerical errors
+accrued due to the discretization of the data.
 
 For more advanced usage of xgcm, see the examples.
 
