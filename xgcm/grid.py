@@ -345,7 +345,53 @@ class Axis:
                                           boundary, fill_value)
 
 
+    def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
+        """
+        Cumulatively sum a DataArray, transforming to the intermediate axis
+        position.
 
+        Parameters
+        ----------
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_cum : xarray.DataArray
+            The cumsummed data
+        """
+
+        pos, dim = self._get_axis_coord(da)
+
+        if to is None:
+            to = self._default_shifts[pos]
+
+        # first use xarray's cumsum method
+        da_cum = da.cumsum(dim=dim)
+
+        boundary_kwargs =  dict(boundary=boundary, fill_value=fill_value)
+
+        # now pad / trim the data as necessary
+        # here we enumerate all the valid possible shifts
+        if ((pos == 'center' and to == 'right') or
+            (pos == 'left' and to == 'center')):
+            # do nothing, this is the default for how cumsum works
+            data = da_cum.data
+        elif ((pos == 'center' and to == 'left') or
+              (pos == 'right' and to == 'center')):
+            data = _pad_array(da_cum.isel(**{dim: slice(0,-1)}), dim,
+                              left=True, **boundary_kwargs)
+        elif ((pos == 'center' and to == 'inner') or
+              (pos == 'outer' and to == 'center')):
+            data = da_cum.isel(**{dim: slice(0,-1)}).data
+        elif ((pos == 'center' and to == 'outer') or
+              (pos == 'inner' and to == 'center')):
+            data = _pad_array(da_cum, dim, left=True, **boundary_kwargs)
+        else:
+            raise ValueError("From `%s` to `%s` is not a valid position "
+                             "shift for cumsum operation." % (pos, to))
+
+        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to)
+        return da_cum_newcoord
 
     def _wrap_and_replace_coords(self, da, data_new, position_to):
         """
@@ -382,6 +428,9 @@ class Axis:
             # TODO: should we have more careful checking of alignment here?
             if coord.name in da.dims:
                 return position, coord.name
+
+        raise KeyError("None of the DataArray's dims %s were found in axis "
+                       "coords." % repr(da.dims))
 
 
 
@@ -483,6 +532,27 @@ class Grid:
         ax = self.axes[axis]
         return ax.diff(da, **kwargs)
 
+
+    @docstrings.dedent
+    def cumsum(self, da, axis, **kwargs):
+        """
+        Cumulatively sum a DataArray, transforming to the intermediate axis
+        position.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which ot act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The cumsummed data
+        """
+
+        ax = self.axes[axis]
+        return ax.cumsum(da, **kwargs)
 
 
 _other_docstring_options="""
