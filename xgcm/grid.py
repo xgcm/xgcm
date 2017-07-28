@@ -344,7 +344,7 @@ class Axis:
         return self._neighbor_binary_func(da, diff_function, to,
                                           boundary, fill_value)
 
-
+    @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
