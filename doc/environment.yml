@@ -9,6 +9,7 @@ dependencies:
   - numpydoc
   - sphinx
   - jupyter
+  - matplotlib
   - pip:
     - docrep
     - nbsphinx
