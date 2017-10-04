@@ -41,6 +41,8 @@ class AutoGenerate(Axis):
             da_i : xarray.DataArray
                 The differenced data
             """
+            #TODO I think we can modify xgcm.Axis so that this can all be
+            # absorbed in there.
 
             position_from, dim = self._get_axis_coord(da)
             if to is None:
@@ -161,11 +163,15 @@ def autogenerate_ds(ds,
         ds.coords[new_name] = ax._generate_coord(ds[kk], to, boundary=boundary,
                                                  fill_value=fill_value,
                                                  wrap=wrap)
+        attrs_new = ds.coords[new_name].attrs
+        attrs_new['axis'] = ki
+        attrs_new.pop('c_grid_axis_shift', None)
         # Reset appropriate attributes for old and new coordinates
-        ds.coords[new_name].attrs['axis'] = ki
-        if to_shift is not 0.0:
-            ds.coords[new_name].attrs['c_grid_axis_shift'] = to_shift
-        if from_shift is not 0.0:
-            ds.coords[kk].attrs['c_grid_axis_shift'] = to_shift
+        if abs(to_shift) > 0.0:
+            attrs_new['c_grid_axis_shift'] = to_shift
+        ds.coords[new_name].attrs = attrs_new
+
+        if abs(from_shift) > 0.0:
+            ds.coords[kk].attrs['c_grid_axis_shift'] = from_shift
 
     return ds

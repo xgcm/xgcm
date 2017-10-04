@@ -4,7 +4,7 @@ import pytest
 import xarray as xr
 import numpy as np
 
-from xgcm.grid import Grid, Axis
+from xgcm.grid import Grid, Axis, add_slice
 
 from . datasets import (all_datasets, nonperiodic_1d, periodic_1d, periodic_2d,
                         nonperiodic_2d, all_2d, datasets)
@@ -432,3 +432,16 @@ def test_grid_ops(all_datasets):
                         boundary=boundary)
                     da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
                     assert da_cumsum.equals(da_cumsum_ax)
+
+
+def test_add_slice():
+    da = xr.DataArray(np.ones([2, 2, 3]),
+                      dims=['lat', 'z', 'lon'])
+
+    new = add_slice(da, 'lon', 1, 3.0)
+
+    ref = np.array([[[1., 4., 1.],
+                    [1., 4., 1.]],
+                    [[1., 4., 1.],
+                    [1., 4., 1.]]])
+    np.testing.assert_allclose(new, ref)

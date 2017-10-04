@@ -45,7 +45,8 @@ class Axis:
     differentiated by their length.
     """
 
-    def __init__(self, ds, axis_name, periodic=True, default_shifts={}):
+    def __init__(self, ds, axis_name, periodic=True, default_shifts={},
+                 wrap=None):
         """
         Create a new Axis object from an input dataset.
 
@@ -187,7 +188,8 @@ class Axis:
 
     @docstrings.get_sectionsf('neighbor_binary_func')
     @docstrings.dedent
-    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0):
+    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0,
+                              wrap=None):
         """
         Apply a function to neighboring points.
 
@@ -225,7 +227,8 @@ class Axis:
 
         # get the two neighboring sets of raw data
         data_left, data_right = self._get_neighbor_data_pairs(da, to,
-                                      boundary=boundary, fill_value=fill_value)
+                                      boundary=boundary, fill_value=fill_value,
+                                      wrap=wrap)
         # apply the function
         data_new = f(data_left, data_right)
 
@@ -312,7 +315,7 @@ class Axis:
 
 
     @docstrings.dedent
-    def interp(self, da, to=None, boundary=None, fill_value=0.0):
+    def interp(self, da, to=None, boundary=None, fill_value=0.0, wrap=None):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -333,11 +336,11 @@ class Axis:
             # TODO: generalize to higher order interpolation
             return 0.5*(data_left + data_right)
         return self._neighbor_binary_func(da, interp_function, to,
-                                          boundary, fill_value)
+                                          boundary, fill_value, wrap)
 
 
     @docstrings.dedent
-    def diff(self, da, to=None, boundary=None, fill_value=0.0):
+    def diff(self, da, to=None, boundary=None, fill_value=0.0, wrap=None):
         """
         Difference neighboring points to the intermediate grid point.
 
@@ -354,7 +357,7 @@ class Axis:
         def diff_function(data_left, data_right):
             return data_right - data_left
         return self._neighbor_binary_func(da, diff_function, to,
-                                          boundary, fill_value)
+                                          boundary, fill_value, wrap)
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
@@ -566,12 +569,15 @@ class Grid:
         ax = self.axes[axis]
         return ax.cumsum(da, **kwargs)
 
+
 def add_slice(da, dim, sl, added):
-    """clunky function to modify a slice of the coordinates"""
-    temp = xr.DataArray(da[dim].data, dims=dim,
-                        coords={dim: da[dim].data})
-    temp[{dim: sl}] += added
-    return temp.data
+    axis = da.get_axis_num(dim)
+    t_order = list(range(len(da.data.shape)))
+    t_order[axis] = 0
+    t_order[0] = axis
+    data = np.transpose(da.data.copy(), axes=t_order)
+    data[sl, ...] = data[sl, ...] + added
+    return np.transpose(data, t_order)
 
 _other_docstring_options="""
     * 'dirichlet'
