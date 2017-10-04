@@ -17,7 +17,7 @@ class Axis:
     """
     An object that represents a group of coodinates that all lie along the same
     physical dimension but at different positions with respect to a grid cell.
-    There are four possible possition::
+    There are four possible positions::
 
          Center
          |------o-------|------o-------|------o-------|------o-------|
@@ -238,8 +238,10 @@ class Axis:
 
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
-                                 fill_value=0.0):
-        """Returns data_left, data_right."""
+                                 fill_value=0.0, wrap=None):
+        """Returns data_left, data_right.
+        Wrap option enables periodic coordinate interpolation
+        (see xgcm.autogenerate)"""
 
         position_from, dim = self._get_axis_coord(da)
 
@@ -284,12 +286,22 @@ class Axis:
             left = da.data
         elif (self._periodic and ((transition == ('center', 'left')) or
                                   (transition == ('right', 'center')))):
-            left = da.roll(**{dim: 1}).data
+
+            if wrap is not None:
+                left = da.roll(**{dim: 1}).compute()
+                left = add_slice(left, dim, 0, -wrap)
+            else:
+                left = da.roll(**{dim: 1}).data
             right = da.data
         elif (self._periodic and ((transition == ('center', 'right')) or
                                   (transition == ('left', 'center')))):
             left = da.data
-            right = da.roll(**{dim: -1}).data
+            if wrap is not None:
+                right = da.roll(**{dim: -1}).compute()
+                right = add_slice(right, dim, -1, wrap)
+            else:
+                right = da.roll(**{dim: -1}).data
+
         else:
             is_periodic = 'periodic' if self._periodic else 'non-periodic'
             raise NotImplementedError(' to '.join(transition) +
@@ -554,6 +566,12 @@ class Grid:
         ax = self.axes[axis]
         return ax.cumsum(da, **kwargs)
 
+def add_slice(da, dim, sl, added):
+    """clunky function to modify a slice of the coordinates"""
+    temp = xr.DataArray(da[dim].data, dims=dim,
+                        coords={dim: da[dim].data})
+    temp[{dim: sl}] += added
+    return temp.data
 
 _other_docstring_options="""
     * 'dirichlet'
