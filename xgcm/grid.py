@@ -47,6 +47,7 @@ class Axis:
 
     def __init__(self, ds, axis_name, periodic=True, default_shifts={},
                  wrap=None):
+        #TODO this should have a wrap 'pass-through' for wrap like periodic
         """
         Create a new Axis object from an input dataset.
 
@@ -72,6 +73,7 @@ class Axis:
         self._ds = ds
         self._name = axis_name
         self._periodic = periodic
+        self._wrap = wrap
 
         # figure out what the grid dimensions are
         coord_names = comodo.get_axis_coords(ds, axis_name)
@@ -188,8 +190,7 @@ class Axis:
 
     @docstrings.get_sectionsf('neighbor_binary_func')
     @docstrings.dedent
-    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0,
-                              wrap=None):
+    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0):
         """
         Apply a function to neighboring points.
 
@@ -227,8 +228,7 @@ class Axis:
 
         # get the two neighboring sets of raw data
         data_left, data_right = self._get_neighbor_data_pairs(da, to,
-                                      boundary=boundary, fill_value=fill_value,
-                                      wrap=wrap)
+                                      boundary=boundary, fill_value=fill_value)
         # apply the function
         data_new = f(data_left, data_right)
 
@@ -241,7 +241,7 @@ class Axis:
 
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
-                                 fill_value=0.0, wrap=None):
+                                 fill_value=0.0):
         """Returns data_left, data_right.
         Wrap option enables periodic coordinate interpolation
         (see xgcm.autogenerate)"""
@@ -290,18 +290,18 @@ class Axis:
         elif (self._periodic and ((transition == ('center', 'left')) or
                                   (transition == ('right', 'center')))):
 
-            if wrap is not None:
+            if self._wrap is not None:
                 left = da.roll(**{dim: 1}).compute()
-                left = add_slice(left, dim, 0, -wrap)
+                left = add_slice(left, dim, 0, -self._wrap)
             else:
                 left = da.roll(**{dim: 1}).data
             right = da.data
         elif (self._periodic and ((transition == ('center', 'right')) or
                                   (transition == ('left', 'center')))):
             left = da.data
-            if wrap is not None:
+            if self._wrap is not None:
                 right = da.roll(**{dim: -1}).compute()
-                right = add_slice(right, dim, -1, wrap)
+                right = add_slice(right, dim, -1, self._wrap)
             else:
                 right = da.roll(**{dim: -1}).data
 
@@ -315,7 +315,7 @@ class Axis:
 
 
     @docstrings.dedent
-    def interp(self, da, to=None, boundary=None, fill_value=0.0, wrap=None):
+    def interp(self, da, to=None, boundary=None, fill_value=0.0):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -336,11 +336,10 @@ class Axis:
             # TODO: generalize to higher order interpolation
             return 0.5*(data_left + data_right)
         return self._neighbor_binary_func(da, interp_function, to,
-                                          boundary, fill_value, wrap)
-
+                                          boundary, fill_value)
 
     @docstrings.dedent
-    def diff(self, da, to=None, boundary=None, fill_value=0.0, wrap=None):
+    def diff(self, da, to=None, boundary=None, fill_value=0.0):
         """
         Difference neighboring points to the intermediate grid point.
 
@@ -357,7 +356,7 @@ class Axis:
         def diff_function(data_left, data_right):
             return data_right - data_left
         return self._neighbor_binary_func(da, diff_function, to,
-                                          boundary, fill_value, wrap)
+                                          boundary, fill_value)
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
