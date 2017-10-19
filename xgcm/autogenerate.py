@@ -1,6 +1,6 @@
-from .grid import Axis
 from __future__ import print_function
 from future.utils import iteritems
+from .grid import Axis
 
 
 def generate_axis(ds,
@@ -75,6 +75,18 @@ def generate_axis(ds,
         raise RuntimeError('Either "wrap" or "pad" have to be specified')
 
     ds = ds.copy()
+
+    # For a set of coordinates there are two fundamental cases. The coordinates
+    # are a) one dimensional (dimensions) or 2) multidimensional. These are
+    # separated by the keyword raw_switch.
+    # These two cases are treated differently because for each dataset we need
+    # to recreate all a) cases before we can proceed to 2), hence this is
+    # really the 'raw' data processing step. If we have working one dimensional
+    # coordinates (e.g. after we looped over the axes_dims_dict, we can use the
+    # regular xgcm.Axis to interpolate multidimensional coordinates.
+    # This assures that any changes to the Axis.interp method can directly
+    # propagate to this module.
+
     if raw_switch:
         # Input coordinate has to be declared as center,
         # or xgcm.Axis throws error. Will be rewrapped below.
