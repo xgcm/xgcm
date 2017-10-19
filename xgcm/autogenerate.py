@@ -1,254 +1,240 @@
-from .grid import Axis,Grid
-import docrep
-
-docstrings = docrep.DocstringProcessor(doc_key='My doc string')
+from .grid import Axis
 
 
-class AutoGenerate(Axis):
-
-        @docstrings.get_sectionsf('generate_coord')
-        @docstrings.dedent
-        def _generate_coord(self, da, to, boundary=None, fill_value=0.0,
-                            wrap=None):
-            """
-            Generate (interpolate) unavailable grid variables.
-
-            Parameters
-            ----------
-            da : xarray.DataArray
-                The data on which to operate
-            to : {'center', 'left', 'right', 'inner', 'outer'}
-                The direction in which to shift the array. If not specified,
-                default will be used.
-            boundary : {None, 'fill', 'extend'}
-                A flag indicating how to handle boundaries:
-                * None:  Do not apply any boundary conditions. Raise an error
-                if boundary conditions are required for the operation.
-                * 'fill':  Set values outside the array boundary to fill_value
-                  (i.e. a Neumann boundary condition.)
-                * 'extend': Set values outside the array to the nearest array
-                  value. (i.e. a limited form of Dirichlet boundary condition.)
-
-            fill_value : float, optional
-                 The value to use in the boundary condition with
-                 `boundary='fill'`.
-
-            wrap_value : float, optional
-                if value is given, cyclic coordinate is wrapped approriately,
-                e.g. longitude is wrapped around 180 or 360 discontinuity
-            Returns
-            -------
-            da_i : xarray.DataArray
-                The differenced data
-            """
-            #TODO I think we can modify xgcm.Axis so that this can all be
-            # absorbed in there.
-
-            position_from, dim = self._get_axis_coord(da)
-            if to is None:
-                to = self._default_shifts[position_from]
-
-            # get the two neighboring sets of raw data
-            data_left, data_right = \
-                self._get_neighbor_data_pairs(da, to,
-                                              boundary=boundary,
-                                              fill_value=fill_value)
-
-            # Is there a way to use the existing grid.Axis.interp logic?
-            # For now just hardcode it
-            data_new = 0.5*(data_left + data_right)
-
-            return data_new
-
-
-def generate(ds, axes, dims, to,
-             x_wrap, y_wrap, z_pad,
-             to_shift, from_shift, dim_switch=True):
-        """
-        Generate new dataarray from coordinates or dimensions, which might be
-        missing in order to get a 'full' c-grid.
-
-        INPUTS:
-
-        ds - xarray.Dataset
-
-        axes = dictionary containing comodo axis and corresponding DataArray
-        in ds (e.g. axes={'X':'llon','Y':'llon'}). These could be
-        multidimensional coordinates like geospatial longitudes/latitudes
-
-        dims = dictionary of dimensons in ds corresponding to comodo axis
-        e.g. (dims={'X':'lon','Y':'lon'}). These have to be names of
-        strictly dimensions of ds.
-
-        to - {'left','right'} Direction of shift, similar as the logic in
-        xgcm.Axis, needed to apply shift correctly
-
-        x_wrap - float: value of discontinuity in x direction (defaults to
-        360 for global longitude)
-
-        y_wrap - float: as x_wrap but for y direction (defaults to
-        180 for global longitude)
-
-        z_pad - float: boundary padding value for the depth interpolation. If
-        not specified it will default to the min() or max() of the appropriate
-        field, depending on 'to'
-
-        dim_switch - Bool: switch between input for dimesions (need to
-        load class from xgcm.autogenerate) and coordinates (uses existing
-        xgc.grid logic)
-        """
-
-        #TODO: I can definitely infer the dims from the comodo stuff, but for
-        #now leave it explicit
-
-        for ki in axes.keys():
-            if ki not in dims.keys():
-                raise RuntimeError('dimension '+ki+' was not specified in axes \
-                                    input')
-            old_name = axes[ki]
-            dim = dims[ki]
-            new_name = old_name+'_inferred'
-
-            if ki == 'X':
-                periodic = True
-                boundary = None
-                fill_value = 0.0
-                wrap = x_wrap
-            elif ki == 'Y':
-                periodic = True
-                boundary = None
-                fill_value = 0.0
-                wrap = y_wrap
-            elif ki == 'Z':
-                periodic = False
-                boundary = 'fill'
-                # For depth decide between surface or bottom fill
-                if z_pad is None:
-                    # Infer limits from depth data
-                    z_min = ds[old_name].min().data
-                    z_max = ds[old_name].max().data
-                    # The value below is an attempt on extrapolating the values
-                    # linearly. The difference between values at the top and
-                    # bottom is used to pad the depth array at the appropriate
-                    # boundary. For multidimensional arrays the min difference
-                    # is chosen. This could lead to undesired results if the
-                    # depth spacing is spatially irregular (though thats a rare
-                    # case IMO)
-                    top_diff = ds[old_name].diff(dim).isel(**{dim: 0}).min()
-                    bot_diff = ds[old_name].diff(dim).isel(**{dim: -1}).min()
-                    top = z_min.data - top_diff.data
-                    bot = z_max.data + bot_diff.data
-                    if to is 'left':
-                        fill_value = top
-                    elif to is 'right':
-                        fill_value = bot
-                else:
-                    fill_value = z_pad
-
-            # Input coordinate has to be declared as center,
-            # or xgcm.Axis throws error. Will be rewrapped below.
-            attrs = ds[old_name].attrs
-            attrs['axis'] = ki
-            attrs.pop('c_grid_axis_shift', None)
-            ds[old_name].attrs = attrs
-
-            if dim_switch:
-                ax = AutoGenerate(ds, ki, periodic=periodic, wrap=wrap)
-                ds.coords[new_name] = ax._generate_coord(ds[old_name], to,
-                                                         boundary=boundary,
-                                                         fill_value=fill_value)
-
-            else:
-                ax = Axis(ds, ki, periodic=periodic, wrap=wrap)
-                ds.coords[new_name] = ax.interp(ds[old_name], boundary=boundary,
-                                         fill_value=fill_value)
-
-            attrs_new = ds[new_name].attrs
-            attrs_new['axis'] = ki
-            attrs_new.pop('c_grid_axis_shift', None)
-            # Reset appropriate attributes for old and new coordinates
-            if abs(to_shift) > 0.0:
-                attrs_new['c_grid_axis_shift'] = to_shift
-            ds[new_name].attrs = attrs_new
-
-            if abs(from_shift) > 0.0:
-                ds[old_name].attrs['c_grid_axis_shift'] = from_shift
-
-        return ds
-
-
-def autogenerate_ds(ds,
-                    axes={'X': 'lon', 'Y': 'lat'},
-                    position='center',
-                    coord_axes=None,
-                    x_wrap=360,
-                    y_wrap=180,
-                    z_pad=None,
-                    x_coord_wrap=360,
-                    y_coord_wrap=180,
-                    z_coord_pad=None):
+def generate_axis(ds,
+                  axis,
+                  name,
+                  axis_dim,
+                  pos_from='center',
+                  pos_to='left',
+                  wrap=None,
+                  pad=None,
+                  raw_switch=True):
     """
-    Regenerate all c-grid information from an existing dataset
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        Dataset with gridinformation used to construct c-grid
+    axis_dict : dict
+        Dict with information on the dimension in ds corrsponding to the xgcm
+        axis. E.g. {'X':'lon'}
+    pos_from : str
+        Position of the gridpoints given in 'ds'. Can be
+        {'center','left','right'}
+    pos_to : str
+        Position of the gridpoints to be generated. Can be
+        {'center','left','right'}
+    wrap : None or float
+        If specified, marks the value of discontinuity across boundary, e.g.
+        360 for global longitude values and 180 for global latitudes.
+    pad : {None, float, 'auto'}
+        If specified, determines the padding to be applied across boundary.
+        If float is specified, that value is used as padding. Auto attempts to
+        pad linearly extrapolated values. Can be useful for e.g. depth
+        coordinates (to reconstruct 0 depth). Can lead to unexpected values
+        when coordinate is multidimensional.
+    raw_switch : bool
+        Determines if the attributes are created from scratch. Should be
+        enabled for dimensions and deactivated for multidimensional
+        coordinates. These can only be calculated after the dims are created.
+    """
+    new_name = name+'_inferred'
+
+    # Determine the relative position to interpolate to based on current and
+    # desired position
+    relative_pos_to = position_to_relative(pos_from, pos_to)
+
+    if (wrap is not None) and (pad is not None):
+        raise RuntimeError('Coordinate cannot be wrapped and padded at the\
+                            same time')
+    elif (wrap is None) and (pad is not None):
+        if pad == 'auto':
+            left_pad, right_pad = auto_pad(ds[name], axis_dim)
+            if relative_pos_to == 'right':
+                fill_value = right_pad
+            elif relative_pos_to == 'left':
+                fill_value = left_pad
+        else:
+            fill_value = pad
+        periodic = False
+        boundary = 'fill'
+    elif (wrap is not None) and (pad is None):
+        periodic = True
+        fill_value = 0.0
+        boundary = None
+    else:
+        raise RuntimeError('Either "wrap" or "pad" have to be specified')
+
+    if raw_switch:
+        # Input coordinate has to be declared as center,
+        # or xgcm.Axis throws error. Will be rewrapped below.
+        ds[name] = fill_attrs(ds[name], 'center', axis)
+
+        ax = Axis(ds, axis, periodic=periodic, wrap=wrap, raw_out=True)
+        ds.coords[new_name] = ax.interp(ds[name], relative_pos_to,
+                                        boundary=boundary,
+                                        fill_value=fill_value)
+
+        # Place the correct attributes
+        ds[name] = fill_attrs(ds[name], pos_from, axis)
+        ds[new_name] = fill_attrs(ds[new_name], pos_to, axis)
+    else:
+        ax = Axis(ds, axis, periodic=periodic, wrap=wrap, raw_out=False)
+        ds.coords[new_name] = ax.interp(ds[name], pos_to, boundary=boundary,
+                                        fill_value=fill_value)
+    return ds
+
+
+def autogenerate_grid_ds(ds,
+                         axes_dims_dict,
+                         axes_coords_dict=None,
+                         position=None,
+                         wrap=None,
+                         pad=None):
+    """
+    Add c-grid dimensions and coordinates (optional) to observational Dataset
 
     Parameters
     ----------
     ds : xarray.Dataset
-        The data on which to operate
-    axes : axes on which to regenerate dims (and optional coords, see
-        'coord_axes' input). Needs to be in the form of a dict with keys
-        ('X','Y'or'Z'), the values need to be the corresponding dimension names
-        in ds.
-    position : {'center', 'left', 'right'}
-        The position of the datapoints relative to the coordinates given
-        This will usually be the cell center, but can sometimes be the
-        lower left (option:'left') or perhaps upper right (option:'right')
-        corner of the gridcell.
-    coord_axes : (optional) Like 'axes' but for multidimensional coordinates in
-        ds
-    x_wrap : float - Value of discontinuity at the 'X' boundary
-    y_wrap : float - Value of discontinuity at the 'Y' boundary
-    z_pad : float -  Depth padding value. If None, it will be determined from
-        data
-    x_coord_wrap : float - Like 'x_wrap' but for coordinate variable
-    y_coord_wrap : float - Like 'y_wrap' but for coordinate variable
-    z_coord_pad : float -  Like 'z_pad' but for coordinate variable
-
-    Returns
-    -------
-    ds : xarray.DataArray
-        Dataset with inferred dims (and coordinates)
+     Dataset with gridinformation used to construct c-grid
+    axes_dims_dict : dict
+     Dict with information on the dimension in ds corrsponding to the xgcm
+     axis. E.g. {'X':'lon','Y':'lat'}
+    axes_coords_dict : dict
+     Dict with information on the coordinates in ds corrsponding to the
+     xgcm axis. E.g. {'X':'geolon','Y':'geolat'}
+    position : {None,tuple, dict}
+     Position of the gridpoints given in 'ds' and the desired position to be
+     generated. Defaults to ('center','left'). Can be a tuple like
+     ('center','left'), or a dict with corresponding axes
+     (e.g. {'X':('center','left'),'Z':('left','center')})
+    wrap : {None, float, dict}
+     Specifies the discontinuity at the boundary to wrap e.g. longitudes
+     without artifacts. Can be defined globally (for all fields defined in
+     axes_dims_dict and axes_coords_dict) {float, None} or per dataset
+     variable (dict e.g. {'longitude':360,'latitude':180})
+    pad : {None, float, 'auto'}
+     Specifies the discontinuity at the boundary to wrap e.g. longitudes
+     without artifacts. Can be defined globally (for all fields defined in
+     axes_dims_dict and axes_coords_dict) {float, None} or per dataset
+     variable ({dict} e.g. {'z':'auto','latitude':0.0})
     """
 
-    # set position of original coordinates and define how to interpolated
-    # For now I am assuming that observational datasets will use the left/right
-    # convention, rather then inner/outer...but that can be added.
+    if axes_coords_dict is not None:
+        combo_dict = [axes_dims_dict, axes_coords_dict]
+    else:
+        combo_dict = [axes_dims_dict]
 
-    # 'to' input maps the correct movement of coordinates if the input
-    # coord is set to center (this will be relabled appropriately below)
-    if position == 'center':
-        to = 'left'
-        to_shift = -0.5
-        from_shift = 0
-    elif position == 'right':
-        to = 'left'
-        to_shift = 0
-        from_shift = 0.5
-    elif position == 'left':
-        to = 'right'
-        to_shift = 0
-        from_shift = -0.5
+    for di, dd in enumerate(combo_dict):
+        if di == 0:
+            raw_switch = True
+            infer_dim = False
+        elif di == 1:
+            raw_switch = False
+            infer_dim = True
 
-    # Do we want to modify in place? or copy?
-    ds = ds.copy()
+        for ax in dd.keys():
+            # Get variable name
+            ax_v = dd[ax]
+            # Get dimension name
+            if infer_dim:
+                ax_d = axes_dims_dict[ax]
+            else:
+                ax_d = ax_v
 
-    # Loop over all specified axes and build new coordinates
-    ds = generate(ds, axes, axes, to, x_wrap, y_wrap,
-                  z_pad, to_shift, from_shift, dim_switch=True)
+            # Parse position
+            pos_from, pos_to = parse_position(position, ax)
+            # Pass wrap characteristics
+            is_wrapped = parse_wrap_pad(wrap, ax_v)
+            # Pass pad characteristics
+            is_padded = parse_wrap_pad(pad, ax_v)
+            print('=======start=======')
+            for hh in ds.keys():
 
-    # Generate shifted multidimensional coordinates if specified in
-    # 'coord_axes'
-    if coord_axes:
-        ds = generate(ds, coord_axes, axes, to, x_coord_wrap, y_coord_wrap,
-                      z_coord_pad, to_shift, from_shift, dim_switch=False)
-
+                print(hh, ds[hh].attrs)
+            print('+++++++done++++++++')
+            ds = generate_axis(ds, ax, ax_v, ax_d,
+                               pos_from=pos_from, pos_to=pos_to,
+                               wrap=is_wrapped, pad=is_padded,
+                               raw_switch=raw_switch)
     return ds
+
+
+def parse_wrap_pad(wrap, varname):
+    if isinstance(wrap, dict):
+        try:
+            is_wrapped = wrap[varname]
+        except KeyError:
+            # Set defaults
+            is_wrapped = None
+    else:
+        is_wrapped = wrap
+    return is_wrapped
+
+
+def parse_position(position, axname, pos_default=('center', 'left')):
+    if isinstance(position, dict):
+        try:
+            pos_from = position[axname][0]
+        except KeyError:
+            pos_from = pos_default[0]
+        try:
+            pos_to = position[axname][1]
+        except KeyError:
+            pos_to = pos_default[1]
+    elif isinstance(position, tuple):
+        pos_from = position[0]
+        pos_to = position[1]
+    else:
+        # Set defaults
+        pos_from = pos_default[0]
+        pos_to = pos_default[1]
+    return pos_from, pos_to
+
+
+def position_to_relative(pos_from, pos_to):
+    """Translate from to positions in relative movement"""
+    if ((pos_from == 'left' and pos_to == 'center') or
+         (pos_from == 'center' and pos_to == 'right')):
+            to = 'right'
+    elif ((pos_from == 'center' and pos_to == 'left') or
+          (pos_from == 'right' and pos_to == 'center')):
+            to = 'left'
+    else:
+        raise RuntimeError("Cannot infer '%s' coordinates \
+    from '%s'" % (pos_to, pos_from))
+    return to
+
+
+def auto_pad(da, dim):
+    "infer padding values from data array by linear extrapolation"
+    da_min = da.min().data
+    da_max = da.max().data
+    # The difference between values at the top and
+    # bottom is used to pad the array. For multidimensional arrays the min
+    # difference is chosen. This could lead to undesired results if the
+    # depth spacing is spatially irregular
+    min_diff = da.diff(dim).isel(**{dim: 0}).min()
+    max_diff = da.diff(dim).isel(**{dim: -1}).min()
+    min_ex = da_min.data - min_diff.data
+    max_ex = da_max.data + max_diff.data
+    #TODO: This assumes that the dim is increasing. Build check or option for
+    # decreasing coordinates
+    return min_ex, max_ex
+
+
+def fill_attrs(da, pos, axis):
+    """Replace comdo attributes according to pos and axis"""
+    attrs = da.attrs
+    attrs['axis'] = axis
+
+    if pos == 'center':
+        attrs.pop('c_grid_axis_shift', None)
+    elif pos == 'left':
+        attrs['c_grid_axis_shift'] = -0.5
+    elif pos == 'right':
+        attrs['c_grid_axis_shift'] = 0.5
+
+    da.attrs = attrs
+    return da

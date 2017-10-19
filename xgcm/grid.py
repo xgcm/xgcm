@@ -46,8 +46,7 @@ class Axis:
     """
 
     def __init__(self, ds, axis_name, periodic=True, default_shifts={},
-                 wrap=None):
-        #TODO this should have a wrap 'pass-through' for wrap like periodic
+                 wrap=None,raw_out=False):
         """
         Create a new Axis object from an input dataset.
 
@@ -74,6 +73,7 @@ class Axis:
         self._name = axis_name
         self._periodic = periodic
         self._wrap = wrap
+        self._raw_out = raw_out
 
         # figure out what the grid dimensions are
         coord_names = comodo.get_axis_coords(ds, axis_name)
@@ -227,13 +227,17 @@ class Axis:
             to = self._default_shifts[position_from]
 
         # get the two neighboring sets of raw data
-        data_left, data_right = self._get_neighbor_data_pairs(da, to,
-                                      boundary=boundary, fill_value=fill_value)
+        data_left, data_right = self._get_neighbor_data_pairs(da, to,\
+            boundary=boundary, fill_value=fill_value)
+
         # apply the function
         data_new = f(data_left, data_right)
 
         # wrap in a new xarray wrapper
-        da_new = self._wrap_and_replace_coords(da, data_new, to)
+        if not self._raw_out:
+            da_new = self._wrap_and_replace_coords(da, data_new, to)
+        else:
+            da_new = data_new
 
         return da_new
 
@@ -291,8 +295,8 @@ class Axis:
                                   (transition == ('right', 'center')))):
 
             if self._wrap is not None:
-                left = da.roll(**{dim: 1}).compute()
-                left = add_slice(left, dim, 0, -self._wrap)
+                left = da.roll(**{dim: 1})
+                left = add_to_slice(left, dim, 0, -self._wrap).data
             else:
                 left = da.roll(**{dim: 1}).data
             right = da.data
@@ -300,8 +304,8 @@ class Axis:
                                   (transition == ('left', 'center')))):
             left = da.data
             if self._wrap is not None:
-                right = da.roll(**{dim: -1}).compute()
-                right = add_slice(right, dim, -1, self._wrap)
+                right = da.roll(**{dim: -1})
+                right = add_to_slice(right, dim, -1, self._wrap).data
             else:
                 right = da.roll(**{dim: -1}).data
 
@@ -392,11 +396,11 @@ class Axis:
             data = da_cum.data
         elif ((pos == 'center' and to == 'left') or
               (pos == 'right' and to == 'center')):
-            data = _pad_array(da_cum.isel(**{dim: slice(0,-1)}), dim,
+            data = _pad_array(da_cum.isel(**{dim: slice(0, -1)}), dim,
                               left=True, **boundary_kwargs)
         elif ((pos == 'center' and to == 'inner') or
               (pos == 'outer' and to == 'center')):
-            data = da_cum.isel(**{dim: slice(0,-1)}).data
+            data = da_cum.isel(**{dim: slice(0, -1)}).data
         elif ((pos == 'center' and to == 'outer') or
               (pos == 'inner' and to == 'center')):
             data = _pad_array(da_cum, dim, left=True, **boundary_kwargs)
@@ -569,14 +573,21 @@ class Grid:
         return ax.cumsum(da, **kwargs)
 
 
-def add_slice(da, dim, sl, added):
-    axis = da.get_axis_num(dim)
-    t_order = list(range(len(da.data.shape)))
-    t_order[axis] = 0
-    t_order[0] = axis
-    data = np.transpose(da.data.copy(), axes=t_order)
-    data[sl, ...] = data[sl, ...] + added
-    return np.transpose(data, t_order)
+def add_to_slice(da, dim, sl, value):
+    # split array into before, middle and after (if slice is the
+    # beginning or end before or after will be empty)
+    before = da[{dim: slice(0, sl)}]
+    middle = da[{dim: sl}]
+    after = da[{dim: slice(sl+1, None)}]
+    if sl < -1:
+        raise RuntimeError('slice can not be smaller value than -1')
+    elif sl == -1:
+        da_new = xr.concat([before, middle+value], dim=dim)
+    else:
+        da_new = xr.concat([before, middle+value, after], dim=dim)
+    # then add 'value' to middle and concatenate again
+    return da_new
+
 
 _other_docstring_options="""
     * 'dirichlet'

@@ -3,8 +3,9 @@ from future.utils import iteritems
 import pytest
 import xarray as xr
 import numpy as np
+from dask.array import from_array
 
-from xgcm.grid import Grid, Axis, add_slice
+from xgcm.grid import Grid, Axis, add_to_slice
 
 from . datasets import (all_datasets, nonperiodic_1d, periodic_1d, periodic_2d,
                         nonperiodic_2d, all_2d, datasets)
@@ -434,14 +435,30 @@ def test_grid_ops(all_datasets):
                     assert da_cumsum.equals(da_cumsum_ax)
 
 
-def test_add_slice():
-    da = xr.DataArray(np.ones([2, 2, 3]),
-                      dims=['lat', 'z', 'lon'])
+def test_add_to_slice():
+    np_ar = xr.DataArray(np.ones([2, 2, 3]),
+                         dims=['lat', 'z', 'lon'])
 
-    new = add_slice(da, 'lon', 1, 3.0)
+    da_ar = xr.DataArray(from_array(np.ones([2, 2, 3]), chunks=1),
+                         dims=['lat', 'z', 'lon'])
+
+    np_new = add_to_slice(np_ar, 'lon', 1, 3.0)
+    da_new = add_to_slice(da_ar, 'lon', 1, 3.0)
+    da_new_last = add_to_slice(da_ar, 'lon', -1, 3.0)
+
+    ref_last = np.array([[[1., 1., 4.],
+                    [1., 1., 4.]],
+                    [[1., 1., 4.],
+                    [1., 1., 4.]]])
 
     ref = np.array([[[1., 4., 1.],
                     [1., 4., 1.]],
                     [[1., 4., 1.],
                     [1., 4., 1.]]])
-    np.testing.assert_allclose(new, ref)
+
+    ref_ar = xr.DataArray(ref, dims=['lat', 'z', 'lon'])
+    ref_ar_last = xr.DataArray(ref_last, dims=['lat', 'z', 'lon'])
+
+    xr.testing.assert_equal(ref_ar, np_new)
+    xr.testing.assert_equal(ref_ar, da_new.compute())
+    xr.testing.assert_equal(ref_ar_last, da_new_last.compute())
