@@ -227,7 +227,7 @@ class Axis:
             to = self._default_shifts[position_from]
 
         # get the two neighboring sets of raw data
-        data_left, data_right = self._get_neighbor_data_pairs(da, to,\
+        data_left, data_right = self._get_neighbor_data_pairs(da, to,
             boundary=boundary, fill_value=fill_value)
 
         # apply the function

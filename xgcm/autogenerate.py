@@ -1,4 +1,6 @@
 from .grid import Axis
+from __future__ import print_function
+from future.utils import iteritems
 
 
 def generate_axis(ds,
@@ -9,21 +11,25 @@ def generate_axis(ds,
                   pos_to='left',
                   wrap=None,
                   pad=None,
+                  new_name=None,
                   raw_switch=True):
     """
+    Creates c-grid dimensions (or coordinates) along an axis of
     Parameters
     ----------
     ds : xarray.Dataset
         Dataset with gridinformation used to construct c-grid
-    axis_dict : dict
-        Dict with information on the dimension in ds corrsponding to the xgcm
-        axis. E.g. {'X':'lon'}
-    pos_from : str
-        Position of the gridpoints given in 'ds'. Can be
-        {'center','left','right'}
-    pos_to : str
-        Position of the gridpoints to be generated. Can be
-        {'center','left','right'}
+    axis : str
+        The appropriate xgcm axis. E.g. 'X' for longitudes.
+    name : str
+        The name of the variable in ds, providing the original grid.
+    axis_dim : str
+        The dimension of ds[name] corresponding to axis. If name itself is a
+        dimension, this should be equal to name.
+    pos_from : {'center','left','right'}
+        Position of the gridpoints given in 'ds'.
+    pos_to : {'center','left','right'}
+        Position of the gridpoints to be generated.
     wrap : None or float
         If specified, marks the value of discontinuity across boundary, e.g.
         360 for global longitude values and 180 for global latitudes.
@@ -33,12 +39,15 @@ def generate_axis(ds,
         pad linearly extrapolated values. Can be useful for e.g. depth
         coordinates (to reconstruct 0 depth). Can lead to unexpected values
         when coordinate is multidimensional.
+    new_name : str
+        Name of the inferred grid variable. Defaults to name+'_inferred'
     raw_switch : bool
         Determines if the attributes are created from scratch. Should be
         enabled for dimensions and deactivated for multidimensional
         coordinates. These can only be calculated after the dims are created.
     """
-    new_name = name+'_inferred'
+    if new_name is None:
+        new_name = name+'_inferred'
 
     # Determine the relative position to interpolate to based on current and
     # desired position
@@ -65,6 +74,7 @@ def generate_axis(ds,
     else:
         raise RuntimeError('Either "wrap" or "pad" have to be specified')
 
+    ds = ds.copy()
     if raw_switch:
         # Input coordinate has to be declared as center,
         # or xgcm.Axis throws error. Will be rewrapped below.
@@ -149,11 +159,6 @@ def autogenerate_grid_ds(ds,
             is_wrapped = parse_wrap_pad(wrap, ax_v)
             # Pass pad characteristics
             is_padded = parse_wrap_pad(pad, ax_v)
-            print('=======start=======')
-            for hh in ds.keys():
-
-                print(hh, ds[hh].attrs)
-            print('+++++++done++++++++')
             ds = generate_axis(ds, ax, ax_v, ax_d,
                                pos_from=pos_from, pos_to=pos_to,
                                wrap=is_wrapped, pad=is_padded,
