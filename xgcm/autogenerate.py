@@ -92,22 +92,31 @@ def generate_axis(ds,
         # or xgcm.Axis throws error. Will be rewrapped below.
         ds[name] = fill_attrs(ds[name], 'center', axis)
 
-        ax = Axis(ds, axis, periodic=periodic, wrap=wrap, raw_out=True)
-        ds.coords[new_name] = ax.interp(ds[name], relative_pos_to,
-                                        boundary=boundary,
-                                        fill_value=fill_value)
+        ax = Axis(ds, axis, periodic=periodic, wrap=wrap)
+        ds.coords[new_name] = \
+            ax._neighbor_binary_func_raw(ds[name],
+                                         raw_interp,
+                                         relative_pos_to,
+                                         boundary=boundary,
+                                         fill_value=fill_value)
+        # ds.coords[new_name] = ax.interp(ds[name], relative_pos_to,
+        #                                 boundary=boundary,
+        #                                 fill_value=fill_value)
+        # ax__neighbor_binary_func_raw(da, ax., to,
+        #                                           boundary=boundary,
+        #                                           fill_value=fill_value)
 
         # Place the correct attributes
         ds[name] = fill_attrs(ds[name], pos_from, axis)
         ds[new_name] = fill_attrs(ds[new_name], pos_to, axis)
     else:
-        ax = Axis(ds, axis, periodic=periodic, wrap=wrap, raw_out=False)
+        ax = Axis(ds, axis, periodic=periodic, wrap=wrap)
         ds.coords[new_name] = ax.interp(ds[name], pos_to, boundary=boundary,
                                         fill_value=fill_value)
     return ds
 
 
-def autogenerate_grid_ds(ds,
+def generate_grid_ds(ds,
                          axes_dims_dict,
                          axes_coords_dict=None,
                          position=None,
@@ -178,16 +187,17 @@ def autogenerate_grid_ds(ds,
     return ds
 
 
-def parse_wrap_pad(wrap, varname):
-    if isinstance(wrap, dict):
+def parse_wrap_pad(in_val, varname):
+    """Parse wrap or pad parameters"""
+    if isinstance(in_val, dict):
         try:
-            is_wrapped = wrap[varname]
+            is_valued = in_val[varname]
         except KeyError:
             # Set defaults
-            is_wrapped = None
+            is_valued = None
     else:
-        is_wrapped = wrap
-    return is_wrapped
+        is_valued = in_val
+    return is_valued
 
 
 def parse_position(position, axname, pos_default=('center', 'left')):
@@ -222,6 +232,13 @@ def position_to_relative(pos_from, pos_to):
         raise RuntimeError("Cannot infer '%s' coordinates \
     from '%s'" % (pos_to, pos_from))
     return to
+
+
+def raw_interp(data_left, data_right):
+    # TODO: This is not great, but I am not sure how to pass the nested
+    # function in xgcm.grid.Axis.interp to Axis._neighbor_binary_func_raw
+    # instead.
+    return 0.5*(data_left + data_right)
 
 
 def auto_pad(da, dim):

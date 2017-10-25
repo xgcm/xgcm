@@ -6,7 +6,8 @@ import numpy as np
 from xarray.testing import assert_identical, assert_allclose, assert_equal
 
 
-from xgcm.autogenerate import auto_pad, fill_attrs, generate_axis, autogenerate_grid_ds
+from xgcm.autogenerate import auto_pad, fill_attrs, generate_axis, \
+    generate_grid_ds, parse_wrap_pad, parse_position, position_to_relative
 
 # create test datasets
 dx = 0.5
@@ -179,25 +180,50 @@ def test_generate_axis():
     assert_allclose(cc['zz_inferred'], ds_out_right['zz_inferred'])
 
 
-def test_autogenerate_grid_ds():
+def test_generate_grid_ds():
     # simple case...just the dims
     axis_dims = {'X': 'lon', 'Y': 'lat', 'Z': 'z'}
     axis_coords = {'X': 'llon', 'Y': 'llat', 'Z': 'zz'}
     ds_old = ds_original.copy()
-    ds_new = autogenerate_grid_ds(ds_old, axis_dims,
+    ds_new = generate_grid_ds(ds_old, axis_dims,
                                   wrap={'lon': 360, 'lat': 180},
                                   pad={'z': 'auto'})
     assert_equal(ds_new, ds_out_left.drop(['llon_inferred',
                                            'llat_inferred',
                                            'zz_inferred']))
     # TODO why are they not identical ? assert identical fails
-    ds_new = autogenerate_grid_ds(ds_original,
+    ds_new = generate_grid_ds(ds_original,
                                   axis_dims,
                                   axis_coords,
                                   wrap={'lon': 360, 'lat': 180,
                                         'llon': 360, 'llat': 180},
                                   pad={'z': 'auto', 'zz': 'auto'})
     assert_equal(ds_new, ds_out_left)
+
+
+def test_parse_wrap_pad():
+    assert parse_wrap_pad(360, 'anything') == 360
+    assert parse_wrap_pad({'something': 360}, 'something') == 360
+    assert parse_wrap_pad({'something': 360}, 'something_else') is None
+
+
+@pytest.mark.parametrize('p_f, p_t', [('left', 'center'),
+                                      ('center', 'left'),
+                                      ('center', 'right'),
+                                      ('right', 'center')])
+def test_parse_position(p_f, p_t):
+    default = ('center', 'left')
+    assert parse_position((p_f, p_t), 'anything') == (p_f, p_t)
+    assert parse_position({'something': (p_f, p_t)}, 'something') == (p_f, p_t)
+    assert parse_position({'something': (p_f, p_t)}, 'somethong') == default
+
+
+@pytest.mark.parametrize('p, relative', [(('left', 'center'), 'right'),
+                                         (('center', 'left'), 'left'),
+                                         (('center', 'right'), 'right'),
+                                         (('right', 'center'), 'left')])
+def test_position_to_relative(p, relative):
+    assert position_to_relative(p[0], p[1]) == relative
 
 
 def test_auto_pad():

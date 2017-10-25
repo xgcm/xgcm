@@ -389,7 +389,6 @@ def test_axis_errors():
         ax.interp(ds.data_c, 'right', boundary='fill')
 
 
-
 def test_grid_create(all_datasets):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)

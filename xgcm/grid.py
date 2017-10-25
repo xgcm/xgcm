@@ -46,7 +46,7 @@ class Axis:
     """
 
     def __init__(self, ds, axis_name, periodic=True, default_shifts={},
-                 wrap=None,raw_out=False):
+                 wrap=None):
         """
         Create a new Axis object from an input dataset.
 
@@ -73,7 +73,6 @@ class Axis:
         self._name = axis_name
         self._periodic = periodic
         self._wrap = wrap
-        self._raw_out = raw_out
 
         # figure out what the grid dimensions are
         coord_names = comodo.get_axis_coords(ds, axis_name)
@@ -221,28 +220,34 @@ class Axis:
         da_i : xarray.DataArray
             The differenced data
         """
-
         position_from, dim = self._get_axis_coord(da)
         if to is None:
             to = self._default_shifts[position_from]
 
-        # get the two neighboring sets of raw data
-        data_left, data_right = self._get_neighbor_data_pairs(da, to,
-            boundary=boundary, fill_value=fill_value)
-
-        # apply the function
-        data_new = f(data_left, data_right)
-
+        data_new = self._neighbor_binary_func_raw(da, f, to,
+                                                  boundary=boundary,
+                                                  fill_value=fill_value)
         # wrap in a new xarray wrapper
-        if not self._raw_out:
-            da_new = self._wrap_and_replace_coords(da, data_new, to)
-        else:
-            da_new = data_new
+        da_new = self._wrap_and_replace_coords(da, data_new, to)
 
         return da_new
 
     docstrings.delete_params('neighbor_binary_func.parameters', 'f')
 
+    def _neighbor_binary_func_raw(self, da, f, to, boundary=None,
+                                  fill_value=0.0):
+
+        # get the two neighboring sets of raw data
+        data_left, data_right = \
+            self._get_neighbor_data_pairs(da,
+                                          to,
+                                          boundary=boundary,
+                                          fill_value=fill_value)
+
+        # apply the function
+        data_new = f(data_left, data_right)
+
+        return data_new
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
                                  fill_value=0.0):
@@ -294,21 +299,18 @@ class Axis:
         elif (self._periodic and ((transition == ('center', 'left')) or
                                   (transition == ('right', 'center')))):
 
+            left = da.roll(**{dim: 1})
             if self._wrap is not None:
-                left = da.roll(**{dim: 1})
-                left = add_to_slice(left, dim, 0, -self._wrap).data
-            else:
-                left = da.roll(**{dim: 1}).data
+                left = add_to_slice(left, dim, 0, -self._wrap)
+            left = left.data
             right = da.data
         elif (self._periodic and ((transition == ('center', 'right')) or
                                   (transition == ('left', 'center')))):
             left = da.data
+            right = da.roll(**{dim: -1})
             if self._wrap is not None:
-                right = da.roll(**{dim: -1})
-                right = add_to_slice(right, dim, -1, self._wrap).data
-            else:
-                right = da.roll(**{dim: -1}).data
-
+                right = add_to_slice(right, dim, -1, self._wrap)
+            right = right.data
         else:
             is_periodic = 'periodic' if self._periodic else 'non-periodic'
             raise NotImplementedError(' to '.join(transition) +
