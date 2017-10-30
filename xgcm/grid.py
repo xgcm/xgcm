@@ -337,11 +337,7 @@ class Axis:
 
         """
 
-        def interp_function(data_left, data_right):
-            # linear, centered interpolation
-            # TODO: generalize to higher order interpolation
-            return 0.5*(data_left + data_right)
-        return self._neighbor_binary_func(da, interp_function, to,
+        return self._neighbor_binary_func(da, raw_interp_function, to,
                                           boundary, fill_value)
 
     @docstrings.dedent
@@ -359,9 +355,7 @@ class Axis:
             The differenced data
         """
 
-        def diff_function(data_left, data_right):
-            return data_right - data_left
-        return self._neighbor_binary_func(da, diff_function, to,
+        return self._neighbor_binary_func(da, raw_diff_function, to,
                                           boundary, fill_value)
 
     @docstrings.dedent
@@ -388,7 +382,7 @@ class Axis:
         # first use xarray's cumsum method
         da_cum = da.cumsum(dim=dim)
 
-        boundary_kwargs =  dict(boundary=boundary, fill_value=fill_value)
+        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value)
 
         # now pad / trim the data as necessary
         # here we enumerate all the valid possible shifts
@@ -589,6 +583,16 @@ def add_to_slice(da, dim, sl, value):
         da_new = xr.concat([before, middle+value, after], dim=dim)
     # then add 'value' to middle and concatenate again
     return da_new
+
+
+def raw_interp_function(data_left, data_right):
+    # linear, centered interpolation
+    # TODO: generalize to higher order interpolation
+    return 0.5*(data_left + data_right)
+
+
+def raw_diff_function(data_left, data_right):
+    return data_right - data_left
 
 
 _other_docstring_options="""

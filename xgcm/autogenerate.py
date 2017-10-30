@@ -1,6 +1,7 @@
 from __future__ import print_function
 from future.utils import iteritems
-from .grid import Axis
+import numpy as np
+from xgcm.grid import Axis, raw_interp_function
 
 
 def generate_axis(ds,
@@ -12,7 +13,7 @@ def generate_axis(ds,
                   wrap=None,
                   pad=None,
                   new_name=None,
-                  raw_switch=True):
+                  create_attributes_from_scratch=True):
     """
     Creates c-grid dimensions (or coordinates) along an axis of
     Parameters
@@ -41,7 +42,7 @@ def generate_axis(ds,
         when coordinate is multidimensional.
     new_name : str
         Name of the inferred grid variable. Defaults to name+'_inferred'
-    raw_switch : bool
+    create_attributes_from_scratch : bool
         Determines if the attributes are created from scratch. Should be
         enabled for dimensions and deactivated for multidimensional
         coordinates. These can only be calculated after the dims are created.
@@ -58,11 +59,7 @@ def generate_axis(ds,
                             same time')
     elif (wrap is None) and (pad is not None):
         if pad == 'auto':
-            left_pad, right_pad = auto_pad(ds[name], axis_dim)
-            if relative_pos_to == 'right':
-                fill_value = right_pad
-            elif relative_pos_to == 'left':
-                fill_value = left_pad
+            fill_value = auto_pad(ds[name], axis_dim, relative_pos_to)
         else:
             fill_value = pad
         periodic = False
@@ -78,7 +75,7 @@ def generate_axis(ds,
 
     # For a set of coordinates there are two fundamental cases. The coordinates
     # are a) one dimensional (dimensions) or 2) multidimensional. These are
-    # separated by the keyword raw_switch.
+    # separated by the keyword create_attributes_from_scratch.
     # These two cases are treated differently because for each dataset we need
     # to recreate all a) cases before we can proceed to 2), hence this is
     # really the 'raw' data processing step. If we have working one dimensional
@@ -87,7 +84,7 @@ def generate_axis(ds,
     # This assures that any changes to the Axis.interp method can directly
     # propagate to this module.
 
-    if raw_switch:
+    if create_attributes_from_scratch:
         # Input coordinate has to be declared as center,
         # or xgcm.Axis throws error. Will be rewrapped below.
         ds[name] = fill_attrs(ds[name], 'center', axis)
@@ -95,7 +92,7 @@ def generate_axis(ds,
         ax = Axis(ds, axis, periodic=periodic, wrap=wrap)
         ds.coords[new_name] = \
             ax._neighbor_binary_func_raw(ds[name],
-                                         raw_interp,
+                                         raw_interp_function,
                                          relative_pos_to,
                                          boundary=boundary,
                                          fill_value=fill_value)
@@ -117,11 +114,15 @@ def generate_axis(ds,
 
 
 def generate_grid_ds(ds,
-                         axes_dims_dict,
-                         axes_coords_dict=None,
-                         position=None,
-                         wrap=None,
-                         pad=None):
+                     axes_dims_dict,
+                     axes_coords_dict=None,
+                     position=None,
+                     wrap=None,
+                     pad=None,
+                     new_name=None,
+                     generate_distance=True,
+                     distance_name=None,
+                     ll_dist=True):
     """
     Add c-grid dimensions and coordinates (optional) to observational Dataset
 
@@ -150,6 +151,15 @@ def generate_grid_ds(ds,
      without artifacts. Can be defined globally (for all fields defined in
      axes_dims_dict and axes_coords_dict) {float, None} or per dataset
      variable ({dict} e.g. {'z':'auto','latitude':0.0})
+    new_name : str
+     Name of the inferred grid variable. Defaults to name+'_inferred'
+    generate_distance : Bool
+     Switch for the generation of distances based on the axes_coords_dict
+    distance_name : str
+     Name prefix for distance coordinates. Defaults to 'd'+name.
+    ll_dist : Bool
+     Activates the conversion of lon/lat coordinates to distances in meters.
+     Requires coordinates to be specified on 'X' and 'Y'.
     """
 
     if axes_coords_dict is not None:
@@ -159,10 +169,10 @@ def generate_grid_ds(ds,
 
     for di, dd in enumerate(combo_dict):
         if di == 0:
-            raw_switch = True
+            create_attributes_from_scratch = True
             infer_dim = False
         elif di == 1:
-            raw_switch = False
+            create_attributes_from_scratch = False
             infer_dim = True
 
         for ax in dd.keys():
@@ -183,7 +193,10 @@ def generate_grid_ds(ds,
             ds = generate_axis(ds, ax, ax_v, ax_d,
                                pos_from=pos_from, pos_to=pos_to,
                                wrap=is_wrapped, pad=is_padded,
-                               raw_switch=raw_switch)
+                               new_name=new_name,
+                               create_attributes_from_scratch=\
+                               create_attributes_from_scratch)
+            # if generate_distance:
     return ds
 
 
@@ -234,14 +247,7 @@ def position_to_relative(pos_from, pos_to):
     return to
 
 
-def raw_interp(data_left, data_right):
-    # TODO: This is not great, but I am not sure how to pass the nested
-    # function in xgcm.grid.Axis.interp to Axis._neighbor_binary_func_raw
-    # instead.
-    return 0.5*(data_left + data_right)
-
-
-def auto_pad(da, dim):
+def auto_pad(da, dim, relative_pos_to):
     "infer padding values from data array by linear extrapolation"
     da_min = da.min().data
     da_max = da.max().data
@@ -249,13 +255,20 @@ def auto_pad(da, dim):
     # bottom is used to pad the array. For multidimensional arrays the min
     # difference is chosen. This could lead to undesired results if the
     # depth spacing is spatially irregular
-    min_diff = da.diff(dim).isel(**{dim: 0}).min()
-    max_diff = da.diff(dim).isel(**{dim: -1}).min()
-    min_ex = da_min.data - min_diff.data
-    max_ex = da_max.data + max_diff.data
+    min_diff = da.diff(dim).isel(**{dim: 0}).min().data
+    max_diff = da.diff(dim).isel(**{dim: -1}).min().data
+
+    min_ex = da_min - min_diff
+    max_ex = da_max + max_diff
+
     #TODO: This assumes that the dim is increasing. Build check or option for
     # decreasing coordinates
-    return min_ex, max_ex
+
+    if relative_pos_to == 'right':
+        fill_value = max_ex
+    elif relative_pos_to == 'left':
+        fill_value = min_ex
+    return fill_value
 
 
 def fill_attrs(da, pos, axis):
@@ -272,3 +285,28 @@ def fill_attrs(da, pos, axis):
 
     da.attrs = attrs
     return da
+
+
+def dll_dist(dlon, dlat, lon, lat):
+    """Converts lat/lon differentials into distances
+
+    PARAMETERS
+    ----------
+    dlon : xarray.DataArray longitude differentials
+    dlat : xarray.DataArray latitude differentials
+    lon  : xarray.DataArray longitude values
+    lat  : xarray.DataArray latitude values
+
+    RETURNS
+    -------
+    dx  : xarray.DataArray distance inferred from dlon
+    dy  : xarray.DataArray distance inferred from dlat
+    """
+
+    # First attempt with super cheap approach...
+    #     111km for each deg lat and then scale that by cos(lat) for lon
+    dll_factor = 111000.0
+    dx = dlon * np.cos(np.deg2rad(lat.data)) * dll_factor
+    dy = dlat * dll_factor
+
+    return dx, dy

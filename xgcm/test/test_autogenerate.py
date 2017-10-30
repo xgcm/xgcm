@@ -164,17 +164,17 @@ def test_generate_axis():
                        pos_from='center',
                        pos_to='right',
                        wrap=360,
-                       raw_switch=False)
+                       create_attributes_from_scratch=False)
     bb = generate_axis(b, 'Y', 'llat', 'lat',
                        pos_from='center',
                        pos_to='left',
                        wrap=180,
-                       raw_switch=False)
+                       create_attributes_from_scratch=False)
     cc = generate_axis(c, 'Z', 'zz', 'z',
                        pos_from='left',
                        pos_to='center',
                        pad='auto',
-                       raw_switch=False)
+                       create_attributes_from_scratch=False)
     assert_allclose(aa['llon_inferred'], ds_out_right['llon_inferred'])
     assert_allclose(bb['llat_inferred'], ds_out_left['llat_inferred'])
     assert_allclose(cc['zz_inferred'], ds_out_right['zz_inferred'])
@@ -227,10 +227,14 @@ def test_position_to_relative(p, relative):
 
 
 def test_auto_pad():
-    a, b = auto_pad(ds_original['z'], 'z')
-    aa, bb = auto_pad(ds_original['zz'], 'z')
-    assert np.isclose(a, -(dx/2))
-    assert np.isclose(aa, -(dx/2))
+    a = auto_pad(ds_original['z'], 'z', 'left')
+    b = auto_pad(ds_original['z'], 'z', 'right')
+    aa = auto_pad(ds_original['zz'], 'z', 'left')
+    bb = auto_pad(ds_original['zz'], 'z', 'right')
+    assert a == -(dx/2)
+    assert b == 10 + (dx/2)
+    assert aa == -(dx/2)
+    assert bb == 10 + (dx/2)
 
 
 def test_fill_attrs():
