@@ -3,7 +3,7 @@ from future.utils import iteritems
 import pytest
 import xarray as xr
 import numpy as np
-from xarray.testing import assert_identical, assert_allclose, assert_equal
+from xarray.testing import assert_allclose, assert_equal
 
 
 from xgcm.autogenerate import auto_pad, fill_attrs, generate_axis, \
@@ -93,11 +93,14 @@ ds_out_right = xr.Dataset(
                                               {'axis': 'Y'}),
                              'z_inferred': (['z_inferred', ], z+dz,
                                             {'axis': 'Z'}),
-                             'llon_inferred': (['lat', 'lon_inferred', ], xx+dx,
+                             'llon_inferred': (['lat', 'lon_inferred'],
+                                               xx+dx,
                                                {'axis': 'X'}),
-                             'llat_inferred': (['lat_inferred', 'lon'], yy+dy,
+                             'llat_inferred': (['lat_inferred', 'lon'],
+                                               yy+dy,
                                                {'axis': 'Y'}),
-                             'zz_inferred': (['lat', 'lon', 'z_inferred'], zz+dz,
+                             'zz_inferred': (['lat', 'lon', 'z_inferred'],
+                                             zz+dz,
                                              {'axis': 'Z'})}
                         )
 
@@ -164,17 +167,17 @@ def test_generate_axis():
                        pos_from='center',
                        pos_to='right',
                        wrap=360,
-                       create_attributes_from_scratch=False)
+                       attrs_from_scratch=False)
     bb = generate_axis(b, 'Y', 'llat', 'lat',
                        pos_from='center',
                        pos_to='left',
                        wrap=180,
-                       create_attributes_from_scratch=False)
+                       attrs_from_scratch=False)
     cc = generate_axis(c, 'Z', 'zz', 'z',
                        pos_from='left',
                        pos_to='center',
                        pad='auto',
-                       create_attributes_from_scratch=False)
+                       attrs_from_scratch=False)
     assert_allclose(aa['llon_inferred'], ds_out_right['llon_inferred'])
     assert_allclose(bb['llat_inferred'], ds_out_left['llat_inferred'])
     assert_allclose(cc['zz_inferred'], ds_out_right['zz_inferred'])
@@ -186,18 +189,18 @@ def test_generate_grid_ds():
     axis_coords = {'X': 'llon', 'Y': 'llat', 'Z': 'zz'}
     ds_old = ds_original.copy()
     ds_new = generate_grid_ds(ds_old, axis_dims,
-                                  wrap={'lon': 360, 'lat': 180},
-                                  pad={'z': 'auto'})
+                              wrap={'lon': 360, 'lat': 180},
+                              pad={'z': 'auto'})
     assert_equal(ds_new, ds_out_left.drop(['llon_inferred',
                                            'llat_inferred',
                                            'zz_inferred']))
     # TODO why are they not identical ? assert identical fails
     ds_new = generate_grid_ds(ds_original,
-                                  axis_dims,
-                                  axis_coords,
-                                  wrap={'lon': 360, 'lat': 180,
-                                        'llon': 360, 'llat': 180},
-                                  pad={'z': 'auto', 'zz': 'auto'})
+                              axis_dims,
+                              axis_coords,
+                              wrap={'lon': 360, 'lat': 180,
+                                    'llon': 360, 'llat': 180},
+                              pad={'z': 'auto', 'zz': 'auto'})
     assert_equal(ds_new, ds_out_left)
 
 

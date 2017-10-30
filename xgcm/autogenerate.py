@@ -1,6 +1,5 @@
 from __future__ import print_function
 from future.utils import iteritems
-import numpy as np
 from xgcm.grid import Axis, raw_interp_function
 
 
@@ -13,7 +12,7 @@ def generate_axis(ds,
                   wrap=None,
                   pad=None,
                   new_name=None,
-                  create_attributes_from_scratch=True):
+                  attrs_from_scratch=True):
     """
     Creates c-grid dimensions (or coordinates) along an axis of
     Parameters
@@ -42,7 +41,7 @@ def generate_axis(ds,
         when coordinate is multidimensional.
     new_name : str
         Name of the inferred grid variable. Defaults to name+'_inferred'
-    create_attributes_from_scratch : bool
+    attrs_from_scratch : bool
         Determines if the attributes are created from scratch. Should be
         enabled for dimensions and deactivated for multidimensional
         coordinates. These can only be calculated after the dims are created.
@@ -75,7 +74,7 @@ def generate_axis(ds,
 
     # For a set of coordinates there are two fundamental cases. The coordinates
     # are a) one dimensional (dimensions) or 2) multidimensional. These are
-    # separated by the keyword create_attributes_from_scratch.
+    # separated by the keyword attrs_from_scratch.
     # These two cases are treated differently because for each dataset we need
     # to recreate all a) cases before we can proceed to 2), hence this is
     # really the 'raw' data processing step. If we have working one dimensional
@@ -84,7 +83,7 @@ def generate_axis(ds,
     # This assures that any changes to the Axis.interp method can directly
     # propagate to this module.
 
-    if create_attributes_from_scratch:
+    if attrs_from_scratch:
         # Input coordinate has to be declared as center,
         # or xgcm.Axis throws error. Will be rewrapped below.
         ds[name] = fill_attrs(ds[name], 'center', axis)
@@ -96,12 +95,6 @@ def generate_axis(ds,
                                          relative_pos_to,
                                          boundary=boundary,
                                          fill_value=fill_value)
-        # ds.coords[new_name] = ax.interp(ds[name], relative_pos_to,
-        #                                 boundary=boundary,
-        #                                 fill_value=fill_value)
-        # ax__neighbor_binary_func_raw(da, ax., to,
-        #                                           boundary=boundary,
-        #                                           fill_value=fill_value)
 
         # Place the correct attributes
         ds[name] = fill_attrs(ds[name], pos_from, axis)
@@ -119,10 +112,7 @@ def generate_grid_ds(ds,
                      position=None,
                      wrap=None,
                      pad=None,
-                     new_name=None,
-                     generate_distance=True,
-                     distance_name=None,
-                     ll_dist=True):
+                     new_name=None):
     """
     Add c-grid dimensions and coordinates (optional) to observational Dataset
 
@@ -153,13 +143,6 @@ def generate_grid_ds(ds,
      variable ({dict} e.g. {'z':'auto','latitude':0.0})
     new_name : str
      Name of the inferred grid variable. Defaults to name+'_inferred'
-    generate_distance : Bool
-     Switch for the generation of distances based on the axes_coords_dict
-    distance_name : str
-     Name prefix for distance coordinates. Defaults to 'd'+name.
-    ll_dist : Bool
-     Activates the conversion of lon/lat coordinates to distances in meters.
-     Requires coordinates to be specified on 'X' and 'Y'.
     """
 
     if axes_coords_dict is not None:
@@ -169,10 +152,10 @@ def generate_grid_ds(ds,
 
     for di, dd in enumerate(combo_dict):
         if di == 0:
-            create_attributes_from_scratch = True
+            attrs_from_scratch = True
             infer_dim = False
         elif di == 1:
-            create_attributes_from_scratch = False
+            attrs_from_scratch = False
             infer_dim = True
 
         for ax in dd.keys():
@@ -194,9 +177,7 @@ def generate_grid_ds(ds,
                                pos_from=pos_from, pos_to=pos_to,
                                wrap=is_wrapped, pad=is_padded,
                                new_name=new_name,
-                               create_attributes_from_scratch=\
-                               create_attributes_from_scratch)
-            # if generate_distance:
+                               attrs_from_scratch=attrs_from_scratch)
     return ds
 
 
@@ -236,7 +217,7 @@ def parse_position(position, axname, pos_default=('center', 'left')):
 def position_to_relative(pos_from, pos_to):
     """Translate from to positions in relative movement"""
     if ((pos_from == 'left' and pos_to == 'center') or
-         (pos_from == 'center' and pos_to == 'right')):
+       (pos_from == 'center' and pos_to == 'right')):
             to = 'right'
     elif ((pos_from == 'center' and pos_to == 'left') or
           (pos_from == 'right' and pos_to == 'center')):
@@ -261,7 +242,7 @@ def auto_pad(da, dim, relative_pos_to):
     min_ex = da_min - min_diff
     max_ex = da_max + max_diff
 
-    #TODO: This assumes that the dim is increasing. Build check or option for
+    # TODO: This assumes that the dim is increasing. Build check or option for
     # decreasing coordinates
 
     if relative_pos_to == 'right':
@@ -285,28 +266,3 @@ def fill_attrs(da, pos, axis):
 
     da.attrs = attrs
     return da
-
-
-def dll_dist(dlon, dlat, lon, lat):
-    """Converts lat/lon differentials into distances
-
-    PARAMETERS
-    ----------
-    dlon : xarray.DataArray longitude differentials
-    dlat : xarray.DataArray latitude differentials
-    lon  : xarray.DataArray longitude values
-    lat  : xarray.DataArray latitude values
-
-    RETURNS
-    -------
-    dx  : xarray.DataArray distance inferred from dlon
-    dy  : xarray.DataArray distance inferred from dlat
-    """
-
-    # First attempt with super cheap approach...
-    #     111km for each deg lat and then scale that by cos(lat) for lon
-    dll_factor = 111000.0
-    dx = dlon * np.cos(np.deg2rad(lat.data)) * dll_factor
-    dy = dlat * dll_factor
-
-    return dx, dy
