@@ -6,8 +6,9 @@ import numpy as np
 from xarray.testing import assert_allclose, assert_equal
 
 
-from xgcm.autogenerate import auto_pad, fill_attrs, generate_axis, \
-    generate_grid_ds, parse_wrap_pad, parse_position, position_to_relative
+from xgcm.autogenerate import generate_axis, generate_grid_ds, \
+    _parse_boundary_params, _parse_position, \
+    _position_to_relative, _auto_pad, _fill_attrs
 
 # create test datasets
 dx = 0.5
@@ -41,7 +42,7 @@ ds_original_1D_padded = xr.Dataset(
                                    coords={'z': (['z', ],
                                            z[0:3]),
                                            'test': (['test', ],
-                                                   z[0:3]+(dx/2.0))}
+                                                    z[0:3]+(dx/2.0))}
 )
 ds_out_left = xr.Dataset(
                      {'somedata': (['lat', 'lon', 'z'],
@@ -156,11 +157,11 @@ def test_generate_axis():
     a = generate_axis(ds_original, 'X', 'lon', 'lon',
                       pos_from='center',
                       pos_to='right',
-                      wrap=360)
+                      boundary_discontinuity=360)
     b = generate_axis(ds_original, 'Y', 'lat', 'lat',
                       pos_from='center',
                       pos_to='left',
-                      wrap=180)
+                      boundary_discontinuity=180)
     c = generate_axis(ds_original, 'Z', 'z', 'z',
                       pos_from='left',
                       pos_to='center',
@@ -179,12 +180,12 @@ def test_generate_axis():
     aa = generate_axis(a, 'X', 'llon', 'lon',
                        pos_from='center',
                        pos_to='right',
-                       wrap=360,
+                       boundary_discontinuity=360,
                        attrs_from_scratch=False)
     bb = generate_axis(b, 'Y', 'llat', 'lat',
                        pos_from='center',
                        pos_to='left',
-                       wrap=180,
+                       boundary_discontinuity=180,
                        attrs_from_scratch=False)
     cc = generate_axis(c, 'Z', 'zz', 'z',
                        pos_from='left',
@@ -202,9 +203,11 @@ def test_generate_axis():
                       pad='auto',
                       attrs_from_scratch=False)
     with pytest.raises(RuntimeError):
-        generate_axis(c, 'Z', 'zz', 'z', pad='auto', wrap=360)
+        generate_axis(c, 'Z', 'zz', 'z', pad='auto',
+                      boundary_discontinuity=360)
     with pytest.raises(RuntimeError):
-        generate_axis(c, 'Z', 'zz', 'z', pad=None, wrap=None)
+        generate_axis(c, 'Z', 'zz', 'z', pad=None,
+                      boundary_discontinuity=None)
 
 
 def test_generate_grid_ds():
@@ -213,7 +216,7 @@ def test_generate_grid_ds():
     axis_coords = {'X': 'llon', 'Y': 'llat', 'Z': 'zz'}
     ds_old = ds_original.copy()
     ds_new = generate_grid_ds(ds_old, axis_dims,
-                              wrap={'lon': 360, 'lat': 180},
+                              boundary_discontinuity={'lon': 360, 'lat': 180},
                               pad={'z': 'auto'})
     assert_equal(ds_new, ds_out_left.drop(['llon_inferred',
                                            'llat_inferred',
@@ -222,16 +225,18 @@ def test_generate_grid_ds():
     ds_new = generate_grid_ds(ds_original,
                               axis_dims,
                               axis_coords,
-                              wrap={'lon': 360, 'lat': 180,
-                                    'llon': 360, 'llat': 180},
+                              boundary_discontinuity={'lon': 360,
+                                                      'lat': 180,
+                                                      'llon': 360,
+                                                      'llat': 180},
                               pad={'z': 'auto', 'zz': 'auto'})
     assert_equal(ds_new, ds_out_left)
 
 
-def test_parse_wrap_pad():
-    assert parse_wrap_pad(360, 'anything') == 360
-    assert parse_wrap_pad({'something': 360}, 'something') == 360
-    assert parse_wrap_pad({'something': 360}, 'something_else') is None
+def test_parse_boundary_params():
+    assert _parse_boundary_params(360, 'anything') == 360
+    assert _parse_boundary_params({'something': 360}, 'something') == 360
+    assert _parse_boundary_params({'something': 360}, 'something_else') is None
 
 
 @pytest.mark.parametrize('p_f, p_t', [('left', 'center'),
@@ -240,9 +245,9 @@ def test_parse_wrap_pad():
                                       ('right', 'center')])
 def test_parse_position(p_f, p_t):
     default = ('center', 'left')
-    assert parse_position((p_f, p_t), 'anything') == (p_f, p_t)
-    assert parse_position({'something': (p_f, p_t)}, 'something') == (p_f, p_t)
-    assert parse_position({'something': (p_f, p_t)}, 'somethong') == default
+    assert _parse_position((p_f, p_t), 'anything') == (p_f, p_t)
+    assert _parse_position({'something': (p_f, p_t)}, 'something') == (p_f, p_t)
+    assert _parse_position({'something': (p_f, p_t)}, 'somethong') == default
 
 
 @pytest.mark.parametrize('p, relative', [(('left', 'center'), 'right'),
@@ -250,17 +255,17 @@ def test_parse_position(p_f, p_t):
                                          (('center', 'right'), 'right'),
                                          (('right', 'center'), 'left')])
 def test_position_to_relative(p, relative):
-    assert position_to_relative(p[0], p[1]) == relative
+    assert _position_to_relative(p[0], p[1]) == relative
 
     with pytest.raises(RuntimeError):
-        position_to_relative('left', 'right')
+        _position_to_relative('left', 'right')
 
 
-def test_auto_pad():
-    a = auto_pad(ds_original['z'], 'z', 'left')
-    b = auto_pad(ds_original['z'], 'z', 'right')
-    aa = auto_pad(ds_original['zz'], 'z', 'left')
-    bb = auto_pad(ds_original['zz'], 'z', 'right')
+def test__():
+    a = _auto_pad(ds_original['z'], 'z', 'left')
+    b = _auto_pad(ds_original['z'], 'z', 'right')
+    aa = _auto_pad(ds_original['zz'], 'z', 'left')
+    bb = _auto_pad(ds_original['zz'], 'z', 'right')
     assert a == -(dx/2)
     assert b == 10 + (dx/2)
     assert aa == -(dx/2)
@@ -268,14 +273,14 @@ def test_auto_pad():
 
 
 def test_fill_attrs():
-    a = fill_attrs(ds_out_right['lon'], 'right', 'X')
+    a = _fill_attrs(ds_out_right['lon'], 'right', 'X')
     assert a.attrs['axis'] == 'X'
     assert a.attrs['c_grid_axis_shift'] == 0.5
 
-    a = fill_attrs(ds_out_right['lon'], 'left', 'Z')
+    a = _fill_attrs(ds_out_right['lon'], 'left', 'Z')
     assert a.attrs['axis'] == 'Z'
     assert a.attrs['c_grid_axis_shift'] == -0.5
 
-    a = fill_attrs(ds_out_right['lon'], 'center', 'Y')
+    a = _fill_attrs(ds_out_right['lon'], 'center', 'Y')
     assert a.attrs['axis'] == 'Y'
     assert ('c_grid_axis_shift' not in a.attrs.keys())

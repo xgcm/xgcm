@@ -10,7 +10,7 @@ def generate_axis(ds,
                   axis_dim,
                   pos_from='center',
                   pos_to='left',
-                  wrap=None,
+                  boundary_discontinuity=None,
                   pad=None,
                   new_name=None,
                   attrs_from_scratch=True):
@@ -27,22 +27,22 @@ def generate_axis(ds,
     axis_dim : str
         The dimension of ds[name] corresponding to axis. If name itself is a
         dimension, this should be equal to name.
-    pos_from : {'center','left','right'}
+    pos_from : {'center','left','right'}, optional
         Position of the gridpoints given in 'ds'.
-    pos_to : {'center','left','right'}
+    pos_to : {'left','center','right'}, optional
         Position of the gridpoints to be generated.
-    wrap : None or float
+    boundary_discontinuity : {None, float}, optional
         If specified, marks the value of discontinuity across boundary, e.g.
         360 for global longitude values and 180 for global latitudes.
-    pad : {None, float, 'auto'}
+    pad : { None, float, 'auto'}, optional
         If specified, determines the padding to be applied across boundary.
         If float is specified, that value is used as padding. Auto attempts to
         pad linearly extrapolated values. Can be useful for e.g. depth
         coordinates (to reconstruct 0 depth). Can lead to unexpected values
         when coordinate is multidimensional.
-    new_name : str
+    new_name : str, optional
         Name of the inferred grid variable. Defaults to name+'_inferred'
-    attrs_from_scratch : bool
+    attrs_from_scratch : bool, optional
         Determines if the attributes are created from scratch. Should be
         enabled for dimensions and deactivated for multidimensional
         coordinates. These can only be calculated after the dims are created.
@@ -55,24 +55,24 @@ def generate_axis(ds,
 
     # Determine the relative position to interpolate to based on current and
     # desired position
-    relative_pos_to = position_to_relative(pos_from, pos_to)
+    relative_pos_to = _position_to_relative(pos_from, pos_to)
 
-    if (wrap is not None) and (pad is not None):
+    if (boundary_discontinuity is not None) and (pad is not None):
         raise RuntimeError('Coordinate cannot be wrapped and padded at the\
                             same time')
-    elif (wrap is None) and (pad is not None):
+    elif (boundary_discontinuity is None) and (pad is not None):
         if pad == 'auto':
-            fill_value = auto_pad(ds[name], axis_dim, relative_pos_to)
+            fill_value = _auto_pad(ds[name], axis_dim, relative_pos_to)
         else:
             fill_value = pad
         periodic = False
         boundary = 'fill'
-    elif (wrap is not None) and (pad is None):
+    elif (boundary_discontinuity is not None) and (pad is None):
         periodic = True
         fill_value = 0.0
         boundary = None
     else:
-        raise RuntimeError('Either "wrap" or "pad" have to be specified')
+        raise RuntimeError('Either "boundary_discontinuity" or "pad" have to be specified')
 
     ds = ds.copy()
 
@@ -90,23 +90,27 @@ def generate_axis(ds,
     if attrs_from_scratch:
         # Input coordinate has to be declared as center,
         # or xgcm.Axis throws error. Will be rewrapped below.
-        ds[name] = fill_attrs(ds[name], 'center', axis)
+        ds[name] = _fill_attrs(ds[name], 'center', axis)
 
-        ax = Axis(ds, axis, periodic=periodic, wrap=wrap)
+        ax = Axis(ds, axis, periodic=periodic)
         ds.coords[new_name] = \
             ax._neighbor_binary_func_raw(ds[name],
                                          raw_interp_function,
                                          relative_pos_to,
                                          boundary=boundary,
-                                         fill_value=fill_value)
+                                         fill_value=fill_value,
+                                         boundary_discontinuity=\
+                                         boundary_discontinuity)
 
         # Place the correct attributes
-        ds[name] = fill_attrs(ds[name], pos_from, axis)
-        ds[new_name] = fill_attrs(ds[new_name], pos_to, axis)
+        ds[name] = _fill_attrs(ds[name], pos_from, axis)
+        ds[new_name] = _fill_attrs(ds[new_name], pos_to, axis)
     else:
-        ax = Axis(ds, axis, periodic=periodic, wrap=wrap)
+        ax = Axis(ds, axis, periodic=periodic)
         ds.coords[new_name] = ax.interp(ds[name], pos_to, boundary=boundary,
-                                        fill_value=fill_value)
+                                        fill_value=fill_value,
+                                        boundary_discontinuity=\
+                                        boundary_discontinuity)
     return ds
 
 
@@ -114,7 +118,7 @@ def generate_grid_ds(ds,
                      axes_dims_dict,
                      axes_coords_dict=None,
                      position=None,
-                     wrap=None,
+                     boundary_discontinuity=None,
                      pad=None,
                      new_name=None):
     """
@@ -127,25 +131,25 @@ def generate_grid_ds(ds,
     axes_dims_dict : dict
      Dict with information on the dimension in ds corrsponding to the xgcm
      axis. E.g. {'X':'lon','Y':'lat'}
-    axes_coords_dict : dict
+    axes_coords_dict : dict, optional
      Dict with information on the coordinates in ds corrsponding to the
      xgcm axis. E.g. {'X':'geolon','Y':'geolat'}
-    position : {None,tuple, dict}
+    position : {None,tuple, dict}, optional
      Position of the gridpoints given in 'ds' and the desired position to be
      generated. Defaults to ('center','left'). Can be a tuple like
      ('center','left'), or a dict with corresponding axes
      (e.g. {'X':('center','left'),'Z':('left','center')})
-    wrap : {None, float, dict}
+    boundary_discontinuity : {None, float, dict}, optional
      Specifies the discontinuity at the boundary to wrap e.g. longitudes
      without artifacts. Can be defined globally (for all fields defined in
      axes_dims_dict and axes_coords_dict) {float, None} or per dataset
      variable (dict e.g. {'longitude':360,'latitude':180})
-    pad : {None, float, 'auto'}
-     Specifies the discontinuity at the boundary to wrap e.g. longitudes
-     without artifacts. Can be defined globally (for all fields defined in
+    pad : {None, float, 'auto'}, optional
+     Specifies the padding at the boundary to extend values past the boundary.
+     Can be defined globally (for all fields defined in
      axes_dims_dict and axes_coords_dict) {float, None} or per dataset
      variable ({dict} e.g. {'z':'auto','latitude':0.0})
-    new_name : str
+    new_name : str, optional
      Name of the inferred grid variable. Defaults to name+'_inferred'
     """
 
@@ -172,21 +176,23 @@ def generate_grid_ds(ds,
                 ax_d = ax_v
 
             # Parse position
-            pos_from, pos_to = parse_position(position, ax)
+            pos_from, pos_to = _parse_position(position, ax)
             # Pass wrap characteristics
-            is_wrapped = parse_wrap_pad(wrap, ax_v)
+            is_discontinous = _parse_boundary_params(boundary_discontinuity,
+                                                    ax_v)
             # Pass pad characteristics
-            is_padded = parse_wrap_pad(pad, ax_v)
+            is_padded = _parse_boundary_params(pad, ax_v)
             ds = generate_axis(ds, ax, ax_v, ax_d,
                                pos_from=pos_from, pos_to=pos_to,
-                               wrap=is_wrapped, pad=is_padded,
+                               boundary_discontinuity=is_discontinous,
+                               pad=is_padded,
                                new_name=new_name,
                                attrs_from_scratch=attrs_from_scratch)
     return ds
 
 
-def parse_wrap_pad(in_val, varname):
-    """Parse wrap or pad parameters"""
+def _parse_boundary_params(in_val, varname):
+    """Parse boundary_discontinuity or pad parameters"""
     if isinstance(in_val, dict):
         try:
             is_valued = in_val[varname]
@@ -198,7 +204,7 @@ def parse_wrap_pad(in_val, varname):
     return is_valued
 
 
-def parse_position(position, axname, pos_default=('center', 'left')):
+def _parse_position(position, axname, pos_default=('center', 'left')):
     if isinstance(position, dict):
         try:
             pos_from = position[axname][0]
@@ -218,7 +224,7 @@ def parse_position(position, axname, pos_default=('center', 'left')):
     return pos_from, pos_to
 
 
-def position_to_relative(pos_from, pos_to):
+def _position_to_relative(pos_from, pos_to):
     """Translate from to positions in relative movement"""
     if ((pos_from == 'left' and pos_to == 'center') or
        (pos_from == 'center' and pos_to == 'right')):
@@ -232,7 +238,7 @@ def position_to_relative(pos_from, pos_to):
     return to
 
 
-def auto_pad(da, dim, relative_pos_to):
+def _auto_pad(da, dim, relative_pos_to):
     "infer padding values from data array by linear extrapolation"
     da_min = da.min().data
     da_max = da.max().data
@@ -256,7 +262,7 @@ def auto_pad(da, dim, relative_pos_to):
     return fill_value
 
 
-def fill_attrs(da, pos, axis):
+def _fill_attrs(da, pos, axis):
     """Replace comdo attributes according to pos and axis"""
     attrs = da.attrs
     attrs['axis'] = axis

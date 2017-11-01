@@ -45,8 +45,7 @@ class Axis:
     differentiated by their length.
     """
 
-    def __init__(self, ds, axis_name, periodic=True, default_shifts={},
-                 wrap=None):
+    def __init__(self, ds, axis_name, periodic=True, default_shifts={}):
         """
         Create a new Axis object from an input dataset.
 
@@ -72,7 +71,6 @@ class Axis:
         self._ds = ds
         self._name = axis_name
         self._periodic = periodic
-        self._wrap = wrap
 
         # figure out what the grid dimensions are
         coord_names = comodo.get_axis_coords(ds, axis_name)
@@ -189,7 +187,8 @@ class Axis:
 
     @docstrings.get_sectionsf('neighbor_binary_func')
     @docstrings.dedent
-    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0):
+    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0,
+                              boundary_discontinuity=None):
         """
         Apply a function to neighboring points.
 
@@ -226,7 +225,9 @@ class Axis:
 
         data_new = self._neighbor_binary_func_raw(da, f, to,
                                                   boundary=boundary,
-                                                  fill_value=fill_value)
+                                                  fill_value=fill_value,
+                                                  boundary_discontinuity=\
+                                                  boundary_discontinuity)
         # wrap in a new xarray wrapper
         da_new = self._wrap_and_replace_coords(da, data_new, to)
 
@@ -235,14 +236,17 @@ class Axis:
     docstrings.delete_params('neighbor_binary_func.parameters', 'f')
 
     def _neighbor_binary_func_raw(self, da, f, to, boundary=None,
-                                  fill_value=0.0):
+                                  fill_value=0.0,
+                                  boundary_discontinuity=None):
 
         # get the two neighboring sets of raw data
         data_left, data_right = \
             self._get_neighbor_data_pairs(da,
                                           to,
                                           boundary=boundary,
-                                          fill_value=fill_value)
+                                          fill_value=fill_value,
+                                          boundary_discontinuity=\
+                                          boundary_discontinuity)
 
         # apply the function
         data_new = f(data_left, data_right)
@@ -250,9 +254,9 @@ class Axis:
         return data_new
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
-                                 fill_value=0.0):
+                                 fill_value=0.0, boundary_discontinuity=None):
         """Returns data_left, data_right.
-        Wrap option enables periodic coordinate interpolation
+        boundary_discontinuity option enables periodic coordinate interpolation
         (see xgcm.autogenerate)"""
 
         position_from, dim = self._get_axis_coord(da)
@@ -287,29 +291,29 @@ class Axis:
         elif (not self._periodic and ((transition == ('center', 'left')) or
                                        (transition == ('right', 'center')))):
             # pad only left
-            left = _pad_array(da.isel(**{dim: slice(0,-1)}), dim, left=True,
+            left = _pad_array(da.isel(**{dim: slice(0, -1)}), dim, left=True,
                               boundary=boundary, fill_value=fill_value)
             right = da.data
         elif (not self._periodic and ((transition == ('center', 'right')) or
                                       (transition == ('left', 'center')))):
             # pad only left
-            right = _pad_array(da.isel(**{dim: slice(1,None)}), dim, boundary=boundary,
-                               fill_value=fill_value)
+            right = _pad_array(da.isel(**{dim: slice(1, None)}), dim,
+                               boundary=boundary, fill_value=fill_value)
             left = da.data
         elif (self._periodic and ((transition == ('center', 'left')) or
                                   (transition == ('right', 'center')))):
 
             left = da.roll(**{dim: 1})
-            if self._wrap is not None:
-                left = add_to_slice(left, dim, 0, -self._wrap)
+            if boundary_discontinuity is not None:
+                left = add_to_slice(left, dim, 0, -boundary_discontinuity)
             left = left.data
             right = da.data
         elif (self._periodic and ((transition == ('center', 'right')) or
                                   (transition == ('left', 'center')))):
             left = da.data
             right = da.roll(**{dim: -1})
-            if self._wrap is not None:
-                right = add_to_slice(right, dim, -1, self._wrap)
+            if boundary_discontinuity is not None:
+                right = add_to_slice(right, dim, -1, boundary_discontinuity)
             right = right.data
         else:
             is_periodic = 'periodic' if self._periodic else 'non-periodic'
@@ -321,7 +325,8 @@ class Axis:
 
 
     @docstrings.dedent
-    def interp(self, da, to=None, boundary=None, fill_value=0.0):
+    def interp(self, da, to=None, boundary=None, fill_value=0.0,
+               boundary_discontinuity=None):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -338,10 +343,12 @@ class Axis:
         """
 
         return self._neighbor_binary_func(da, raw_interp_function, to,
-                                          boundary, fill_value)
+                                          boundary, fill_value,
+                                          boundary_discontinuity)
 
     @docstrings.dedent
-    def diff(self, da, to=None, boundary=None, fill_value=0.0):
+    def diff(self, da, to=None, boundary=None, fill_value=0.0,
+             boundary_discontinuity=None):
         """
         Difference neighboring points to the intermediate grid point.
 
@@ -356,7 +363,8 @@ class Axis:
         """
 
         return self._neighbor_binary_func(da, raw_diff_function, to,
-                                          boundary, fill_value)
+                                          boundary, fill_value,
+                                          boundary_discontinuity)
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
