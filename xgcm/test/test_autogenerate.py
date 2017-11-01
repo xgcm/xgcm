@@ -246,8 +246,8 @@ def test_parse_boundary_params():
 def test_parse_position(p_f, p_t):
     default = ('center', 'left')
     assert _parse_position((p_f, p_t), 'anything') == (p_f, p_t)
-    assert _parse_position({'something': (p_f, p_t)}, 'something') == (p_f, p_t)
-    assert _parse_position({'something': (p_f, p_t)}, 'somethong') == default
+    assert _parse_position({'a': (p_f, p_t)}, 'a') == (p_f, p_t)
+    assert _parse_position({'a': (p_f, p_t)}, 'b') == default
 
 
 @pytest.mark.parametrize('p, relative', [(('left', 'center'), 'right'),
@@ -261,7 +261,7 @@ def test_position_to_relative(p, relative):
         _position_to_relative('left', 'right')
 
 
-def test__():
+def test_auto_pad():
     a = _auto_pad(ds_original['z'], 'z', 'left')
     b = _auto_pad(ds_original['z'], 'z', 'right')
     aa = _auto_pad(ds_original['zz'], 'z', 'left')
