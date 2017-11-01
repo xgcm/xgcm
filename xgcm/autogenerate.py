@@ -1,6 +1,7 @@
 from __future__ import print_function
 from future.utils import iteritems
 from xgcm.grid import Axis, raw_interp_function
+import xarray as xr
 
 
 def generate_axis(ds,
@@ -46,6 +47,9 @@ def generate_axis(ds,
         enabled for dimensions and deactivated for multidimensional
         coordinates. These can only be calculated after the dims are created.
     """
+    if not isinstance(ds, xr.Dataset):
+        raise RuntimeError("'ds' needs to be xarray.Dataset")
+
     if new_name is None:
         new_name = name+'_inferred'
 

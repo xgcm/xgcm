@@ -182,6 +182,17 @@ def test_generate_axis():
     assert_allclose(bb['llat_inferred'], ds_out_left['llat_inferred'])
     assert_allclose(cc['zz_inferred'], ds_out_right['zz_inferred'])
 
+    with pytest.raises(RuntimeError):
+        generate_axis(c['somedata'], 'Z', 'zz', 'z',
+                      pos_from='left',
+                      pos_to='center',
+                      pad='auto',
+                      attrs_from_scratch=False)
+    with pytest.raises(RuntimeError):
+        generate_axis(c, 'Z', 'zz', 'z', pad='auto', wrap=360)
+    with pytest.raises(RuntimeError):
+        generate_axis(c, 'Z', 'zz', 'z', pad=None, wrap=None)
+
 
 def test_generate_grid_ds():
     # simple case...just the dims
@@ -227,6 +238,9 @@ def test_parse_position(p_f, p_t):
                                          (('right', 'center'), 'left')])
 def test_position_to_relative(p, relative):
     assert position_to_relative(p[0], p[1]) == relative
+
+    with pytest.raises(RuntimeError):
+        position_to_relative('left', 'right')
 
 
 def test_auto_pad():
