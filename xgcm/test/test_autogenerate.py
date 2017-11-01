@@ -31,6 +31,18 @@ ds_original = xr.Dataset(
                                  'llat': (['lat', 'lon'], yy+(dy/2.0)),
                                  'zz': (['lat', 'lon', 'z'], zz+(dx/2.0))}
                         )
+ds_original_1D = xr.Dataset(
+                            {'somedata': (['z', ], np.array([1, 2, 3]))},
+                            coords={'z': (['z', ], z[0:3])}
+)
+ds_original_1D_padded = xr.Dataset(
+                                   {'somedata': (['z', ],
+                                                 np.array([1, 2, 3]))},
+                                   coords={'z': (['z', ],
+                                           z[0:3]),
+                                           'test': (['test', ],
+                                                   z[0:3]+(dx/2.0))}
+)
 ds_out_left = xr.Dataset(
                      {'somedata': (['lat', 'lon', 'z'],
                                    a)},
@@ -141,26 +153,27 @@ ds_out_center = xr.Dataset(
 
 
 def test_generate_axis():
-    # This case should raise the error:'Either "wrap" or "pad" have to be
-    # specified'
-    # a = generate_axis(ds_original, 'X', 'lon',
-    #                   pos_from='center',
-    #                   pos_to='right')
-    a = generate_axis(ds_original.copy(), 'X', 'lon', 'lon',
+    a = generate_axis(ds_original, 'X', 'lon', 'lon',
                       pos_from='center',
                       pos_to='right',
                       wrap=360)
-    b = generate_axis(ds_original.copy(), 'Y', 'lat', 'lat',
+    b = generate_axis(ds_original, 'Y', 'lat', 'lat',
                       pos_from='center',
                       pos_to='left',
                       wrap=180)
-    c = generate_axis(ds_original.copy(), 'Z', 'z', 'z',
+    c = generate_axis(ds_original, 'Z', 'z', 'z',
                       pos_from='left',
                       pos_to='center',
                       pad='auto')
+    d = generate_axis(ds_original_1D, 'Z', 'z', 'z',
+                      pos_from='left',
+                      pos_to='center',
+                      pad=1.0+dz,
+                      new_name='test')
     assert_allclose(a['lon_inferred'], ds_out_right['lon_inferred'])
     assert_allclose(b['lat_inferred'], ds_out_left['lat_inferred'])
     assert_allclose(c['z_inferred'], ds_out_right['z_inferred'])
+    assert_allclose(d['test'], ds_original_1D_padded['test'])
 
     # Mulitdim cases
     aa = generate_axis(a, 'X', 'llon', 'lon',
