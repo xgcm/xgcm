@@ -17,7 +17,7 @@ class Axis:
     """
     An object that represents a group of coodinates that all lie along the same
     physical dimension but at different positions with respect to a grid cell.
-    There are four possible possition::
+    There are four possible positions::
 
          Center
          |------o-------|------o-------|------o-------|------o-------|
@@ -187,7 +187,8 @@ class Axis:
 
     @docstrings.get_sectionsf('neighbor_binary_func')
     @docstrings.dedent
-    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0):
+    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0,
+                              boundary_discontinuity=None):
         """
         Apply a function to neighboring points.
 
@@ -218,17 +219,15 @@ class Axis:
         da_i : xarray.DataArray
             The differenced data
         """
-
         position_from, dim = self._get_axis_coord(da)
         if to is None:
             to = self._default_shifts[position_from]
 
-        # get the two neighboring sets of raw data
-        data_left, data_right = self._get_neighbor_data_pairs(da, to,
-                                      boundary=boundary, fill_value=fill_value)
-        # apply the function
-        data_new = f(data_left, data_right)
-
+        data_new = self._neighbor_binary_func_raw(da, f, to,
+                                                  boundary=boundary,
+                                                  fill_value=fill_value,
+                                                  boundary_discontinuity=\
+                                                  boundary_discontinuity)
         # wrap in a new xarray wrapper
         da_new = self._wrap_and_replace_coords(da, data_new, to)
 
@@ -236,10 +235,29 @@ class Axis:
 
     docstrings.delete_params('neighbor_binary_func.parameters', 'f')
 
+    def _neighbor_binary_func_raw(self, da, f, to, boundary=None,
+                                  fill_value=0.0,
+                                  boundary_discontinuity=None):
+
+        # get the two neighboring sets of raw data
+        data_left, data_right = \
+            self._get_neighbor_data_pairs(da,
+                                          to,
+                                          boundary=boundary,
+                                          fill_value=fill_value,
+                                          boundary_discontinuity=\
+                                          boundary_discontinuity)
+
+        # apply the function
+        data_new = f(data_left, data_right)
+
+        return data_new
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
-                                 fill_value=0.0):
-        """Returns data_left, data_right."""
+                                 fill_value=0.0, boundary_discontinuity=None):
+        """Returns data_left, data_right.
+        boundary_discontinuity option enables periodic coordinate interpolation
+        (see xgcm.autogenerate)"""
 
         position_from, dim = self._get_axis_coord(da)
 
@@ -273,23 +291,30 @@ class Axis:
         elif (not self._periodic and ((transition == ('center', 'left')) or
                                        (transition == ('right', 'center')))):
             # pad only left
-            left = _pad_array(da.isel(**{dim: slice(0,-1)}), dim, left=True,
+            left = _pad_array(da.isel(**{dim: slice(0, -1)}), dim, left=True,
                               boundary=boundary, fill_value=fill_value)
             right = da.data
         elif (not self._periodic and ((transition == ('center', 'right')) or
                                       (transition == ('left', 'center')))):
             # pad only left
-            right = _pad_array(da.isel(**{dim: slice(1,None)}), dim, boundary=boundary,
-                               fill_value=fill_value)
+            right = _pad_array(da.isel(**{dim: slice(1, None)}), dim,
+                               boundary=boundary, fill_value=fill_value)
             left = da.data
         elif (self._periodic and ((transition == ('center', 'left')) or
                                   (transition == ('right', 'center')))):
-            left = da.roll(**{dim: 1}).data
+
+            left = da.roll(**{dim: 1})
+            if boundary_discontinuity is not None:
+                left = add_to_slice(left, dim, 0, -boundary_discontinuity)
+            left = left.data
             right = da.data
         elif (self._periodic and ((transition == ('center', 'right')) or
                                   (transition == ('left', 'center')))):
             left = da.data
-            right = da.roll(**{dim: -1}).data
+            right = da.roll(**{dim: -1})
+            if boundary_discontinuity is not None:
+                right = add_to_slice(right, dim, -1, boundary_discontinuity)
+            right = right.data
         else:
             is_periodic = 'periodic' if self._periodic else 'non-periodic'
             raise NotImplementedError(' to '.join(transition) +
@@ -300,7 +325,8 @@ class Axis:
 
 
     @docstrings.dedent
-    def interp(self, da, to=None, boundary=None, fill_value=0.0):
+    def interp(self, da, to=None, boundary=None, fill_value=0.0,
+               boundary_discontinuity=None):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -316,16 +342,13 @@ class Axis:
 
         """
 
-        def interp_function(data_left, data_right):
-            # linear, centered interpolation
-            # TODO: generalize to higher order interpolation
-            return 0.5*(data_left + data_right)
-        return self._neighbor_binary_func(da, interp_function, to,
-                                          boundary, fill_value)
-
+        return self._neighbor_binary_func(da, raw_interp_function, to,
+                                          boundary, fill_value,
+                                          boundary_discontinuity)
 
     @docstrings.dedent
-    def diff(self, da, to=None, boundary=None, fill_value=0.0):
+    def diff(self, da, to=None, boundary=None, fill_value=0.0,
+             boundary_discontinuity=None):
         """
         Difference neighboring points to the intermediate grid point.
 
@@ -339,10 +362,9 @@ class Axis:
             The differenced data
         """
 
-        def diff_function(data_left, data_right):
-            return data_right - data_left
-        return self._neighbor_binary_func(da, diff_function, to,
-                                          boundary, fill_value)
+        return self._neighbor_binary_func(da, raw_diff_function, to,
+                                          boundary, fill_value,
+                                          boundary_discontinuity)
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
@@ -368,7 +390,7 @@ class Axis:
         # first use xarray's cumsum method
         da_cum = da.cumsum(dim=dim)
 
-        boundary_kwargs =  dict(boundary=boundary, fill_value=fill_value)
+        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value)
 
         # now pad / trim the data as necessary
         # here we enumerate all the valid possible shifts
@@ -378,11 +400,11 @@ class Axis:
             data = da_cum.data
         elif ((pos == 'center' and to == 'left') or
               (pos == 'right' and to == 'center')):
-            data = _pad_array(da_cum.isel(**{dim: slice(0,-1)}), dim,
+            data = _pad_array(da_cum.isel(**{dim: slice(0, -1)}), dim,
                               left=True, **boundary_kwargs)
         elif ((pos == 'center' and to == 'inner') or
               (pos == 'outer' and to == 'center')):
-            data = da_cum.isel(**{dim: slice(0,-1)}).data
+            data = da_cum.isel(**{dim: slice(0, -1)}).data
         elif ((pos == 'center' and to == 'outer') or
               (pos == 'inner' and to == 'center')):
             data = _pad_array(da_cum, dim, left=True, **boundary_kwargs)
@@ -553,6 +575,32 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.cumsum(da, **kwargs)
+
+
+def add_to_slice(da, dim, sl, value):
+    # split array into before, middle and after (if slice is the
+    # beginning or end before or after will be empty)
+    before = da[{dim: slice(0, sl)}]
+    middle = da[{dim: sl}]
+    after = da[{dim: slice(sl+1, None)}]
+    if sl < -1:
+        raise RuntimeError('slice can not be smaller value than -1')
+    elif sl == -1:
+        da_new = xr.concat([before, middle+value], dim=dim)
+    else:
+        da_new = xr.concat([before, middle+value, after], dim=dim)
+    # then add 'value' to middle and concatenate again
+    return da_new
+
+
+def raw_interp_function(data_left, data_right):
+    # linear, centered interpolation
+    # TODO: generalize to higher order interpolation
+    return 0.5*(data_left + data_right)
+
+
+def raw_diff_function(data_left, data_right):
+    return data_right - data_left
 
 
 _other_docstring_options="""
