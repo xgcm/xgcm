@@ -44,6 +44,7 @@ Contents
    installation
    grids
    example_mitgcm
+   grid_generation
    api
    faq
    contributing
