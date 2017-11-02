@@ -11,11 +11,12 @@ def generate_axis(ds,
                   pos_from='center',
                   pos_to='left',
                   boundary_discontinuity=None,
-                  pad=None,
+                  pad='auto',
                   new_name=None,
                   attrs_from_scratch=True):
     """
     Creates c-grid dimensions (or coordinates) along an axis of
+    
     Parameters
     ----------
     ds : xarray.Dataset
@@ -34,14 +35,14 @@ def generate_axis(ds,
     boundary_discontinuity : {None, float}, optional
         If specified, marks the value of discontinuity across boundary, e.g.
         360 for global longitude values and 180 for global latitudes.
-    pad : { None, float, 'auto'}, optional
+    pad : {'auto', None, float}, optional
         If specified, determines the padding to be applied across boundary.
         If float is specified, that value is used as padding. Auto attempts to
         pad linearly extrapolated values. Can be useful for e.g. depth
         coordinates (to reconstruct 0 depth). Can lead to unexpected values
         when coordinate is multidimensional.
     new_name : str, optional
-        Name of the inferred grid variable. Defaults to name+'_inferred'
+        Name of the inferred grid variable. Defaults to name+'_'+pos_to'
     attrs_from_scratch : bool, optional
         Determines if the attributes are created from scratch. Should be
         enabled for dimensions and deactivated for multidimensional
@@ -51,7 +52,7 @@ def generate_axis(ds,
         raise RuntimeError("'ds' needs to be xarray.Dataset")
 
     if new_name is None:
-        new_name = name+'_inferred'
+        new_name = name+'_'+pos_to
 
     # Determine the relative position to interpolate to based on current and
     # desired position
@@ -72,7 +73,8 @@ def generate_axis(ds,
         fill_value = 0.0
         boundary = None
     else:
-        raise RuntimeError('Either "boundary_discontinuity" or "pad" have to be specified')
+        raise RuntimeError('Either "boundary_discontinuity" or "pad" have \
+                            to be specified')
 
     ds = ds.copy()
 
@@ -106,6 +108,7 @@ def generate_axis(ds,
         ds[name] = _fill_attrs(ds[name], pos_from, axis)
         ds[new_name] = _fill_attrs(ds[new_name], pos_to, axis)
     else:
+        print(ds)
         ax = Axis(ds, axis, periodic=periodic)
         ds.coords[new_name] = ax.interp(ds[name], pos_to, boundary=boundary,
                                         fill_value=fill_value,
@@ -150,7 +153,7 @@ def generate_grid_ds(ds,
      axes_dims_dict and axes_coords_dict) {float, None} or per dataset
      variable ({dict} e.g. {'z':'auto','latitude':0.0})
     new_name : str, optional
-     Name of the inferred grid variable. Defaults to name+'_inferred'
+     Name of the inferred grid variable. Defaults to name+'_'+position[1]
     """
 
     if axes_coords_dict is not None:
