@@ -169,10 +169,12 @@ def test_generate_axis():
     a = generate_axis(ds_original, 'X', 'lon', 'lon',
                       pos_from='center',
                       pos_to='right',
+                      pad=None,
                       boundary_discontinuity=360)
     b = generate_axis(ds_original, 'Y', 'lat', 'lat',
                       pos_from='center',
                       pos_to='left',
+                      pad=None,
                       boundary_discontinuity=180)
     c = generate_axis(ds_original, 'Z', 'z', 'z',
                       pos_from='center',
@@ -199,11 +201,13 @@ def test_generate_axis():
     aa = generate_axis(a, 'X', 'llon', 'lon',
                        pos_from='center',
                        pos_to='right',
+                       pad=None,
                        boundary_discontinuity=360,
                        attrs_from_scratch=False)
     bb = generate_axis(b, 'Y', 'llat', 'lat',
                        pos_from='center',
                        pos_to='left',
+                       pad=None,
                        boundary_discontinuity=180,
                        attrs_from_scratch=False)
     ee = generate_axis(e, 'Z', 'zz', 'z',
@@ -216,6 +220,8 @@ def test_generate_axis():
     assert_allclose(ee['zz_center'], ds_out_center['zz_center'])
 
     with pytest.raises(RuntimeError):
+        # Check if generate axis fails when a DataArray is passed instead of
+        # Dataset
         generate_axis(c['somedata'], 'Z', 'zz', 'z',
                       pos_from='left',
                       pos_to='center',

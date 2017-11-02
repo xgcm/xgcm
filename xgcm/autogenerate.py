@@ -16,7 +16,7 @@ def generate_axis(ds,
                   attrs_from_scratch=True):
     """
     Creates c-grid dimensions (or coordinates) along an axis of
-    
+
     Parameters
     ----------
     ds : xarray.Dataset
