@@ -189,8 +189,7 @@ def test_generate_axis():
                       pos_from='left',
                       pos_to='center',
                       pad='auto')
-    print(e)
-    print(ds_out_center)
+
     assert_allclose(a['lon_right'], ds_out_right['lon_right'])
     assert_allclose(b['lat_left'], ds_out_left['lat_left'])
     assert_allclose(c['z_left'], ds_out_left['z_left'])

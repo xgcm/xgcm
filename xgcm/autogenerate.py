@@ -108,7 +108,6 @@ def generate_axis(ds,
         ds[name] = _fill_attrs(ds[name], pos_from, axis)
         ds[new_name] = _fill_attrs(ds[new_name], pos_to, axis)
     else:
-        print(ds)
         ax = Axis(ds, axis, periodic=periodic)
         ds.coords[new_name] = ax.interp(ds[name], pos_to, boundary=boundary,
                                         fill_value=fill_value,
