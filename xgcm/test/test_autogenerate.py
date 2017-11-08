@@ -32,6 +32,15 @@ ds_original = xr.Dataset(
                                  'llat': (['lat', 'lon'], yy+(dy/2.0)),
                                  'zz': (['lat', 'lon', 'z'], zz+(dx/2.0))}
                         )
+ds_original_left = xr.Dataset(
+                         {'somedata': (['lat', 'lon', 'z'], a)},
+                         coords={'lon': (['lon', ], x),
+                                 'lat': (['lat', ], y),
+                                 'z': (['z', ], z),
+                                 'llon': (['lat', 'lon'], xx),
+                                 'llat': (['lat', 'lon'], yy),
+                                 'zz': (['lat', 'lon', 'z'], zz)}
+                        )
 ds_original_1D = xr.Dataset(
                             {'somedata': (['z', ], np.array([1, 2, 3]))},
                             coords={'z': (['z', ], z[0:3])}
@@ -59,25 +68,25 @@ ds_out_left = xr.Dataset(
                                       {'axis': 'Y'}),
                              'zz': (['lat', 'lon', 'z'], zz+(dx/2.0),
                                     {'axis': 'Z'}),
-                             'lon_inferred': (['lon_inferred', ], x,
-                                              {'axis': 'X',
-                                              'c_grid_axis_shift': -0.5}),
-                             'lat_inferred': (['lat_inferred', ], y,
-                                              {'axis': 'Y',
-                                              'c_grid_axis_shift': -0.5}),
-                             'z_inferred': (['z_inferred', ], z,
-                                            {'axis': 'Z',
-                                            'c_grid_axis_shift': -0.5}),
-                             'llon_inferred': (['lat', 'lon_inferred', ], xx,
-                                               {'axis': 'X',
-                                               'c_grid_axis_shift': -0.5}),
-                             'llat_inferred': (['lat_inferred', 'lon'], yy,
-                                               {'axis': 'Y',
-                                               'c_grid_axis_shift': -0.5}),
-                             'zz_inferred': (['lat', 'lon', 'z_inferred'], zz,
-                                             {'axis': 'Z',
-                                             'c_grid_axis_shift': -0.5})}
-                                             )
+                             'lon_left': (['lon_left', ], x,
+                                          {'axis': 'X',
+                                          'c_grid_axis_shift': -0.5}),
+                             'lat_left': (['lat_left', ], y,
+                                          {'axis': 'Y',
+                                          'c_grid_axis_shift': -0.5}),
+                             'z_left': (['z_left', ], z,
+                                        {'axis': 'Z',
+                                        'c_grid_axis_shift': -0.5}),
+                             'llon_left': (['lat', 'lon_left', ], xx,
+                                           {'axis': 'X',
+                                           'c_grid_axis_shift': -0.5}),
+                             'llat_left': (['lat_left', 'lon'], yy,
+                                           {'axis': 'Y',
+                                           'c_grid_axis_shift': -0.5}),
+                             'zz_left': (['lat', 'lon', 'z_left'], zz,
+                                         {'axis': 'Z',
+                                         'c_grid_axis_shift': -0.5})}
+                                         )
 
 ds_out_right = xr.Dataset(
                      {'somedata': (['lat', 'lon', 'z'],
@@ -97,59 +106,62 @@ ds_out_right = xr.Dataset(
                              'llat': (['lat', 'lon'], yy+(dy/2.0),
                                       {'axis': 'Y',
                                       'c_grid_axis_shift': -0.5}),
-                             'zz': (['lat', 'lon', 'z'], zz+(dx/2.0),
+                             'zz': (['lat', 'lon', 'z'], zz+(dz/2.0),
                                     {'axis': 'Z',
                                     'c_grid_axis_shift': -0.5}),
-                             'lon_inferred': (['lon_inferred', ], x+dx,
-                                              {'axis': 'X'}),
-                             'lat_inferred': (['lat_inferred', ], y+dy,
-                                              {'axis': 'Y'}),
-                             'z_inferred': (['z_inferred', ], z+dz,
-                                            {'axis': 'Z'}),
-                             'llon_inferred': (['lat', 'lon_inferred'],
-                                               xx+dx,
-                                               {'axis': 'X'}),
-                             'llat_inferred': (['lat_inferred', 'lon'],
-                                               yy+dy,
-                                               {'axis': 'Y'}),
-                             'zz_inferred': (['lat', 'lon', 'z_inferred'],
-                                             zz+dz,
-                                             {'axis': 'Z'})}
+                             'lon_right': (['lon_right', ], x+dx,
+                                           {'axis': 'X'}),
+                             'lat_right': (['lat_right', ], y+dy,
+                                           {'axis': 'Y'}),
+                             'z_right': (['z_right', ], z+dz,
+                                         {'axis': 'Z'}),
+                             'llon_right': (['lat', 'lon_right'],
+                                            xx+dx,
+                                            {'axis': 'X'}),
+                             'llat_right': (['lat_right', 'lon'],
+                                            yy+dy,
+                                            {'axis': 'Y'}),
+                             'zz_right': (['lat', 'lon', 'z_right'],
+                                          zz+dz,
+                                          {'axis': 'Z'})}
                         )
 
 ds_out_center = xr.Dataset(
                      {'somedata': (['lat', 'lon', 'z'],
                                    a)},
-                     coords={'lon': (['lon', ], x+(dx/2.0),
+                     coords={'lon': (['lon', ], x,
                                      {'axis': 'X',
-                                     'c_grid_axis_shift': 0.5}),
-                             'lat': (['lat', ], y+(dy/2.0),
+                                     'c_grid_axis_shift': -0.5}),
+                             'lat': (['lat', ], y,
                                      {'axis': 'Y',
-                                     'c_grid_axis_shift': 0.5}),
-                             'z': (['z', ], z+(dz/2.0),
+                                     'c_grid_axis_shift': -0.5}),
+                             'z': (['z', ], z,
                                    {'axis': 'Z',
-                                   'c_grid_axis_shift': 0.5}),
-                             'llon': (['lat', 'lon'], xx+(dx/2.0),
+                                   'c_grid_axis_shift': -0.5}),
+                             'llon': (['lat', 'lon'], xx,
                                       {'axis': 'X',
-                                      'c_grid_axis_shift': 0.5}),
-                             'llat': (['lat', 'lon'], yy+(dy/2.0),
+                                      'c_grid_axis_shift': -0.5}),
+                             'llat': (['lat', 'lon'], yy,
                                       {'axis': 'Y',
-                                      'c_grid_axis_shift': 0.5}),
-                             'zz': (['lat', 'lon', 'z'], zz+(dx/2.0),
+                                      'c_grid_axis_shift': -0.5}),
+                             'zz': (['lat', 'lon', 'z'], zz,
                                     {'axis': 'Z',
-                                    'c_grid_axis_shift': 0.5}),
-                             'lon_inferred': (['lon_inferred', ], x,
-                                              {'axis': 'X'}),
-                             'lat_inferred': (['lat_inferred', ], y,
-                                              {'axis': 'Y'}),
-                             'z_inferred': (['z_inferred', ], z,
-                                            {'axis': 'Z'}),
-                             'llon_inferred': (['lat', 'lon_inferred', ], xx,
-                                               {'axis': 'X'}),
-                             'llat_inferred': (['lat_inferred', 'lon'], yy,
-                                               {'axis': 'Y'}),
-                             'zz_inferred': (['lat', 'lon', 'z_inferred'], zz,
-                                             {'axis': 'Z'})}
+                                    'c_grid_axis_shift': -0.5}),
+                             'lon_center': (['lon_center', ], x+(dx/2.0),
+                                            {'axis': 'X'}),
+                             'lat_center': (['lat_center', ], y+(dy/2.0),
+                                            {'axis': 'Y'}),
+                             'z_center': (['z_center', ], z+(dz/2.0),
+                                          {'axis': 'Z'}),
+                             'llon_center': (['lat', 'lon_center', ],
+                                             xx+(dx/2.0),
+                                             {'axis': 'X'}),
+                             'llat_center': (['lat_center', 'lon'],
+                                             yy+(dy/2.0),
+                                             {'axis': 'Y'}),
+                             'zz_center': (['lat', 'lon', 'z_center'],
+                                           zz+(dz/2.0),
+                                           {'axis': 'Z'})}
                         )
 
 
@@ -157,46 +169,58 @@ def test_generate_axis():
     a = generate_axis(ds_original, 'X', 'lon', 'lon',
                       pos_from='center',
                       pos_to='right',
+                      pad=None,
                       boundary_discontinuity=360)
     b = generate_axis(ds_original, 'Y', 'lat', 'lat',
                       pos_from='center',
                       pos_to='left',
+                      pad=None,
                       boundary_discontinuity=180)
     c = generate_axis(ds_original, 'Z', 'z', 'z',
-                      pos_from='left',
-                      pos_to='center',
+                      pos_from='center',
+                      pos_to='left',
                       pad='auto')
     d = generate_axis(ds_original_1D, 'Z', 'z', 'z',
                       pos_from='left',
                       pos_to='center',
                       pad=1.0+dz,
                       new_name='test')
-    assert_allclose(a['lon_inferred'], ds_out_right['lon_inferred'])
-    assert_allclose(b['lat_inferred'], ds_out_left['lat_inferred'])
-    assert_allclose(c['z_inferred'], ds_out_right['z_inferred'])
+    e = generate_axis(ds_original_left, 'Z', 'z', 'z',
+                      pos_from='left',
+                      pos_to='center',
+                      pad='auto')
+
+    assert_allclose(a['lon_right'], ds_out_right['lon_right'])
+    assert_allclose(b['lat_left'], ds_out_left['lat_left'])
+    assert_allclose(c['z_left'], ds_out_left['z_left'])
     assert_allclose(d['test'], ds_original_1D_padded['test'])
+    assert_allclose(e['z_center'], ds_out_center['z_center'])
 
     # Mulitdim cases
     aa = generate_axis(a, 'X', 'llon', 'lon',
                        pos_from='center',
                        pos_to='right',
+                       pad=None,
                        boundary_discontinuity=360,
                        attrs_from_scratch=False)
     bb = generate_axis(b, 'Y', 'llat', 'lat',
                        pos_from='center',
                        pos_to='left',
+                       pad=None,
                        boundary_discontinuity=180,
                        attrs_from_scratch=False)
-    cc = generate_axis(c, 'Z', 'zz', 'z',
+    ee = generate_axis(e, 'Z', 'zz', 'z',
                        pos_from='left',
                        pos_to='center',
                        pad='auto',
                        attrs_from_scratch=False)
-    assert_allclose(aa['llon_inferred'], ds_out_right['llon_inferred'])
-    assert_allclose(bb['llat_inferred'], ds_out_left['llat_inferred'])
-    assert_allclose(cc['zz_inferred'], ds_out_right['zz_inferred'])
+    assert_allclose(aa['llon_right'], ds_out_right['llon_right'])
+    assert_allclose(bb['llat_left'], ds_out_left['llat_left'])
+    assert_allclose(ee['zz_center'], ds_out_center['zz_center'])
 
     with pytest.raises(RuntimeError):
+        # Check if generate axis fails when a DataArray is passed instead of
+        # Dataset
         generate_axis(c['somedata'], 'Z', 'zz', 'z',
                       pos_from='left',
                       pos_to='center',
@@ -218,9 +242,9 @@ def test_generate_grid_ds():
     ds_new = generate_grid_ds(ds_old, axis_dims,
                               boundary_discontinuity={'lon': 360, 'lat': 180},
                               pad={'z': 'auto'})
-    assert_equal(ds_new, ds_out_left.drop(['llon_inferred',
-                                           'llat_inferred',
-                                           'zz_inferred']))
+    assert_equal(ds_new, ds_out_left.drop(['llon_left',
+                                           'llat_left',
+                                           'zz_left']))
     # TODO why are they not identical ? assert identical fails
     ds_new = generate_grid_ds(ds_original,
                               axis_dims,

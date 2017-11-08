@@ -57,11 +57,16 @@ linearly
 
         >>> axis_dims =  {'X':'lon','Y':'lat','Z':'z'}
         >>> axis_coords =  {'X':'llon','Y':'llat','Z':'zz'}
+        >>> # Define the position of the gridcells in 'ds_original' as center and infer the left cell boundary (default)
+        >>> position=('center','left')
         >>> ds_new = generate_grid_ds(ds_original,
                                       axis_dims,
                                       axis_coords,
-                                      wrap={'lon':360, 'lat':180,
-                                            'llon':360, 'llat':180},
+                                      position=position,
+                                      boundary_discontinuity={'lon':360,
+                                                              'lat':180,
+                                                              'llon':360,
+                                                              'llat':180},
                                       pad={'z':'auto','zz':'auto'})
         >>> ds_new
 

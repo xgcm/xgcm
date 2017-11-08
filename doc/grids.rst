@@ -257,6 +257,8 @@ accrued due to the discretization of the data.
 
 For more advanced usage of xgcm, see the examples.
 
+For more advanced usage of xgcm, see the examples.
+
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
 .. _xarray: http://xarray.pydata.org
 .. _MITgcm notation: http://mitgcm.org/public/r2_manual/latest/online_documents/node31.html
