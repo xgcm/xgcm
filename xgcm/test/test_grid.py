@@ -81,6 +81,8 @@ def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
 
 
 # helper functions for padding arrays
+# this feels silly...I'm basically just re-coding the function in order to
+# test it
 def _pad_left(data, boundary, fill_value=0.):
     pad_val = data[0] if boundary=='extend' else fill_value
     return np.hstack([pad_val, data])

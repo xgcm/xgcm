@@ -7,7 +7,7 @@ import xarray as xr
 import numpy as np
 
 from . import comodo
-from .duck_array_ops import _pad_array
+from .duck_array_ops import _pad_array, concatenate
 
 docstrings = docrep.DocstringProcessor(doc_key='My doc string')
 
@@ -72,100 +72,34 @@ class Axis:
         self._name = axis_name
         self._periodic = periodic
 
-        # figure out what the grid dimensions are
-        coord_names = comodo.get_axis_coords(ds, axis_name)
-        ncoords = len(coord_names)
-        if ncoords == 0:
-            # didn't find anything for this axis
-            raise ValueError("Couldn't find any coordinates for axis %s"
-                             % axis_name)
-
-        # now figure out what type of coordinates these are:
-        # center, left, right, or outer
-        coords = {name: ds[name] for name in coord_names}
-
-        # some tortured logic for dealing with malforme c_grid_axis_shift
-        # attributes such as produced by old versions of xmitgcm.
-        # This should be a float (either -0.5 or 0.5)
-        # this function returns that, or True of the attribute is set to
-        # anything at all
-        def _maybe_fix_type(attr):
-            if attr is not None:
-                try:
-                    return float(attr)
-                except TypeError:
-                    return True
-
-        axis_shift = {name:
-                          _maybe_fix_type(coord.attrs.get('c_grid_axis_shift'))
-                      for name, coord in coords.items()}
-        coord_len = {name: len(coord) for name, coord in coords.items()}
-
-        # look for the center coord, which is required
-        # this list will potential contain "center" and "face" points
-        coords_without_axis_shift = {name: coord_len[name]
-                                     for name, shift in axis_shift.items()
-                                     if not shift}
-        if len(coords_without_axis_shift) == 0:
-            raise ValueError("Couldn't find a center coordinate for axis %s"
-                             % axis_name)
-        elif len(coords_without_axis_shift) > 1:
-            raise ValueError("Found two coordinates without "
-                             "`c_grid_axis_shift` attribute for axis %s"
-                             % axis_name)
-        center_coord_name = list(coords_without_axis_shift)[0]
-        # knowing the length of the center coord is key to decoding the other
-        # coords
-        axis_len = coord_len[center_coord_name]
-
-        # now we can start filling in the information about the different coords
-        axis_coords = OrderedDict()
-        axis_coords['center'] = coords[center_coord_name]
-
-        # now check the other coords
-        coord_names.remove(center_coord_name)
-        for name in coord_names:
-            shift = axis_shift[name]
-            clen = coord_len[name]
-            if clen == axis_len + 1:
-                axis_coords['outer'] = coords[name]
-            elif clen == axis_len - 1:
-                axis_coords['inner'] = coords[name]
-            elif shift == -0.5:
-                if clen == axis_len:
-                    axis_coords['left'] = coords[name]
-                else:
-                    raise ValueError("Left coordinate %s has incompatible "
-                                     "length %g (axis_len=%g)"
-                                     % (name, clen, axis_len))
-            elif shift == 0.5:
-                if clen == axis_len:
-                    axis_coords['right'] = coords[name]
-                else:
-                    raise ValueError("Right coordinate %s has incompatible "
-                                     "length %g (axis_len=%g)"
-                                     % (name, clen, axis_len))
-            else:
-                raise ValueError("Coordinate %s has invalid or missing "
-                                 "`c_grid_axis_shift` attribute `%s`" %
-                                 (name, repr(shift)))
-
-        self.coords = axis_coords
+        self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
+        # self.coords is a dictionary with the following structure
+        #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
+        #   value: xr.DataArray of the coordinate
+        #     (dimension name is accessible via the .name attribute)
 
         # set default position shifts
         fallback_shifts = {'center': ('left', 'right', 'outer', 'inner'),
                            'left': ('center',), 'right': ('center',),
                            'outer': ('center',), 'inner': ('center',)}
         self._default_shifts = {}
-        for pos in axis_coords:
+        for pos in self.coords:
             # use user-specified value if present
             if pos in default_shifts:
                 self._default_shifts[pos] = default_shifts[pos]
             else:
                 for possible_shift in fallback_shifts[pos]:
-                    if possible_shift in axis_coords:
+                    if possible_shift in self.coords:
                         self._default_shifts[pos] = possible_shift
                         break
+
+        # default to no connections
+        self._facedim = None
+        self._connections = (None, None)
+        # should have the structure
+        # {facedim_index: ((left_facedim_index, left_axis, left_reverse),
+        #                  (right_facedim_index, right_axis, right_reverse)}
+        # left and right axis are actual Axis objects
 
     def __repr__(self):
         is_periodic = 'periodic' if self._periodic else 'not periodic'
@@ -226,7 +160,7 @@ class Axis:
         data_new = self._neighbor_binary_func_raw(da, f, to,
                                                   boundary=boundary,
                                                   fill_value=fill_value,
-                                                  boundary_discontinuity=\
+                                                  boundary_discontinuity=
                                                   boundary_discontinuity)
         # wrap in a new xarray wrapper
         da_new = self._wrap_and_replace_coords(da, data_new, to)
@@ -253,6 +187,69 @@ class Axis:
 
         return data_new
 
+    def _get_edge_data(self, da, left_edge=True, boundary=None, fill_value=0.0,
+                  boundary_discontinuity=None):
+        """Get the appropriate edge data given axis connectivity and / or
+        boundary conditions.
+        """
+
+        position, this_dim = self._get_axis_coord(da)
+        this_axis_num = da.get_axis_num(this_dim)
+
+        if self._facedim:
+            face_axis = da.get_axis_num(self._facedim)
+
+            def face_edge_data(fnum, count=1):
+                # count tells how many points deep to go
+                face_connection = self._connections[fnum][0 if left_edge else 1]
+                if face_connection is None:
+                    return
+                    # no connection: use specified boundary condition
+                    # TODO: fill that in
+
+                neighbor_fnum, neighbor_axis, reverse = face_connection
+                # Build up a slice that selects the correct edge region for a
+                # given face. We work directly with variables rather than
+                # DataArrays in the hopes of greater efficiency, avoiding
+                # indexing / alignment
+
+                # Start with getting all the data
+                face_slice = [slice(None),] * da.ndim
+                # get the neighbor face
+                face_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum+1)
+                # within that face, get just the edge we need
+                neighbor_edge_dim = neighbor_axis.coords[position].name
+                neighbor_edge_axis_num = da.get_axis_num(neighbor_edge_dim)
+                if (left_edge and not reverse):
+                    neighbor_edge_slice = slice(-count, None)
+                else:
+                    neighbor_edge_slice = slice(None, count)
+                face_slice[neighbor_edge_axis_num] = neighbor_edge_slice
+
+                # the orthogonal dimension need to be reoriented if we are
+                # connected to the other axis. Is this because of some deep
+                # topological principle?
+                if neighbor_axis is not self:
+                    ortho_axis = da.get_axis_num(self.coords[position].name)
+                    ortho_slice = slice(None,None,other_orientation)
+                    face_slice[ortho_axis] = ortho_slice
+
+                edge = da.variable[tuple(face_slice)].data
+
+                # the axis of the edge on THIS face is not necessarily the same
+                # as the axis on the OTHER face
+                if neighbor_axis is not self:
+                    edge = edge.swapaxes(neighbor_edge_axis_num, this_axis_num)
+
+                return edge
+
+            arrays = [face_edge_data(fnum) for fnum in da[self._facedim].values]
+            print(arrays)
+            edge_data = concatenate(arrays, face_axis)
+
+        return edge_data
+
+    # TODO: refactor this to account for connections
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
                                  fill_value=0.0, boundary_discontinuity=None):
         """Returns data_left, data_right.
@@ -455,6 +452,13 @@ class Axis:
                        "coords." % repr(da.dims))
 
 
+    def _get_axis_dim_num(self, da):
+        """Return the dimension number of the axis coordinate in a DataArray.
+        """
+        _, coord_name = self._get_axis_coord(da)
+        return da.get_axis_num(coord_name)
+
+
 
 class Grid:
     """
@@ -462,7 +466,8 @@ class Grid:
     independent axes.
     """
 
-    def __init__(self, ds, check_dims=True, periodic=True, default_shifts={}):
+    def __init__(self, ds, check_dims=True, periodic=True, default_shifts={},
+                 face_connections=None):
         """
         Create a new Grid object from an input dataset.
 
@@ -503,6 +508,64 @@ class Grid:
                 axis_default_shifts = {}
             self.axes[axis_name] = Axis(ds, axis_name, is_periodic,
                                         default_shifts=axis_default_shifts)
+
+        if face_connections is not None:
+            self._assign_face_connections(face_connections)
+
+
+    def _assign_face_connections(self, fc):
+        """Check a dictionary of face connections to make sure all the links are
+        consistent.
+        """
+
+        if len(fc) > 1:
+            raise ValueError('Only one face dimension is supported for now. '
+                             'Instead found %r' % repr(fc.keys()))
+
+        # we will populate this with the axes we find in face_connections
+        axis_connections = {}
+
+        facedim = list(fc.keys())[0]
+        assert facedim in self._ds
+
+        face_links = fc[facedim]
+        for fidx, face_axis_links in face_links.items():
+            for axis, axis_links in face_axis_links.items():
+                # initialize the axis dict if necssary
+                if axis not in axis_connections:
+                    axis_connections[axis] = {}
+                link_left, link_right = axis_links
+
+                def check_neighbor(link, position):
+                    if link is None:
+                        return
+                    idx, ax, rev = link
+                    try:
+                        neighbor_link = face_links[idx][ax][position]
+                    except IndexError:
+                        raise ValueError("Couldn't find expected face link.")
+                    idx_n, ax_n, rev_n = neighbor_link
+                    # make sure all axes actually exist in the grid
+                    assert ax in self.axes
+                    assert ax_n in self.axes
+                    # make sure all faces actually exist in the dataset
+                    assert idx in self._ds[facedim].values
+                    assert idx_n in self._ds[facedim].values
+                    # check for consistent links from / to neighbor
+                    assert idx_n == fidx
+                    assert ax_n == axis
+                    assert rev_n == rev
+                    # convert the axis name to an acutal axis object
+                    actual_axis = self.axes[ax]
+                    return idx, actual_axis, rev
+
+                left = check_neighbor(link_left, 1)
+                right = check_neighbor(link_right, 0)
+                axis_connections[axis][fidx] = (left, right)
+
+        for axis, axis_links in axis_connections.items():
+            self.axes[axis]._facedim = facedim
+            self.axes[axis]._connections = axis_links
 
 
     def __repr__(self):
@@ -601,6 +664,7 @@ def raw_interp_function(data_left, data_right):
 
 def raw_diff_function(data_left, data_right):
     return data_right - data_left
+
 
 
 _other_docstring_options="""
