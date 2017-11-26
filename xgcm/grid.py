@@ -7,7 +7,7 @@ import xarray as xr
 import numpy as np
 
 from . import comodo
-from .duck_array_ops import _pad_array, concatenate
+from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
 
 docstrings = docrep.DocstringProcessor(doc_key='My doc string')
 
@@ -93,13 +93,58 @@ class Axis:
                         self._default_shifts[pos] = possible_shift
                         break
 
-        # default to no connections
+        ########################################################################
+        # DEVELOPER DOCUMENTATION
+        #
+        # The attributes below are my best attempt to represent grid topology
+        # in a general way. The data structures are complicated, but I can't
+        # think of any way to simplify them.
+        #
+        # self._facedim (str) is the name of a dimension (e.g. 'face') or None.
+        # If it is None, that means that the grid topology is _simple_, i.e.
+        # that this is not a cubed-sphere grid or similar. For example:
+        #
+        #     ds.dims == ('time', 'lat', 'lon')
+        #
+        # If _facedim is set to a dimension name, that means that shifting
+        # grid positions requires exchanging data among multiple "faces"
+        # (a.k.a. "tiles", "facets", etc.). For this to work, there must be a
+        # dimension corresponding to the different faces. This is `_facedim`.
+        # For example:
+        #
+        #     ds.dims == ('time', 'face', 'lat', 'lon')
+        #
+        # In this case, `self._facedim == 'face'`
+        #
+        # We initialize all of this to None and let the `Grid` class handle
+        # setting these attributes for complex geometries.
         self._facedim = None
-        self._connections = (None, None)
-        # should have the structure
-        # {facedim_index: ((left_facedim_index, left_axis, left_reverse),
-        #                  (right_facedim_index, right_axis, right_reverse)}
-        # left and right axis are actual Axis objects
+        #
+        # `self._connections` is a dictionary. It contains information about the
+        # connectivity among this axis and other axes.
+        # It should have the structure
+        #
+        #     {facedim_index: ((left_facedim_index, left_axis, left_reverse),
+        #                      (right_facedim_index, right_axis, right_reverse)}
+        #
+        # `facedim_index` : a value used to index the `self._facedim` dimension
+        #   (If `self._facedim` is `None`, then there should be only one key in
+        #   `facedim_index` and that key should be `None`.)
+        # `left_facedim_index` : the facedim index of the neighbor to the left.
+        #   (If `self._facedim` is `None`, this must also be `None`.)
+        # `left_axis` : an `Axis` object for the values to the left of this axis
+        # `left_reverse` : bool, whether the connection should be reversed. By
+        #   default, the left side of this axis will be connected to the right
+        #   side of the neighboring axis. `left_reverse` overrides this and
+        #   instead connects to the left side of the neighboring axis
+        self._connections = {None: (None, None)}
+
+        # now we implement periodic coordinates by setting appropriate
+        # connections
+        if periodic:
+            self._connections = {None: ((None, self, False),
+                                        (None, self, False))}
+
 
     def __repr__(self):
         is_periodic = 'periodic' if self._periodic else 'not periodic'
@@ -116,7 +161,6 @@ class Axis:
                 coord_info += ' --> %s' % self._default_shifts[name]
             summary.append(coord_info)
         return summary
-
 
 
     @docstrings.get_sectionsf('neighbor_binary_func')
@@ -187,8 +231,8 @@ class Axis:
 
         return data_new
 
-    def _get_edge_data(self, da, left_edge=True, boundary=None, fill_value=0.0,
-                  boundary_discontinuity=None):
+    def _get_edge_data(self, da, is_left_edge=True, boundary=None,
+                       fill_value=0.0, ignore_connections=False):
         """Get the appropriate edge data given axis connectivity and / or
         boundary conditions.
         """
@@ -196,61 +240,148 @@ class Axis:
         position, this_dim = self._get_axis_coord(da)
         this_axis_num = da.get_axis_num(this_dim)
 
-        if self._facedim:
-            face_axis = da.get_axis_num(self._facedim)
+        def face_edge_data(fnum, face_axis, count=1):
+            # get the edge data for a single face
 
-            def face_edge_data(fnum, count=1):
-                # count tells how many points deep to go
-                face_connection = self._connections[fnum][0 if left_edge else 1]
-                if face_connection is None:
-                    return
-                    # no connection: use specified boundary condition
-                    # TODO: fill that in
-
-                neighbor_fnum, neighbor_axis, reverse = face_connection
-                # Build up a slice that selects the correct edge region for a
-                # given face. We work directly with variables rather than
-                # DataArrays in the hopes of greater efficiency, avoiding
-                # indexing / alignment
-
-                # Start with getting all the data
-                face_slice = [slice(None),] * da.ndim
-                # get the neighbor face
-                face_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum+1)
-                # within that face, get just the edge we need
-                neighbor_edge_dim = neighbor_axis.coords[position].name
-                neighbor_edge_axis_num = da.get_axis_num(neighbor_edge_dim)
-                if (left_edge and not reverse):
-                    neighbor_edge_slice = slice(-count, None)
+            face_connection = self._connections[fnum][0 if is_left_edge else 1]
+            if (face_connection is None) or ignore_connections:
+                # no connection: use specified boundary condition instead
+                if self._facedim:
+                    da_face = da.isel(*{self._facedim: slice(fnum, fnum+1)})
                 else:
-                    neighbor_edge_slice = slice(None, count)
-                face_slice[neighbor_edge_axis_num] = neighbor_edge_slice
+                    da_face = da
+                return _apply_boundary_condition(da_face, this_dim,
+                                                 is_left_edge,
+                                                 boundary=boundary,
+                                                 fill_value=0.0)
 
-                # the orthogonal dimension need to be reoriented if we are
-                # connected to the other axis. Is this because of some deep
-                # topological principle?
-                if neighbor_axis is not self:
-                    ortho_axis = da.get_axis_num(self.coords[position].name)
-                    ortho_slice = slice(None,None,other_orientation)
-                    face_slice[ortho_axis] = ortho_slice
+            neighbor_fnum, neighbor_axis, reverse = face_connection
 
-                edge = da.variable[tuple(face_slice)].data
+            # check for consistency
+            if face_axis is None:
+                assert neighbor_fnum is None
 
-                # the axis of the edge on THIS face is not necessarily the same
-                # as the axis on the OTHER face
-                if neighbor_axis is not self:
-                    edge = edge.swapaxes(neighbor_edge_axis_num, this_axis_num)
+            # Build up a slice that selects the correct edge region for a
+            # given face. We work directly with variables rather than
+            # DataArrays in the hopes of greater efficiency, avoiding
+            # indexing / alignment
 
-                return edge
+            # Start with getting all the data
+            edge_slice = [slice(None),] * da.ndim
+            if face_axis is not None:
+                # get the neighbor face
+                edge_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum+1)
 
-            arrays = [face_edge_data(fnum) for fnum in da[self._facedim].values]
-            print(arrays)
+            # get the edge we need
+            neighbor_edge_dim = neighbor_axis.coords[position].name
+            neighbor_edge_axis_num = da.get_axis_num(neighbor_edge_dim)
+            if (is_left_edge and not reverse):
+                neighbor_edge_slice = slice(-count, None)
+            else:
+                neighbor_edge_slice = slice(None, count)
+            edge_slice[neighbor_edge_axis_num] = neighbor_edge_slice
+
+            # the orthogonal dimension need to be reoriented if we are
+            # connected to the other axis. Is this because of some deep
+            # topological principle?
+            if neighbor_axis is not self:
+                ortho_axis = da.get_axis_num(self.coords[position].name)
+                ortho_slice = slice(None,None,other_orientation)
+                edge_slice[ortho_axis] = ortho_slice
+
+            edge = da.variable[tuple(edge_slice)].data
+
+            # the axis of the edge on THIS face is not necessarily the same
+            # as the axis on the OTHER face
+            if neighbor_axis is not self:
+                edge = edge.swapaxes(neighbor_edge_axis_num, this_axis_num)
+
+            return edge
+
+        if self._facedim:
+            face_axis_num = da.get_axis_num(self._facedim)
+            arrays = [face_edge_data(fnum, face_axis_num)
+                      for fnum in da[self._facedim].values]
             edge_data = concatenate(arrays, face_axis)
+        else:
+            edge_data = face_edge_data(None, None)
 
         return edge_data
 
-    # TODO: refactor this to account for connections
+
+    def _extend_left(self, da, boundary=None, fill_value=0.0,
+                     ignore_connections=False):
+        axis_num = self._get_axis_dim_num(da)
+        edge_data = self._get_edge_data(da, is_left_edge=True, boundary=None,
+                                        fill_value=0.0,
+                                        ignore_connections=ignore_connections)
+        return concatenate([edge_data, da.data], axis=axis_num)
+
+
+    def _extend_right(self, da, boundary=None, fill_value=0.0,
+                      ignore_connections=False):
+        axis_num = self._get_axis_dim_num(da)
+        edge_data = self._get_edge_data(da, is_left_edge=False, boundary=None,
+                                        fill_value=0.0,
+                                        ignore_connections=ignore_connections)
+        return concatenate([da.data, edge_data], axis=axis_num)
+
+
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
+                                 fill_value=0.0, ignore_connections=False,
+                                 boundary_discontinuity=None):
+
+        position_from, dim = self._get_axis_coord(da)
+        axis_num = da.get_axis_num(dim)
+
+        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value,
+                               ignore_connections=ignore_connections)
+
+        valid_positions = ['outer', 'inner', 'left', 'right', 'center']
+
+        if position_to not in valid_positions:
+            raise ValueError("`%s` is not a valid axis position" % position_to)
+
+        if position_to not in valid_positions:
+            raise ValueError("`%s` is not a valid axis position" % position_to)
+
+        transition = (position_from, position_to)
+
+        if ((transition == ('outer', 'center')) or
+            (transition == ('center', 'inner'))):
+            # don't need any edge values
+            left = da.isel(**{dim: slice(None, -1)}).data
+            right = da.isel(**{dim: slice(1, None)}).data
+        elif ((transition == ('center', 'outer')) or
+              (transition == ('inner', 'center'))):
+            # need both edge values
+            left = self._extend_left(da, **boundary_kwargs)
+            right = self._extend_right(da, **boundary_kwargs)
+        elif (transition == ('center', 'left') or
+              transition == ('right', 'center')):
+            # need to slice *after* getting edge because otherwise we could
+            # mess up complicated connections (e.g. cubed-sphere)
+            left = self._extend_left(da, **boundary_kwargs)
+            # unfortunately left is not an xarray so we have to slice
+            # it the long numpy way
+            slc = axis_num * (slice(None),) + (slice(0, -1),)
+            left = left[slc]
+            right = da.data
+        elif (transition == ('center', 'right') or
+              transition == ('left', 'center')):
+            # need to slice *after* getting edge because otherwise we could
+            # mess up complicated connections (e.g. cubed-sphere)
+            right = self._extend_right(da, **boundary_kwargs)
+            # unfortunately left is not an xarray so we have to slice
+            # it the long numpy way
+            slc = axis_num * (slice(None),) + (slice(1, None),)
+            right = right[slc]
+            left = da.data
+
+        return left, right
+
+
+    def _get_neighbor_data_pairs_old(self, da, position_to, boundary=None,
                                  fill_value=0.0, boundary_discontinuity=None):
         """Returns data_left, data_right.
         boundary_discontinuity option enables periodic coordinate interpolation
@@ -664,6 +795,9 @@ def raw_interp_function(data_left, data_right):
 
 def raw_diff_function(data_left, data_right):
     return data_right - data_left
+
+
+
 
 
 
