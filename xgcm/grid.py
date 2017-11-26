@@ -312,8 +312,9 @@ class Axis:
     def _extend_left(self, da, boundary=None, fill_value=0.0,
                      ignore_connections=False):
         axis_num = self._get_axis_dim_num(da)
-        edge_data = self._get_edge_data(da, is_left_edge=True, boundary=None,
-                                        fill_value=0.0,
+        edge_data = self._get_edge_data(da, is_left_edge=True,
+                                        boundary=boundary,
+                                        fill_value=fill_value,
                                         ignore_connections=ignore_connections)
         return concatenate([edge_data, da.data], axis=axis_num)
 
@@ -321,8 +322,9 @@ class Axis:
     def _extend_right(self, da, boundary=None, fill_value=0.0,
                       ignore_connections=False):
         axis_num = self._get_axis_dim_num(da)
-        edge_data = self._get_edge_data(da, is_left_edge=False, boundary=None,
-                                        fill_value=0.0,
+        edge_data = self._get_edge_data(da, is_left_edge=False,
+                                        boundary=boundary,
+                                        fill_value=fill_value,
                                         ignore_connections=ignore_connections)
         return concatenate([da.data, edge_data], axis=axis_num)
 
@@ -377,6 +379,9 @@ class Axis:
             slc = axis_num * (slice(None),) + (slice(1, None),)
             right = right[slc]
             left = da.data
+        else:
+            raise NotImplementedError(' to '.join(transition) +
+                                      ' transition not yet supported.')
 
         return left, right
 

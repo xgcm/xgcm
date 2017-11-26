@@ -65,8 +65,8 @@ def _apply_boundary_condition(da, dim, left, boundary=None, fill_value=0.0):
     """
 
     if boundary not in ['fill', 'extend', 'extrapolate']:
-        raise ValueError("`boundary` must be `'fill'`, `'extend'` or "
-                         "`extrapolate`.")
+        raise ValueError("`boundary` must be 'fill', 'extend' or "
+                         "'extrapolate', not %r." % boundary)
 
     axis_num = da.get_axis_num(dim)
 
