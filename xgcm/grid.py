@@ -243,11 +243,21 @@ class Axis:
         def face_edge_data(fnum, face_axis, count=1):
             # get the edge data for a single face
 
-            face_connection = self._connections[fnum][0 if is_left_edge else 1]
+            # There will not necessarily be connection data for every face
+            # for every axis. If there is no connection data, fnum will not
+            # be a key for self._connections.
+
+            if fnum in self._connections:
+                # it should always be a len 2 tuple
+                face_connection = self._connections[fnum][
+                                            0 if is_left_edge else 1]
+            else:
+                face_connection = None
+
             if (face_connection is None) or ignore_connections:
                 # no connection: use specified boundary condition instead
                 if self._facedim:
-                    da_face = da.isel(*{self._facedim: slice(fnum, fnum+1)})
+                    da_face = da.isel(**{self._facedim: slice(fnum, fnum+1)})
                 else:
                     da_face = da
                 return _apply_boundary_condition(da_face, this_dim,
@@ -286,7 +296,7 @@ class Axis:
             # topological principle?
             if neighbor_axis is not self:
                 ortho_axis = da.get_axis_num(self.coords[position].name)
-                ortho_slice = slice(None,None,other_orientation)
+                ortho_slice = slice(None, None, -1)
                 edge_slice[ortho_axis] = ortho_slice
 
             edge = da.variable[tuple(edge_slice)].data
@@ -302,7 +312,7 @@ class Axis:
             face_axis_num = da.get_axis_num(self._facedim)
             arrays = [face_edge_data(fnum, face_axis_num)
                       for fnum in da[self._facedim].values]
-            edge_data = concatenate(arrays, face_axis)
+            edge_data = concatenate(arrays, face_axis_num)
         else:
             edge_data = face_edge_data(None, None)
 
