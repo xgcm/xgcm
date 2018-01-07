@@ -686,21 +686,33 @@ class Grid:
                     if link is None:
                         return
                     idx, ax, rev = link
+                    # need to swap position if the link is reversed
+                    correct_position = int(not position) if rev else position
                     try:
-                        neighbor_link = face_links[idx][ax][position]
-                    except IndexError:
-                        raise ValueError("Couldn't find expected face link.")
+                        neighbor_link = face_links[idx][ax][correct_position]
+                    except (KeyError, IndexError):
+                        raise KeyError("Couldn't find a face link for face %r"
+                                       "in axis %r at position %r"
+                                       % (idx, ax, correct_position))
                     idx_n, ax_n, rev_n = neighbor_link
-                    # make sure all axes actually exist in the grid
-                    assert ax in self.axes
-                    assert ax_n in self.axes
-                    # make sure all faces actually exist in the dataset
-                    assert idx in self._ds[facedim].values
-                    assert idx_n in self._ds[facedim].values
+                    if ax not in self.axes:
+                        raise KeyError('axis %r is not a valid axis' % ax)
+                    if ax_n not in self.axes:
+                        raise KeyError('axis %r is not a valid axis' % ax_n)
+                    if idx not in self._ds[facedim].values:
+                        raise IndexError('%r is not a valid index for face'
+                                         'dimension %r' % (idx, facedim))
+                    if idx_n not in self._ds[facedim].values:
+                        raise IndexError('%r is not a valid index for face'
+                                         'dimension %r' % (idx, facedim))
                     # check for consistent links from / to neighbor
-                    assert idx_n == fidx
-                    assert ax_n == axis
-                    assert rev_n == rev
+                    if (idx_n != fidx) or (ax_n != axis) or (rev_n != rev):
+                        raise ValueError("Face link mismatch: neighbor doesn't"
+                                         " correctly link back to this face. "
+                                         "face: %r, axis: %r, position: %r, "
+                                         "rev: %r, link: %r, neighbor_link: %r"
+                                         % (fidx, axis, position, rev, link,
+                                            neighbor_link))
                     # convert the axis name to an acutal axis object
                     actual_axis = self.axes[ax]
                     return idx, actual_axis, rev

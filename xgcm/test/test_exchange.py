@@ -54,10 +54,32 @@ def ds_face_connections_x_to_y():
 def cs():
     # cubed-sphere
     N = 25
-    return xr.Dataset({'data_c': (['face', 'y', 'x'], np.random.rand(6, N, N))},
-            coords={'x': (('x',), np.arange(N), {'axis': 'X'}),
-                    'y': (('y',), np.arange(N), {'axis': 'Y'}),
-                    'face' : (('face',), [0, 1])})
+    ds = xr.Dataset({'data_c': (['face', 'y', 'x'], np.random.rand(6, N, N))},
+                    coords={'x': (('x',), np.arange(N), {'axis': 'X'}),
+                            'xl': (('xl'), np.arange(N)-0.5,
+                                   {'axis': 'X', 'c_grid_axis_shift': -0.5}),
+                            'y': (('y',), np.arange(N), {'axis': 'Y'}),
+                            'yl': (('yl'), np.arange(N)-0.5,
+                                   {'axis': 'Y', 'c_grid_axis_shift': -0.5}),
+                            'face': (('face',), np.arange(6))})
+    return ds
+
+
+@pytest.fixture(scope='module')
+def cubed_sphere_connections():
+    return {'face':
+            {0: {'X': ((3, 'X', False), (1, 'X', False)),
+                 'Y': ((4, 'Y', False), (5, 'Y', False))},
+             1: {'X': ((0, 'X', False), (2, 'X', False)),
+                 'Y': ((4, 'X', False), (5, 'X', True))},
+             2: {'X': ((1, 'X', False), (3, 'X', False)),
+                 'Y': ((4, 'Y', True), (5, 'Y', True))},
+             3: {'X': ((2, 'X', False), (0, 'X', False)),
+                 'Y': ((4, 'X', True), (5, 'X', False))},
+             4: {'X': ((3, 'Y', True), (1, 'Y', False)),
+                 'Y': ((2, 'Y', True), (0, 'Y', False))},
+             5: {'X': ((3, 'Y', False), (1, 'Y', True)),
+                 'Y': ((0, 'Y', False), (2, 'Y', True))}}}
 
 
 def test_create_periodic_grid(ds):
@@ -71,8 +93,8 @@ def test_create_periodic_grid(ds):
         assert connect_right[0] is None
         assert connect_left[1] is axis
         assert connect_right[1] is axis
-        assert connect_left[2] == False
-        assert connect_right[2] == False
+        assert connect_left[2] is False
+        assert connect_right[2] is False
 
 
 def test_get_periodic_grid_edge(ds):
@@ -94,6 +116,10 @@ def test_get_periodic_grid_edge(ds):
     right_edge_data_y = yaxis._get_edge_data(ds.data_c, is_left_edge=False)
     np.testing.assert_allclose(right_edge_data_y,
                                ds.data_c.isel(y=0).data[None, :])
+
+
+def test_connection_errors(ds):
+    pass
 
 
 def test_create_connected_grid(ds, ds_face_connections_x_to_x):
@@ -119,20 +145,20 @@ def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     diff_x = grid.diff(ds.data_c, 'X', boundary='fill')
     interp_x = grid.interp(ds.data_c, 'X', boundary='fill')
 
-    # make sure the left boundary got applied correctly
-    np.testing.assert_allclose(diff_x[0, :, 0], ds.data_c[0, :, 0] - 0.0)
-    np.testing.assert_allclose(interp_x[0, :, 0],
-                               0.5*(ds.data_c[0, :, 0] + 0.0))
-
     # make sure the face connection got applied correctly
     np.testing.assert_allclose(diff_x[1, :, 0],
                                ds.data_c[1, :, 0] - ds.data_c[0, :, -1])
     np.testing.assert_allclose(interp_x[1, :, 0],
                                0.5*(ds.data_c[1, :, 0] + ds.data_c[0, :, -1]))
 
+    # make sure the left boundary got applied correctly
+    np.testing.assert_allclose(diff_x[0, :, 0], ds.data_c[0, :, 0] - 0.0)
+    np.testing.assert_allclose(interp_x[0, :, 0],
+                               0.5*(ds.data_c[0, :, 0] + 0.0))
+
 
 def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
-    # simplest scenario with one face connection
+    # one face connection, rotated
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
     diff_x = grid.diff(ds.data_c, 'X', boundary='fill')
@@ -150,3 +176,22 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     np.testing.assert_allclose(interp_y.data[1, 0, :].ravel(),
                                0.5*(ds.data_c.data[1, 0, :].ravel()
                                + ds.data_c.data[0, ::-1, -1].ravel()))
+
+    # TODO: checking all the other boundaries
+
+
+def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
+    grid = Grid(cs, face_connections=cubed_sphere_connections)
+
+
+def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
+    grid = Grid(cs, face_connections=cubed_sphere_connections)
+    face, _ = xr.broadcast(cs.face, cs.data_c)
+
+    face_diff_x = grid.diff(face, 'X')
+    np.testing.assert_allclose(face_diff_x[:, 0, 0], [-3, 1, 1, 1, 1, 2])
+    np.testing.assert_allclose(face_diff_x[:, -1, 0], [-3, 1, 1, 1, 1, 2])
+
+    face_diff_y = grid.diff(face, 'Y')
+    np.testing.assert_allclose(face_diff_y[:, 0, 0], [-4, -3, -2, -1, 2, 5])
+    np.testing.assert_allclose(face_diff_y[:, 0, -1], [-4, -3, -2, -1, 2, 5])
