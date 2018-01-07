@@ -354,8 +354,9 @@ class Axis:
         if position_to not in valid_positions:
             raise ValueError("`%s` is not a valid axis position" % position_to)
 
-        if position_to not in valid_positions:
-            raise ValueError("`%s` is not a valid axis position" % position_to)
+        if position_to not in self.coords:
+            raise ValueError("This axis doesn't contain a `%s` position"
+                             % position_to)
 
         transition = (position_from, position_to)
 
