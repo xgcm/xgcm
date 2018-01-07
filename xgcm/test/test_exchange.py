@@ -7,47 +7,40 @@ from dask.array import from_array
 
 from xgcm.grid import Grid, Axis, add_to_slice
 
+
 @pytest.fixture(scope='module')
 def ds():
     N = 25
     return xr.Dataset({'data_c': (['face', 'y', 'x'], np.random.rand(2, N, N))},
-            coords={'x': (('x',), np.arange(N), {'axis': 'X'}),
-                    'xl': (('xl'), np.arange(N)-0.5,
-                           {'axis': 'X', 'c_grid_axis_shift': -0.5}),
-                    'y': (('y',), np.arange(N), {'axis': 'Y'}),
-                    'yl': (('yl'), np.arange(N)-0.5,
-                           {'axis': 'Y', 'c_grid_axis_shift': -0.5}),
-                    'face' : (('face',), [0, 1])})
+                      coords={'x': (('x',), np.arange(N), {'axis': 'X'}),
+                              'xl': (('xl'), np.arange(N)-0.5,
+                                     {'axis': 'X', 'c_grid_axis_shift': -0.5}),
+                              'y': (('y',), np.arange(N), {'axis': 'Y'}),
+                              'yl': (('yl'), np.arange(N)-0.5,
+                                     {'axis': 'Y', 'c_grid_axis_shift': -0.5}),
+                              'face': (('face',), [0, 1])})
 
+# ---- structure of face_connections dictionaries ----
+# key: index of face
+# value: another dictionary
+#   key: axis name
+#   value: a tuple of link specifiers
+#        neighbor face index,
+#          neighboring axis to connect to,
+#            whether to reverse the connection
 
 @pytest.fixture(scope='module')
 def ds_face_connections_x_to_x():
     return {'face':
-        # key: index of face
-        # value: another dictionary
-          # key: axis name
-          # value: a tuple of link specifiers
-          #      neighbor face index,
-          #        neighboring axis to connect to,
-          #          whether to reverse the connection
-        {0: {'X': (None, (1, 'X', False))},
-         1: {'X': ((0, 'X', False), None)}}
-    }
+            {0: {'X': (None, (1, 'X', False))},
+             1: {'X': ((0, 'X', False), None)}}}
 
 
 @pytest.fixture(scope='module')
 def ds_face_connections_x_to_y():
     return {'face':
-        # key: index of face
-        # value: another dictionary
-          # key: axis name
-          # value: a tuple of link specifiers
-          #      neighbor face index,
-          #        neighboring axis to connect to,
-          #          whether to reverse the connection
-        {0: {'X': (None, (1, 'Y', False))},
-         1: {'Y': ((0, 'X', False), None)}}
-    }
+            {0: {'X': (None, (1, 'Y', False))},
+             1: {'Y': ((0, 'X', False), None)}}}
 
 
 @pytest.fixture(scope='module')
