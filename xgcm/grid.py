@@ -352,7 +352,8 @@ class Axis:
         valid_positions = ['outer', 'inner', 'left', 'right', 'center']
 
         if position_to not in valid_positions:
-            raise ValueError("`%s` is not a valid axis position" % position_to)
+            raise ValueError("`%s` is not a valid axis position name. Valid "
+                             "names are %r." % (position_to, valid_positions))
 
         if position_to not in self.coords:
             raise ValueError("This axis doesn't contain a `%s` position"
@@ -395,78 +396,6 @@ class Axis:
                                       ' transition not yet supported.')
 
         return left, right
-
-
-    def _get_neighbor_data_pairs_old(self, da, position_to, boundary=None,
-                                 fill_value=0.0, boundary_discontinuity=None):
-        """Returns data_left, data_right.
-        boundary_discontinuity option enables periodic coordinate interpolation
-        (see xgcm.autogenerate)"""
-
-        position_from, dim = self._get_axis_coord(da)
-
-        valid_positions = ['outer', 'inner', 'left', 'right', 'center']
-        if position_to not in valid_positions:
-            raise ValueError("`%s` is not a valid axis position" % position_to)
-
-        if self._periodic and boundary:
-            raise ValueError("`boundary=%s` is not allowed with periodic "
-                             "axis %s." % (boundary, self._name))
-
-        if position_from == position_to:
-            raise ValueError("Can't get neighbor pairs for the same position.")
-
-        transition = (position_from, position_to)
-
-        if ((transition == ('outer', 'center')) or
-            (transition == ('center', 'inner'))):
-            # doesn't matter if domain is periodic or not
-            left = da.isel(**{dim: slice(None, -1)}).data
-            right = da.isel(**{dim: slice(1, None)}).data
-        elif ((transition == ('center', 'outer')) or
-              (transition == ('inner', 'center'))):
-            # pad both sides of the array
-            left = _pad_array(da, dim, left=True,
-                              boundary=boundary, fill_value=fill_value)
-            right = _pad_array(da, dim, boundary=boundary,
-                               fill_value=fill_value)
-        # TODO: figure out if it matters whether we slice the original array
-        # before or after padding
-        elif (not self._periodic and ((transition == ('center', 'left')) or
-                                       (transition == ('right', 'center')))):
-            # pad only left
-            left = _pad_array(da.isel(**{dim: slice(0, -1)}), dim, left=True,
-                              boundary=boundary, fill_value=fill_value)
-            right = da.data
-        elif (not self._periodic and ((transition == ('center', 'right')) or
-                                      (transition == ('left', 'center')))):
-            # pad only left
-            right = _pad_array(da.isel(**{dim: slice(1, None)}), dim,
-                               boundary=boundary, fill_value=fill_value)
-            left = da.data
-        elif (self._periodic and ((transition == ('center', 'left')) or
-                                  (transition == ('right', 'center')))):
-
-            left = da.roll(**{dim: 1})
-            if boundary_discontinuity is not None:
-                left = add_to_slice(left, dim, 0, -boundary_discontinuity)
-            left = left.data
-            right = da.data
-        elif (self._periodic and ((transition == ('center', 'right')) or
-                                  (transition == ('left', 'center')))):
-            left = da.data
-            right = da.roll(**{dim: -1})
-            if boundary_discontinuity is not None:
-                right = add_to_slice(right, dim, -1, boundary_discontinuity)
-            right = right.data
-        else:
-            is_periodic = 'periodic' if self._periodic else 'non-periodic'
-            raise NotImplementedError(' to '.join(transition) +
-                                      ' (%s) transition not yet supported.'
-                                      % is_periodic)
-
-        return left, right
-
 
     @docstrings.dedent
     def interp(self, da, to=None, boundary=None, fill_value=0.0,
