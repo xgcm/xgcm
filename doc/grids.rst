@@ -1,5 +1,7 @@
-Grids
------
+.. _grids:
+
+Simple Grids
+------------
 
 General Concepts
 ~~~~~~~~~~~~~~~~
@@ -255,9 +257,11 @@ We can reverse the difference operation by taking a cumsum:
 Which is approximately equal to the original ``f``, modulo the numerical errors
 accrued due to the discretization of the data.
 
-For more advanced usage of xgcm, see the examples.
-
-For more advanced usage of xgcm, see the examples.
+So far we have just discussed simple grids (i.e. regular grids with a single
+face).
+Xgcm can also deal with complex topologies such as cubed-sphere and
+lat-lon-cap.
+This is described in the :ref:`grid_topology` page.
 
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
 .. _xarray: http://xarray.pydata.org
