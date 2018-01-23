@@ -166,7 +166,8 @@ class Axis:
     @docstrings.get_sectionsf('neighbor_binary_func')
     @docstrings.dedent
     def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0,
-                              boundary_discontinuity=None):
+                              boundary_discontinuity=None,
+                              vector_partner=None):
         """
         Apply a function to neighboring points.
 
@@ -190,7 +191,9 @@ class Axis:
               value. (i.e. a limited form of Dirichlet boundary condition.)
 
         fill_value : float, optional
-             The value to use in the boundary condition with `boundary='fill'`.
+            The value to use in the boundary condition with `boundary='fill'`.
+        vector_partner : dict, optional
+            A single key (string), value (DataArray)
 
         Returns
         -------
@@ -205,7 +208,9 @@ class Axis:
                                                   boundary=boundary,
                                                   fill_value=fill_value,
                                                   boundary_discontinuity=
-                                                  boundary_discontinuity)
+                                                  boundary_discontinuity,
+                                                  vector_partner=
+                                                  vector_partner)
         # wrap in a new xarray wrapper
         da_new = self._wrap_and_replace_coords(da, data_new, to)
 
@@ -215,16 +220,16 @@ class Axis:
 
     def _neighbor_binary_func_raw(self, da, f, to, boundary=None,
                                   fill_value=0.0,
-                                  boundary_discontinuity=None):
+                                  boundary_discontinuity=None,
+                                  vector_partner=None):
 
         # get the two neighboring sets of raw data
         data_left, data_right = \
-            self._get_neighbor_data_pairs(da,
-                                          to,
-                                          boundary=boundary,
+            self._get_neighbor_data_pairs(da, to, boundary=boundary,
                                           fill_value=fill_value,
-                                          boundary_discontinuity=\
-                                          boundary_discontinuity)
+                                          boundary_discontinuity=
+                                          boundary_discontinuity,
+                                          vector_partner=None)
 
         # apply the function
         data_new = f(data_left, data_right)
@@ -232,7 +237,8 @@ class Axis:
         return data_new
 
     def _get_edge_data(self, da, is_left_edge=True, boundary=None,
-                       fill_value=0.0, ignore_connections=False):
+                       fill_value=0.0, ignore_connections=False,
+                       vector_partner=None):
         """Get the appropriate edge data given axis connectivity and / or
         boundary conditions.
         """
@@ -283,6 +289,7 @@ class Axis:
                 edge_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum+1)
 
             # get the edge we need
+            # TODO: add necessary logic to deal with vector_partner
             neighbor_edge_dim = neighbor_axis.coords[position].name
             neighbor_edge_axis_num = da.get_axis_num(neighbor_edge_dim)
             if (is_left_edge and not reverse):
@@ -320,34 +327,38 @@ class Axis:
 
 
     def _extend_left(self, da, boundary=None, fill_value=0.0,
-                     ignore_connections=False):
+                     ignore_connections=False, vector_partner=None):
         axis_num = self._get_axis_dim_num(da)
         edge_data = self._get_edge_data(da, is_left_edge=True,
                                         boundary=boundary,
                                         fill_value=fill_value,
-                                        ignore_connections=ignore_connections)
+                                        ignore_connections=ignore_connections,
+                                        vector_partner=vector_partner)
         return concatenate([edge_data, da.data], axis=axis_num)
 
 
     def _extend_right(self, da, boundary=None, fill_value=0.0,
-                      ignore_connections=False):
+                      ignore_connections=False, vector_partner=None):
         axis_num = self._get_axis_dim_num(da)
         edge_data = self._get_edge_data(da, is_left_edge=False,
                                         boundary=boundary,
                                         fill_value=fill_value,
-                                        ignore_connections=ignore_connections)
+                                        ignore_connections=ignore_connections,
+                                        vector_partner=vector_partner)
         return concatenate([da.data, edge_data], axis=axis_num)
 
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
                                  fill_value=0.0, ignore_connections=False,
-                                 boundary_discontinuity=None):
+                                 boundary_discontinuity=None,
+                                 vector_partner=None):
 
         position_from, dim = self._get_axis_coord(da)
         axis_num = da.get_axis_num(dim)
 
         boundary_kwargs = dict(boundary=boundary, fill_value=fill_value,
-                               ignore_connections=ignore_connections)
+                               ignore_connections=ignore_connections,
+                               vector_partner=vector_partner)
 
         valid_positions = ['outer', 'inner', 'left', 'right', 'center']
 
@@ -399,7 +410,7 @@ class Axis:
 
     @docstrings.dedent
     def interp(self, da, to=None, boundary=None, fill_value=0.0,
-               boundary_discontinuity=None):
+               boundary_discontinuity=None, vector_partner=None):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -407,6 +418,7 @@ class Axis:
         Parameters
         ----------
         %(neighbor_binary_func.parameters.no_f)s
+
 
         Returns
         -------
@@ -417,11 +429,12 @@ class Axis:
 
         return self._neighbor_binary_func(da, raw_interp_function, to,
                                           boundary, fill_value,
-                                          boundary_discontinuity)
+                                          boundary_discontinuity,
+                                          vector_partner)
 
     @docstrings.dedent
     def diff(self, da, to=None, boundary=None, fill_value=0.0,
-             boundary_discontinuity=None):
+             boundary_discontinuity=None, vector_partner=None):
         """
         Difference neighboring points to the intermediate grid point.
 
@@ -437,7 +450,8 @@ class Axis:
 
         return self._neighbor_binary_func(da, raw_diff_function, to,
                                           boundary, fill_value,
-                                          boundary_discontinuity)
+                                          boundary_discontinuity,
+                                          vector_partner)
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
@@ -562,6 +576,8 @@ class Grid:
         default_shifts : dict
             A dictionary of dictionaries specifying default grid position
             shifts (e.g. `{'X': {'center': 'left', 'left': 'center'}}`)
+        face_connections : dict
+            Grid topology
 
         REFERENCES
         ----------
@@ -684,6 +700,44 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.interp(da, **kwargs)
+
+    @docstrings.dedent
+    def interp_2d_vector(self, vector, **kwargs):
+        """
+        Interpolate a 2D vector to the intermediate grid point. This method is
+        only necessary for complex grid topologies.
+
+        Parameters
+        ----------
+        vector : dict
+            A dictionary with two entries. Keys are axis names, values are
+            vector components along each axis.
+
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        ??? how to structure the output
+        """
+
+        # the keys, should be axis names
+        assert len(vector) == 2
+        x_axis_name, y_axis_name = list(vector)
+        x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
+
+        # interp for each component
+        x_component = x_axis.interp(vector[x_axis_name],
+                                    vector_partner={y_axis_name:
+                                                    vector[y_axis_name]},
+                                    **kwargs)
+
+        y_component = y_axis.interp(vector[y_axis_name],
+                                    vector_partner={x_axis_name:
+                                                    vector[x_axis_name]},
+                                    **kwargs)
+
+        return {x_axis_name: x_component, y_axis_name: y_component}
+
 
     @docstrings.dedent
     def diff(self, da, axis, **kwargs):

@@ -11,7 +11,9 @@ from xgcm.grid import Grid, Axis, add_to_slice
 @pytest.fixture(scope='module')
 def ds():
     N = 25
-    return xr.Dataset({'data_c': (['face', 'y', 'x'], np.random.rand(2, N, N))},
+    return xr.Dataset({'data_c': (['face', 'y', 'x'], np.random.rand(2, N, N)),
+                       'u': (['face', 'xl', 'y'], np.random.rand(2, N, N)),
+                       'v': (['face', 'x', 'yl'], np.random.rand(2, N, N))},
                       coords={'x': (('x',), np.arange(N), {'axis': 'X'}),
                               'xl': (('xl'), np.arange(N)-0.5,
                                      {'axis': 'X', 'c_grid_axis_shift': -0.5}),
@@ -171,6 +173,14 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
                                + ds.data_c.data[0, ::-1, -1].ravel()))
 
     # TODO: checking all the other boundaries
+
+
+def test_vector_diff_interp_connected_grid_x_to_y(ds,
+                                                  ds_face_connections_x_to_y):
+    # simplest scenario with one face connection
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+    interp_u, interp_v = grid.interp_2d_vector({'X': ds.u, 'Y': ds.v},
+                                               boundary='fill')
 
 
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
