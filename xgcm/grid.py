@@ -296,6 +296,10 @@ class Axis:
                 vector_partner_axis_name = next(iter(vector_partner))
                 if neighbor_axis.name == vector_partner_axis_name:
                     data = vector_partner[vector_partner_axis_name]
+                    if reverse:
+                        raise NotImplementedError("Don't know how to handle "
+                                                  "vectors with reversed "
+                                                  "connections.")
             # TODO: there is still lots to figure out here regarding vectors.
             # What we have currently works fine for vectors oriented normal
             # to the axis (e.g. interp and diff u along x axis)
