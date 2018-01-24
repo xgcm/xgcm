@@ -179,8 +179,29 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds,
                                                   ds_face_connections_x_to_y):
     # simplest scenario with one face connection
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
-    interp_u, interp_v = grid.interp_2d_vector({'X': ds.u, 'Y': ds.v},
-                                               boundary='fill')
+
+    # interp u and v to cell center
+    vector_center = grid.interp_2d_vector({'X': ds.u, 'Y': ds.v},
+                                          to='center', boundary='fill')
+    u_c_interp, v_c_interp = vector_center['X'], vector_center['Y']
+
+    # first point should be normal
+    np.testing.assert_allclose(u_c_interp.data[0, 0, :],
+                               0.5*(ds.u.data[0, 0, :] +
+                                    ds.u.data[0, 1, :]))
+
+    # last point should be fancy
+    np.testing.assert_allclose(u_c_interp.data[0, -1, :],
+                               0.5*(ds.u.data[0, -1, :] +
+                                    ds.v.data[1, ::-1, 0]))
+
+    # TODO: figure out tangent vectors
+    with pytest.raises(NotImplementedError):
+        vector_corner = grid.interp_2d_vector({'X': ds.v, 'Y': ds.u},
+                                              to='left', boundary='fill')
+    with pytest.raises(NotImplementedError):
+        vector_corner = grid.interp_2d_vector({'X': ds.v, 'Y': ds.u},
+                                              boundary='fill')
 
 
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):

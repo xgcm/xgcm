@@ -69,7 +69,7 @@ class Axis:
         """
 
         self._ds = ds
-        self._name = axis_name
+        self.name = axis_name
         self._periodic = periodic
 
         self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
@@ -148,7 +148,7 @@ class Axis:
 
     def __repr__(self):
         is_periodic = 'periodic' if self._periodic else 'not periodic'
-        summary = ["<xgcm.Axis '%s' %s>" % (self._name, is_periodic)]
+        summary = ["<xgcm.Axis '%s' %s>" % (self.name, is_periodic)]
         summary.append('Axis Coodinates:')
         summary += self._coord_desc()
         return '\n'.join(summary)
@@ -229,7 +229,7 @@ class Axis:
                                           fill_value=fill_value,
                                           boundary_discontinuity=
                                           boundary_discontinuity,
-                                          vector_partner=None)
+                                          vector_partner=vector_partner)
 
         # apply the function
         data_new = f(data_left, data_right)
@@ -288,10 +288,27 @@ class Axis:
                 # get the neighbor face
                 edge_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum+1)
 
-            # get the edge we need
-            # TODO: add necessary logic to deal with vector_partner
+            data = da
+            # vector_partner is a one-entry dictionary
+            # - key is an axis identifier (e.g. 'X')
+            # - value is a DataArray
+            if vector_partner:
+                vector_partner_axis_name = next(iter(vector_partner))
+                if neighbor_axis.name == vector_partner_axis_name:
+                    data = vector_partner[vector_partner_axis_name]
+            # TODO: there is still lots to figure out here regarding vectors.
+            # What we have currently works fine for vectors oriented normal
+            # to the axis (e.g. interp and diff u along x axis)
+            # It does NOT work for vectors tangent to the axis
+            # (e.g. interp and diff v along x axis)
+            # That is a pretty hard problem to solve, because rotating these
+            # faces also mixes up left vs right position. The solution will be
+            # quite involved and will probably require the edge points to be
+            # populated.
+            # I don't even know how to detect the fail case, let alone solve it.
+
             neighbor_edge_dim = neighbor_axis.coords[position].name
-            neighbor_edge_axis_num = da.get_axis_num(neighbor_edge_dim)
+            neighbor_edge_axis_num = data.get_axis_num(neighbor_edge_dim)
             if (is_left_edge and not reverse):
                 neighbor_edge_slice = slice(-count, None)
             else:
@@ -306,7 +323,7 @@ class Axis:
                 ortho_slice = slice(None, None, -1)
                 edge_slice[ortho_axis] = ortho_slice
 
-            edge = da.variable[tuple(edge_slice)].data
+            edge = data.variable[tuple(edge_slice)].data
 
             # the axis of the edge on THIS face is not necessarily the same
             # as the axis on the OTHER face
@@ -722,6 +739,24 @@ class Grid:
 
         # the keys, should be axis names
         assert len(vector) == 2
+
+        # this is currently only tested for c-grid vectors defined on edges
+        # moving to cell centers. We need to detect if we got something else
+        to = kwargs.get('to', 'center')
+        if to != 'center':
+            raise NotImplementedError('Only vector interpolation to cell '
+                                      'center is implemented, but got '
+                                      'to=%r' % to)
+        for axis_name, component in vector.items():
+            axis = self.axes[axis_name]
+            position, coord = axis._get_axis_coord(component)
+            if position == 'center':
+                raise NotImplementedError('Only vector interpolation to cell '
+                                          'center is implemented, but vector '
+                                          '%s component is defined at center '
+                                          '(dims: %r)' %
+                                          (axis_name, component.dims))
+
         x_axis_name, y_axis_name = list(vector)
         x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
 
@@ -737,7 +772,6 @@ class Grid:
                                     **kwargs)
 
         return {x_axis_name: x_component, y_axis_name: y_component}
-
 
     @docstrings.dedent
     def diff(self, da, axis, **kwargs):
@@ -758,7 +792,6 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.diff(da, **kwargs)
-
 
     @docstrings.dedent
     def cumsum(self, da, axis, **kwargs):
