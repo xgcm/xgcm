@@ -722,25 +722,9 @@ class Grid:
         ax = self.axes[axis]
         return ax.interp(da, **kwargs)
 
+
     @docstrings.dedent
-    def interp_2d_vector(self, vector, **kwargs):
-        """
-        Interpolate a 2D vector to the intermediate grid point. This method is
-        only necessary for complex grid topologies.
-
-        Parameters
-        ----------
-        vector : dict
-            A dictionary with two entries. Keys are axis names, values are
-            vector components along each axis.
-
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        ??? how to structure the output
-        """
-
+    def _apply_vector_function(self, function, vector, **kwargs):
         # the keys, should be axis names
         assert len(vector) == 2
 
@@ -764,18 +748,42 @@ class Grid:
         x_axis_name, y_axis_name = list(vector)
         x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
 
-        # interp for each component
-        x_component = x_axis.interp(vector[x_axis_name],
+        # apply for each component
+        x_component = function(x_axis, vector[x_axis_name],
                                     vector_partner={y_axis_name:
                                                     vector[y_axis_name]},
                                     **kwargs)
 
-        y_component = y_axis.interp(vector[y_axis_name],
+        y_component = function(y_axis, vector[y_axis_name],
                                     vector_partner={x_axis_name:
                                                     vector[x_axis_name]},
                                     **kwargs)
 
         return {x_axis_name: x_component, y_axis_name: y_component}
+
+
+    @docstrings.dedent
+    def interp_2d_vector(self, vector, **kwargs):
+        """
+        Interpolate a 2D vector to the intermediate grid point. This method is
+        only necessary for complex grid topologies.
+
+        Parameters
+        ----------
+        vector : dict
+            A dictionary with two entries. Keys are axis names, values are
+            vector components along each axis.
+
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        vector_interp : dict
+            A dictionary with two entries. Keys are axis names, values
+            are interpolated vector components along each axis
+        """
+
+        return self._apply_vector_function(Axis.interp, vector, **kwargs)
 
     @docstrings.dedent
     def diff(self, da, axis, **kwargs):
@@ -796,6 +804,30 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.diff(da, **kwargs)
+
+    @docstrings.dedent
+    def diff_2d_vector(self, vector, **kwargs):
+        """
+        Difference a 2D vector to the intermediate grid point. This method is
+        only necessary for complex grid topologies.
+
+        Parameters
+        ----------
+        vector : dict
+            A dictionary with two entries. Keys are axis names, values are
+            vector components along each axis.
+
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        vector_diff : dict
+            A dictionary with two entries. Keys are axis names, values
+            are differenced vector components along each axis
+        """
+
+        return self._apply_vector_function(Axis.diff, vector, **kwargs)
+
 
     @docstrings.dedent
     def cumsum(self, da, axis, **kwargs):
