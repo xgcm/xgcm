@@ -59,7 +59,8 @@ def cs():
                             'face': (('face',), np.arange(6))})
     return ds
 
-
+# TODO: consider revising this to avoid any reversed connections, which
+# can cause problems for vector interpolation
 @pytest.fixture(scope='module')
 def cubed_sphere_connections():
     return {'face':
@@ -185,15 +186,23 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds,
                                           to='center', boundary='fill')
     u_c_interp, v_c_interp = vector_center['X'], vector_center['Y']
 
+    vector_diff = grid.diff_2d_vector({'X': ds.u, 'Y': ds.v},
+                                      to='center', boundary='fill')
+    u_c_diff, v_c_diff = vector_diff['X'], vector_diff['Y']
+
     # first point should be normal
     np.testing.assert_allclose(u_c_interp.data[0, 0, :],
                                0.5*(ds.u.data[0, 0, :] +
                                     ds.u.data[0, 1, :]))
+    np.testing.assert_allclose(u_c_diff.data[0, 0, :],
+                               ds.u.data[0, 1, :] - ds.u.data[0, 0, :])
 
     # last point should be fancy
     np.testing.assert_allclose(u_c_interp.data[0, -1, :],
                                0.5*(ds.u.data[0, -1, :] +
                                     ds.v.data[1, ::-1, 0]))
+    np.testing.assert_allclose(u_c_diff.data[0, -1, :],
+                               - ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0])
 
     # TODO: figure out tangent vectors
     with pytest.raises(NotImplementedError):
