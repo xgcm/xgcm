@@ -383,6 +383,9 @@ class Axis:
 
         valid_positions = ['outer', 'inner', 'left', 'right', 'center']
 
+        if position_to == position_from:
+            raise ValueError("Can't get neighbor pairs for the same position.")
+
         if position_to not in valid_positions:
             raise ValueError("`%s` is not a valid axis position name. Valid "
                              "names are %r." % (position_to, valid_positions))
