@@ -1,5 +1,6 @@
 from __future__ import print_function
 from future.utils import iteritems
+from collections import OrderedDict
 import xarray as xr
 
 def assert_valid_comodo(ds):
@@ -43,6 +44,83 @@ def get_axis_coords(ds, axis_name):
         if axis==axis_name:
             coord_names.append(d)
     return coord_names
+
+def get_axis_positions_and_coords(ds, axis_name):
+    coord_names = get_axis_coords(ds, axis_name)
+    ncoords = len(coord_names)
+    if ncoords == 0:
+        # didn't find anything for this axis
+        raise ValueError("Couldn't find any coordinates for axis %s"
+                         % axis_name)
+
+    # now figure out what type of coordinates these are:
+    # center, left, right, or outer
+    coords = {name: ds[name] for name in coord_names}
+
+    # some tortured logic for dealing with malforme c_grid_axis_shift
+    # attributes such as produced by old versions of xmitgcm.
+    # This should be a float (either -0.5 or 0.5)
+    # this function returns that, or True of the attribute is set to
+    # anything at all
+    def _maybe_fix_type(attr):
+        if attr is not None:
+            try:
+                return float(attr)
+            except TypeError:
+                return True
+
+    axis_shift = {name: _maybe_fix_type(coord.attrs.get('c_grid_axis_shift'))
+                  for name, coord in coords.items()}
+    coord_len = {name: len(coord) for name, coord in coords.items()}
+
+    # look for the center coord, which is required
+    # this list will potentially contain "center", "inner", and "outer" points
+    coords_without_axis_shift = {name: coord_len[name]
+                                 for name, shift in axis_shift.items()
+                                 if not shift}
+    if len(coords_without_axis_shift) == 0:
+        raise ValueError("Couldn't find a center coordinate for axis %s"
+                         % axis_name)
+    elif len(coords_without_axis_shift) > 1:
+        raise ValueError("Found two coordinates without "
+                         "`c_grid_axis_shift` attribute for axis %s"
+                         % axis_name)
+    center_coord_name = list(coords_without_axis_shift)[0]
+    # the length of the center coord is key to decoding the other coords
+    axis_len = coord_len[center_coord_name]
+
+    # now we can start filling in the information about the different coords
+    axis_coords = OrderedDict()
+    axis_coords['center'] = coords[center_coord_name]
+
+    # now check the other coords
+    coord_names.remove(center_coord_name)
+    for name in coord_names:
+        shift = axis_shift[name]
+        clen = coord_len[name]
+        if clen == axis_len + 1:
+            axis_coords['outer'] = coords[name]
+        elif clen == axis_len - 1:
+            axis_coords['inner'] = coords[name]
+        elif shift == -0.5:
+            if clen == axis_len:
+                axis_coords['left'] = coords[name]
+            else:
+                raise ValueError("Left coordinate %s has incompatible "
+                                 "length %g (axis_len=%g)"
+                                 % (name, clen, axis_len))
+        elif shift == 0.5:
+            if clen == axis_len:
+                axis_coords['right'] = coords[name]
+            else:
+                raise ValueError("Right coordinate %s has incompatible "
+                                 "length %g (axis_len=%g)"
+                                 % (name, clen, axis_len))
+        else:
+            raise ValueError("Coordinate %s has invalid or missing "
+                             "`c_grid_axis_shift` attribute `%s`" %
+                             (name, repr(shift)))
+    return axis_coords
 
 def _assert_data_on_grid(da):
     pass

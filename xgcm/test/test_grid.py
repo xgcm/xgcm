@@ -81,6 +81,8 @@ def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
 
 
 # helper functions for padding arrays
+# this feels silly...I'm basically just re-coding the function in order to
+# test it
 def _pad_left(data, boundary, fill_value=0.):
     pad_val = data[0] if boundary=='extend' else fill_value
     return np.hstack([pad_val, data])
@@ -380,8 +382,8 @@ def test_axis_errors():
                                    "the same position."):
         ax.interp(ds.data_c, 'center')
 
-    with pytest.raises(KeyError,
-                    message="Position 'right' was not found in axis.coords."):
+    with pytest.raises(ValueError,
+                    message="This axis doesn't contain a `right` position"):
         ax.interp(ds.data_c, 'right')
 
     with pytest.raises(ValueError, message="`boundary=fill` is not allowed "
