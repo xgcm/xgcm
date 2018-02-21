@@ -28,6 +28,34 @@ def test_create_axis(all_datasets):
             assert this_axis.coords[axis_name].name == coord_name
 
 
+def test_create_axis_no_comodo(all_datasets):
+    ds, periodic, expected = all_datasets
+    axis_objs = _get_axes(ds)
+    print(axis_objs)
+
+    # now strip out the metadata
+    ds_noattr = ds.copy()
+    for var in ds.variables:
+        ds_noattr[var].attrs.clear()
+
+    for axis_name, axis_coords in expected['axes'].items():
+        # now create the axis from scratch with no attributes
+        this_axis = Axis(ds_noattr, axis_name, coords=axis_coords)
+        axis_expected = axis_objs[axis_name]
+        # make sure all the same stuff is present in both all_axes
+        # TODO: come up with a more general way to assert axis equality
+        assert this_axis.name == axis_expected.name
+        for pos, coord in axis_expected.coords.items():
+            assert pos in this_axis.coords
+            this_coord = this_axis.coords[pos]
+            assert coord.equals(this_coord)
+        assert this_axis._periodic == axis_expected._periodic
+        assert this_axis._default_shifts == axis_expected._default_shifts
+        assert this_axis._facedim == axis_expected._facedim
+        # TODO: make this work...
+        #assert this_axis._connections == axis_expected._connections
+
+
 def test_axis_repr(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
