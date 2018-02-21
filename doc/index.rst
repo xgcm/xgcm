@@ -43,6 +43,7 @@ Contents
 
    installation
    grids
+   grid_topology
    example_mitgcm
    grid_generation
    api

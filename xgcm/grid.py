@@ -392,6 +392,9 @@ class Axis:
 
         valid_positions = ['outer', 'inner', 'left', 'right', 'center']
 
+        if position_to == position_from:
+            raise ValueError("Can't get neighbor pairs for the same position.")
+
         if position_to not in valid_positions:
             raise ValueError("`%s` is not a valid axis position name. Valid "
                              "names are %r." % (position_to, valid_positions))
@@ -638,6 +641,76 @@ class Grid:
             self.axes[axis_name] = Axis(ds, axis_name, is_periodic,
                                         default_shifts=axis_default_shifts,
                                         coords=coords.get(axis_name))
+
+        if face_connections is not None:
+            self._assign_face_connections(face_connections)
+
+
+    def _assign_face_connections(self, fc):
+        """Check a dictionary of face connections to make sure all the links are
+        consistent.
+        """
+
+        if len(fc) > 1:
+            raise ValueError('Only one face dimension is supported for now. '
+                             'Instead found %r' % repr(fc.keys()))
+
+        # we will populate this with the axes we find in face_connections
+        axis_connections = {}
+
+        facedim = list(fc.keys())[0]
+        assert facedim in self._ds
+
+        face_links = fc[facedim]
+        for fidx, face_axis_links in face_links.items():
+            for axis, axis_links in face_axis_links.items():
+                # initialize the axis dict if necssary
+                if axis not in axis_connections:
+                    axis_connections[axis] = {}
+                link_left, link_right = axis_links
+
+                def check_neighbor(link, position):
+                    if link is None:
+                        return
+                    idx, ax, rev = link
+                    # need to swap position if the link is reversed
+                    correct_position = int(not position) if rev else position
+                    try:
+                        neighbor_link = face_links[idx][ax][correct_position]
+                    except (KeyError, IndexError):
+                        raise KeyError("Couldn't find a face link for face %r"
+                                       "in axis %r at position %r"
+                                       % (idx, ax, correct_position))
+                    idx_n, ax_n, rev_n = neighbor_link
+                    if ax not in self.axes:
+                        raise KeyError('axis %r is not a valid axis' % ax)
+                    if ax_n not in self.axes:
+                        raise KeyError('axis %r is not a valid axis' % ax_n)
+                    if idx not in self._ds[facedim].values:
+                        raise IndexError('%r is not a valid index for face'
+                                         'dimension %r' % (idx, facedim))
+                    if idx_n not in self._ds[facedim].values:
+                        raise IndexError('%r is not a valid index for face'
+                                         'dimension %r' % (idx, facedim))
+                    # check for consistent links from / to neighbor
+                    if (idx_n != fidx) or (ax_n != axis) or (rev_n != rev):
+                        raise ValueError("Face link mismatch: neighbor doesn't"
+                                         " correctly link back to this face. "
+                                         "face: %r, axis: %r, position: %r, "
+                                         "rev: %r, link: %r, neighbor_link: %r"
+                                         % (fidx, axis, position, rev, link,
+                                            neighbor_link))
+                    # convert the axis name to an acutal axis object
+                    actual_axis = self.axes[ax]
+                    return idx, actual_axis, rev
+
+                left = check_neighbor(link_left, 1)
+                right = check_neighbor(link_right, 0)
+                axis_connections[axis][fidx] = (left, right)
+
+        for axis, axis_links in axis_connections.items():
+            self.axes[axis]._facedim = facedim
+            self.axes[axis]._connections = axis_links
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)

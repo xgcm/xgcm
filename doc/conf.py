@@ -41,6 +41,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'numpydoc',
     'nbsphinx',
+    #'sphinx_execute_code' # onlu works with python2
 ]
 
 # never execute notebooks: avoids lots of expensive imports on rtd
@@ -138,7 +139,8 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+#tml_theme = 'default'
+html_theme = "sphinx_rtd_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
