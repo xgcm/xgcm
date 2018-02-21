@@ -45,7 +45,8 @@ class Axis:
     differentiated by their length.
     """
 
-    def __init__(self, ds, axis_name, periodic=True, default_shifts={}):
+    def __init__(self, ds, axis_name, periodic=True, default_shifts={},
+                 coords=None):
         """
         Create a new Axis object from an input dataset.
 
@@ -61,7 +62,9 @@ class Axis:
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
-
+        coords : dict, optional
+            Mapping of axis positions to coordinate names
+            (e.g. `{'center': 'XC', 'left: 'XG'}`)
 
         REFERENCES
         ----------
@@ -72,7 +75,13 @@ class Axis:
         self.name = axis_name
         self._periodic = periodic
 
-        self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
+        if coords:
+            # use specified coords
+            self.coords = {pos: ds[name] for pos, name in coords.items()}
+        else:
+            # fall back on comodo conventions
+            self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
+
         # self.coords is a dictionary with the following structure
         #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
         #   value: xr.DataArray of the coordinate
@@ -578,7 +587,7 @@ class Grid:
     """
 
     def __init__(self, ds, check_dims=True, periodic=True, default_shifts={},
-                 face_connections=None):
+                 face_connections=None, coords=None):
         """
         Create a new Grid object from an input dataset.
 
@@ -599,6 +608,9 @@ class Grid:
             shifts (e.g. `{'X': {'center': 'left', 'left': 'center'}}`)
         face_connections : dict
             Grid topology
+        coords : dict, optional
+            Specific mapping of axis coordinates, e.g 
+            `{'X': {'center': 'XC', 'left: 'XG'}}`
 
         REFERENCES
         ----------
@@ -607,7 +619,11 @@ class Grid:
         self._ds = ds
         self._check_dims = check_dims
 
-        all_axes = comodo.get_all_axes(ds)
+        if coords:
+            all_axes = coords.keys()
+        else:
+            all_axes = comodo.get_all_axes(ds)
+            coords = {}
 
         self.axes = OrderedDict()
         for axis_name in all_axes:
@@ -620,7 +636,8 @@ class Grid:
             else:
                 axis_default_shifts = {}
             self.axes[axis_name] = Axis(ds, axis_name, is_periodic,
-                                        default_shifts=axis_default_shifts)
+                                        default_shifts=axis_default_shifts,
+                                        coords=coords.get(axis_name))
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
