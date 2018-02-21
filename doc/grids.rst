@@ -99,10 +99,31 @@ one extra point. These positions are visualized in the figure below.
 
 xgcm represents an axis using the :class:`xgcm.Axis` class.
 
-Grid Metadata
-~~~~~~~~~~~~~
 
-xgcm works with ``xarray.DataSet`` and ``xarray.DataArray`` objects. In
+Creating ``Grid`` Objects
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Xgcm works with :py:class:`xarray.Dataset` and :py:class:`xarray.DataArray`
+objects. A basic understanding of
+:ref:`xarray data structures <xarray:data structures>` is needed to understand
+xgcm.
+
+The core object in xgcm is a :class:`xgcm.Grid`.
+
+.. note::
+
+  xgcm never requires datasets to have specific variable names. Rather,
+  the grid geometry is specified by the user or inferred through the
+  attributes.
+
+
+Manually Specifying Axes
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Detecting Axes from Dataset Attributes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In
 order to understand the relationship between different coordinates within
 these objects, xgcm looks for metadata in the form of variable attributes.
 Wherever possible, we try to follow established metadata conventions, rather
@@ -146,47 +167,27 @@ table below.
 If your dataset does not conform to CF and COMODO conventions already, you
 must set these attributes manually before passing it to xgcm.
 
-.. note::
 
-  xgcm never requires datasets to have specific variable names. Rather,
-  the grid geometry is inferred through the attributes.
-
-
-``Grid`` Objects
-~~~~~~~~~~~~~~~~
-
-The core object in xgcm is a :class:`xgcm.Grid`. To create a grid, first we need
+To create a grid, first we need
 an ``xarray.DataSet`` with proper attributes. We can create one as follows.
 
-.. code-block:: python
+.. ipython:: python
 
-    >>> import xarray as xr
-    >>> import numpy as np
-    >>> ds = xr.Dataset(
-               coords={'x_c': (['x_c',], np.arange(1,10), {'axis': 'X'}),
-                       'x_g': (['x_g',], np.arange(0.5,9),
-                               {'axis': 'X', 'c_grid_axis_shift': -0.5})})
-    >>> ds
-    <xarray.Dataset>
-    Dimensions:  (x_c: 9, x_g: 9)
-    Coordinates:
-      * x_g      (x_g) float64 0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
-      * x_c      (x_c) int64 1 2 3 4 5 6 7 8 9
-    Data variables:
-        *empty*
+    import xarray as xr
+    import numpy as np
+    ds = xr.Dataset(coords={'x_c': (['x_c',], np.arange(1,10), {'axis': 'X'}),
+                            'x_g': (['x_g',], np.arange(0.5,9),
+                                    {'axis': 'X', 'c_grid_axis_shift': -0.5})})
+    ds
 
 (Note that this dataset has no data variables yet, just coordinates.)
 We now create a ``Grid`` object from this dataset:
 
-.. code-block:: python
+.. ipython:: python
 
-    >>> from xgcm import Grid
-    >>> grid = Grid(ds)
-    >>> grid
-    <xgcm.Grid>
-    X Axis (periodic):
-      * center   x_c (9) --> left
-      * left     x_g (9) --> center
+    from xgcm import Grid
+    grid = Grid(ds)
+    grid
 
 We see that xgcm successfully parsed the metadata and inferred the relative
 location of the different coordinates along the x axis.
@@ -199,29 +200,17 @@ interpolation and difference operations: operating on the center coordinate
 Now we can use this grid to interpolate or
 take differences along the axis. First we create some test data:
 
-.. code-block:: python
+.. ipython:: python
 
-    >>> f = np.sin(ds.x_c * 2*np.pi/9)
-    >>> f
-    <xarray.DataArray 'x_c' (x_c: 9)>
-    array([  6.427876e-01,   9.848078e-01,   8.660254e-01,   3.420201e-01,
-            -3.420201e-01,  -8.660254e-01,  -9.848078e-01,  -6.427876e-01,
-            -2.449294e-16])
-    Coordinates:
-      * x_c      (x_c) int64 1 2 3 4 5 6 7 8 9
+    f = np.sin(ds.x_c * 2*np.pi/9)
+    f
 
 We interpolate as follows:
 
-.. code-block:: python
+.. ipython:: python
 
-    >>> f_interp = grid.interp(f, axis='X')
-    >>> f_interp
-    <xarray.DataArray (x_g: 9)>
-    array([  3.213938e-01,   8.137977e-01,   9.254166e-01,   6.040228e-01,
-             1.110223e-16,  -6.040228e-01,  -9.254166e-01,  -8.137977e-01,
-            -3.213938e-01])
-    Coordinates:
-      * x_g      (x_g) float64 0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
+    f_interp = grid.interp(f, axis='X')
+    f_interp
 
 We see that the output is on the ``x_g`` points rather than the original ``xc``
 points.
@@ -233,26 +222,16 @@ points.
 
 The same position shift happens with a difference operation:
 
-.. code-block:: python
+.. ipython:: python
 
-    >>> f_diff = grid.diff(f, axis='X')
-    >>> f_diff
-    <xarray.DataArray (x_g: 9)>
-    array([ 0.642788,  0.34202 , -0.118782, -0.524005, -0.68404 , -0.524005,
-           -0.118782,  0.34202 ,  0.642788])
-    Coordinates:
-      * x_g      (x_g) float64 0.5 1.5 2.5 3.5 4.5 5.5 6.5 7.5 8.5
+    f_diff = grid.diff(f, axis='X')
+    f_diff
 
 We can reverse the difference operation by taking a cumsum:
 
-.. code-block:: python
+.. ipython:: python
 
-    >>> grid.cumsum(f_diff, 'X')
-    <xarray.DataArray (x_c: 9)>
-    array([ 0.642788,  0.984808,  0.866025,  0.34202 , -0.34202 , -0.866025,
-           -0.984808, -0.642788,  0.      ])
-    Coordinates:
-      * x_c      (x_c) int64 1 2 3 4 5 6 7 8 9
+    grid.cumsum(f_diff, 'X')
 
 Which is approximately equal to the original ``f``, modulo the numerical errors
 accrued due to the discretization of the data.

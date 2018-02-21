@@ -39,9 +39,11 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
     'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
     'numpydoc',
     'nbsphinx',
-    #'sphinx_execute_code' # onlu works with python2
+    'IPython.sphinxext.ipython_directive',
+    'IPython.sphinxext.ipython_console_highlighting',
 ]
 
 # never execute notebooks: avoids lots of expensive imports on rtd
@@ -301,4 +303,7 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+    'xarray': ('http://xarray.pydata.org/en/stable/', None)
+}
