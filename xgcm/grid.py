@@ -230,7 +230,8 @@ class Axis:
     def _neighbor_binary_func_raw(self, da, f, to, boundary=None,
                                   fill_value=0.0,
                                   boundary_discontinuity=None,
-                                  vector_partner=None):
+                                  vector_partner=None,
+                                  position_check=True):
 
         # get the two neighboring sets of raw data
         data_left, data_right = \
@@ -238,7 +239,8 @@ class Axis:
                                           fill_value=fill_value,
                                           boundary_discontinuity=
                                           boundary_discontinuity,
-                                          vector_partner=vector_partner)
+                                          vector_partner=vector_partner,
+                                          position_check=position_check)
 
         # apply the function
         data_new = f(data_left, data_right)
@@ -357,38 +359,48 @@ class Axis:
 
 
     def _extend_left(self, da, boundary=None, fill_value=0.0,
-                     ignore_connections=False, vector_partner=None):
+                     ignore_connections=False, vector_partner=None,
+                     boundary_discontinuity=None):
         axis_num = self._get_axis_dim_num(da)
         edge_data = self._get_edge_data(da, is_left_edge=True,
                                         boundary=boundary,
                                         fill_value=fill_value,
                                         ignore_connections=ignore_connections,
                                         vector_partner=vector_partner)
+        # This reintroduces the discontinuity logic
+        if boundary_discontinuity:
+            edge_data = edge_data - boundary_discontinuity
         return concatenate([edge_data, da.data], axis=axis_num)
 
 
     def _extend_right(self, da, boundary=None, fill_value=0.0,
-                      ignore_connections=False, vector_partner=None):
+                      ignore_connections=False, vector_partner=None,
+                      boundary_discontinuity=None):
         axis_num = self._get_axis_dim_num(da)
         edge_data = self._get_edge_data(da, is_left_edge=False,
                                         boundary=boundary,
                                         fill_value=fill_value,
                                         ignore_connections=ignore_connections,
                                         vector_partner=vector_partner)
+        # This reintroduces the discontinuity logic
+        if boundary_discontinuity:
+            edge_data = edge_data + boundary_discontinuity
         return concatenate([da.data, edge_data], axis=axis_num)
 
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
                                  fill_value=0.0, ignore_connections=False,
                                  boundary_discontinuity=None,
-                                 vector_partner=None):
+                                 vector_partner=None,
+                                 position_check=True):
 
         position_from, dim = self._get_axis_coord(da)
         axis_num = da.get_axis_num(dim)
 
         boundary_kwargs = dict(boundary=boundary, fill_value=fill_value,
                                ignore_connections=ignore_connections,
-                               vector_partner=vector_partner)
+                               vector_partner=vector_partner,
+                               boundary_discontinuity=boundary_discontinuity)
 
         valid_positions = ['outer', 'inner', 'left', 'right', 'center']
 
@@ -399,9 +411,14 @@ class Axis:
             raise ValueError("`%s` is not a valid axis position name. Valid "
                              "names are %r." % (position_to, valid_positions))
 
-        if position_to not in self.coords:
-            raise ValueError("This axis doesn't contain a `%s` position"
-                             % position_to)
+        # This prevents the grid generation to work, I added an optional
+        # kwarg that deactivates this check
+        # (only set False from autogenerate/generate_grid_ds)
+        # Fixes the initial test failure
+        if position_check:
+            if position_to not in self.coords:
+                raise ValueError("This axis doesn't contain a `%s` position"
+                                 % position_to)
 
         transition = (position_from, position_to)
 
@@ -534,6 +551,47 @@ class Axis:
 
         da_cum_newcoord = self._wrap_and_replace_coords(da, data, to)
         return da_cum_newcoord
+
+    @docstrings.dedent
+    def min(self, da, to=None, boundary=None, fill_value=0.0,
+             boundary_discontinuity=None, vector_partner=None):
+        """
+        Minimum of neighboring points on intermediate grid point.
+
+        Parameters
+        ----------
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+        """
+
+        return self._neighbor_binary_func(da, raw_min_function, to,
+                                          boundary, fill_value,
+                                          boundary_discontinuity,
+                                          vector_partner)
+
+    def max(self, da, to=None, boundary=None, fill_value=0.0,
+             boundary_discontinuity=None, vector_partner=None):
+        """
+        Maximum of neighboring points on intermediate grid point.
+
+        Parameters
+        ----------
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+        """
+
+        return self._neighbor_binary_func(da, raw_max_function, to,
+                                          boundary, fill_value,
+                                          boundary_discontinuity,
+                                          vector_partner)
 
     def _wrap_and_replace_coords(self, da, data_new, position_to):
         """
@@ -731,7 +789,7 @@ class Grid:
         Parameters
         ----------
         axis : str
-            Name of the axis on which ot act
+            Name of the axis on which to act
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -814,7 +872,7 @@ class Grid:
         Parameters
         ----------
         axis : str
-            Name of the axis on which ot act
+            Name of the axis on which to act
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -825,6 +883,46 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.diff(da, **kwargs)
+
+    @docstrings.dedent
+    def min(self, da, axis, **kwargs):
+        """
+        Minimum of neighboring points on the intermediate grid point.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The minimal data
+        """
+
+        ax = self.axes[axis]
+        return ax.min(da, **kwargs)
+
+    @docstrings.dedent
+    def max(self, da, axis, **kwargs):
+        """
+        Maximum of neighboring points on the intermediate grid point.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The maximal data
+        """
+
+        ax = self.axes[axis]
+        return ax.max(da, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
@@ -859,7 +957,7 @@ class Grid:
         Parameters
         ----------
         axis : str
-            Name of the axis on which ot act
+            Name of the axis on which to act
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -896,6 +994,12 @@ def raw_interp_function(data_left, data_right):
 
 def raw_diff_function(data_left, data_right):
     return data_right - data_left
+
+def raw_min_function(data_left, data_right):
+    return xr.ufuncs.minimum(data_right, data_left)
+
+def raw_max_function(data_left, data_right):
+    return xr.ufuncs.maximum(data_right, data_left)
 
 
 

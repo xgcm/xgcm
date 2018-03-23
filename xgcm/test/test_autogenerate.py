@@ -164,6 +164,15 @@ ds_out_center = xr.Dataset(
                                            {'axis': 'Z'})}
                         )
 
+def test_auto_pad():
+    a = _auto_pad(ds_original['z'], 'z', 'left')
+    b = _auto_pad(ds_original['z'], 'z', 'right')
+    aa = _auto_pad(ds_original['zz'], 'z', 'left')
+    bb = _auto_pad(ds_original['zz'], 'z', 'right')
+    assert a == -(dx/2)
+    assert b == 10 + (dx/2)
+    assert aa == -(dx/2)
+    assert bb == 10 + (dx/2)
 
 def test_generate_axis():
     a = generate_axis(ds_original, 'X', 'lon', 'lon',
@@ -192,6 +201,8 @@ def test_generate_axis():
 
     assert_allclose(a['lon_right'], ds_out_right['lon_right'])
     assert_allclose(b['lat_left'], ds_out_left['lat_left'])
+    print(ds_original['z'])
+    print(_auto_pad(ds_original['z'], 'z', 'left'))
     assert_allclose(c['z_left'], ds_out_left['z_left'])
     assert_allclose(d['test'], ds_original_1D_padded['test'])
     assert_allclose(e['z_center'], ds_out_center['z_center'])
@@ -283,17 +294,6 @@ def test_position_to_relative(p, relative):
 
     with pytest.raises(RuntimeError):
         _position_to_relative('left', 'right')
-
-
-def test_auto_pad():
-    a = _auto_pad(ds_original['z'], 'z', 'left')
-    b = _auto_pad(ds_original['z'], 'z', 'right')
-    aa = _auto_pad(ds_original['zz'], 'z', 'left')
-    bb = _auto_pad(ds_original['zz'], 'z', 'right')
-    assert a == -(dx/2)
-    assert b == 10 + (dx/2)
-    assert aa == -(dx/2)
-    assert bb == 10 + (dx/2)
 
 
 def test_fill_attrs():

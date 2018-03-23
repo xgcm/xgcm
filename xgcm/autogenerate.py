@@ -102,7 +102,8 @@ def generate_axis(ds,
                                          boundary=boundary,
                                          fill_value=fill_value,
                                          boundary_discontinuity=\
-                                         boundary_discontinuity)
+                                         boundary_discontinuity,
+                                         position_check=False)
 
         # Place the correct attributes
         ds[name] = _fill_attrs(ds[name], pos_from, axis)

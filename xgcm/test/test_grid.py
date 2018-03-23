@@ -16,6 +16,12 @@ def _get_axes(ds):
     axis_objs = {ax: Axis(ds, ax) for ax in all_axes}
     return axis_objs
 
+def test_get_edge_data():
+    ds = datasets['1d_left']
+    axis = Axis(ds, 'X')
+    assert axis._get_edge_data(ds.XC, fill_value=10000) != axis._get_edge_data(ds.XC)
+    # somehow the fill value does nothing...the results are the same...
+
 
 def test_create_axis(all_datasets):
     ds, periodic, expected = all_datasets
@@ -513,3 +519,5 @@ def test_add_to_slice():
     xr.testing.assert_equal(ref_ar, np_new)
     xr.testing.assert_equal(ref_ar, da_new.compute())
     xr.testing.assert_equal(ref_ar_last, da_new_last.compute())
+
+# Needs test for _extend_right, _extend_left and the boundary_discontinuity input...not sure how to do that.
