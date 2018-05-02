@@ -426,6 +426,7 @@ def test_axis_errors():
 def test_grid_create(all_datasets):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
+    assert grid is not None
 
 
 def test_create_grid_no_comodo(all_datasets):
