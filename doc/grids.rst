@@ -159,7 +159,7 @@ We create it as follows.
 
 At this point, xarray has no idea that ``x_c`` and ``x_g`` are related to
 each other; they are subject to standard
-:ref:`xarray broadcasting rules <xarray:broadcasting>`.
+:ref:`xarray broadcasting rules <xarray:compute.broadcasting>`.
 When we create an :class:`xgcm.Grid`, we need to specify that they are part
 of the same axis. We do this using the ``coords`` keyword argument, as follows:
 
