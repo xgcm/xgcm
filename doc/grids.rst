@@ -170,7 +170,7 @@ of the same axis. We do this using the ``coords`` keyword argument, as follows:
     grid
 
 The printed information about the grid indicates that xgcm has successfully
-undestood the relativ location of the different coordinates along the x axis.
+undestood the relative location of the different coordinates along the x axis.
 Because we did not
 specify the ``periodic`` keyword argument, xgcm assumed that the data
 is periodic along all axes.
