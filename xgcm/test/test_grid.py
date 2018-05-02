@@ -28,6 +28,38 @@ def test_create_axis(all_datasets):
             assert this_axis.coords[axis_name].name == coord_name
 
 
+def _assert_axes_equal(ax1, ax2):
+    assert ax1.name == ax2.name
+    for pos, coord in ax1.coords.items():
+        assert pos in ax2.coords
+        this_coord = ax2.coords[pos]
+        assert coord.equals(this_coord)
+    assert ax1._periodic == ax2._periodic
+    assert ax1._default_shifts == ax2._default_shifts
+    assert ax1._facedim == ax2._facedim
+    # TODO: make this work...
+    #assert ax1._connections == ax2._connections
+
+
+def test_create_axis_no_comodo(all_datasets):
+    ds, periodic, expected = all_datasets
+    axis_objs = _get_axes(ds)
+    print(axis_objs)
+
+    # now strip out the metadata
+    ds_noattr = ds.copy()
+    for var in ds.variables:
+        ds_noattr[var].attrs.clear()
+
+    for axis_name, axis_coords in expected['axes'].items():
+        # now create the axis from scratch with no attributes
+        this_axis = Axis(ds_noattr, axis_name, coords=axis_coords)
+        axis_expected = axis_objs[axis_name]
+        # make sure all the same stuff is present in both all_axes
+        # TODO: come up with a more general way to assert axis equality
+        _assert_axes_equal(axis_expected, this_axis)
+
+
 def test_axis_repr(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
@@ -394,6 +426,24 @@ def test_axis_errors():
 def test_grid_create(all_datasets):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
+    assert grid is not None
+
+
+def test_create_grid_no_comodo(all_datasets):
+    ds, periodic, expected = all_datasets
+    grid_expected = Grid(ds, periodic=periodic)
+
+    ds_noattr = ds.copy()
+    for var in ds.variables:
+        ds_noattr[var].attrs.clear()
+
+    coords = expected['axes']
+    grid = Grid(ds_noattr, periodic=periodic, coords=coords)
+
+    for axis_name_expected in grid_expected.axes:
+        axis_expected = grid_expected.axes[axis_name_expected]
+        axis_actual = grid.axes[axis_name_expected]
+        _assert_axes_equal(axis_expected, axis_actual)
 
 
 def test_grid_repr(all_datasets):
