@@ -288,12 +288,25 @@ def test_parse_position(p_f, p_t):
 @pytest.mark.parametrize('p, relative', [(('left', 'center'), 'right'),
                                          (('center', 'left'), 'left'),
                                          (('center', 'right'), 'right'),
-                                         (('right', 'center'), 'left')])
+                                         (('right', 'center'), 'left'),
+                                         (('center', 'outer'), 'outer'),
+                                         (('center', 'inner'), 'inner'),
+                                         ])
 def test_position_to_relative(p, relative):
     assert _position_to_relative(p[0], p[1]) == relative
-
-    with pytest.raises(RuntimeError):
-        _position_to_relative('left', 'right')
+    error_test = [
+        ('left', 'right'),
+        ('inner', 'outer'),
+        ('left', 'outer'),
+        ('right', 'outer'),
+        ('left', 'inner'),
+        ('right', 'inner'),
+                    ]
+    for et in error_test:
+        with pytest.raises(RuntimeError):
+            _position_to_relative(et[0], et[1])
+        with pytest.raises(RuntimeError):
+            _position_to_relative(et[1], et[0])
 
 
 def test_fill_attrs():

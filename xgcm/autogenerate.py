@@ -56,6 +56,10 @@ def generate_axis(ds,
 
     # Determine the relative position to interpolate to based on current and
     # desired position
+
+    # I want this to be able to go to 'outer', is there a case where we
+    # need to get the inner?
+
     relative_pos_to = _position_to_relative(pos_from, pos_to)
 
     if (boundary_discontinuity is not None) and (pad is not None):
@@ -235,6 +239,10 @@ def _position_to_relative(pos_from, pos_to):
     elif ((pos_from == 'center' and pos_to == 'left') or
           (pos_from == 'right' and pos_to == 'center')):
             to = 'left'
+    elif (pos_from == 'center' and pos_to == 'outer'):
+            to = 'outer'
+    elif (pos_from == 'center' and pos_to == 'inner'):
+            to = 'inner'
     else:
         raise RuntimeError("Cannot infer '%s' coordinates \
     from '%s'" % (pos_to, pos_from))
