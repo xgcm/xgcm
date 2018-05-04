@@ -249,7 +249,7 @@ class Axis:
 
     def _get_edge_data(self, da, is_left_edge=True, boundary=None,
                        fill_value=0.0, ignore_connections=False,
-                       vector_partner=None):
+                       vector_partner=None, boundary_discontinuity=None):
         """Get the appropriate edge data given axis connectivity and / or
         boundary conditions.
         """
@@ -280,7 +280,7 @@ class Axis:
                 return _apply_boundary_condition(da_face, this_dim,
                                                  is_left_edge,
                                                  boundary=boundary,
-                                                 fill_value=0.0)
+                                                 fill_value=fill_value)
 
             neighbor_fnum, neighbor_axis, reverse = face_connection
 
@@ -355,6 +355,11 @@ class Axis:
         else:
             edge_data = face_edge_data(None, None)
 
+        if boundary_discontinuity:
+            if is_left_edge:
+                edge_data = edge_data - boundary_discontinuity
+            elif not is_left_edge:
+                edge_data = edge_data + boundary_discontinuity
         return edge_data
 
 
@@ -362,14 +367,15 @@ class Axis:
                      ignore_connections=False, vector_partner=None,
                      boundary_discontinuity=None):
         axis_num = self._get_axis_dim_num(da)
-        edge_data = self._get_edge_data(da, is_left_edge=True,
-                                        boundary=boundary,
-                                        fill_value=fill_value,
-                                        ignore_connections=ignore_connections,
-                                        vector_partner=vector_partner)
-        # This reintroduces the discontinuity logic
-        if boundary_discontinuity:
-            edge_data = edge_data - boundary_discontinuity
+        kw = dict(
+            is_left_edge=True,
+            boundary=boundary,
+            fill_value=fill_value,
+            ignore_connections=ignore_connections,
+            vector_partner=vector_partner,
+            boundary_discontinuity=boundary_discontinuity
+        )
+        edge_data = self._get_edge_data(da, **kw)
         return concatenate([edge_data, da.data], axis=axis_num)
 
 
@@ -377,14 +383,15 @@ class Axis:
                       ignore_connections=False, vector_partner=None,
                       boundary_discontinuity=None):
         axis_num = self._get_axis_dim_num(da)
-        edge_data = self._get_edge_data(da, is_left_edge=False,
-                                        boundary=boundary,
-                                        fill_value=fill_value,
-                                        ignore_connections=ignore_connections,
-                                        vector_partner=vector_partner)
-        # This reintroduces the discontinuity logic
-        if boundary_discontinuity:
-            edge_data = edge_data + boundary_discontinuity
+        kw = dict(
+            is_left_edge=False,
+            boundary=boundary,
+            fill_value=fill_value,
+            ignore_connections=ignore_connections,
+            vector_partner=vector_partner,
+            boundary_discontinuity=boundary_discontinuity
+                )
+        edge_data = self._get_edge_data(da, **kw)
         return concatenate([da.data, edge_data], axis=axis_num)
 
 

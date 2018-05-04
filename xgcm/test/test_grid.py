@@ -16,11 +16,53 @@ def _get_axes(ds):
     axis_objs = {ax: Axis(ds, ax) for ax in all_axes}
     return axis_objs
 
-def test_get_edge_data():
+@pytest.mark.parametrize('discontinuity', [None, 10, 360])
+def test_extend_left(discontinuity):
     ds = datasets['1d_left']
     axis = Axis(ds, 'X')
-    assert axis._get_edge_data(ds.XC, fill_value=10000) != axis._get_edge_data(ds.XC)
-    # somehow the fill value does nothing...the results are the same...
+
+    if discontinuity is None:
+        ref = 0
+    else:
+        ref = discontinuity
+
+    kw = {'boundary_discontinuity': discontinuity}
+    left_extended = axis._extend_left(ds.XC, **kw).data[0]
+    assert left_extended == ds.XC.data[-1] - ref
+
+@pytest.mark.parametrize('discontinuity', [None, 10, 360])
+def test_extend_right(discontinuity):
+    ds = datasets['1d_left']
+    axis = Axis(ds, 'X')
+    if discontinuity is None:
+        ref = 0
+    else:
+        ref = discontinuity
+
+    kw = {'boundary_discontinuity': discontinuity}
+    print(ds.XC)
+    print(axis._extend_right(ds.XC, **kw))
+    right_extended = axis._extend_right(ds.XC, **kw).data[-1]
+    assert right_extended == ds.XC.data[0] + ref
+
+
+def test_get_edge_data():
+    ds = datasets['1d_left']
+    axis_periodic = Axis(ds, 'X', periodic=True)
+    axis_nonperiodic = Axis(ds, 'X', periodic=False)
+
+    edge_periodic = axis_periodic._get_edge_data(ds.XC,
+                                                 boundary='fill',
+                                                 fill_value=10000)
+
+    edge_nonperiodic = axis_nonperiodic._get_edge_data(ds.XC,
+                                                       boundary='fill',
+                                                       fill_value=10000)
+
+    assert edge_periodic == axis_periodic._get_edge_data(ds.XC)
+    # I still think this should perhaps raise a warning
+    assert edge_nonperiodic != axis_nonperiodic._get_edge_data(ds.XC,
+                                                               boundary='fill')
 
 
 def test_create_axis(all_datasets):
