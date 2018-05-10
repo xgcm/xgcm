@@ -32,31 +32,9 @@ def test_concatenate():
     assert isinstance(concat_dask, dsk.array.Array)
     assert isinstance(concat_mixed,  np.ndarray)
 
-# Are the datasets not delivered as dask arrays in python 2.7?
-def test_datasets():
-    ds = datasets['1d_left']
-    print(ds)
-    print(ds.XC)
-    assert isinstance(ds.XC, xr.DataArray)
-
 @pytest.mark.parametrize('discontinuity', [None, 10, 360])
-def test_extend_left(discontinuity):
-    ds = datasets['1d_left']
-    axis = Axis(ds, 'X')
-
-    if discontinuity is None:
-        ref = 0
-    else:
-        ref = discontinuity
-
-    kw = {'boundary_discontinuity': discontinuity}
-    left_extended = axis._extend_left(ds.XC, **kw).data[0]
-    with pytest.raises(RuntimeError):
-        axis._extend_left(ds.XC.data, **kw)
-    assert left_extended == ds.XC.data[-1] - ref
-
-@pytest.mark.parametrize('discontinuity', [None, 10, 360])
-def test_extend_right(discontinuity):
+@pytest.mark.parametrize('right', [True, False])
+def test_extend_right_left(discontinuity, right):
     ds = datasets['1d_left']
     ds_check = ds.copy()
     axis = Axis(ds, 'X')
@@ -66,14 +44,21 @@ def test_extend_right(discontinuity):
         ref = discontinuity
 
     kw = {'boundary_discontinuity': discontinuity}
-    right_extended = axis._extend_right(ds.XC, **kw).data[-1]
+    if right:
+        extended_raw = axis._extend_right(ds.XC, **kw)
+        extended = extended_raw[-1]
+        expected = ds.XC.data[0] + ref
+        with pytest.raises(RuntimeError):
+            axis._extend_right(ds.XC.data, **kw)
+    else:
+        extended_raw = axis._extend_left(ds.XC, **kw)
+        extended = extended_raw[0]
+        expected = ds.XC.data[-1] - ref
+        with pytest.raises(RuntimeError):
+            axis._extend_left(ds.XC.data, **kw)
 
-    print(ds.XC)
-    assert isinstance(ds.XC, xr.DataArray)
-    assert isinstance(ds_check.XC, xr.DataArray)
-    assert right_extended == ds.XC.data[0] + ref
-    with pytest.raises(RuntimeError):
-        axis._extend_right(ds.XC.data, **kw)
+    assert isinstance(extended_raw, np.ndarray)
+    assert extended == expected
 
 
 @pytest.mark.parametrize('fill_value', [0, 10, 20])
