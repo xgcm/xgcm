@@ -87,7 +87,7 @@ def generate_axis(ds,
         fill_value=fill_value,
         boundary=boundary,
         position_check=False,
-                )
+    )
 
     ds = ds.copy()
 
@@ -235,15 +235,15 @@ def _parse_position(position, axname, pos_default=('center', 'left')):
 def _position_to_relative(pos_from, pos_to):
     """Translate from to positions in relative movement"""
     if ((pos_from == 'left' and pos_to == 'center') or
-       (pos_from == 'center' and pos_to == 'right')):
-            to = 'right'
+            (pos_from == 'center' and pos_to == 'right')):
+        to = 'right'
     elif ((pos_from == 'center' and pos_to == 'left') or
           (pos_from == 'right' and pos_to == 'center')):
-            to = 'left'
+        to = 'left'
     elif (pos_from == 'center' and pos_to == 'outer'):
-            to = 'outer'
+        to = 'outer'
     elif (pos_from == 'center' and pos_to == 'inner'):
-            to = 'inner'
+        to = 'inner'
     else:
         raise RuntimeError("Cannot infer '%s' coordinates \
     from '%s'" % (pos_to, pos_from))

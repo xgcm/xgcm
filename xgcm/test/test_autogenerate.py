@@ -32,93 +32,93 @@ _, yy_outer = np.meshgrid(x, y_outer)
 _, _, zz_outer = np.meshgrid(x, y, z_outer)
 
 ds_original = xr.Dataset(
-                         {'somedata': (['lat', 'lon', 'z'], a)},
-                         coords={'lon': (['lon', ], x+(dx/2.0)),
-                                 'lat': (['lat', ], y+(dy/2.0)),
-                                 'z': (['z', ], z+(dz/2.0)),
-                                 'llon': (['lat', 'lon'], xx+(dx/2.0)),
-                                 'llat': (['lat', 'lon'], yy+(dy/2.0)),
-                                 'zz': (['lat', 'lon', 'z'], zz+(dz/2.0))}
-                        )
+    {'somedata': (['lat', 'lon', 'z'], a)},
+    coords={'lon': (['lon', ], x+(dx/2.0)),
+            'lat': (['lat', ], y+(dy/2.0)),
+            'z': (['z', ], z+(dz/2.0)),
+            'llon': (['lat', 'lon'], xx+(dx/2.0)),
+            'llat': (['lat', 'lon'], yy+(dy/2.0)),
+            'zz': (['lat', 'lon', 'z'], zz+(dz/2.0))}
+)
 
 ds_original_left = xr.Dataset(
-                         {'somedata': (['lat', 'lon', 'z'], a)},
-                         coords={'lon': (['lon', ], x),
-                                 'lat': (['lat', ], y),
-                                 'z': (['z', ], z),
-                                 'llon': (['lat', 'lon'], xx),
-                                 'llat': (['lat', 'lon'], yy),
-                                 'zz': (['lat', 'lon', 'z'], zz)}
-                        )
+    {'somedata': (['lat', 'lon', 'z'], a)},
+    coords={'lon': (['lon', ], x),
+            'lat': (['lat', ], y),
+            'z': (['z', ], z),
+            'llon': (['lat', 'lon'], xx),
+            'llat': (['lat', 'lon'], yy),
+            'zz': (['lat', 'lon', 'z'], zz)}
+)
 
 ds_original_1D = xr.Dataset(
-                            {'somedata': (['z', ], np.array([1, 2, 3]))},
-                            coords={'z': (['z', ], z_1D)}
+    {'somedata': (['z', ], np.array([1, 2, 3]))},
+    coords={'z': (['z', ], z_1D)}
 )
 ds_original_1D_padded = xr.Dataset(
-                                   {'somedata': (['z', ],
-                                                 np.array([1, 2, 3]))},
-                                   coords={'z': (['z', ],
-                                           z[0:3]),
-                                           'test': (['test', ],
-                                                    z_1D_padded)}
+    {'somedata': (['z', ],
+                  np.array([1, 2, 3]))},
+    coords={'z': (['z', ],
+                  z[0:3]),
+            'test': (['test', ],
+                     z_1D_padded)}
 )
 ds_out_left = xr.Dataset(
-                     {'somedata': (['lat', 'lon', 'z'],
-                                   a)},
-                     coords={'lon': (['lon', ], x+(dx/2.0),
-                                     {'axis': 'X'}),
-                             'lat': (['lat', ], y+(dy/2.0),
-                                     {'axis': 'Y'}),
-                             'z': (['z', ], z+(dz/2.0),
-                                   {'axis': 'Z'}),
-                             'llon': (['lat', 'lon'], xx+(dx/2.0),
-                                      {'axis': 'X'}),
-                             'llat': (['lat', 'lon'], yy+(dy/2.0),
-                                      {'axis': 'Y'}),
-                             'zz': (['lat', 'lon', 'z'], zz+(dz/2.0),
+    {'somedata': (['lat', 'lon', 'z'],
+                  a)},
+    coords={'lon': (['lon', ], x+(dx/2.0),
+                    {'axis': 'X'}),
+            'lat': (['lat', ], y+(dy/2.0),
+                    {'axis': 'Y'}),
+            'z': (['z', ], z+(dz/2.0),
+                  {'axis': 'Z'}),
+            'llon': (['lat', 'lon'], xx+(dx/2.0),
+                     {'axis': 'X'}),
+            'llat': (['lat', 'lon'], yy+(dy/2.0),
+                     {'axis': 'Y'}),
+            'zz': (['lat', 'lon', 'z'], zz+(dz/2.0),
                                     {'axis': 'Z'}),
                              'lon_left': (['lon_left', ], x,
                                           {'axis': 'X',
-                                          'c_grid_axis_shift': -0.5}),
+                                           'c_grid_axis_shift': -0.5}),
                              'lat_left': (['lat_left', ], y,
                                           {'axis': 'Y',
-                                          'c_grid_axis_shift': -0.5}),
+                                           'c_grid_axis_shift': -0.5}),
                              'z_left': (['z_left', ], z,
                                         {'axis': 'Z',
-                                        'c_grid_axis_shift': -0.5}),
+                                         'c_grid_axis_shift': -0.5}),
                              'llon_left': (['lat', 'lon_left', ], xx,
                                            {'axis': 'X',
-                                           'c_grid_axis_shift': -0.5}),
+                                            'c_grid_axis_shift': -0.5}),
                              'llat_left': (['lat_left', 'lon'], yy,
                                            {'axis': 'Y',
-                                           'c_grid_axis_shift': -0.5}),
+                                            'c_grid_axis_shift': -0.5}),
                              'zz_left': (['lat', 'lon', 'z_left'], zz,
                                          {'axis': 'Z',
-                                         'c_grid_axis_shift': -0.5})}
-                                         )
+                                          'c_grid_axis_shift': -0.5})}
+)
 
 ds_out_right = xr.Dataset(
-                     {'somedata': (['lat', 'lon', 'z'],
-                                   a)},
-                     coords={'lon': (['lon', ], x+(dx/2.0),
-                                     {'axis': 'X',
-                                     'c_grid_axis_shift': -0.5}),
-                             'lat': (['lat', ], y+(dy/2.0),
-                                     {'axis': 'Y',
-                                     'c_grid_axis_shift': -0.5}),
-                             'z': (['z', ], z+(dz/2.0),
-                                   {'axis': 'Z',
-                                   'c_grid_axis_shift': -0.5}),
-                             'llon': (['lat', 'lon'], xx+(dx/2.0),
-                                      {'axis': 'X',
-                                      'c_grid_axis_shift': -0.5}),
-                             'llat': (['lat', 'lon'], yy+(dy/2.0),
-                                      {'axis': 'Y',
-                                      'c_grid_axis_shift': -0.5}),
-                             'zz': (['lat', 'lon', 'z'], zz+(dz/2.0),
+    {'somedata': (['lat', 'lon', 'z'],
+                  a)},
+    coords={'lon': (['lon', ], x+(dx/2.0),
+                    {'axis': 'X',
+                     'c_grid_axis_shift': -0.5}),
+            'lat': (['lat', ], y+(dy/2.0),
+                    {'axis': 'Y',
+                     'c_grid_axis_shift': -0.5}),
+            'z': (['z', ], z+(dz/2.0),
+                  {'axis': 'Z',
+                   'c_grid_axis_shift': -0.5}),
+            'llon': (['lat', 'lon'], xx+(dx/2.0),
+                     {'axis': 'X',
+                      'c_grid_axis_shift': -0.5}),
+            'llat': (['lat', 'lon'], yy+(dy/2.0),
+                     {'axis': 'Y',
+                                       'c_grid_axis_shift': -0.5}),
+            'zz': (['lat', 'lon', 'z'], zz+(dz/2.0),
                                     {'axis': 'Z',
-                                    'c_grid_axis_shift': -0.5}),
+                                     'c_grid_axis_shift': -0.5}),
                              'lon_right': (['lon_right', ], x+dx,
                                            {'axis': 'X'}),
                              'lat_right': (['lat_right', ], y+dy,
@@ -172,45 +172,45 @@ ds_out_center = xr.Dataset(
                              'zz_center': (['lat', 'lon', 'z_center'],
                                            zz+(dz/2.0),
                                            {'axis': 'Z'})}
-                        )
+)
 
 ds_out_outer = xr.Dataset(
-                     {'somedata': (['lat', 'lon', 'z'],
-                                   a)},
-                     coords={'lon': (['lon', ], x,
-                                     {'axis': 'X'}),
-                             'lat': (['lat', ], y,
-                                     {'axis': 'Y'}),
-                             'z': (['z', ], z,
-                                   {'axis': 'Z'}),
-                             'llon': (['lat', 'lon'], xx,
-                                      {'axis': 'X'}),
-                             'llat': (['lat', 'lon'], yy,
-                                      {'axis': 'Y'}),
-                             'zz': (['lat', 'lon', 'z'], zz,
+    {'somedata': (['lat', 'lon', 'z'],
+                  a)},
+    coords={'lon': (['lon', ], x,
+                    {'axis': 'X'}),
+            'lat': (['lat', ], y,
+                    {'axis': 'Y'}),
+            'z': (['z', ], z,
+                  {'axis': 'Z'}),
+            'llon': (['lat', 'lon'], xx,
+                     {'axis': 'X'}),
+            'llat': (['lat', 'lon'], yy,
+                     {'axis': 'Y'}),
+            'zz': (['lat', 'lon', 'z'], zz,
                                     {'axis': 'Z'}),
                              'lon_outer': (['lon_outer', ], x_outer,
                                            {'axis': 'X',
-                                           'c_grid_axis_shift': -0.5}),
+                                            'c_grid_axis_shift': -0.5}),
                              'lat_outer': (['lat_outer', ], y_outer,
                                            {'axis': 'Y',
-                                           'c_grid_axis_shift': -0.5}),
+                                            'c_grid_axis_shift': -0.5}),
                              'z_outer': (['z_outer', ], z_outer,
                                          {'axis': 'Z',
-                                         'c_grid_axis_shift': -0.5}),
+                                          'c_grid_axis_shift': -0.5}),
                              'llon_outer': (['lat', 'lon_outer'],
                                             xx_outer,
                                             {'axis': 'X',
-                                            'c_grid_axis_shift': -0.5}),
+                                             'c_grid_axis_shift': -0.5}),
                              'llat_outer': (['lat_outer', 'lon'],
                                             yy_outer,
                                             {'axis': 'Y',
-                                            'c_grid_axis_shift': -0.5}),
+                                             'c_grid_axis_shift': -0.5}),
                              'zz_outer': (['lat', 'lon', 'z_outer'],
                                           zz_outer,
                                           {'axis': 'Z',
-                                          'c_grid_axis_shift': -0.5})}
-                        )
+                                           'c_grid_axis_shift': -0.5})}
+)
 
 
 def test_generate_axis():
@@ -361,7 +361,7 @@ def test_position_to_relative(p, relative):
         ('right', 'outer'),
         ('left', 'inner'),
         ('right', 'inner'),
-                    ]
+    ]
     for et in error_test:
         with pytest.raises(RuntimeError):
             _position_to_relative(et[0], et[1])

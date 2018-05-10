@@ -32,6 +32,7 @@ def test_concatenate():
     assert isinstance(concat_dask, dsk.array.Array)
     assert isinstance(concat_mixed,  np.ndarray)
 
+
 @pytest.mark.parametrize('discontinuity', [None, 10, 360])
 @pytest.mark.parametrize('right', [True, False])
 def test_extend_right_left(discontinuity, right):

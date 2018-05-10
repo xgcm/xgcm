@@ -364,9 +364,8 @@ class Axis:
         # Check consistency of output data
         if not isinstance(edge_data, type(da.data)):
             raise RuntimeError('Types do not match edge(%s)/da.data(%s)'
-                                % (type(edge_data), type(da.data)))
+                               % (type(edge_data), type(da.data)))
         return edge_data
-
 
     def _extend_left(self, da, boundary=None, fill_value=0.0,
                      ignore_connections=False, vector_partner=None,
@@ -386,9 +385,8 @@ class Axis:
         edge_data = self._get_edge_data(da, **kw)
         if not isinstance(edge_data, type(da.data)):
             raise RuntimeError('Mixed data type for edge (%s) and data(%s)'
-                                     % (type(edge_data), type(da.data)))
+                               % (type(edge_data), type(da.data)))
         return concatenate([edge_data, da.data], axis=axis_num)
-
 
     def _extend_right(self, da, boundary=None, fill_value=0.0,
                       ignore_connections=False, vector_partner=None,
@@ -404,13 +402,12 @@ class Axis:
             ignore_connections=ignore_connections,
             vector_partner=vector_partner,
             boundary_discontinuity=boundary_discontinuity
-                )
+        )
         edge_data = self._get_edge_data(da, **kw)
         if not isinstance(edge_data, type(da.data)):
             raise RuntimeError('Mixed data type for edge (%s) and data(%s)'
-                                     % (type(edge_data), type(da.data)))
+                               % (type(edge_data), type(da.data)))
         return concatenate([da.data, edge_data], axis=axis_num)
-
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
                                  fill_value=0.0, ignore_connections=False,
@@ -447,7 +444,7 @@ class Axis:
         transition = (position_from, position_to)
 
         if ((transition == ('outer', 'center')) or
-            (transition == ('center', 'inner'))):
+                (transition == ('center', 'inner'))):
             # don't need any edge values
             left = da.isel(**{dim: slice(None, -1)}).data
             right = da.isel(**{dim: slice(1, None)}).data
@@ -578,7 +575,7 @@ class Axis:
 
     @docstrings.dedent
     def min(self, da, to=None, boundary=None, fill_value=0.0,
-             boundary_discontinuity=None, vector_partner=None):
+            boundary_discontinuity=None, vector_partner=None):
         """
         Minimum of neighboring points on intermediate grid point.
 
@@ -598,7 +595,7 @@ class Axis:
                                           vector_partner)
 
     def max(self, da, to=None, boundary=None, fill_value=0.0,
-             boundary_discontinuity=None, vector_partner=None):
+            boundary_discontinuity=None, vector_partner=None):
         """
         Maximum of neighboring points on intermediate grid point.
 
