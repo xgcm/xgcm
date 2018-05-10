@@ -3,11 +3,9 @@ from future.utils import iteritems
 import pytest
 import xarray as xr
 import numpy as np
-import dask as dsk
 from dask.array import from_array
 
 from xgcm.grid import Grid, Axis, add_to_slice
-from xgcm.duck_array_ops import concatenate
 
 from . datasets import (all_datasets, nonperiodic_1d, periodic_1d, periodic_2d,
                         nonperiodic_2d, all_2d, datasets)
@@ -18,20 +16,6 @@ def _get_axes(ds):
     all_axes = {ds[c].attrs['axis'] for c in ds.dims if 'axis' in ds[c].attrs}
     axis_objs = {ax: Axis(ds, ax) for ax in all_axes}
     return axis_objs
-
-
-# duck array ops should maybe get its own test module?
-def test_concatenate():
-    a = np.array([1, 2, 3])
-    b = np.array([10])
-    a_dask = from_array(a, chunks=1)
-    b_dask = from_array(b, chunks=1)
-    concat = concatenate([a, b], axis=0)
-    concat_dask = concatenate([a_dask, b_dask], axis=0)
-    concat_mixed = concatenate([a, b_dask], axis=0)
-    assert isinstance(concat, np.ndarray)
-    assert isinstance(concat_dask, dsk.array.Array)
-    assert isinstance(concat_mixed,  np.ndarray)
 
 
 @pytest.mark.parametrize('discontinuity', [None, 10, 360])
@@ -49,15 +33,10 @@ def test_extend_right_left(discontinuity, right):
         extended_raw = axis._extend_right(ds.XC, **kw)
         extended = extended_raw[-1]
         expected = ds.XC.data[0] + ref
-        with pytest.raises(RuntimeError):
-            axis._extend_right(ds.XC.data, **kw)
     else:
         extended_raw = axis._extend_left(ds.XC, **kw)
         extended = extended_raw[0]
         expected = ds.XC.data[-1] - ref
-        with pytest.raises(RuntimeError):
-            axis._extend_left(ds.XC.data, **kw)
-
     assert isinstance(extended_raw, np.ndarray)
     assert extended == expected
 

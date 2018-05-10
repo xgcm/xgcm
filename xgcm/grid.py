@@ -360,19 +360,12 @@ class Axis:
                     edge_data = edge_data - boundary_discontinuity
                 elif not is_left_edge:
                     edge_data = edge_data + boundary_discontinuity
-
-        # Check consistency of output data
-        if not isinstance(edge_data, type(da.data)):
-            raise RuntimeError('Types do not match edge(%s)/da.data(%s)'
-                               % (type(edge_data), type(da.data)))
         return edge_data
 
     def _extend_left(self, da, boundary=None, fill_value=0.0,
                      ignore_connections=False, vector_partner=None,
                      boundary_discontinuity=None):
-        if not isinstance(da, xr.DataArray):
-            raise RuntimeError('Input `da` needs to be a xarray.DataArray. \
-                                Is:%s' % (type(da)))
+
         axis_num = self._get_axis_dim_num(da)
         kw = dict(
             is_left_edge=True,
@@ -383,17 +376,11 @@ class Axis:
             boundary_discontinuity=boundary_discontinuity
         )
         edge_data = self._get_edge_data(da, **kw)
-        if not isinstance(edge_data, type(da.data)):
-            raise RuntimeError('Mixed data type for edge (%s) and data(%s)'
-                               % (type(edge_data), type(da.data)))
         return concatenate([edge_data, da.data], axis=axis_num)
 
     def _extend_right(self, da, boundary=None, fill_value=0.0,
                       ignore_connections=False, vector_partner=None,
                       boundary_discontinuity=None):
-        if not isinstance(da, xr.DataArray):
-            raise RuntimeError('Input `da` needs to be a xarray.DataArray. \
-                                Is:%s' % (type(da)))
         axis_num = self._get_axis_dim_num(da)
         kw = dict(
             is_left_edge=False,
@@ -404,9 +391,6 @@ class Axis:
             boundary_discontinuity=boundary_discontinuity
         )
         edge_data = self._get_edge_data(da, **kw)
-        if not isinstance(edge_data, type(da.data)):
-            raise RuntimeError('Mixed data type for edge (%s) and data(%s)'
-                               % (type(edge_data), type(da.data)))
         return concatenate([da.data, edge_data], axis=axis_num)
 
     def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
