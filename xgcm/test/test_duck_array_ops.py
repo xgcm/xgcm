@@ -1,6 +1,4 @@
 from __future__ import print_function
-from future.utils import iteritems
-import pytest
 import numpy as np
 import dask as dsk
 from xgcm.duck_array_ops import concatenate
