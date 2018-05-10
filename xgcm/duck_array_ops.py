@@ -13,6 +13,7 @@ try:
 except ImportError:
     has_dask = False
 
+
 def _dask_or_eager_func(name, eager_module=np, list_of_args=False,
                         n_array_args=1):
     """Create a function that dispatches to dask for dask array inputs."""
@@ -92,7 +93,7 @@ def _apply_boundary_condition(da, dim, left, boundary=None, fill_value=0.0):
             full_func = np.full
         boundary_array = full_func(*args, **kwargs)
     elif boundary == 'extrapolate':
-        gradient_slice = slice(0,2) if left else slice(-2, None)
+        gradient_slice = slice(0, 2) if left else slice(-2, None)
         gradient_sign = -1 if left else 1
         linear_gradient = da.isel(**{dim: gradient_slice}).diff(dim=dim).data
         boundary_array = edge_array + gradient_sign * linear_gradient
@@ -136,7 +137,7 @@ def _pad_array(da, dim, left=False, boundary=None, fill_value=0.):
     shape[axis_num] = 1
 
     base_array = da.data
-    index = slice(0,1) if left else slice(-1, None)
+    index = slice(0, 1) if left else slice(-1, None)
     edge_array = da.isel(**{dim: index}).data
 
     use_dask = has_dask and isinstance(base_array, dsa.Array)

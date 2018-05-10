@@ -12,6 +12,7 @@ from xgcm.duck_array_ops import concatenate
 from . datasets import (all_datasets, nonperiodic_1d, periodic_1d, periodic_2d,
                         nonperiodic_2d, all_2d, datasets)
 
+
 # helper function to produce axes from datasets
 def _get_axes(ds):
     all_axes = {ds[c].attrs['axis'] for c in ds.dims if 'axis' in ds[c].attrs}
@@ -37,7 +38,6 @@ def test_concatenate():
 @pytest.mark.parametrize('right', [True, False])
 def test_extend_right_left(discontinuity, right):
     ds = datasets['1d_left']
-    ds_check = ds.copy()
     axis = Axis(ds, 'X')
     if discontinuity is None:
         ref = 0
@@ -125,7 +125,7 @@ def _assert_axes_equal(ax1, ax2):
     assert ax1._default_shifts == ax2._default_shifts
     assert ax1._facedim == ax2._facedim
     # TODO: make this work...
-    #assert ax1._connections == ax2._connections
+    # assert ax1._connections == ax2._connections
 
 
 def test_create_axis_no_comodo(all_datasets):

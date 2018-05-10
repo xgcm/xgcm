@@ -132,8 +132,8 @@ ds_out_right = xr.Dataset(
                            yy+dy,
                            {'axis': 'Y'}),
             'zz_right': (['lat', 'lon', 'z_right'],
-                                          zz+dz,
-                                          {'axis': 'Z'})}
+                         zz+dz,
+                         {'axis': 'Z'})}
 )
 
 ds_out_center = xr.Dataset(
@@ -170,8 +170,8 @@ ds_out_center = xr.Dataset(
                             yy+(dy/2.0),
                             {'axis': 'Y'}),
             'zz_center': (['lat', 'lon', 'z_center'],
-                                           zz+(dz/2.0),
-                                           {'axis': 'Z'})}
+                          zz+(dz/2.0),
+                          {'axis': 'Z'})}
 )
 
 ds_out_outer = xr.Dataset(
