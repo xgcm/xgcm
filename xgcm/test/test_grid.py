@@ -58,6 +58,7 @@ def test_extend_left(discontinuity):
 @pytest.mark.parametrize('discontinuity', [None, 10, 360])
 def test_extend_right(discontinuity):
     ds = datasets['1d_left']
+    ds_check = ds.copy()
     axis = Axis(ds, 'X')
     if discontinuity is None:
         ref = 0
@@ -66,12 +67,13 @@ def test_extend_right(discontinuity):
 
     kw = {'boundary_discontinuity': discontinuity}
     right_extended = axis._extend_right(ds.XC, **kw).data[-1]
-    with pytest.raises(RuntimeError):
-        axis._extend_right(ds.XC.data, **kw)
 
     print(ds.XC)
     assert isinstance(ds.XC, xr.DataArray)
+    assert isinstance(ds_check.XC, xr.DataArray)
     assert right_extended == ds.XC.data[0] + ref
+    with pytest.raises(RuntimeError):
+        axis._extend_right(ds.XC.data, **kw)
 
 
 @pytest.mark.parametrize('fill_value', [0, 10, 20])
