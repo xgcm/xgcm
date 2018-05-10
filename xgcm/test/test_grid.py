@@ -28,6 +28,7 @@ def test_extend_left(discontinuity):
 
     kw = {'boundary_discontinuity': discontinuity}
     left_extended = axis._extend_left(ds.XC, **kw).data[0]
+    print(ds.XC.data)
     assert left_extended == ds.XC.data[-1] - ref
 
 @pytest.mark.parametrize('discontinuity', [None, 10, 360])
