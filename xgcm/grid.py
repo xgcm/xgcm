@@ -376,6 +376,9 @@ class Axis:
             boundary_discontinuity=boundary_discontinuity
         )
         edge_data = self._get_edge_data(da, **kw)
+        if not isinstance(edge_data, type(da.data)):
+            raise RuntimeError('Mixed data type for edge (%s) and data(%s)'
+                                     % (type(edge_data), type(da.data)))
         return concatenate([edge_data, da.data], axis=axis_num)
 
 
@@ -392,6 +395,9 @@ class Axis:
             boundary_discontinuity=boundary_discontinuity
                 )
         edge_data = self._get_edge_data(da, **kw)
+        if not isinstance(edge_data, type(da.data)):
+            raise RuntimeError('Mixed data type for edge (%s) and data(%s)'
+                                     % (type(edge_data), type(da.data)))
         return concatenate([da.data, edge_data], axis=axis_num)
 
 
