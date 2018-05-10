@@ -32,6 +32,13 @@ def test_concatenate():
     assert isinstance(concat_dask, dsk.array.Array)
     assert isinstance(concat_mixed,  np.ndarray)
 
+# Are the datasets not delivered as dask arrays in python 2.7?
+def test_datasets():
+    ds = datasets['1d_left']
+    print(ds)
+    print(ds.XC)
+    assert isinstance(ds.XC, xr.DataArray)
+
 @pytest.mark.parametrize('discontinuity', [None, 10, 360])
 def test_extend_left(discontinuity):
     ds = datasets['1d_left']
@@ -44,7 +51,8 @@ def test_extend_left(discontinuity):
 
     kw = {'boundary_discontinuity': discontinuity}
     left_extended = axis._extend_left(ds.XC, **kw).data[0]
-    print(ds.XC.data)
+    with pytest.raises(RuntimeError):
+        axis._extend_left(ds.XC.data, **kw)
     assert left_extended == ds.XC.data[-1] - ref
 
 @pytest.mark.parametrize('discontinuity', [None, 10, 360])
@@ -57,9 +65,9 @@ def test_extend_right(discontinuity):
         ref = discontinuity
 
     kw = {'boundary_discontinuity': discontinuity}
-    print(ds.XC)
-    print(axis._extend_right(ds.XC, **kw))
     right_extended = axis._extend_right(ds.XC, **kw).data[-1]
+    with pytest.raises(RuntimeError):
+        axis._extend_right(ds.XC.data, **kw)
     assert right_extended == ds.XC.data[0] + ref
 
 
