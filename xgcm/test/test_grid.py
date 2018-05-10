@@ -68,6 +68,9 @@ def test_extend_right(discontinuity):
     right_extended = axis._extend_right(ds.XC, **kw).data[-1]
     with pytest.raises(RuntimeError):
         axis._extend_right(ds.XC.data, **kw)
+
+    print(ds.XC)
+    assert isinstance(ds.XC, xr.DataArray)
     assert right_extended == ds.XC.data[0] + ref
 
 
