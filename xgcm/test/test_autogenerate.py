@@ -92,10 +92,10 @@ ds_out_left = xr.Dataset(
                            'c_grid_axis_shift': -0.5}),
             'llat_left': (['lat_left', 'lon'], yy,
                           {'axis': 'Y',
-                                            'c_grid_axis_shift': -0.5}),
+                           'c_grid_axis_shift': -0.5}),
             'zz_left': (['lat', 'lon', 'z_left'], zz,
-                                         {'axis': 'Z',
-                                          'c_grid_axis_shift': -0.5})}
+                        {'axis': 'Z',
+                         'c_grid_axis_shift': -0.5})}
 )
 
 ds_out_right = xr.Dataset(
@@ -153,23 +153,23 @@ ds_out_center = xr.Dataset(
                       'c_grid_axis_shift': -0.5}),
             'llat': (['lat', 'lon'], yy,
                      {'axis': 'Y',
-                                       'c_grid_axis_shift': -0.5}),
+                      'c_grid_axis_shift': -0.5}),
             'zz': (['lat', 'lon', 'z'], zz,
-                                    {'axis': 'Z',
-                                     'c_grid_axis_shift': -0.5}),
-                             'lon_center': (['lon_center', ], x+(dx/2.0),
-                                            {'axis': 'X'}),
-                             'lat_center': (['lat_center', ], y+(dy/2.0),
-                                            {'axis': 'Y'}),
-                             'z_center': (['z_center', ], z+(dz/2.0),
-                                          {'axis': 'Z'}),
-                             'llon_center': (['lat', 'lon_center', ],
-                                             xx+(dx/2.0),
-                                             {'axis': 'X'}),
-                             'llat_center': (['lat_center', 'lon'],
-                                             yy+(dy/2.0),
-                                             {'axis': 'Y'}),
-                             'zz_center': (['lat', 'lon', 'z_center'],
+                   {'axis': 'Z',
+                    'c_grid_axis_shift': -0.5}),
+            'lon_center': (['lon_center', ], x+(dx/2.0),
+                           {'axis': 'X'}),
+            'lat_center': (['lat_center', ], y+(dy/2.0),
+                           {'axis': 'Y'}),
+            'z_center': (['z_center', ], z+(dz/2.0),
+                         {'axis': 'Z'}),
+            'llon_center': (['lat', 'lon_center', ],
+                            xx+(dx/2.0),
+                            {'axis': 'X'}),
+            'llat_center': (['lat_center', 'lon'],
+                            yy+(dy/2.0),
+                            {'axis': 'Y'}),
+            'zz_center': (['lat', 'lon', 'z_center'],
                                            zz+(dz/2.0),
                                            {'axis': 'Z'})}
 )
@@ -205,11 +205,11 @@ ds_out_outer = xr.Dataset(
             'llat_outer': (['lat_outer', 'lon'],
                            yy_outer,
                            {'axis': 'Y',
-                                             'c_grid_axis_shift': -0.5}),
+                            'c_grid_axis_shift': -0.5}),
             'zz_outer': (['lat', 'lon', 'z_outer'],
-                                          zz_outer,
-                                          {'axis': 'Z',
-                                           'c_grid_axis_shift': -0.5})}
+                         zz_outer,
+                         {'axis': 'Z',
+                          'c_grid_axis_shift': -0.5})}
 )
 
 
