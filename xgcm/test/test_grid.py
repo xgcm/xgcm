@@ -46,23 +46,46 @@ def test_extend_right(discontinuity):
     assert right_extended == ds.XC.data[0] + ref
 
 
-def test_get_edge_data():
+@pytest.mark.parametrize('fill_value', [0, 10, 20])
+@pytest.mark.parametrize('boundary', ['fill', 'extend', 'extrapolate'])
+@pytest.mark.parametrize('periodic', [True, False])
+@pytest.mark.parametrize('is_left_edge', [True, False])
+@pytest.mark.parametrize('boundary_discontinuity', [None, 360])
+def test_get_edge_data(periodic, fill_value,
+                       boundary, is_left_edge,
+                       boundary_discontinuity):
     ds = datasets['1d_left']
-    axis_periodic = Axis(ds, 'X', periodic=True)
-    axis_nonperiodic = Axis(ds, 'X', periodic=False)
+    axis = Axis(ds, 'X', periodic=periodic)
+    edge = axis._get_edge_data(ds.XC, boundary=boundary,
+                               fill_value=fill_value,
+                               is_left_edge=is_left_edge,
+                               boundary_discontinuity=boundary_discontinuity
+                               )
+    if is_left_edge:
+        edge_periodic = ds.XC.data[-1]
+        if boundary_discontinuity is not None:
+            edge_periodic = edge_periodic - boundary_discontinuity
+        edge_extend = ds.XC.data[0]
+        edge_extra = ds.XC.data[0] - np.diff(ds.XC.data[0:2])
+    else:
+        edge_periodic = ds.XC.data[0]
+        if boundary_discontinuity is not None:
+            edge_periodic = edge_periodic + boundary_discontinuity
+        edge_extend = ds.XC.data[-1]
+        edge_extra = ds.XC.data[-1] + np.diff(ds.XC.data[-2:])
+    edge_fill = fill_value
 
-    edge_periodic = axis_periodic._get_edge_data(ds.XC,
-                                                 boundary='fill',
-                                                 fill_value=10000)
-
-    edge_nonperiodic = axis_nonperiodic._get_edge_data(ds.XC,
-                                                       boundary='fill',
-                                                       fill_value=10000)
-
-    assert edge_periodic == axis_periodic._get_edge_data(ds.XC)
-    # I still think this should perhaps raise a warning
-    assert edge_nonperiodic != axis_nonperiodic._get_edge_data(ds.XC,
-                                                               boundary='fill')
+    if periodic:
+        assert edge_periodic == edge
+    else:
+        if boundary == 'fill':
+            assert edge_fill == edge
+        elif boundary == 'extend':
+            assert edge_extend == edge
+        elif boundary == 'extrapolate':
+            assert edge_extra == edge
+        else:
+            assert 0
 
 
 def test_create_axis(all_datasets):
@@ -347,6 +370,24 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
     assert data_diff_expected.equals(data_diff)
     # check without "to" specified
     assert data_diff.equals(axis.diff(da, boundary=boundary))
+
+    # max
+    data_max_expected = xr.DataArray(xr.ufuncs.maximum(data_right, data_left),
+                                     dims=[coord_to],
+                                     coords={coord_to: ds[coord_to]})
+    data_max = axis.max(da, to, boundary=boundary)
+    assert data_max_expected.equals(data_max)
+    # check without "to" specified
+    assert data_max.equals(axis.max(da, boundary=boundary))
+
+    # min
+    data_min_expected = xr.DataArray(xr.ufuncs.minimum(data_right, data_left),
+                                     dims=[coord_to],
+                                     coords={coord_to: ds[coord_to]})
+    data_min = axis.min(da, to, boundary=boundary)
+    assert data_min_expected.equals(data_min)
+    # check without "to" specified
+    assert data_min.equals(axis.min(da, boundary=boundary))
 
 
 # this mega test covers all options for 2D data

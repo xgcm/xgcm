@@ -354,12 +354,12 @@ class Axis:
             edge_data = concatenate(arrays, face_axis_num)
         else:
             edge_data = face_edge_data(None, None)
-
-        if boundary_discontinuity:
-            if is_left_edge:
-                edge_data = edge_data - boundary_discontinuity
-            elif not is_left_edge:
-                edge_data = edge_data + boundary_discontinuity
+        if self._periodic:
+            if boundary_discontinuity:
+                if is_left_edge:
+                    edge_data = edge_data - boundary_discontinuity
+                elif not is_left_edge:
+                    edge_data = edge_data + boundary_discontinuity
         return edge_data
 
 
@@ -421,7 +421,7 @@ class Axis:
         # This prevents the grid generation to work, I added an optional
         # kwarg that deactivates this check
         # (only set False from autogenerate/generate_grid_ds)
-        # Fixes the initial test failure
+
         if position_check:
             if position_to not in self.coords:
                 raise ValueError("This axis doesn't contain a `%s` position"

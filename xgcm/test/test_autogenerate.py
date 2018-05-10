@@ -5,33 +5,42 @@ import xarray as xr
 import numpy as np
 from xarray.testing import assert_allclose, assert_equal
 
-
 from xgcm.autogenerate import generate_axis, generate_grid_ds, \
     _parse_boundary_params, _parse_position, \
-    _position_to_relative, _auto_pad, _fill_attrs
+    _position_to_relative, _fill_attrs
 
 # create test datasets
-dx = 0.5
-dy = 1.0
+pad_value = 1000
+dx = 5.0
+dy = 2.5
 dz = 0.5
-a = np.random.rand(180, int(360/dx), int(10/dz))
-
-x = np.arange(-180, 180, dx)
-y = np.arange(-90, 90, dy)
-z = np.arange(0, 10, dz)
+a = np.random.rand(int(180/dy), int(360/dx), int(10/dz))
+x = np.arange(-180+dx, 180+dx, dx)
+y = np.arange(-90+dy, 90+dy, dy)
+z = np.arange(0+dz, 10+dz, dz)
+x_outer = np.arange(-180+dx/2, 180+dx, dx)
+y_outer = np.arange(-90+dy/2, 90+dy, dy)
+z_outer = np.arange(0+dz/2, 10+dz, dz)
+z_1D = z[0:3]
+z_1D_padded = np.hstack([z[0:2]+(dz/2.0), (z[2]+pad_value)/2])
 
 xx, yy = np.meshgrid(x, y)
 _, _, zz = np.meshgrid(x, y, z)
+
+xx_outer, _ = np.meshgrid(x_outer, y)
+_, yy_outer = np.meshgrid(x, y_outer)
+_, _, zz_outer = np.meshgrid(x, y, z_outer)
 
 ds_original = xr.Dataset(
                          {'somedata': (['lat', 'lon', 'z'], a)},
                          coords={'lon': (['lon', ], x+(dx/2.0)),
                                  'lat': (['lat', ], y+(dy/2.0)),
-                                 'z': (['z', ], z+(dx/2.0)),
+                                 'z': (['z', ], z+(dz/2.0)),
                                  'llon': (['lat', 'lon'], xx+(dx/2.0)),
                                  'llat': (['lat', 'lon'], yy+(dy/2.0)),
-                                 'zz': (['lat', 'lon', 'z'], zz+(dx/2.0))}
+                                 'zz': (['lat', 'lon', 'z'], zz+(dz/2.0))}
                         )
+
 ds_original_left = xr.Dataset(
                          {'somedata': (['lat', 'lon', 'z'], a)},
                          coords={'lon': (['lon', ], x),
@@ -41,9 +50,10 @@ ds_original_left = xr.Dataset(
                                  'llat': (['lat', 'lon'], yy),
                                  'zz': (['lat', 'lon', 'z'], zz)}
                         )
+
 ds_original_1D = xr.Dataset(
                             {'somedata': (['z', ], np.array([1, 2, 3]))},
-                            coords={'z': (['z', ], z[0:3])}
+                            coords={'z': (['z', ], z_1D)}
 )
 ds_original_1D_padded = xr.Dataset(
                                    {'somedata': (['z', ],
@@ -51,7 +61,7 @@ ds_original_1D_padded = xr.Dataset(
                                    coords={'z': (['z', ],
                                            z[0:3]),
                                            'test': (['test', ],
-                                                    z[0:3]+(dx/2.0))}
+                                                    z_1D_padded)}
 )
 ds_out_left = xr.Dataset(
                      {'somedata': (['lat', 'lon', 'z'],
@@ -66,7 +76,7 @@ ds_out_left = xr.Dataset(
                                       {'axis': 'X'}),
                              'llat': (['lat', 'lon'], yy+(dy/2.0),
                                       {'axis': 'Y'}),
-                             'zz': (['lat', 'lon', 'z'], zz+(dx/2.0),
+                             'zz': (['lat', 'lon', 'z'], zz+(dz/2.0),
                                     {'axis': 'Z'}),
                              'lon_left': (['lon_left', ], x,
                                           {'axis': 'X',
@@ -164,15 +174,44 @@ ds_out_center = xr.Dataset(
                                            {'axis': 'Z'})}
                         )
 
-def test_auto_pad():
-    a = _auto_pad(ds_original['z'], 'z', 'left')
-    b = _auto_pad(ds_original['z'], 'z', 'right')
-    aa = _auto_pad(ds_original['zz'], 'z', 'left')
-    bb = _auto_pad(ds_original['zz'], 'z', 'right')
-    assert a == -(dx/2)
-    assert b == 10 + (dx/2)
-    assert aa == -(dx/2)
-    assert bb == 10 + (dx/2)
+ds_out_outer = xr.Dataset(
+                     {'somedata': (['lat', 'lon', 'z'],
+                                   a)},
+                     coords={'lon': (['lon', ], x,
+                                     {'axis': 'X'}),
+                             'lat': (['lat', ], y,
+                                     {'axis': 'Y'}),
+                             'z': (['z', ], z,
+                                   {'axis': 'Z'}),
+                             'llon': (['lat', 'lon'], xx,
+                                      {'axis': 'X'}),
+                             'llat': (['lat', 'lon'], yy,
+                                      {'axis': 'Y'}),
+                             'zz': (['lat', 'lon', 'z'], zz,
+                                    {'axis': 'Z'}),
+                             'lon_outer': (['lon_outer', ], x_outer,
+                                           {'axis': 'X',
+                                           'c_grid_axis_shift': -0.5}),
+                             'lat_outer': (['lat_outer', ], y_outer,
+                                           {'axis': 'Y',
+                                           'c_grid_axis_shift': -0.5}),
+                             'z_outer': (['z_outer', ], z_outer,
+                                         {'axis': 'Z',
+                                         'c_grid_axis_shift': -0.5}),
+                             'llon_outer': (['lat', 'lon_outer'],
+                                            xx_outer,
+                                            {'axis': 'X',
+                                            'c_grid_axis_shift': -0.5}),
+                             'llat_outer': (['lat_outer', 'lon'],
+                                            yy_outer,
+                                            {'axis': 'Y',
+                                            'c_grid_axis_shift': -0.5}),
+                             'zz_outer': (['lat', 'lon', 'z_outer'],
+                                          zz_outer,
+                                          {'axis': 'Z',
+                                          'c_grid_axis_shift': -0.5})}
+                        )
+
 
 def test_generate_axis():
     a = generate_axis(ds_original, 'X', 'lon', 'lon',
@@ -192,20 +231,29 @@ def test_generate_axis():
     d = generate_axis(ds_original_1D, 'Z', 'z', 'z',
                       pos_from='left',
                       pos_to='center',
-                      pad=1.0+dz,
+                      pad=pad_value,
                       new_name='test')
     e = generate_axis(ds_original_left, 'Z', 'z', 'z',
                       pos_from='left',
                       pos_to='center',
                       pad='auto')
+    f = generate_axis(ds_original_left, 'Z', 'z', 'z',
+                      pos_from='center',
+                      pos_to='outer',
+                      pad='auto')
+    g = generate_axis(ds_original_left, 'X', 'lon', 'lon',
+                      pos_from='center',
+                      pos_to='outer',
+                      pad=None,
+                      boundary_discontinuity=360)
 
     assert_allclose(a['lon_right'], ds_out_right['lon_right'])
     assert_allclose(b['lat_left'], ds_out_left['lat_left'])
-    print(ds_original['z'])
-    print(_auto_pad(ds_original['z'], 'z', 'left'))
     assert_allclose(c['z_left'], ds_out_left['z_left'])
     assert_allclose(d['test'], ds_original_1D_padded['test'])
     assert_allclose(e['z_center'], ds_out_center['z_center'])
+    assert_allclose(f['z_outer'], ds_out_outer['z_outer'])
+    assert_allclose(g['lon_outer'], ds_out_outer['lon_outer'])
 
     # Mulitdim cases
     aa = generate_axis(a, 'X', 'llon', 'lon',
@@ -225,9 +273,27 @@ def test_generate_axis():
                        pos_to='center',
                        pad='auto',
                        attrs_from_scratch=False)
+    ff = generate_axis(f, 'Z', 'zz', 'z',
+                       pos_from='center',
+                       pos_to='outer',
+                       pad='auto',
+                       attrs_from_scratch=False)
+
+    gg = generate_axis(g, 'X', 'llon', 'lon',
+                       pos_from='center',
+                       pos_to='outer',
+                       pad=None,
+                       boundary_discontinuity=360,
+                       attrs_from_scratch=False)
+
     assert_allclose(aa['llon_right'], ds_out_right['llon_right'])
     assert_allclose(bb['llat_left'], ds_out_left['llat_left'])
     assert_allclose(ee['zz_center'], ds_out_center['zz_center'])
+    assert_allclose(ff['zz_outer'], ds_out_outer['zz_outer'])
+    print(gg['llon_outer'])
+    print(gg['llon'])
+    print(ds_out_outer['llon_outer'])
+    assert_allclose(gg['llon_outer'], ds_out_outer['llon_outer'])
 
     with pytest.raises(RuntimeError):
         # Check if generate axis fails when a DataArray is passed instead of
@@ -246,26 +312,20 @@ def test_generate_axis():
 
 
 def test_generate_grid_ds():
-    # simple case...just the dims
+    # This needs more cases
     axis_dims = {'X': 'lon', 'Y': 'lat', 'Z': 'z'}
     axis_coords = {'X': 'llon', 'Y': 'llat', 'Z': 'zz'}
-    ds_old = ds_original.copy()
-    ds_new = generate_grid_ds(ds_old, axis_dims,
-                              boundary_discontinuity={'lon': 360, 'lat': 180},
-                              pad={'z': 'auto'})
-    assert_equal(ds_new, ds_out_left.drop(['llon_left',
-                                           'llat_left',
-                                           'zz_left']))
-    # TODO why are they not identical ? assert identical fails
-    ds_new = generate_grid_ds(ds_original,
-                              axis_dims,
-                              axis_coords,
-                              boundary_discontinuity={'lon': 360,
-                                                      'lat': 180,
-                                                      'llon': 360,
-                                                      'llat': 180},
-                              pad={'z': 'auto', 'zz': 'auto'})
-    assert_equal(ds_new, ds_out_left)
+    position = ('center', 'outer')
+    boundary_discontinuity = {'lon': 360, 'llon': 360,
+                              'lat': 180, 'llat': 180}
+    pad = {'z': 'auto', 'zz': 'auto'}
+    ds = generate_grid_ds(ds_original_left,
+                          axis_dims,
+                          axis_coords,
+                          position,
+                          boundary_discontinuity,
+                          pad)
+    assert_equal(ds, ds_out_outer)
 
 
 def test_parse_boundary_params():

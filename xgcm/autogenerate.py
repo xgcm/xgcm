@@ -57,28 +57,37 @@ def generate_axis(ds,
     # Determine the relative position to interpolate to based on current and
     # desired position
 
-    # I want this to be able to go to 'outer', is there a case where we
-    # need to get the inner?
-
     relative_pos_to = _position_to_relative(pos_from, pos_to)
+
+    # This is bloated. We can probably retire the 'auto' logic in favor of
+    # using 'boundary' and 'fill_value'. But first lets see if this all works.
 
     if (boundary_discontinuity is not None) and (pad is not None):
         raise RuntimeError('Coordinate cannot be wrapped and padded at the\
                             same time')
-    elif (boundary_discontinuity is None) and (pad is not None):
-        if pad == 'auto':
-            fill_value = _auto_pad(ds[name], axis_dim, relative_pos_to)
-        else:
-            fill_value = pad
-        periodic = False
-        boundary = 'fill'
-    elif (boundary_discontinuity is not None) and (pad is None):
-        periodic = True
-        fill_value = 0.0
-        boundary = None
-    else:
+    elif (boundary_discontinuity is None) and (pad is None):
         raise RuntimeError('Either "boundary_discontinuity" or "pad" have \
                             to be specified')
+
+    if pad is None:
+        fill_value = 0.0
+        boundary = None
+        periodic = True
+    elif pad == 'auto':
+        fill_value = 0.0
+        boundary = 'extrapolate'
+        periodic = False
+    else:
+        fill_value = pad
+        boundary = 'fill'
+        periodic = False
+
+    kwargs = dict(
+        boundary_discontinuity=boundary_discontinuity,
+        fill_value=fill_value,
+        boundary=boundary,
+        position_check=False,
+                )
 
     ds = ds.copy()
 
@@ -99,25 +108,17 @@ def generate_axis(ds,
         ds[name] = _fill_attrs(ds[name], 'center', axis)
 
         ax = Axis(ds, axis, periodic=periodic)
-        ds.coords[new_name] = \
-            ax._neighbor_binary_func_raw(ds[name],
-                                         raw_interp_function,
-                                         relative_pos_to,
-                                         boundary=boundary,
-                                         fill_value=fill_value,
-                                         boundary_discontinuity=\
-                                         boundary_discontinuity,
-                                         position_check=False)
+        args = ds[name], raw_interp_function, relative_pos_to
+        ds.coords[new_name] = ax._neighbor_binary_func_raw(*args, **kwargs)
 
         # Place the correct attributes
         ds[name] = _fill_attrs(ds[name], pos_from, axis)
         ds[new_name] = _fill_attrs(ds[new_name], pos_to, axis)
     else:
+        kwargs.pop('position_check', None)
         ax = Axis(ds, axis, periodic=periodic)
-        ds.coords[new_name] = ax.interp(ds[name], pos_to, boundary=boundary,
-                                        fill_value=fill_value,
-                                        boundary_discontinuity=\
-                                        boundary_discontinuity)
+        args = ds[name], pos_to
+        ds.coords[new_name] = ax.interp(*args, **kwargs)
     return ds
 
 
@@ -249,30 +250,6 @@ def _position_to_relative(pos_from, pos_to):
     return to
 
 
-def _auto_pad(da, dim, relative_pos_to):
-    "infer padding values from data array by linear extrapolation"
-    da_min = da.min().data
-    da_max = da.max().data
-    # The difference between values at the top and
-    # bottom is used to pad the array. For multidimensional arrays the min
-    # difference is chosen. This could lead to undesired results if the
-    # depth spacing is spatially irregular
-    min_diff = da.diff(dim).isel(**{dim: 0}).min().data
-    max_diff = da.diff(dim).isel(**{dim: -1}).min().data
-
-    min_ex = da_min - min_diff
-    max_ex = da_max + max_diff
-
-    # TODO: This assumes that the dim is increasing. Build check or option for
-    # decreasing coordinates
-
-    if relative_pos_to == 'right':
-        fill_value = max_ex
-    elif relative_pos_to == 'left':
-        fill_value = min_ex
-    return fill_value
-
-
 def _fill_attrs(da, pos, axis):
     """Replace comdo attributes according to pos and axis"""
     attrs = da.attrs
@@ -280,9 +257,9 @@ def _fill_attrs(da, pos, axis):
 
     if pos == 'center':
         attrs.pop('c_grid_axis_shift', None)
-    elif pos == 'left':
+    elif pos in ['left', 'outer']:
         attrs['c_grid_axis_shift'] = -0.5
-    elif pos == 'right':
+    elif pos in ['right', 'inner']:
         attrs['c_grid_axis_shift'] = 0.5
 
     da.attrs = attrs
