@@ -10,11 +10,77 @@ from xgcm.grid import Grid, Axis, add_to_slice
 from . datasets import (all_datasets, nonperiodic_1d, periodic_1d, periodic_2d,
                         nonperiodic_2d, all_2d, datasets)
 
+
 # helper function to produce axes from datasets
 def _get_axes(ds):
     all_axes = {ds[c].attrs['axis'] for c in ds.dims if 'axis' in ds[c].attrs}
     axis_objs = {ax: Axis(ds, ax) for ax in all_axes}
     return axis_objs
+
+
+@pytest.mark.parametrize('discontinuity', [None, 10, 360])
+@pytest.mark.parametrize('right', [True, False])
+def test_extend_right_left(discontinuity, right):
+    ds = datasets['1d_left']
+    axis = Axis(ds, 'X')
+    if discontinuity is None:
+        ref = 0
+    else:
+        ref = discontinuity
+
+    kw = {'boundary_discontinuity': discontinuity}
+    if right:
+        extended_raw = axis._extend_right(ds.XC, **kw)
+        extended = extended_raw[-1]
+        expected = ds.XC.data[0] + ref
+    else:
+        extended_raw = axis._extend_left(ds.XC, **kw)
+        extended = extended_raw[0]
+        expected = ds.XC.data[-1] - ref
+    assert isinstance(extended_raw, np.ndarray)
+    assert extended == expected
+
+
+@pytest.mark.parametrize('fill_value', [0, 10, 20])
+@pytest.mark.parametrize('boundary', ['fill', 'extend', 'extrapolate'])
+@pytest.mark.parametrize('periodic', [True, False])
+@pytest.mark.parametrize('is_left_edge', [True, False])
+@pytest.mark.parametrize('boundary_discontinuity', [None, 360])
+def test_get_edge_data(periodic, fill_value,
+                       boundary, is_left_edge,
+                       boundary_discontinuity):
+    ds = datasets['1d_left']
+    axis = Axis(ds, 'X', periodic=periodic)
+    edge = axis._get_edge_data(ds.XC, boundary=boundary,
+                               fill_value=fill_value,
+                               is_left_edge=is_left_edge,
+                               boundary_discontinuity=boundary_discontinuity
+                               )
+    if is_left_edge:
+        edge_periodic = ds.XC.data[-1]
+        if boundary_discontinuity is not None:
+            edge_periodic = edge_periodic - boundary_discontinuity
+        edge_extend = ds.XC.data[0]
+        edge_extra = ds.XC.data[0] - np.diff(ds.XC.data[0:2])
+    else:
+        edge_periodic = ds.XC.data[0]
+        if boundary_discontinuity is not None:
+            edge_periodic = edge_periodic + boundary_discontinuity
+        edge_extend = ds.XC.data[-1]
+        edge_extra = ds.XC.data[-1] + np.diff(ds.XC.data[-2:])
+    edge_fill = fill_value
+
+    if periodic:
+        assert edge_periodic == edge
+    else:
+        if boundary == 'fill':
+            assert edge_fill == edge
+        elif boundary == 'extend':
+            assert edge_extend == edge
+        elif boundary == 'extrapolate':
+            assert edge_extra == edge
+        else:
+            assert 0
 
 
 def test_create_axis(all_datasets):
@@ -38,7 +104,7 @@ def _assert_axes_equal(ax1, ax2):
     assert ax1._default_shifts == ax2._default_shifts
     assert ax1._facedim == ax2._facedim
     # TODO: make this work...
-    #assert ax1._connections == ax2._connections
+    # assert ax1._connections == ax2._connections
 
 
 def test_create_axis_no_comodo(all_datasets):
@@ -300,6 +366,24 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
     # check without "to" specified
     assert data_diff.equals(axis.diff(da, boundary=boundary))
 
+    # max
+    data_max_expected = xr.DataArray(xr.ufuncs.maximum(data_right, data_left),
+                                     dims=[coord_to],
+                                     coords={coord_to: ds[coord_to]})
+    data_max = axis.max(da, to, boundary=boundary)
+    assert data_max_expected.equals(data_max)
+    # check without "to" specified
+    assert data_max.equals(axis.max(da, boundary=boundary))
+
+    # min
+    data_min_expected = xr.DataArray(xr.ufuncs.minimum(data_right, data_left),
+                                     dims=[coord_to],
+                                     coords={coord_to: ds[coord_to]})
+    data_min = axis.min(da, to, boundary=boundary)
+    assert data_min_expected.equals(data_min)
+    # check without "to" specified
+    assert data_min.equals(axis.min(da, boundary=boundary))
+
 
 # this mega test covers all options for 2D data
 
@@ -513,3 +597,5 @@ def test_add_to_slice():
     xr.testing.assert_equal(ref_ar, np_new)
     xr.testing.assert_equal(ref_ar, da_new.compute())
     xr.testing.assert_equal(ref_ar_last, da_new_last.compute())
+
+# Needs test for _extend_right, _extend_left and the boundary_discontinuity input...not sure how to do that.
