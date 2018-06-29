@@ -45,5 +45,5 @@ Contents
    grids
    grid_topology
    example_mitgcm
-   grid_generation
+   autogenerate_examples
    api
