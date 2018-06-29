@@ -49,7 +49,7 @@ def generate_axis(ds,
         coordinates. These can only be calculated after the dims are created.
     """
     if not isinstance(ds, xr.Dataset):
-        raise RuntimeError("'ds' needs to be xarray.Dataset")
+        raise ValueError("'ds' needs to be xarray.Dataset")
 
     if new_name is None:
         new_name = name+'_'+pos_to
@@ -63,10 +63,10 @@ def generate_axis(ds,
     # using 'boundary' and 'fill_value'. But first lets see if this all works.
 
     if (boundary_discontinuity is not None) and (pad is not None):
-        raise RuntimeError('Coordinate cannot be wrapped and padded at the\
+        raise ValueError('Coordinate cannot be wrapped and padded at the\
                             same time')
     elif (boundary_discontinuity is None) and (pad is None):
-        raise RuntimeError('Either "boundary_discontinuity" or "pad" have \
+        raise ValueError('Either "boundary_discontinuity" or "pad" have \
                             to be specified')
 
     if pad is None:

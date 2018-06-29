@@ -300,10 +300,10 @@ def test_generate_axis():
                       pos_to='center',
                       pad='auto',
                       attrs_from_scratch=False)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         generate_axis(c, 'Z', 'zz', 'z', pad='auto',
                       boundary_discontinuity=360)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         generate_axis(c, 'Z', 'zz', 'z', pad=None,
                       boundary_discontinuity=None)
 
@@ -331,15 +331,19 @@ def test_parse_boundary_params():
     assert _parse_boundary_params({'something': 360}, 'something_else') is None
 
 
-# @pytest.mark.parametrize('p_f, p_t', [('left', 'center'),
-#                                       ('center', 'left'),
-#                                       ('center', 'right'),
-#                                       ('right', 'center')])
-# def test_parse_position(p_f, p_t):
-#     default = ('center', 'left')
-#     assert _parse_position((p_f, p_t), 'anything') == (p_f, p_t)
-#     assert _parse_position({'a': (p_f, p_t)}, 'a') == (p_f, p_t)
-#     assert _parse_position({'a': (p_f, p_t)}, 'b') == default
+@pytest.mark.parametrize('p_f, p_t', [('left', 'center'),
+                                      ('center', 'left'),
+                                      ('center', 'right'),
+                                      ('right', 'center')])
+def test_parse_position(p_f, p_t):
+    default = ('center', 'left')
+    assert _parse_position((p_f, p_t), 'anything') == (p_f, p_t)
+    assert _parse_position({'a': (p_f, p_t)}, 'a') == (p_f, p_t)
+    assert _parse_position({'a': (p_f, p_t)}, 'b') == default
+    assert _parse_position({'a': (p_f, p_t),
+                            'b': (p_t, p_f)}, 'a') == (p_f, p_t)
+    assert _parse_position({'a': (p_f, p_t),
+                            'b': (p_t, p_f)}, 'b') == (p_t, p_f)
 
 
 @pytest.mark.parametrize('p, relative', [(('left', 'center'), 'right'),
