@@ -290,12 +290,9 @@ def test_generate_axis():
     assert_allclose(bb['llat_left'], ds_out_left['llat_left'])
     assert_allclose(ee['zz_center'], ds_out_center['zz_center'])
     assert_allclose(ff['zz_outer'], ds_out_outer['zz_outer'])
-    print(gg['llon_outer'])
-    print(gg['llon'])
-    print(ds_out_outer['llon_outer'])
     assert_allclose(gg['llon_outer'], ds_out_outer['llon_outer'])
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         # Check if generate axis fails when a DataArray is passed instead of
         # Dataset
         generate_axis(c['somedata'], 'Z', 'zz', 'z',
@@ -303,10 +300,10 @@ def test_generate_axis():
                       pos_to='center',
                       pad='auto',
                       attrs_from_scratch=False)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         generate_axis(c, 'Z', 'zz', 'z', pad='auto',
                       boundary_discontinuity=360)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         generate_axis(c, 'Z', 'zz', 'z', pad=None,
                       boundary_discontinuity=None)
 
@@ -343,6 +340,10 @@ def test_parse_position(p_f, p_t):
     assert _parse_position((p_f, p_t), 'anything') == (p_f, p_t)
     assert _parse_position({'a': (p_f, p_t)}, 'a') == (p_f, p_t)
     assert _parse_position({'a': (p_f, p_t)}, 'b') == default
+    assert _parse_position({'a': (p_f, p_t),
+                            'b': (p_t, p_f)}, 'a') == (p_f, p_t)
+    assert _parse_position({'a': (p_f, p_t),
+                            'b': (p_t, p_f)}, 'b') == (p_t, p_f)
 
 
 @pytest.mark.parametrize('p, relative', [(('left', 'center'), 'right'),
