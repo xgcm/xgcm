@@ -799,7 +799,8 @@ class Grid:
                 raise KeyError('Metric variable %s dimensions %r do not contain dimensions %r'
                                % (metric_var, self._ds[metric_var].dims, metric_dims))
             # resetting coords avoids potential broadcasting / alignment issues
-            self._metrics[metric_dims] = (self._ds[metric_var].reset_coords(drop=True))
+            self._metrics[metric_dims] = (
+                self._ds[metric_var].reset_coords(drop=True))
 
     def get_metric(self, array, axes):
         metric_dims = [self.axes[ax]._get_axis_coord(array)[1] for ax in axes]
