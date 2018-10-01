@@ -653,7 +653,7 @@ class Grid:
     """
 
     def __init__(self, ds, check_dims=True, periodic=True, default_shifts={},
-                 face_connections=None, coords=None):
+                 face_connections=None, coords=None, metrics=None):
         """
         Create a new Grid object from an input dataset.
 
@@ -710,6 +710,9 @@ class Grid:
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
+
+        if metrics is not None:
+            self._assign_metrics(metrics)
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -776,6 +779,31 @@ class Grid:
         for axis, axis_links in axis_connections.items():
             self.axes[axis]._facedim = facedim
             self.axes[axis]._connections = axis_links
+
+    def _assign_metrics(self, metrics):
+        """
+        metrics should look like
+           {('XC', 'YC'): 'rAC'}
+        check to make sure everything is a valid dimension
+        """
+
+        self._metrics = {}
+
+        for key, metric_var in metrics.items():
+            if metric_var not in self._ds:
+                raise KeyError('Metric variable %s not found in dataset.'
+                               % metric_var)
+            metric_dims = frozenset(key)
+            if not all([md in self._ds[metric_var].dims
+                        for md in metric_dims]):
+                raise KeyError('Metric variable %s dimensions %r do not contain dimensions %r'
+                               % (metric_var, self._ds[metric_var].dims, metric_dims))
+            # resetting coords avoids potential broadcasting / alignment issues
+            self._metrics[metric_dims] = (self._ds[metric_var].reset_coords(drop=True))
+
+    def get_metric(self, array, axes):
+        metric_dims = [self.axes[ax]._get_axis_coord(array)[1] for ax in axes]
+        return self._metrics[frozenset(metric_dims)]
 
     def __repr__(self):
         summary = ['<xgcm.Grid>']
@@ -888,6 +916,28 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.diff(da, **kwargs)
+
+    @docstrings.dedent
+    def derivative(self, da, axis, **kwargs):
+        """
+        Take the centered-difference derivative along specified axis.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differentiated data
+        """
+
+        ax = self.axes[axis]
+        diff = ax.diff(da, **kwargs)
+        dx = self.get_metric(diff, ('X',))
+        return diff / dx
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):

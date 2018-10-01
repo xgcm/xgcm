@@ -14,7 +14,7 @@ def test_derivative_uniform_grid():
                             'dXG': (('XG',), [dx, dx, dx, dx])})
 
     grid = Grid(ds, coords={'X': {'center': 'XC', 'left': 'XG'}},
-                metrics={'XC': 'dXC', 'XG': 'dXG'},
+                metrics={('XC',): 'dXC', ('XG',): 'dXG'},
                 periodic=True)
 
     dfoo_dx = grid.derivative(ds.foo, 'X')
