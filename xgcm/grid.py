@@ -826,7 +826,7 @@ class Grid:
                     those = items_set - these
                     others = [frozenset(i)
                               for i in itertools.combinations(those, sub_loop)]
-                    yield (these,) +  tuple(others)
+                    yield (these,) + tuple(others)
 
         metric_dims = [self.axes[ax]._get_axis_coord(array)[1] for ax in axes]
 
