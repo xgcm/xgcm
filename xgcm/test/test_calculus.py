@@ -3,6 +3,7 @@ import xarray as xr
 
 from xgcm.grid import Grid, Axis
 
+
 def test_derivative_uniform_grid():
     # this is a uniform grid
     # a non-uniform grid would provide a more rigorous test
