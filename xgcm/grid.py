@@ -2,6 +2,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 from future.utils import iteritems
 from collections import OrderedDict
+import functools
+import itertools
+import operator
+
 import docrep
 import xarray as xr
 import numpy as np
@@ -802,8 +806,39 @@ class Grid:
             self._metrics[metric_dims] = (self._ds[metric_var].reset_coords(drop=True))
 
     def get_metric(self, array, axes):
+
+        # a function to find the right combination of metrics
+        def iterate_metric_combinations(items):
+            items_set = frozenset(items)
+            yield (items_set,)
+            N = len(items)
+            for nleft in range(N-1, 0, -1):
+                nright = N - nleft
+                for sub_loop, sub_items in itertools.product(
+                        range(min(nright, nleft), 0, -1),
+                        itertools.combinations(items_set, nleft)):
+                    these = frozenset(sub_items)
+                    those = items_set - these
+                    others = [frozenset(i)
+                              for i in itertools.combinations(those, sub_loop)]
+                    yield (these,) +  tuple(others)
+
         metric_dims = [self.axes[ax]._get_axis_coord(array)[1] for ax in axes]
-        return self._metrics[frozenset(metric_dims)]
+
+        metric_vars = None
+        for possible_dimsets in iterate_metric_combinations(metric_dims):
+            try:
+                metric_vars = [self._metrics[dimset]
+                               for dimset in possible_dimsets]
+                break
+            except KeyError:
+                pass
+        if metric_vars is None:
+            raise KeyError("Unable to find any combinations of metrics for"
+                           "metric dims %r" % metric_dims)
+
+        # return the product of the metrics
+        return functools.reduce(operator.mul, metric_vars, 1)
 
     def __repr__(self):
         summary = ['<xgcm.Grid>']
