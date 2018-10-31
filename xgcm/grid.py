@@ -77,15 +77,14 @@ class Axis:
 
         if coords:
             # use specified coords
-            self.coords = {pos: ds[name] for pos, name in coords.items()}
+            self.coords = {pos: name for pos, name in coords.items()}
         else:
             # fall back on comodo conventions
             self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
 
         # self.coords is a dictionary with the following structure
         #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
-        #   value: xr.DataArray of the coordinate
-        #     (dimension name is accessible via the .name attribute)
+        #   value: name of the dimension
 
         # set default position shifts
         fallback_shifts = {'center': ('left', 'right', 'outer', 'inner'),
@@ -164,8 +163,8 @@ class Axis:
 
     def _coord_desc(self):
         summary = []
-        for name, coord in iteritems(self.coords):
-            coord_info = ('  * %-8s %s (%g)' % (name, coord.name, len(coord)))
+        for name, cname in iteritems(self.coords):
+            coord_info = ('  * %-8s %s' % (name, cname))
             if name in self._default_shifts:
                 coord_info += ' --> %s' % self._default_shifts[name]
             summary.append(coord_info)
@@ -322,7 +321,7 @@ class Axis:
             # populated.
             # I don't even know how to detect the fail case, let alone solve it.
 
-            neighbor_edge_dim = neighbor_axis.coords[position].name
+            neighbor_edge_dim = neighbor_axis.coords[position]
             neighbor_edge_axis_num = data.get_axis_num(neighbor_edge_dim)
             if (is_left_edge and not reverse):
                 neighbor_edge_slice = slice(-count, None)
@@ -334,7 +333,7 @@ class Axis:
             # connected to the other axis. Is this because of some deep
             # topological principle?
             if neighbor_axis is not self:
-                ortho_axis = da.get_axis_num(self.coords[position].name)
+                ortho_axis = da.get_axis_num(self.coords[position])
                 ortho_slice = slice(None, None, -1)
                 edge_slice[ortho_axis] = ortho_slice
 
@@ -605,11 +604,10 @@ class Axis:
         """
         position_from, old_dim = self._get_axis_coord(da)
         try:
-            new_coord = self.coords[position_to]
+            new_dim = self.coords[position_to]
         except KeyError:
             raise KeyError("Position '%s' was not found in axis.coords."
                            % position_to)
-        new_dim = new_coord.name
 
         orig_dims = da.dims
 
@@ -618,10 +616,16 @@ class Axis:
         for d in orig_dims:
             if d == old_dim:
                 dims.append(new_dim)
-                coords[new_dim] = new_coord
+                # only add coordinate if it actually exists
+                # otherwise this creates a new coordinate where before there
+                # was none
+                if new_dim in self.ds.coords:
+                    coords[new_dim] = self.ds.coords[new_dim]
             else:
                 dims.append(d)
-                coords[d] = da.coords[d]
+                # only add coordinate if it actually exists...
+                if d in da.coords:
+                    coords[d] = da.coords[d]
 
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
@@ -629,9 +633,9 @@ class Axis:
     def _get_axis_coord(self, da):
         """Return the position and name of the axis coordiante in a DataArray.
         """
-        for position, coord in iteritems(self.coords):
+        for position, coord_name in iteritems(self.coords):
             # TODO: should we have more careful checking of alignment here?
-            if coord.name in da.dims:
+            if coord_name in da.dims:
                 return position, coord.name
 
         raise KeyError("None of the DataArray's dims %s were found in axis "

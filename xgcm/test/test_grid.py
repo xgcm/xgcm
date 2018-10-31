@@ -99,6 +99,9 @@ def _assert_axes_equal(ax1, ax2):
     for pos, coord in ax1.coords.items():
         assert pos in ax2.coords
         this_coord = ax2.coords[pos]
+        print('PRINTING COORDS')
+        print(coord)
+        print(this_coord)
         assert coord.equals(this_coord)
     assert ax1._periodic == ax2._periodic
     assert ax1._default_shifts == ax2._default_shifts
@@ -110,7 +113,6 @@ def _assert_axes_equal(ax1, ax2):
 def test_create_axis_no_comodo(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
-    print(axis_objs)
 
     # now strip out the metadata
     ds_noattr = ds.copy()
@@ -119,12 +121,38 @@ def test_create_axis_no_comodo(all_datasets):
 
     for axis_name, axis_coords in expected['axes'].items():
         # now create the axis from scratch with no attributes
-        this_axis = Axis(ds_noattr, axis_name, coords=axis_coords)
-        axis_expected = axis_objs[axis_name]
-        # make sure all the same stuff is present in both all_axes
-        # TODO: come up with a more general way to assert axis equality
-        _assert_axes_equal(axis_expected, this_axis)
+        ax2 = Axis(ds_noattr, axis_name, coords=axis_coords)
+        # and compare to the one created with attributes
+        ax1 = axis_objs[axis_name]
 
+        assert ax1.name == ax2.name
+        for pos, coord in ax1.coords.items():
+            assert pos in ax2.coords
+            assert coord.equals(ax2.coords[pos])
+        assert ax1._periodic == ax2._periodic
+        assert ax1._default_shifts == ax2._default_shifts
+        assert ax1._facedim == ax2._facedim
+
+
+def test_create_axis_no_coords(all_datasets):
+    ds, periodic, expected = all_datasets
+    axis_objs = _get_axes(ds)
+
+    ds_drop = ds.drop(list(ds.coords))
+
+    for axis_name, axis_coords in expected['axes'].items():
+        # now create the axis from scratch with no attributes OR coords
+        ax2 = Axis(ds_drop, axis_name, coords=axis_coords)
+        # and compare to the one created with attributes
+        ax1 = axis_objs[axis_name]
+
+        assert ax1.name == ax2.name
+        for pos, coord in ax1.coords.items():
+            assert pos in ax2.coords
+            print(ax2.coords[pos])
+        assert ax1._periodic == ax2._periodic
+        assert ax1._default_shifts == ax2._default_shifts
+        assert ax1._facedim == ax2._facedim
 
 def test_axis_repr(all_datasets):
     ds, periodic, expected = all_datasets

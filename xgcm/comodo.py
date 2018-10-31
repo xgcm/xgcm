@@ -91,7 +91,7 @@ def get_axis_positions_and_coords(ds, axis_name):
 
     # now we can start filling in the information about the different coords
     axis_coords = OrderedDict()
-    axis_coords['center'] = coords[center_coord_name]
+    axis_coords['center'] = center_coord_name
 
     # now check the other coords
     coord_names.remove(center_coord_name)
@@ -99,19 +99,19 @@ def get_axis_positions_and_coords(ds, axis_name):
         shift = axis_shift[name]
         clen = coord_len[name]
         if clen == axis_len + 1:
-            axis_coords['outer'] = coords[name]
+            axis_coords['outer'] = name
         elif clen == axis_len - 1:
-            axis_coords['inner'] = coords[name]
+            axis_coords['inner'] = name
         elif shift == -0.5:
             if clen == axis_len:
-                axis_coords['left'] = coords[name]
+                axis_coords['left'] = name
             else:
                 raise ValueError("Left coordinate %s has incompatible "
                                  "length %g (axis_len=%g)"
                                  % (name, clen, axis_len))
         elif shift == 0.5:
             if clen == axis_len:
-                axis_coords['right'] = coords[name]
+                axis_coords['right'] = name
             else:
                 raise ValueError("Right coordinate %s has incompatible "
                                  "length %g (axis_len=%g)"
