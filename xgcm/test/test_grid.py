@@ -91,18 +91,14 @@ def test_create_axis(all_datasets):
         this_axis = axis_objs[ax_expected]
         for axis_name, coord_name in coords_expected.items():
             assert axis_name in this_axis.coords
-            assert this_axis.coords[axis_name].name == coord_name
+            assert this_axis.coords[axis_name] == coord_name
 
 
 def _assert_axes_equal(ax1, ax2):
     assert ax1.name == ax2.name
     for pos, coord in ax1.coords.items():
         assert pos in ax2.coords
-        this_coord = ax2.coords[pos]
-        print('PRINTING COORDS')
-        print(coord)
-        print(this_coord)
-        assert coord.equals(this_coord)
+        assert coord == ax2.coords[pos]
     assert ax1._periodic == ax2._periodic
     assert ax1._default_shifts == ax2._default_shifts
     assert ax1._facedim == ax2._facedim
@@ -126,9 +122,9 @@ def test_create_axis_no_comodo(all_datasets):
         ax1 = axis_objs[axis_name]
 
         assert ax1.name == ax2.name
-        for pos, coord in ax1.coords.items():
+        for pos, coord_name in ax1.coords.items():
             assert pos in ax2.coords
-            assert coord.equals(ax2.coords[pos])
+            assert coord_name == ax2.coords[pos]
         assert ax1._periodic == ax2._periodic
         assert ax1._default_shifts == ax2._default_shifts
         assert ax1._facedim == ax2._facedim
@@ -149,7 +145,6 @@ def test_create_axis_no_coords(all_datasets):
         assert ax1.name == ax2.name
         for pos, coord in ax1.coords.items():
             assert pos in ax2.coords
-            print(ax2.coords[pos])
         assert ax1._periodic == ax2._periodic
         assert ax1._default_shifts == ax2._default_shifts
         assert ax1._facedim == ax2._facedim
@@ -169,8 +164,8 @@ def test_get_axis_coord(all_datasets):
     for ax_name, axis in axis_objs.items():
         # create a dataarray with each axis coordinate
         for position, coord in axis.coords.items():
-            da = 1 * ds[coord.name]
-            assert axis._get_axis_coord(da) == (position, coord.name)
+            da = 1 * ds[coord]
+            assert axis._get_axis_coord(da) == (position, coord)
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
@@ -435,7 +430,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(all_2d, boundary, axis_name,
     # everything is left shift
     data = ds[varname].data
 
-    axis_num = da.get_axis_num(axis.coords[this].name)
+    axis_num = da.get_axis_num(axis.coords[this])
     print(axis_num, ax_periodic)
 
     # lookups for numpy.pad
@@ -475,7 +470,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(all_2d, boundary, axis_name,
 
     # determine new dims
     dims = list(da.dims)
-    dims[axis_num] = axis.coords[to].name
+    dims[axis_num] = axis.coords[to]
     coords = {dim: ds[dim] for dim in dims}
 
     da_interp_expected = xr.DataArray(data_interp, dims=dims, coords=coords)

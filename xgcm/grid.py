@@ -619,8 +619,8 @@ class Axis:
                 # only add coordinate if it actually exists
                 # otherwise this creates a new coordinate where before there
                 # was none
-                if new_dim in self.ds.coords:
-                    coords[new_dim] = self.ds.coords[new_dim]
+                if new_dim in self._ds.coords:
+                    coords[new_dim] = self._ds.coords[new_dim]
             else:
                 dims.append(d)
                 # only add coordinate if it actually exists...
@@ -636,7 +636,7 @@ class Axis:
         for position, coord_name in iteritems(self.coords):
             # TODO: should we have more careful checking of alignment here?
             if coord_name in da.dims:
-                return position, coord.name
+                return position, coord_name
 
         raise KeyError("None of the DataArray's dims %s were found in axis "
                        "coords." % repr(da.dims))
