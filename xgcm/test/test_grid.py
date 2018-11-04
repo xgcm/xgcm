@@ -553,6 +553,23 @@ def test_create_grid_no_comodo(all_datasets):
         _assert_axes_equal(axis_expected, axis_actual)
 
 
+def test_grid_no_coords(periodic_1d):
+
+    ds, periodic, expected = periodic_1d
+    grid_expected = Grid(ds, periodic=periodic)
+
+    ds_nocoords = ds.drop(list(ds.dims.keys()))
+
+    coords = expected['axes']
+    grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
+
+    diff = grid.diff(ds['data_c'], 'X')
+    assert len(diff.coords) == 0
+    interp = grid.interp(ds['data_c'], 'X')
+    assert len(interp.coords) == 0
+
+
+
 def test_grid_repr(all_datasets):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
