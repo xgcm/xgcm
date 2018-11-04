@@ -569,7 +569,6 @@ def test_grid_no_coords(periodic_1d):
     assert len(interp.coords) == 0
 
 
-
 def test_grid_repr(all_datasets):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
