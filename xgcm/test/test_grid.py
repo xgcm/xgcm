@@ -91,15 +91,14 @@ def test_create_axis(all_datasets):
         this_axis = axis_objs[ax_expected]
         for axis_name, coord_name in coords_expected.items():
             assert axis_name in this_axis.coords
-            assert this_axis.coords[axis_name].name == coord_name
+            assert this_axis.coords[axis_name] == coord_name
 
 
 def _assert_axes_equal(ax1, ax2):
     assert ax1.name == ax2.name
     for pos, coord in ax1.coords.items():
         assert pos in ax2.coords
-        this_coord = ax2.coords[pos]
-        assert coord.equals(this_coord)
+        assert coord == ax2.coords[pos]
     assert ax1._periodic == ax2._periodic
     assert ax1._default_shifts == ax2._default_shifts
     assert ax1._facedim == ax2._facedim
@@ -110,7 +109,6 @@ def _assert_axes_equal(ax1, ax2):
 def test_create_axis_no_comodo(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
-    print(axis_objs)
 
     # now strip out the metadata
     ds_noattr = ds.copy()
@@ -119,12 +117,37 @@ def test_create_axis_no_comodo(all_datasets):
 
     for axis_name, axis_coords in expected['axes'].items():
         # now create the axis from scratch with no attributes
-        this_axis = Axis(ds_noattr, axis_name, coords=axis_coords)
-        axis_expected = axis_objs[axis_name]
-        # make sure all the same stuff is present in both all_axes
-        # TODO: come up with a more general way to assert axis equality
-        _assert_axes_equal(axis_expected, this_axis)
+        ax2 = Axis(ds_noattr, axis_name, coords=axis_coords)
+        # and compare to the one created with attributes
+        ax1 = axis_objs[axis_name]
 
+        assert ax1.name == ax2.name
+        for pos, coord_name in ax1.coords.items():
+            assert pos in ax2.coords
+            assert coord_name == ax2.coords[pos]
+        assert ax1._periodic == ax2._periodic
+        assert ax1._default_shifts == ax2._default_shifts
+        assert ax1._facedim == ax2._facedim
+
+
+def test_create_axis_no_coords(all_datasets):
+    ds, periodic, expected = all_datasets
+    axis_objs = _get_axes(ds)
+
+    ds_drop = ds.drop(list(ds.coords))
+
+    for axis_name, axis_coords in expected['axes'].items():
+        # now create the axis from scratch with no attributes OR coords
+        ax2 = Axis(ds_drop, axis_name, coords=axis_coords)
+        # and compare to the one created with attributes
+        ax1 = axis_objs[axis_name]
+
+        assert ax1.name == ax2.name
+        for pos, coord in ax1.coords.items():
+            assert pos in ax2.coords
+        assert ax1._periodic == ax2._periodic
+        assert ax1._default_shifts == ax2._default_shifts
+        assert ax1._facedim == ax2._facedim
 
 def test_axis_repr(all_datasets):
     ds, periodic, expected = all_datasets
@@ -141,8 +164,8 @@ def test_get_axis_coord(all_datasets):
     for ax_name, axis in axis_objs.items():
         # create a dataarray with each axis coordinate
         for position, coord in axis.coords.items():
-            da = 1 * ds[coord.name]
-            assert axis._get_axis_coord(da) == (position, coord.name)
+            da = 1 * ds[coord]
+            assert axis._get_axis_coord(da) == (position, coord)
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
@@ -407,7 +430,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(all_2d, boundary, axis_name,
     # everything is left shift
     data = ds[varname].data
 
-    axis_num = da.get_axis_num(axis.coords[this].name)
+    axis_num = da.get_axis_num(axis.coords[this])
     print(axis_num, ax_periodic)
 
     # lookups for numpy.pad
@@ -447,7 +470,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(all_2d, boundary, axis_name,
 
     # determine new dims
     dims = list(da.dims)
-    dims[axis_num] = axis.coords[to].name
+    dims[axis_num] = axis.coords[to]
     coords = {dim: ds[dim] for dim in dims}
 
     da_interp_expected = xr.DataArray(data_interp, dims=dims, coords=coords)
@@ -528,6 +551,22 @@ def test_create_grid_no_comodo(all_datasets):
         axis_expected = grid_expected.axes[axis_name_expected]
         axis_actual = grid.axes[axis_name_expected]
         _assert_axes_equal(axis_expected, axis_actual)
+
+
+def test_grid_no_coords(periodic_1d):
+
+    ds, periodic, expected = periodic_1d
+    grid_expected = Grid(ds, periodic=periodic)
+
+    ds_nocoords = ds.drop(list(ds.dims.keys()))
+
+    coords = expected['axes']
+    grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
+
+    diff = grid.diff(ds['data_c'], 'X')
+    assert len(diff.coords) == 0
+    interp = grid.interp(ds['data_c'], 'X')
+    assert len(interp.coords) == 0
 
 
 def test_grid_repr(all_datasets):
