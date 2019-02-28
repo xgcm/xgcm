@@ -3,7 +3,7 @@ xgcm: General Circulation Model Postprocessing with xarray
 
 |pypi| |Build Status| |codecov| |docs| |DOI| |license|
 
-**xgcm** is a python packge for working with the datasets produced by numerical
+**xgcm** is a python package for working with the datasets produced by numerical
 `General Circulation Models <https://en.wikipedia.org/wiki/General_circulation_model>`_
 (GCMs) and similar gridded datasets that are amenable to
 `finite volume <https://en.wikipedia.org/wiki/Finite_volume_method>`_ analysis.
