@@ -99,7 +99,7 @@ Two Faces with Rotated Axes
 Cubed Sphere
 ^^^^^^^^^^^^
 
-A more realistic and complicated example is a cobed sphere. One possible
+A more realistic and complicated example is a cubed sphere. One possible
 topology for a cubed sphere grid is shown in the figure below:
 
 .. figure:: images/cubed_sphere_face_connections.png
@@ -120,7 +120,7 @@ spatial dimensions and a face dimension as follows:
                              'face': (('face',), np.arange(6))})
    ds
 
-We specify the face connections an create the ``Grid`` object as follows:
+We specify the face connections and create the ``Grid`` object as follows:
 
 .. ipython:: python
 
