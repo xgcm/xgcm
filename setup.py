@@ -3,7 +3,7 @@ import os
 import re
 import sys
 import warnings
-
+import versioneer 
 from setuptools import setup, find_packages
 
 VERSION = '0.1.0'
@@ -35,9 +35,9 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
-
 setup(name=DISTNAME,
-      version=VERSION,
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
       license=LICENSE,
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
