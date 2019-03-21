@@ -10,5 +10,6 @@ exclude_lines =
 ignore_errors = True
 omit = xgcm/test/*
        xgcm/__init__.py
+       xgcm/_version.py
        xgcm/gridops.py
        xgcm/regridding.py
