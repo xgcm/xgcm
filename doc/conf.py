@@ -80,7 +80,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'xgcm'
-copyright = u'2016, xgcm developers'
+copyright = u'2016-2019, xgcm developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
