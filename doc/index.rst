@@ -45,5 +45,6 @@ Contents
    grids
    grid_topology
    example_mitgcm
+   example_eccov4
    autogenerate_examples
    api
