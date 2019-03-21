@@ -1,7 +1,7 @@
 xgcm: General Circulation Model Postprocessing with xarray
 ==========================================================
 
-|pypi| |Build Status| |codecov| |docs| |DOI| |license|
+|pypi| |conda forge| |Build Status| |codecov| |docs| |DOI| |license|
 
 **xgcm** is a python package for working with the datasets produced by numerical
 `General Circulation Models <https://en.wikipedia.org/wiki/General_circulation_model>`_
@@ -28,11 +28,16 @@ evolving, open-source, python-based framework for GCM analysis will enhance
 the productivity of the field as a whole, accelerating the rate of discovery in
 climate science. xgcm is part of the Pangeo_ initiative.
 
+For more information, read the full `xgcm documentation`_.
+
 .. _Pangeo: http://pangeo-data.github.io
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grid
+.. _xgcm documentation:: https://xgcm.readthedocs.io/
 
+.. |conda forge| image:: https://anaconda.org/conda-forge/xgcm/badges/version.svg
+   :target: https://anaconda.org/conda-forge/xgcm
 .. |DOI| image:: https://zenodo.org/badge/41581350.svg
    :target: https://zenodo.org/badge/latestdoi/41581350
 .. |Build Status| image:: https://travis-ci.org/xgcm/xgcm.svg?branch=master
