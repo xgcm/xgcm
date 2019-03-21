@@ -35,7 +35,7 @@ For more information, including installation instructions, read the full
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grid
-.. _xgcm documentation:: https://xgcm.readthedocs.io/
+.. _xgcm documentation: https://xgcm.readthedocs.io/
 
 .. |conda forge| image:: https://anaconda.org/conda-forge/xgcm/badges/version.svg
    :target: https://anaconda.org/conda-forge/xgcm
