@@ -13,7 +13,7 @@ Grid Topology
 Faces and Connections
 ~~~~~~~~~~~~~~~~~~~~~
 
-Simple grids, as described on the :ref:`grid_topology` page, consist of a
+Simple grids, as described on the :ref:`grids` page, consist of a
 single logically rectangular domain.
 Many modern GCMs use more complex grid topologies, consisting of multiple
 logically rectangular grids connected at their edges.
@@ -139,6 +139,11 @@ We specify the face connections and create the ``Grid`` object as follows:
                             'Y': ((0, 'Y', False), (2, 'Y', True))}}}
    grid = xgcm.Grid(ds, face_connections=face_connections)
    grid
+
+For a real-world example of how to use face connections, check out the
+`MITgcm ECCOv4 example`_.
+
+.. _MITgcm ECCOv4 example: example_eccov4.ipynb
 
 .. _face_connections_spec:
 
