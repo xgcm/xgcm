@@ -791,29 +791,31 @@ class Grid:
     def _assign_metrics(self, metrics):
         """
         metrics should look like
-           {('XC', 'YC'): 'rAC'}
+           {('X', 'Y'): 'rAC'}
         check to make sure everything is a valid dimension
         """
 
         self._metrics = {}
 
-        for key, metric_var in metrics.items():
-            if metric_var not in self._ds:
-                raise KeyError('Metric variable %s not found in dataset.'
-                               % metric_var)
-            metric_dims = frozenset(key)
-            if not all([md in self._ds[metric_var].dims
-                        for md in metric_dims]):
-                raise KeyError('Metric variable %s dimensions %r do not contain dimensions %r'
-                               % (metric_var, self._ds[metric_var].dims, metric_dims))
+        for key, metric_vars in metrics.items():
+            for metric_var in metric_vars:
+                if metric_var not in self._ds:
+                    raise KeyError('Metric variable %s not found in dataset.'
+                                    % metric_var)
+            metric_axes = frozenset(key)
             # resetting coords avoids potential broadcasting / alignment issues
-            self._metrics[metric_dims] = (
-                self._ds[metric_var].reset_coords(drop=True))
+            metric_var = self._ds[metric_var].reset_coords(drop=True)
+            if not all([ma in self.axes for ma in metric_axes]):
+                raise KeyError('Metric axes %r not compatible with grid axes %r'
+                               % (metric_axes, tuple(self.axes)))
+            # TODO: check for consistency of metric_var dims with axis dims
+            # check for duplicate dimensions among each axis metric
+            self._metrics[metric_axes] = metric_var
 
     def get_metric(self, array, axes):
 
         # a function to find the right combination of metrics
-        def iterate_metric_combinations(items):
+        def iterate_axis_combinations(items):
             items_set = frozenset(items)
             yield (items_set,)
             N = len(items)
@@ -828,14 +830,21 @@ class Grid:
                               for i in itertools.combinations(those, sub_loop)]
                     yield (these,) + tuple(others)
 
-        metric_dims = [self.axes[ax]._get_axis_coord(array)[1] for ax in axes]
+        #metric_dims = [self.axes[ax]._get_axis_coord(array)[1] for ax in axes]
 
         metric_vars = None
-        for possible_dimsets in iterate_metric_combinations(metric_dims):
+        array_dims = set(array.dims)
+        for axis_combinations in iterate_axis_combinations(axes):
             try:
-                metric_vars = [self._metrics[dimset]
-                               for dimset in possible_dimsets]
-                break
+                # will raise KeyError if the axis combination is not in metrics
+                possible_metric_vars = [self._metrics[ac]
+                                        for ac in axis_combinations]
+                metric_dims = set([d for mv in possible_metric_vars for d in mv.dims])
+                if metric_dims.issubset(array_dims):
+                    # we found a set of metrics with dimensions compatible with
+                    # the array
+                    metric_vars = possible_metric_vars
+                    break
             except KeyError:
                 pass
         if metric_vars is None:
