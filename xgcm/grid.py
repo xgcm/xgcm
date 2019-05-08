@@ -1131,7 +1131,6 @@ def raw_max_function(data_left, data_right):
 
 
 
-
 _other_docstring_options="""
     * 'dirichlet'
        The value of the array at the boundary point is specified by
