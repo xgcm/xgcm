@@ -830,8 +830,6 @@ class Grid:
                               for i in itertools.combinations(those, sub_loop)]
                     yield (these,) + tuple(others)
 
-        #metric_dims = [self.axes[ax]._get_axis_coord(array)[1] for ax in axes]
-
         metric_vars = None
         array_dims = set(array.dims)
         for axis_combinations in iterate_axis_combinations(axes):

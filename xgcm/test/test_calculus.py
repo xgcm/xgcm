@@ -37,10 +37,6 @@ def test_metrics_2d_grid():
                             'dY': (('YC',), np.full(ny, dy)),
                             'area': (('YC', 'XC'), np.full((ny, nx), area))})
 
-                    # don't actaully need to have a key: it's aways the array dimension
-                    #metrics={('XC',): 'dXC', ('XG',): 'dXG',
-                    #         ('YC', 'XC'): 'area'})
-
     grid = Grid(ds, coords={'X': {'center': 'XC'}, 'Y': {'center': 'YC'}},
                     metrics={('X',): ['dX'], ('Y',): ['dY'],
                              ('X', 'Y'): ['area']})
