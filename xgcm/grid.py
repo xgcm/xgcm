@@ -1074,28 +1074,6 @@ class Grid:
         return ax.cumsum(da, **kwargs)
 
 
-    @docstrings.dedent
-    def integrate(self, da, axes):
-        """
-        Integate a DataArray over multiple axes with metrics. Reduces the
-        axes out of the result.
-
-        Parameters
-        ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The integrated data
-        """
-
-        metrics = self.get_metric(da, axes)
-        # TODO ...
-
-
 def add_to_slice(da, dim, sl, value):
     # split array into before, middle and after (if slice is the
     # beginning or end before or after will be empty)
