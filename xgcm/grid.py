@@ -2,6 +2,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 from future.utils import iteritems
 from collections import OrderedDict
+import functools
+import itertools
+import operator
+
 import docrep
 import xarray as xr
 import numpy as np
@@ -657,7 +661,7 @@ class Grid:
     """
 
     def __init__(self, ds, check_dims=True, periodic=True, default_shifts={},
-                 face_connections=None, coords=None):
+                 face_connections=None, coords=None, metrics=None):
         """
         Create a new Grid object from an input dataset.
 
@@ -714,6 +718,9 @@ class Grid:
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
+
+        if metrics is not None:
+            self._assign_metrics(metrics)
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -780,6 +787,70 @@ class Grid:
         for axis, axis_links in axis_connections.items():
             self.axes[axis]._facedim = facedim
             self.axes[axis]._connections = axis_links
+
+    def _assign_metrics(self, metrics):
+        """
+        metrics should look like
+           {('X', 'Y'): 'rAC'}
+        check to make sure everything is a valid dimension
+        """
+
+        self._metrics = {}
+
+        for key, metric_vars in metrics.items():
+            for metric_var in metric_vars:
+                if metric_var not in self._ds:
+                    raise KeyError('Metric variable %s not found in dataset.'
+                                    % metric_var)
+            metric_axes = frozenset(key)
+            # resetting coords avoids potential broadcasting / alignment issues
+            metric_var = self._ds[metric_var].reset_coords(drop=True)
+            if not all([ma in self.axes for ma in metric_axes]):
+                raise KeyError('Metric axes %r not compatible with grid axes %r'
+                               % (metric_axes, tuple(self.axes)))
+            # TODO: check for consistency of metric_var dims with axis dims
+            # check for duplicate dimensions among each axis metric
+            self._metrics[metric_axes] = metric_var
+
+    def get_metric(self, array, axes):
+
+        # a function to find the right combination of metrics
+        def iterate_axis_combinations(items):
+            items_set = frozenset(items)
+            yield (items_set,)
+            N = len(items)
+            for nleft in range(N-1, 0, -1):
+                nright = N - nleft
+                for sub_loop, sub_items in itertools.product(
+                        range(min(nright, nleft), 0, -1),
+                        itertools.combinations(items_set, nleft)):
+                    these = frozenset(sub_items)
+                    those = items_set - these
+                    others = [frozenset(i)
+                              for i in itertools.combinations(those, sub_loop)]
+                    yield (these,) + tuple(others)
+
+        metric_vars = None
+        array_dims = set(array.dims)
+        for axis_combinations in iterate_axis_combinations(axes):
+            try:
+                # will raise KeyError if the axis combination is not in metrics
+                possible_metric_vars = [self._metrics[ac]
+                                        for ac in axis_combinations]
+                metric_dims = set([d for mv in possible_metric_vars for d in mv.dims])
+                if metric_dims.issubset(array_dims):
+                    # we found a set of metrics with dimensions compatible with
+                    # the array
+                    metric_vars = possible_metric_vars
+                    break
+            except KeyError:
+                pass
+        if metric_vars is None:
+            raise KeyError("Unable to find any combinations of metrics for"
+                           "metric dims %r" % metric_dims)
+
+        # return the product of the metrics
+        return functools.reduce(operator.mul, metric_vars, 1)
 
     def __repr__(self):
         summary = ['<xgcm.Grid>']
@@ -892,6 +963,28 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.diff(da, **kwargs)
+
+    @docstrings.dedent
+    def derivative(self, da, axis, **kwargs):
+        """
+        Take the centered-difference derivative along specified axis.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differentiated data
+        """
+
+        ax = self.axes[axis]
+        diff = ax.diff(da, **kwargs)
+        dx = self.get_metric(diff, ('X',))
+        return diff / dx
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):
@@ -1009,7 +1102,6 @@ def raw_min_function(data_left, data_right):
 
 def raw_max_function(data_left, data_right):
     return xr.ufuncs.maximum(data_right, data_left)
-
 
 
 
