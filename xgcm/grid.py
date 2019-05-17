@@ -922,12 +922,23 @@ class Grid:
         self._metrics = {}
 
         for key, metric_vars in metrics.items():
+<<<<<<< HEAD
             metric_axes = frozenset(_maybe_promote_str_to_list(key))
+=======
+            # if metric var is provided as str (see docstring), need to convert
+            # to list
+            if isinstance(metric_vars, str):
+                metric_vars = [metric_vars]
+
+            # axis checks
+            metric_axes = frozenset(key)
+>>>>>>> Not sure if this is right...more of a stash than commit
             if not all([ma in self.axes for ma in metric_axes]):
                 raise KeyError(
                     "Metric axes %r not compatible with grid axes %r"
                     % (metric_axes, tuple(self.axes))
                 )
+<<<<<<< HEAD
             # initialize empty list
             self._metrics[metric_axes] = []
             for metric_varname in _maybe_promote_str_to_list(metric_vars):
@@ -960,6 +971,27 @@ class Grid:
             A metric which can broadcast against ``array``
         """
 
+=======
+
+            # metric_var checks
+            def metric_var_check_and_process(metric_var):
+                if metric_var not in self._ds:
+                    raise KeyError(
+                        "Metric variable %s not found in dataset." % metric_var
+                    )
+                # resetting coords avoids potential broadcasting / alignment
+                # issues
+                metric_var_da = self._ds[metric_var].reset_coords(drop=True)
+                return metric_var_da
+
+            # TODO: check for consistency of metric_var dims with axis dims
+            # check for duplicate dimensions among each axis metric
+            self._metrics[metric_axes] = [
+                metric_var_check_and_process(mv) for mv in metric_vars
+            ]
+
+    def get_metric(self, array, axes):
+>>>>>>> Not sure if this is right...more of a stash than commit
         # a function to find the right combination of metrics
         def iterate_axis_combinations(items):
             items_set = frozenset(items)
@@ -978,10 +1010,14 @@ class Grid:
                     ]
                     yield (these,) + tuple(others)
 
+        # print("BASIX")
+        # print([a for a in iterate_axis_combinations(["X", "Y", "Z"])])
+        # print("BASIX OVA")
         metric_vars = None
         array_dims = set(array.dims)
         for axis_combinations in iterate_axis_combinations(axes):
             try:
+<<<<<<< HEAD
                 # will raise KeyError if the axis combination is not in metrics
                 possible_metric_vars = [self._metrics[ac] for ac in axis_combinations]
                 for possible_combinations in itertools.product(*possible_metric_vars):
@@ -994,6 +1030,15 @@ class Grid:
                         metric_vars = possible_combinations
                         break
                 if metric_vars is not None:
+=======
+                metric_dims = set(
+                    [d for mv in possible_metric_vars for d in mv.dims]
+                )
+                if metric_dims.issubset(array_dims):
+                    # we found a set of metrics with dimensions compatible with
+                    # the array
+                    metric_vars = possible_metric_vars
+>>>>>>> Not sure if this is right...more of a stash than commit
                     break
             except KeyError:
                 pass
@@ -1144,6 +1189,28 @@ class Grid:
         diff = ax.diff(da, **kwargs)
         dx = self.get_metric(diff, ("X",))
         return diff / dx
+
+    @docstrings.dedent
+    def integrate(self, da, axis, **kwargs):
+        """
+        Take the centered-difference derivative along specified axis.
+
+        Parameters
+        ----------
+        axis : str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The integrateddata
+        """
+
+        weight = self.get_metric(da, set(axis))
+        weighted = da * weight
+        dim = "xt"
+        return weighted.sum(dim)
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):
