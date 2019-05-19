@@ -922,23 +922,12 @@ class Grid:
         self._metrics = {}
 
         for key, metric_vars in metrics.items():
-<<<<<<< HEAD
             metric_axes = frozenset(_maybe_promote_str_to_list(key))
-=======
-            # if metric var is provided as str (see docstring), need to convert
-            # to list
-            if isinstance(metric_vars, str):
-                metric_vars = [metric_vars]
-
-            # axis checks
-            metric_axes = frozenset(key)
->>>>>>> Not sure if this is right...more of a stash than commit
             if not all([ma in self.axes for ma in metric_axes]):
                 raise KeyError(
                     "Metric axes %r not compatible with grid axes %r"
                     % (metric_axes, tuple(self.axes))
                 )
-<<<<<<< HEAD
             # initialize empty list
             self._metrics[metric_axes] = []
             for metric_varname in _maybe_promote_str_to_list(metric_vars):
@@ -971,27 +960,6 @@ class Grid:
             A metric which can broadcast against ``array``
         """
 
-=======
-
-            # metric_var checks
-            def metric_var_check_and_process(metric_var):
-                if metric_var not in self._ds:
-                    raise KeyError(
-                        "Metric variable %s not found in dataset." % metric_var
-                    )
-                # resetting coords avoids potential broadcasting / alignment
-                # issues
-                metric_var_da = self._ds[metric_var].reset_coords(drop=True)
-                return metric_var_da
-
-            # TODO: check for consistency of metric_var dims with axis dims
-            # check for duplicate dimensions among each axis metric
-            self._metrics[metric_axes] = [
-                metric_var_check_and_process(mv) for mv in metric_vars
-            ]
-
-    def get_metric(self, array, axes):
->>>>>>> Not sure if this is right...more of a stash than commit
         # a function to find the right combination of metrics
         def iterate_axis_combinations(items):
             items_set = frozenset(items)
@@ -1010,14 +978,29 @@ class Grid:
                     ]
                     yield (these,) + tuple(others)
 
-        # print("BASIX")
-        # print([a for a in iterate_axis_combinations(["X", "Y", "Z"])])
-        # print("BASIX OVA")
-        metric_vars = None
         array_dims = set(array.dims)
+
+        def matching_metric(array, metric_list):
+
+            # Checks a list of metrics for compatibility with array.
+            # Returns the matching metric or None for mismatch
+            matching_metrics = [
+                me for me in metric_list if set(me.dims).issubset(array_dims)
+            ]
+            if len(matching_metrics) == 0:
+                return None
+            elif len(matching_metrics) > 1:
+                raise RuntimeError("More than one matching metric found")
+                # Catch this below and display with names.
+            else:
+                return matching_metrics[0]
+
+        # metric_vars = None # jb
+        picked_metrics = None
+
+        # array_dims = set(array.dims) # jb
         for axis_combinations in iterate_axis_combinations(axes):
             try:
-<<<<<<< HEAD
                 # will raise KeyError if the axis combination is not in metrics
                 possible_metric_vars = [self._metrics[ac] for ac in axis_combinations]
                 for possible_combinations in itertools.product(*possible_metric_vars):
@@ -1030,26 +1013,22 @@ class Grid:
                         metric_vars = possible_combinations
                         break
                 if metric_vars is not None:
-=======
-                metric_dims = set(
-                    [d for mv in possible_metric_vars for d in mv.dims]
-                )
-                if metric_dims.issubset(array_dims):
-                    # we found a set of metrics with dimensions compatible with
-                    # the array
-                    metric_vars = possible_metric_vars
->>>>>>> Not sure if this is right...more of a stash than commit
                     break
             except KeyError:
                 pass
-        if metric_vars is None:
+            else:
+                picked_metrics = metric_vars
+                break
+        # If after a loop over all possible axis combinations, none was
+        # picked, error out.
+        if picked_metrics is None:
             raise KeyError(
                 "Unable to find any combinations of metrics for "
                 "array dims %r and axes %r" % (array_dims, axes)
             )
 
         # return the product of the metrics
-        return functools.reduce(operator.mul, metric_vars, 1)
+        return functools.reduce(operator.mul, picked_metrics, 1)
 
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
@@ -1197,7 +1176,7 @@ class Grid:
 
         Parameters
         ----------
-        axis : str
+        axis : str, list of str
             Name of the axis on which to act
         %(neighbor_binary_func.parameters.no_f)s
 
@@ -1206,10 +1185,18 @@ class Grid:
         da_i : xarray.DataArray
             The integrateddata
         """
-
+        # convert axis to list if passed as str
+        if isinstance(axis, str):
+            axis = [axis]
         weight = self.get_metric(da, set(axis))
-        weighted = da * weight
-        dim = "xt"
+        weighted = da * weight  # We should integrate xr.weighted once available.
+        # determine correct dimensions
+
+        dim = [
+            di for ax in axis for di in self.axes[ax].coords.values() if di in da.dims
+        ]
+        # dim = "xt"
+        print(dim)
         return weighted.sum(dim)
 
     @docstrings.dedent

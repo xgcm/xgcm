@@ -2,8 +2,10 @@ from __future__ import print_function
 import xarray as xr
 import numpy as np
 import pytest
+import functools
+import operator
 
-from xgcm.grid import Grid, Axis
+from xgcm.grid import Grid
 
 
 def datasets():
@@ -142,6 +144,7 @@ def datasets():
             ],
         ):
             obj.coords[name] = data
+            obj.coords[name].attrs["tracked_name"] = name
         # add xgcm attrs
         for ii in ["xu", "xt"]:
             obj[ii].attrs["axis"] = "X"
@@ -230,6 +233,7 @@ def datasets():
     [
         # (("X"), ["dx_t"]), # this fails, can we raise a more useful error?
         (("X",), ["dx_t"]),
+        (("X",), []),  # Should this pass?
         (("X",), "dx_t"),
         (("X", "Y"), ["area_t"]),
         (
@@ -262,30 +266,62 @@ def test_assign_get_metric(key, metric_vars):
 
 
 @pytest.mark.parametrize(
-    "axes, data_var, metric_expected",
+    "axes, data_var, drop_vars, metric_expected_list, expected_error",
     [
-        ("X", "tracer", "dx_t"),
-        (["X", "Y"], "tracer", "area_t"),
-        (["X", "Y", "Z"], "tracer", "volume_t"),
-        (["X"], "u", "dx_e"),
-        (["X", "Y"], "u", "area_e"),
-        # (("X", "Y", "Z"), "u", "volume_t"), # This should error out
-        # should we be able to pass a tuple aswell as a list?
+        ("X", "tracer", None, ["dx_t"], None),
+        (["X", "Y"], "tracer", None, ["area_t"], None),
+        (
+            ("X", "Y"),
+            "tracer",
+            None,
+            ["area_t"],
+            None,
+        ),  # should we be able to pass a tuple aswell as a list?
+        (["X", "Y", "Z"], "tracer", None, ["volume_t"], None),
+        (["X"], "u", None, ["dx_e"], None),
+        (["X", "Y"], "u", None, ["area_e"], None),
+        (
+            ("X", "Y", "Z"),
+            "u",
+            None,
+            ["volume_t"],
+            KeyError,
+        ),  # This should error out
+        # reconstructed cases
+        (["X", "Y"], "tracer", ["area_t"], ["dx_t", "dy_t"], None),
+        (["X", "Y", "Z"], "tracer", ["volume_t"], ["area_t", "dz_t"], None),
     ],
 )
-def test_get_metric(axes, data_var, metric_expected):
+def test_get_metric(
+    axes, data_var, drop_vars, metric_expected_list, expected_error
+):
     ds_full = datasets()
     ds = ds_full["C"]
+    metrics = ds_full["metrics"]
+    # drop metrics according to drop_vars input, and remove from metrics input
+    if drop_vars:
+        print(drop_vars)
+        ds = ds.drop(drop_vars)
+        metrics = {
+            k: [a for a in v if a not in drop_vars] for k, v in metrics.items()
+        }
+
     grid = Grid(
         ds,
         coords=ds_full["coords"],
-        metrics=ds_full["metrics"],
+        metrics=metrics,
         # periodic=True,
     )
-    metric = grid.get_metric(ds[data_var], axes)
-    expected = ds[metric_expected].reset_coords(drop=True)
-    assert metric.equals(expected)
-    # TODO integrate a more sleek test with B grid input
+    if expected_error:
+        with pytest.raises(expected_error):
+            metric = grid.get_metric(ds[data_var], axes)
+    else:
+        metric = grid.get_metric(ds[data_var], axes)
+        expected_metrics = [
+            ds[me].reset_coords(drop=True) for me in metric_expected_list
+        ]
+        expected = functools.reduce(operator.mul, expected_metrics, 1)
+        assert metric.equals(expected)
 
 
 @pytest.mark.parametrize("gridtype", ["B", "C"])
@@ -298,15 +334,52 @@ def test_integrate(gridtype):
         metrics=ds_full["metrics"],
         # periodic=True,
     )
+    # test tracer position
     for axis, metric_name, dim in zip(
-        ["X", "Y", "Z"], ["dx_t", "dy_t", "dz_t"], ["xt", "yt", "zt"]
+        ["X", "Y", "Z", ["X", "Y"], ["X", "Y", "Z"]],
+        ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
+        ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
     ):
-        print(ds.tracer)
-        metric_test = grid.get_metric(ds.tracer, (axis,))
-        print(metric_test)
-        # expected = (ds.tracer * ds[metric_name]).sum(dim)
-        # print(expected)
-        # test = grid.integrate(ds.tracer, [axis])
-        # print(test)
-        # assert grid.integrate(ds.tracer, axis).equals(expected)
-        assert 1 == 0
+        integrated = grid.integrate(ds.tracer, axis)
+        expected = (ds.tracer * ds[metric_name]).sum(dim)
+        assert integrated.equals(expected)
+
+    # test u positon
+    if gridtype == "B":
+        for axis, metric_name, dim in zip(
+            ["X", "Y", ["X", "Y"]],
+            ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
+            ["xu", "yu", ["xu", "yu"]],
+        ):
+            integrated = grid.integrate(ds.u, axis)
+            expected = (ds.u * ds[metric_name]).sum(dim)
+            assert integrated.equals(expected)
+    elif gridtype == "C":
+        for axis, metric_name, dim in zip(
+            ["X", "Y", ["X", "Y"]],
+            ["dx_e", "dy_e", "area_e"],  # need more metrics?
+            ["xu", "yt", ["xu", "yt"]],
+        ):
+            integrated = grid.integrate(ds.u, axis)
+            expected = (ds.u * ds[metric_name]).sum(dim)
+            assert integrated.equals(expected)
+
+    # test v positon
+    if gridtype == "B":
+        for axis, metric_name, dim in zip(
+            ["X", "Y", ["X", "Y"]],
+            ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
+            ["xu", "yu", ["xu", "yu"]],
+        ):
+            integrated = grid.integrate(ds.v, axis)
+            expected = (ds.v * ds[metric_name]).sum(dim)
+            assert integrated.equals(expected)
+    elif gridtype == "C":
+        for axis, metric_name, dim in zip(
+            ["X", "Y", ["X", "Y"]],
+            ["dx_n", "dy_n", "area_n"],  # need more metrics?
+            ["xt", "yu", ["xt", "yu"]],
+        ):
+            integrated = grid.integrate(ds.v, axis)
+            expected = (ds.v * ds[metric_name]).sum(dim)
+            assert integrated.equals(expected)
