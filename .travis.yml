@@ -13,7 +13,7 @@ matrix:
     env: CONDA_ENV=py35
   - python: 3.6
     env: CONDA_ENV=py36
-    
+
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
       wget http://repo.continuum.io/miniconda/Miniconda-3.16.0-Linux-x86_64.sh -O miniconda.sh;
@@ -41,8 +41,8 @@ install:
 # It is very complicated and confusing.
 
 script:
+  - black --check xgcm
   - py.test xgcm -v --cov=xgcm --cov-config .coveragerc --cov-report term-missing
-#  - py.test -v
 
 after_success:
   - codecov

@@ -6,6 +6,7 @@ dependencies:
   - numpy
   - pytest
   - future
+  - black
   - pip:
     - docrep
     - codecov
