@@ -4,16 +4,18 @@ from xgcm.grid import Axis, raw_interp_function
 import xarray as xr
 
 
-def generate_axis(ds,
-                  axis,
-                  name,
-                  axis_dim,
-                  pos_from='center',
-                  pos_to='left',
-                  boundary_discontinuity=None,
-                  pad='auto',
-                  new_name=None,
-                  attrs_from_scratch=True):
+def generate_axis(
+    ds,
+    axis,
+    name,
+    axis_dim,
+    pos_from="center",
+    pos_to="left",
+    boundary_discontinuity=None,
+    pad="auto",
+    new_name=None,
+    attrs_from_scratch=True,
+):
     """
     Creates c-grid dimensions (or coordinates) along an axis of
 
@@ -52,7 +54,7 @@ def generate_axis(ds,
         raise ValueError("'ds' needs to be xarray.Dataset")
 
     if new_name is None:
-        new_name = name+'_'+pos_to
+        new_name = name + "_" + pos_to
 
     # Determine the relative position to interpolate to based on current and
     # desired position
@@ -63,23 +65,27 @@ def generate_axis(ds,
     # using 'boundary' and 'fill_value'. But first lets see if this all works.
 
     if (boundary_discontinuity is not None) and (pad is not None):
-        raise ValueError('Coordinate cannot be wrapped and padded at the\
-                            same time')
+        raise ValueError(
+            "Coordinate cannot be wrapped and padded at the\
+                            same time"
+        )
     elif (boundary_discontinuity is None) and (pad is None):
-        raise ValueError('Either "boundary_discontinuity" or "pad" have \
-                            to be specified')
+        raise ValueError(
+            'Either "boundary_discontinuity" or "pad" have \
+                            to be specified'
+        )
 
     if pad is None:
         fill_value = 0.0
         boundary = None
         periodic = True
-    elif pad == 'auto':
+    elif pad == "auto":
         fill_value = 0.0
-        boundary = 'extrapolate'
+        boundary = "extrapolate"
         periodic = False
     else:
         fill_value = pad
-        boundary = 'fill'
+        boundary = "fill"
         periodic = False
 
     kwargs = dict(
@@ -105,7 +111,7 @@ def generate_axis(ds,
     if attrs_from_scratch:
         # Input coordinate has to be declared as center,
         # or xgcm.Axis throws error. Will be rewrapped below.
-        ds[name] = _fill_attrs(ds[name], 'center', axis)
+        ds[name] = _fill_attrs(ds[name], "center", axis)
 
         ax = Axis(ds, axis, periodic=periodic)
         args = ds[name], raw_interp_function, relative_pos_to
@@ -115,20 +121,22 @@ def generate_axis(ds,
         ds[name] = _fill_attrs(ds[name], pos_from, axis)
         ds[new_name] = _fill_attrs(ds[new_name], pos_to, axis)
     else:
-        kwargs.pop('position_check', None)
+        kwargs.pop("position_check", None)
         ax = Axis(ds, axis, periodic=periodic)
         args = ds[name], pos_to
         ds.coords[new_name] = ax.interp(*args, **kwargs)
     return ds
 
 
-def generate_grid_ds(ds,
-                     axes_dims_dict,
-                     axes_coords_dict=None,
-                     position=None,
-                     boundary_discontinuity=None,
-                     pad='auto',
-                     new_name=None):
+def generate_grid_ds(
+    ds,
+    axes_dims_dict,
+    axes_coords_dict=None,
+    position=None,
+    boundary_discontinuity=None,
+    pad="auto",
+    new_name=None,
+):
     """
     Add c-grid dimensions and coordinates (optional) to observational Dataset
 
@@ -186,16 +194,21 @@ def generate_grid_ds(ds,
             # Parse position
             pos_from, pos_to = _parse_position(position, ax)
             # Pass wrap characteristics
-            is_discontinous = _parse_boundary_params(boundary_discontinuity,
-                                                    ax_v)
+            is_discontinous = _parse_boundary_params(boundary_discontinuity, ax_v)
             # Pass pad characteristics
             is_padded = _parse_boundary_params(pad, ax_v)
-            ds = generate_axis(ds, ax, ax_v, ax_d,
-                               pos_from=pos_from, pos_to=pos_to,
-                               boundary_discontinuity=is_discontinous,
-                               pad=is_padded,
-                               new_name=new_name,
-                               attrs_from_scratch=attrs_from_scratch)
+            ds = generate_axis(
+                ds,
+                ax,
+                ax_v,
+                ax_d,
+                pos_from=pos_from,
+                pos_to=pos_to,
+                boundary_discontinuity=is_discontinous,
+                pad=is_padded,
+                new_name=new_name,
+                attrs_from_scratch=attrs_from_scratch,
+            )
     return ds
 
 
@@ -212,7 +225,7 @@ def _parse_boundary_params(in_val, varname):
     return is_valued
 
 
-def _parse_position(position, axname, pos_default=('center', 'left')):
+def _parse_position(position, axname, pos_default=("center", "left")):
     if isinstance(position, dict):
         try:
             pos_from = position[axname][0]
@@ -234,33 +247,38 @@ def _parse_position(position, axname, pos_default=('center', 'left')):
 
 def _position_to_relative(pos_from, pos_to):
     """Translate from to positions in relative movement"""
-    if ((pos_from == 'left' and pos_to == 'center') or
-            (pos_from == 'center' and pos_to == 'right')):
-        to = 'right'
-    elif ((pos_from == 'center' and pos_to == 'left') or
-          (pos_from == 'right' and pos_to == 'center')):
-        to = 'left'
-    elif (pos_from == 'center' and pos_to == 'outer'):
-        to = 'outer'
-    elif (pos_from == 'center' and pos_to == 'inner'):
-        to = 'inner'
+    if (pos_from == "left" and pos_to == "center") or (
+        pos_from == "center" and pos_to == "right"
+    ):
+        to = "right"
+    elif (pos_from == "center" and pos_to == "left") or (
+        pos_from == "right" and pos_to == "center"
+    ):
+        to = "left"
+    elif pos_from == "center" and pos_to == "outer":
+        to = "outer"
+    elif pos_from == "center" and pos_to == "inner":
+        to = "inner"
     else:
-        raise RuntimeError("Cannot infer '%s' coordinates \
-    from '%s'" % (pos_to, pos_from))
+        raise RuntimeError(
+            "Cannot infer '%s' coordinates \
+    from '%s'"
+            % (pos_to, pos_from)
+        )
     return to
 
 
 def _fill_attrs(da, pos, axis):
     """Replace comdo attributes according to pos and axis"""
     attrs = da.attrs
-    attrs['axis'] = axis
+    attrs["axis"] = axis
 
-    if pos == 'center':
-        attrs.pop('c_grid_axis_shift', None)
-    elif pos in ['left', 'outer']:
-        attrs['c_grid_axis_shift'] = -0.5
-    elif pos in ['right', 'inner']:
-        attrs['c_grid_axis_shift'] = 0.5
+    if pos == "center":
+        attrs.pop("c_grid_axis_shift", None)
+    elif pos in ["left", "outer"]:
+        attrs["c_grid_axis_shift"] = -0.5
+    elif pos in ["right", "inner"]:
+        attrs["c_grid_axis_shift"] = 0.5
 
     da.attrs = attrs
     return da
