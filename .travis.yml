@@ -41,7 +41,10 @@ install:
 # It is very complicated and confusing.
 
 script:
-  - black --check xgcm
+  # only check code for py36 env
+  - if [[ "$CONDA_ENV" == "py36" ]]; then
+      black --check xgcm
+    fi
   - py.test xgcm -v --cov=xgcm --cov-config .coveragerc --cov-report term-missing
 
 after_success:
