@@ -1,7 +1,7 @@
 xgcm: General Circulation Model Postprocessing with xarray
 ==========================================================
 
-|pypi| |conda forge| |Build Status| |codecov| |docs| |DOI| |license|
+|pypi| |conda forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style|
 
 **xgcm** is a python package for working with the datasets produced by numerical
 `General Circulation Models <https://en.wikipedia.org/wiki/General_circulation_model>`_
@@ -56,3 +56,6 @@ For more information, including installation instructions, read the full
 .. |license| image:: https://img.shields.io/github/license/mashape/apistatus.svg
    :target: https://github.com/xgcm/xgcm
    :alt: license
+.. |Code style| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/python/black
+   :alt: Code style
