@@ -24,33 +24,27 @@ def datasets():
 
     # Need to add a tracer here to get the tracer dimsuffix
     tr = xr.DataArray(
-        data_generator(),
-        coords=[("xt", xt), ("yt", yt), ("time", t), ("zt", zt)],
+        data_generator(), coords=[("xt", xt), ("yt", yt), ("time", t), ("zt", zt)]
     )
 
     u_b = xr.DataArray(
-        data_generator(),
-        coords=[("xu", xu), ("yu", yu), ("time", t), ("zt", zt)],
+        data_generator(), coords=[("xu", xu), ("yu", yu), ("time", t), ("zt", zt)]
     )
 
     v_b = xr.DataArray(
-        data_generator(),
-        coords=[("xu", xu), ("yu", yu), ("time", t), ("zt", zt)],
+        data_generator(), coords=[("xu", xu), ("yu", yu), ("time", t), ("zt", zt)]
     )
 
     u_c = xr.DataArray(
-        data_generator(),
-        coords=[("xu", xu), ("yt", yt), ("time", t), ("zt", zt)],
+        data_generator(), coords=[("xu", xu), ("yt", yt), ("time", t), ("zt", zt)]
     )
 
     v_c = xr.DataArray(
-        data_generator(),
-        coords=[("xt", xt), ("yu", yu), ("time", t), ("zt", zt)],
+        data_generator(), coords=[("xt", xt), ("yu", yu), ("time", t), ("zt", zt)]
     )
 
     wt = xr.DataArray(
-        data_generator(),
-        coords=[("xt", xt), ("yt", yt), ("time", t), ("zw", zw)],
+        data_generator(), coords=[("xt", xt), ("yt", yt), ("time", t), ("zw", zw)]
     )
 
     # maybe also add some other combo of x,t y,t arrays....
@@ -88,12 +82,10 @@ def datasets():
     )
 
     dz_t = xr.DataArray(
-        data_generator() * dz,
-        coords=[("xt", xt), ("yt", yt), ("time", t), ("zt", zt)],
+        data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zt", zt)]
     )
     dz_w = xr.DataArray(
-        data_generator() * dz,
-        coords=[("xt", xt), ("yt", yt), ("time", t), ("zw", zw)],
+        data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zw", zw)]
     )
 
     # Make sure the areas are not just the product of x and y distances
@@ -181,24 +173,12 @@ def datasets():
     # combine to different grid configurations (B and C grid)
     ds_b = _add_metrics(
         xr.Dataset(
-            {
-                "u": u_b,
-                "v": v_b,
-                "wt": wt,
-                "tracer": tr,
-                "timeseries": timeseries,
-            }
+            {"u": u_b, "v": v_b, "wt": wt, "tracer": tr, "timeseries": timeseries}
         )
     )
     ds_c = _add_metrics(
         xr.Dataset(
-            {
-                "u": u_c,
-                "v": v_c,
-                "wt": wt,
-                "tracer": tr,
-                "timeseries": timeseries,
-            }
+            {"u": u_c, "v": v_c, "wt": wt, "tracer": tr, "timeseries": timeseries}
         )
     )
 
@@ -280,21 +260,13 @@ def test_assign_get_metric(key, metric_vars):
         (["X", "Y", "Z"], "tracer", None, ["volume_t"], None),
         (["X"], "u", None, ["dx_e"], None),
         (["X", "Y"], "u", None, ["area_e"], None),
-        (
-            ("X", "Y", "Z"),
-            "u",
-            None,
-            ["volume_t"],
-            KeyError,
-        ),  # This should error out
+        (("X", "Y", "Z"), "u", None, ["volume_t"], KeyError),  # This should error out
         # reconstructed cases
         (["X", "Y"], "tracer", ["area_t"], ["dx_t", "dy_t"], None),
         (["X", "Y", "Z"], "tracer", ["volume_t"], ["area_t", "dz_t"], None),
     ],
 )
-def test_get_metric(
-    axes, data_var, drop_vars, metric_expected_list, expected_error
-):
+def test_get_metric(axes, data_var, drop_vars, metric_expected_list, expected_error):
     ds_full = datasets()
     ds = ds_full["C"]
     metrics = ds_full["metrics"]
@@ -302,9 +274,7 @@ def test_get_metric(
     if drop_vars:
         print(drop_vars)
         ds = ds.drop(drop_vars)
-        metrics = {
-            k: [a for a in v if a not in drop_vars] for k, v in metrics.items()
-        }
+        metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
     grid = Grid(
         ds,
