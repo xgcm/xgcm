@@ -519,55 +519,58 @@ def test_axis_errors():
 
     ds_noattr = ds.copy()
     del ds_noattr.XC.attrs["axis"]
-    with pytest.raises(
-        ValueError, message="Couldn't find a center coordinate for axis X"
-    ):
+    with pytest.raises(ValueError) as excinfo:
         x_axis = Axis(ds_noattr, "X", periodic=True)
+    assert excinfo.value.args[0] == "Couldn't find a center coordinate for axis X"
 
     del ds_noattr.XG.attrs["axis"]
-    with pytest.raises(ValueError, message="Couldn't find any coordinates for axis X"):
+    with pytest.raises(ValueError) as excinfo:
         x_axis = Axis(ds_noattr, "X", periodic=True)
+    assert excinfo.value.args[0] == "Couldn't find any coordinates for axis X"
 
     ds_chopped = ds.copy()
     del ds_chopped["data_g"]
     ds_chopped["XG"] = ds_chopped["XG"][:-3]
-    with pytest.raises(
-        ValueError,
-        message="Left coordinate XG has" "incompatible length 7 (axis_len=9)",
-    ):
+    with pytest.raises(ValueError) as excinfo:
         x_axis = Axis(ds_chopped, "X", periodic=True)
+    assert (
+        excinfo.value.args[0] == "Left coordinate XG has "
+        "incompatible length 97 (axis_len=100)"
+    )
 
-    ds_chopped.XG.attrs["c_grid_axis_shift"] = -0.5
-    with pytest.raises(
-        ValueError,
-        message="Right coordinate XG has" "incompatible length 7 (axis_len=9)",
-    ):
+    ds_chopped.XG.attrs["c_grid_axis_shift"] = 0.5
+    with pytest.raises(ValueError) as excinfo:
         x_axis = Axis(ds_chopped, "X", periodic=True)
+    assert (
+        excinfo.value.args[0] == "Right coordinate XG has "
+        "incompatible length 97 (axis_len=100)"
+    )
 
     del ds_chopped.XG.attrs["c_grid_axis_shift"]
-    with pytest.raises(
-        ValueError,
-        message="Coordinate XC has invalid or "
-        "missing c_grid_axis_shift attribute `None`",
-    ):
+    with pytest.raises(ValueError) as excinfo:
         x_axis = Axis(ds_chopped, "X", periodic=True)
+    assert (
+        excinfo.value.args[0]
+        == "Found two coordinates without `c_grid_axis_shift` attribute for axis X"
+    )
 
     ax = Axis(ds, "X", periodic=True)
 
-    with pytest.raises(
-        ValueError, message="Can't get neighbor pairs for" "the same position."
-    ):
+    with pytest.raises(ValueError) as excinfo:
         ax.interp(ds.data_c, "center")
+    assert excinfo.value.args[0] == "Can't get neighbor pairs for the same position."
 
-    with pytest.raises(
-        ValueError, message="This axis doesn't contain a `right` position"
-    ):
+    with pytest.raises(ValueError) as excinfo:
         ax.interp(ds.data_c, "right")
+    assert excinfo.value.args[0] == "This axis doesn't contain a `right` position"
 
-    with pytest.raises(
-        ValueError, message="`boundary=fill` is not allowed " "with periodic axis X."
-    ):
-        ax.interp(ds.data_c, "right", boundary="fill")
+    # # This Warning does not seem to exist anymore? @rabernat
+    # with pytest.raises(ValueError) as excinfo:
+    #     ax.interp(ds.data_c, "left", boundary="fill")
+    # assert (
+    #     excinfo.value.args[0] == "`boundary=fill` is not allowed "
+    #     "with periodic axis X."
+    # )
 
 
 def test_grid_create(all_datasets):
