@@ -531,17 +531,11 @@ def test_axis_errors():
     ds_chopped = ds.copy()
     del ds_chopped["data_g"]
     ds_chopped["XG"] = ds_chopped["XG"][:-3]
-    with pytest.raises(
-        ValueError,
-        match="coordinate XG has incompatible length",
-    ):
+    with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
         x_axis = Axis(ds_chopped, "X", periodic=True)
 
     ds_chopped.XG.attrs["c_grid_axis_shift"] = -0.5
-    with pytest.raises(
-        ValueError,
-        match="coordinate XG has incompatible length",
-    ):
+    with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
         x_axis = Axis(ds_chopped, "X", periodic=True)
 
     del ds_chopped.XG.attrs["c_grid_axis_shift"]
@@ -564,9 +558,9 @@ def test_axis_errors():
         ax.interp(ds.data_c, "right")
 
     # This case is broken, need to fix!
-    #with pytest.raises(
+    # with pytest.raises(
     #    ValueError, match="`boundary=fill` is not allowed " "with periodic axis X."
-    #):
+    # ):
     #    ax.interp(ds.data_c, "left", boundary="fill")
 
 
