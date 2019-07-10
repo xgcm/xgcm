@@ -29,7 +29,7 @@ before_install:
 
 install:
   - conda env create --file ci/environment-$CONDA_ENV.yml
-  - source activate test_env
+  - source activate test_env_xgcm
 # if we do this, the package gets installed into
 # /home/travis/build/xgcm/xgcm/build/lib/xgcm
 #  - python setup.py install
