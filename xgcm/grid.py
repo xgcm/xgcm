@@ -1148,7 +1148,8 @@ class Grid:
     @docstrings.dedent
     def integrate(self, da, axis, **kwargs):
         """
-        Integrate along specified axis.
+        Integrate along specified axis or axes.
+        Grid metrics (e.g. cell length, area, volume) are determined automatically.
 
         Parameters
         ----------
@@ -1161,18 +1162,14 @@ class Grid:
         da_i : xarray.DataArray
             The integrated data
         """
-        # convert axis to list if passed as str
-        if isinstance(axis, str):
-            axis = [axis]
-        weight = self.get_metric(da, axis)
-        weighted = da * weight  # We should integrate xr.weighted once available.
-        # determine correct dimensions
+
+        weight = self.get_metric(da, _maybe_promote_str_to_list(axis))
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
 
         dim = [
             di for ax in axis for di in self.axes[ax].coords.values() if di in da.dims
         ]
-        # dim = "xt"
-        print(dim)
         return weighted.sum(dim)
 
     @docstrings.dedent
