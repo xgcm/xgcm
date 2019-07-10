@@ -7,12 +7,15 @@ import pytest
 
 from xgcm.grid import Grid, Axis
 
+
 def test_multiple_metrics_per_axis():
     # copied from test_derivatives.py - should refactor
     dx = 10.0
     ds = xr.Dataset(
-        {"foo": (("XC",), [1.0, 2.0, 4.0, 3.0]),
-         "bar": (("XG",), [10.0, 20.0, 30.0, 40.0])},
+        {
+            "foo": (("XC",), [1.0, 2.0, 4.0, 3.0]),
+            "bar": (("XG",), [10.0, 20.0, 30.0, 40.0]),
+        },
         coords={
             "XC": (("XC",), [0.5, 1.5, 2.5, 3.5]),
             "XG": (("XG",), [0, 1.0, 2.0, 3.0]),
@@ -30,6 +33,7 @@ def test_multiple_metrics_per_axis():
 
     assert grid.get_metric(ds.foo, ("X",)).equals(ds.dXC.reset_coords(drop=True))
     assert grid.get_metric(ds.bar, ("X",)).equals(ds.dXG.reset_coords(drop=True))
+
 
 def test_metrics_2d_grid():
     # this is a uniform grid
@@ -273,7 +277,7 @@ def datasets():
 @pytest.mark.parametrize(
     "key, metric_vars",
     [
-        (("X",), ["dx_t"]), # recommended way
+        (("X",), ["dx_t"]),  # recommended way
         ("X", "dx_t"),
         (("X", "Y"), ["area_t"]),
         (
@@ -287,11 +291,7 @@ def datasets():
 def test_assign_metric(key, metric_vars):
     ds_full = datasets()
     ds = ds_full["C"]
-    grid = Grid(
-        ds,
-        coords=ds_full["coords"],
-        metrics={key: metric_vars},
-    )
+    grid = Grid(ds, coords=ds_full["coords"], metrics={key: metric_vars})
 
 
 @pytest.mark.parametrize(
@@ -325,11 +325,7 @@ def test_get_metric(axes, data_var, drop_vars, metric_expected_list, expected_er
         ds = ds.drop(drop_vars)
         metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
-    grid = Grid(
-        ds,
-        coords=ds_full["coords"],
-        metrics=metrics,
-    )
+    grid = Grid(ds, coords=ds_full["coords"], metrics=metrics)
     if expected_error:
         with pytest.raises(expected_error):
             metric = grid.get_metric(ds[data_var], axes)

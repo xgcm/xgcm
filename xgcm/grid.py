@@ -924,14 +924,17 @@ class Grid:
         for key, metric_vars in metrics.items():
             metric_axes = frozenset(_maybe_promote_str_to_list(key))
             if not all([ma in self.axes for ma in metric_axes]):
-                raise KeyError('Metric axes %r not compatible with grid axes %r'
-                               % (metric_axes, tuple(self.axes)))
+                raise KeyError(
+                    "Metric axes %r not compatible with grid axes %r"
+                    % (metric_axes, tuple(self.axes))
+                )
             # initialize empty list
             self._metrics[metric_axes] = []
             for metric_varname in _maybe_promote_str_to_list(metric_vars):
                 if metric_varname not in self._ds:
-                    raise KeyError('Metric variable %s not found in dataset.'
-                                    % metric_varname)
+                    raise KeyError(
+                        "Metric variable %s not found in dataset." % metric_varname
+                    )
                 # resetting coords avoids potential broadcasting / alignment issues
                 metric_var = self._ds[metric_varname].reset_coords(drop=True)
                 # TODO: check for consistency of metric_var dims with axis dims
@@ -980,10 +983,11 @@ class Grid:
         for axis_combinations in iterate_axis_combinations(axes):
             try:
                 # will raise KeyError if the axis combination is not in metrics
-                possible_metric_vars = [self._metrics[ac]
-                                        for ac in axis_combinations]
+                possible_metric_vars = [self._metrics[ac] for ac in axis_combinations]
                 for possible_combinations in itertools.product(*possible_metric_vars):
-                    metric_dims = set([d for mv in possible_combinations for d in mv.dims])
+                    metric_dims = set(
+                        [d for mv in possible_combinations for d in mv.dims]
+                    )
                     if metric_dims.issubset(array_dims):
                         # we found a set of metrics with dimensions compatible
                         # with the array
@@ -994,8 +998,10 @@ class Grid:
             except KeyError:
                 pass
         if metric_vars is None:
-            raise KeyError("Unable to find any combinations of metrics for "
-                           "array dims %r and axes %r" % (array_dims, axes))
+            raise KeyError(
+                "Unable to find any combinations of metrics for "
+                "array dims %r and axes %r" % (array_dims, axes)
+            )
 
         # return the product of the metrics
         return functools.reduce(operator.mul, metric_vars, 1)
