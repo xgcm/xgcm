@@ -1,7 +1,8 @@
 name: xgcm
 dependencies:
-  - python=2.7
+  - python=3.6
   - xarray
+  - netcdf4
   - dask
   - numpy
   - future

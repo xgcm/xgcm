@@ -49,8 +49,7 @@ extensions = [
 
 # never execute notebooks: avoids lots of expensive imports on rtd
 # https://nbsphinx.readthedocs.io/en/0.2.14/never-execute.html
-nbsphinx_execute = "never"
-
+#nbsphinx_execute = 'never'
 
 # http://stackoverflow.com/questions/5599254/how-to-use-sphinxs-autodoc-to-document-a-classs-init-self-method
 def skip(app, what, name, obj, skip, options):
