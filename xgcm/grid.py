@@ -978,27 +978,8 @@ class Grid:
                     ]
                     yield (these,) + tuple(others)
 
+        metric_vars = None
         array_dims = set(array.dims)
-
-        def matching_metric(array, metric_list):
-
-            # Checks a list of metrics for compatibility with array.
-            # Returns the matching metric or None for mismatch
-            matching_metrics = [
-                me for me in metric_list if set(me.dims).issubset(array_dims)
-            ]
-            if len(matching_metrics) == 0:
-                return None
-            elif len(matching_metrics) > 1:
-                raise RuntimeError("More than one matching metric found")
-                # Catch this below and display with names.
-            else:
-                return matching_metrics[0]
-
-        # metric_vars = None # jb
-        picked_metrics = None
-
-        # array_dims = set(array.dims) # jb
         for axis_combinations in iterate_axis_combinations(axes):
             try:
                 # will raise KeyError if the axis combination is not in metrics
@@ -1016,19 +997,14 @@ class Grid:
                     break
             except KeyError:
                 pass
-            else:
-                picked_metrics = metric_vars
-                break
-        # If after a loop over all possible axis combinations, none was
-        # picked, error out.
-        if picked_metrics is None:
+        if metric_vars is None:
             raise KeyError(
                 "Unable to find any combinations of metrics for "
                 "array dims %r and axes %r" % (array_dims, axes)
             )
 
         # return the product of the metrics
-        return functools.reduce(operator.mul, picked_metrics, 1)
+        return functools.reduce(operator.mul, metric_vars, 1)
 
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
@@ -1172,7 +1148,7 @@ class Grid:
     @docstrings.dedent
     def integrate(self, da, axis, **kwargs):
         """
-        Take the centered-difference derivative along specified axis.
+        Integrate along specified axis.
 
         Parameters
         ----------
@@ -1183,12 +1159,12 @@ class Grid:
         Returns
         -------
         da_i : xarray.DataArray
-            The integrateddata
+            The integrated data
         """
         # convert axis to list if passed as str
         if isinstance(axis, str):
             axis = [axis]
-        weight = self.get_metric(da, set(axis))
+        weight = self.get_metric(da, axis)
         weighted = da * weight  # We should integrate xr.weighted once available.
         # determine correct dimensions
 
