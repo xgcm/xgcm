@@ -1,6 +1,6 @@
-.. _contributer_guide:
+.. _contributor_guide:
 
-Contributer Guide
+Contributor Guide
 -----------------
 
 **xgcm** is meant to be a community driven package and we welcome feedback and
@@ -12,7 +12,7 @@ open an issue in the `github issues page <https://github.com/xgcm/xgcm/issues>`_
 
 In order to contribute to xgcm, please fork the repository and submit a pull request.
 A good step by step tutorial for this can be found in the
-`xarray contributer guide <https://xarray.pydata.org/en/stable/contributing.html#working-with-the-code>`_.
+`xarray contributor guide <https://xarray.pydata.org/en/stable/contributing.html#working-with-the-code>`_.
 
 
 Environments
