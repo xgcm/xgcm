@@ -34,4 +34,8 @@ prior to each commit. Simply install pre-commit::
 
     pip install pre-commit
 
+and install it in the xgcm root directory with::
+
+    pre-commit install
+
 and your code will be properly formatted before each commit.
