@@ -16,6 +16,14 @@ from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
 
+def _maybe_promote_str_to_list(a):
+    # TODO: improve this
+    if isinstance(a, str):
+        return [a]
+    else:
+        return a
+
+
 class Axis:
     """
     An object that represents a group of coodinates that all lie along the same
@@ -790,6 +798,8 @@ class Grid:
             Each key should be the name of an axis. The value should be
             a dictionary mapping positions (e.g. ``'left'``) to names of
             coordinates in ``ds``.
+        metrics : dict, optional
+            Specification of grid metrics
 
         REFERENCES
         ----------
@@ -905,31 +915,50 @@ class Grid:
     def _assign_metrics(self, metrics):
         """
         metrics should look like
-           {('X', 'Y'): 'rAC'}
+           {('X', 'Y'): ['rAC']}
         check to make sure everything is a valid dimension
         """
 
         self._metrics = {}
 
         for key, metric_vars in metrics.items():
-            for metric_var in metric_vars:
-                if metric_var not in self._ds:
-                    raise KeyError(
-                        "Metric variable %s not found in dataset." % metric_var
-                    )
-            metric_axes = frozenset(key)
-            # resetting coords avoids potential broadcasting / alignment issues
-            metric_var = self._ds[metric_var].reset_coords(drop=True)
+            metric_axes = frozenset(_maybe_promote_str_to_list(key))
             if not all([ma in self.axes for ma in metric_axes]):
                 raise KeyError(
                     "Metric axes %r not compatible with grid axes %r"
                     % (metric_axes, tuple(self.axes))
                 )
-            # TODO: check for consistency of metric_var dims with axis dims
-            # check for duplicate dimensions among each axis metric
-            self._metrics[metric_axes] = metric_var
+            # initialize empty list
+            self._metrics[metric_axes] = []
+            for metric_varname in _maybe_promote_str_to_list(metric_vars):
+                if metric_varname not in self._ds:
+                    raise KeyError(
+                        "Metric variable %s not found in dataset." % metric_varname
+                    )
+                # resetting coords avoids potential broadcasting / alignment issues
+                metric_var = self._ds[metric_varname].reset_coords(drop=True)
+                # TODO: check for consistency of metric_var dims with axis dims
+                # check for duplicate dimensions among each axis metric
+                self._metrics[metric_axes].append(metric_var)
 
     def get_metric(self, array, axes):
+        """
+        Find the metric variable associated with a set of axes for a particular
+        array.
+
+        Parameters
+        ----------
+        array : xarray.DataArray
+            The array for which we are looking for a metric. Only its
+            dimensions are considered.
+        axes : iterable
+            A list of axes for which to find the metric.
+
+        Returns
+        -------
+        metric : xarray.DataArray
+            A metric which can broadcast against ``array``
+        """
 
         # a function to find the right combination of metrics
         def iterate_axis_combinations(items):
@@ -955,18 +984,23 @@ class Grid:
             try:
                 # will raise KeyError if the axis combination is not in metrics
                 possible_metric_vars = [self._metrics[ac] for ac in axis_combinations]
-                metric_dims = set([d for mv in possible_metric_vars for d in mv.dims])
-                if metric_dims.issubset(array_dims):
-                    # we found a set of metrics with dimensions compatible with
-                    # the array
-                    metric_vars = possible_metric_vars
+                for possible_combinations in itertools.product(*possible_metric_vars):
+                    metric_dims = set(
+                        [d for mv in possible_combinations for d in mv.dims]
+                    )
+                    if metric_dims.issubset(array_dims):
+                        # we found a set of metrics with dimensions compatible
+                        # with the array
+                        metric_vars = possible_combinations
+                        break
+                if metric_vars is not None:
                     break
             except KeyError:
                 pass
         if metric_vars is None:
             raise KeyError(
-                "Unable to find any combinations of metrics for"
-                "metric dims %r" % metric_dims
+                "Unable to find any combinations of metrics for "
+                "array dims %r and axes %r" % (array_dims, axes)
             )
 
         # return the product of the metrics
