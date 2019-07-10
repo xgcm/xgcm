@@ -13,8 +13,7 @@ import numpy as np
 from . import comodo
 from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
 
-docstrings = docrep.DocstringProcessor(doc_key='My doc string')
-
+docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
 
 class Axis:
@@ -49,8 +48,7 @@ class Axis:
     differentiated by their length.
     """
 
-    def __init__(self, ds, axis_name, periodic=True, default_shifts={},
-                 coords=None):
+    def __init__(self, ds, axis_name, periodic=True, default_shifts={}, coords=None):
         """
         Create a new Axis object from an input dataset.
 
@@ -91,9 +89,13 @@ class Axis:
         #   value: name of the dimension
 
         # set default position shifts
-        fallback_shifts = {'center': ('left', 'right', 'outer', 'inner'),
-                           'left': ('center',), 'right': ('center',),
-                           'outer': ('center',), 'inner': ('center',)}
+        fallback_shifts = {
+            "center": ("left", "right", "outer", "inner"),
+            "left": ("center",),
+            "right": ("center",),
+            "outer": ("center",),
+            "inner": ("center",),
+        }
         self._default_shifts = {}
         for pos in self.coords:
             # use user-specified value if present
@@ -154,32 +156,36 @@ class Axis:
         # now we implement periodic coordinates by setting appropriate
         # connections
         if periodic:
-            self._connections = {None: ((None, self, False),
-                                        (None, self, False))}
-
+            self._connections = {None: ((None, self, False), (None, self, False))}
 
     def __repr__(self):
-        is_periodic = 'periodic' if self._periodic else 'not periodic'
+        is_periodic = "periodic" if self._periodic else "not periodic"
         summary = ["<xgcm.Axis '%s' %s>" % (self.name, is_periodic)]
-        summary.append('Axis Coodinates:')
+        summary.append("Axis Coodinates:")
         summary += self._coord_desc()
-        return '\n'.join(summary)
+        return "\n".join(summary)
 
     def _coord_desc(self):
         summary = []
         for name, cname in iteritems(self.coords):
-            coord_info = ('  * %-8s %s' % (name, cname))
+            coord_info = "  * %-8s %s" % (name, cname)
             if name in self._default_shifts:
-                coord_info += ' --> %s' % self._default_shifts[name]
+                coord_info += " --> %s" % self._default_shifts[name]
             summary.append(coord_info)
         return summary
 
-
-    @docstrings.get_sectionsf('neighbor_binary_func')
+    @docstrings.get_sectionsf("neighbor_binary_func")
     @docstrings.dedent
-    def _neighbor_binary_func(self, da, f, to, boundary=None, fill_value=0.0,
-                              boundary_discontinuity=None,
-                              vector_partner=None):
+    def _neighbor_binary_func(
+        self,
+        da,
+        f,
+        to,
+        boundary=None,
+        fill_value=0.0,
+        boundary_discontinuity=None,
+        vector_partner=None,
+    ):
         """
         Apply a function to neighboring points.
 
@@ -216,43 +222,60 @@ class Axis:
         if to is None:
             to = self._default_shifts[position_from]
 
-        data_new = self._neighbor_binary_func_raw(da, f, to,
-                                                  boundary=boundary,
-                                                  fill_value=fill_value,
-                                                  boundary_discontinuity=
-                                                  boundary_discontinuity,
-                                                  vector_partner=
-                                                  vector_partner)
+        data_new = self._neighbor_binary_func_raw(
+            da,
+            f,
+            to,
+            boundary=boundary,
+            fill_value=fill_value,
+            boundary_discontinuity=boundary_discontinuity,
+            vector_partner=vector_partner,
+        )
         # wrap in a new xarray wrapper
         da_new = self._wrap_and_replace_coords(da, data_new, to)
 
         return da_new
 
-    docstrings.delete_params('neighbor_binary_func.parameters', 'f')
+    docstrings.delete_params("neighbor_binary_func.parameters", "f")
 
-    def _neighbor_binary_func_raw(self, da, f, to, boundary=None,
-                                  fill_value=0.0,
-                                  boundary_discontinuity=None,
-                                  vector_partner=None,
-                                  position_check=True):
+    def _neighbor_binary_func_raw(
+        self,
+        da,
+        f,
+        to,
+        boundary=None,
+        fill_value=0.0,
+        boundary_discontinuity=None,
+        vector_partner=None,
+        position_check=True,
+    ):
 
         # get the two neighboring sets of raw data
-        data_left, data_right = \
-            self._get_neighbor_data_pairs(da, to, boundary=boundary,
-                                          fill_value=fill_value,
-                                          boundary_discontinuity=
-                                          boundary_discontinuity,
-                                          vector_partner=vector_partner,
-                                          position_check=position_check)
+        data_left, data_right = self._get_neighbor_data_pairs(
+            da,
+            to,
+            boundary=boundary,
+            fill_value=fill_value,
+            boundary_discontinuity=boundary_discontinuity,
+            vector_partner=vector_partner,
+            position_check=position_check,
+        )
 
         # apply the function
         data_new = f(data_left, data_right)
 
         return data_new
 
-    def _get_edge_data(self, da, is_left_edge=True, boundary=None,
-                       fill_value=0.0, ignore_connections=False,
-                       vector_partner=None, boundary_discontinuity=None):
+    def _get_edge_data(
+        self,
+        da,
+        is_left_edge=True,
+        boundary=None,
+        fill_value=0.0,
+        ignore_connections=False,
+        vector_partner=None,
+        boundary_discontinuity=None,
+    ):
         """Get the appropriate edge data given axis connectivity and / or
         boundary conditions.
         """
@@ -269,21 +292,23 @@ class Axis:
 
             if fnum in self._connections:
                 # it should always be a len 2 tuple
-                face_connection = self._connections[fnum][
-                                            0 if is_left_edge else 1]
+                face_connection = self._connections[fnum][0 if is_left_edge else 1]
             else:
                 face_connection = None
 
             if (face_connection is None) or ignore_connections:
                 # no connection: use specified boundary condition instead
                 if self._facedim:
-                    da_face = da.isel(**{self._facedim: slice(fnum, fnum+1)})
+                    da_face = da.isel(**{self._facedim: slice(fnum, fnum + 1)})
                 else:
                     da_face = da
-                return _apply_boundary_condition(da_face, this_dim,
-                                                 is_left_edge,
-                                                 boundary=boundary,
-                                                 fill_value=fill_value)
+                return _apply_boundary_condition(
+                    da_face,
+                    this_dim,
+                    is_left_edge,
+                    boundary=boundary,
+                    fill_value=fill_value,
+                )
 
             neighbor_fnum, neighbor_axis, reverse = face_connection
 
@@ -297,10 +322,10 @@ class Axis:
             # indexing / alignment
 
             # Start with getting all the data
-            edge_slice = [slice(None),] * da.ndim
+            edge_slice = [slice(None)] * da.ndim
             if face_axis is not None:
                 # get the neighbor face
-                edge_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum+1)
+                edge_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum + 1)
 
             data = da
             # vector_partner is a one-entry dictionary
@@ -311,9 +336,11 @@ class Axis:
                 if neighbor_axis.name == vector_partner_axis_name:
                     data = vector_partner[vector_partner_axis_name]
                     if reverse:
-                        raise NotImplementedError("Don't know how to handle "
-                                                  "vectors with reversed "
-                                                  "connections.")
+                        raise NotImplementedError(
+                            "Don't know how to handle "
+                            "vectors with reversed "
+                            "connections."
+                        )
             # TODO: there is still lots to figure out here regarding vectors.
             # What we have currently works fine for vectors oriented normal
             # to the axis (e.g. interp and diff u along x axis)
@@ -327,7 +354,7 @@ class Axis:
 
             neighbor_edge_dim = neighbor_axis.coords[position]
             neighbor_edge_axis_num = data.get_axis_num(neighbor_edge_dim)
-            if (is_left_edge and not reverse):
+            if is_left_edge and not reverse:
                 neighbor_edge_slice = slice(-count, None)
             else:
                 neighbor_edge_slice = slice(None, count)
@@ -352,8 +379,9 @@ class Axis:
 
         if self._facedim:
             face_axis_num = da.get_axis_num(self._facedim)
-            arrays = [face_edge_data(fnum, face_axis_num)
-                      for fnum in da[self._facedim].values]
+            arrays = [
+                face_edge_data(fnum, face_axis_num) for fnum in da[self._facedim].values
+            ]
             edge_data = concatenate(arrays, face_axis_num)
         else:
             edge_data = face_edge_data(None, None)
@@ -365,9 +393,15 @@ class Axis:
                     edge_data = edge_data + boundary_discontinuity
         return edge_data
 
-    def _extend_left(self, da, boundary=None, fill_value=0.0,
-                     ignore_connections=False, vector_partner=None,
-                     boundary_discontinuity=None):
+    def _extend_left(
+        self,
+        da,
+        boundary=None,
+        fill_value=0.0,
+        ignore_connections=False,
+        vector_partner=None,
+        boundary_discontinuity=None,
+    ):
 
         axis_num = self._get_axis_dim_num(da)
         kw = dict(
@@ -376,14 +410,20 @@ class Axis:
             fill_value=fill_value,
             ignore_connections=ignore_connections,
             vector_partner=vector_partner,
-            boundary_discontinuity=boundary_discontinuity
+            boundary_discontinuity=boundary_discontinuity,
         )
         edge_data = self._get_edge_data(da, **kw)
         return concatenate([edge_data, da.data], axis=axis_num)
 
-    def _extend_right(self, da, boundary=None, fill_value=0.0,
-                      ignore_connections=False, vector_partner=None,
-                      boundary_discontinuity=None):
+    def _extend_right(
+        self,
+        da,
+        boundary=None,
+        fill_value=0.0,
+        ignore_connections=False,
+        vector_partner=None,
+        boundary_discontinuity=None,
+    ):
         axis_num = self._get_axis_dim_num(da)
         kw = dict(
             is_left_edge=False,
@@ -391,33 +431,44 @@ class Axis:
             fill_value=fill_value,
             ignore_connections=ignore_connections,
             vector_partner=vector_partner,
-            boundary_discontinuity=boundary_discontinuity
+            boundary_discontinuity=boundary_discontinuity,
         )
         edge_data = self._get_edge_data(da, **kw)
         return concatenate([da.data, edge_data], axis=axis_num)
 
-    def _get_neighbor_data_pairs(self, da, position_to, boundary=None,
-                                 fill_value=0.0, ignore_connections=False,
-                                 boundary_discontinuity=None,
-                                 vector_partner=None,
-                                 position_check=True):
+    def _get_neighbor_data_pairs(
+        self,
+        da,
+        position_to,
+        boundary=None,
+        fill_value=0.0,
+        ignore_connections=False,
+        boundary_discontinuity=None,
+        vector_partner=None,
+        position_check=True,
+    ):
 
         position_from, dim = self._get_axis_coord(da)
         axis_num = da.get_axis_num(dim)
 
-        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value,
-                               ignore_connections=ignore_connections,
-                               vector_partner=vector_partner,
-                               boundary_discontinuity=boundary_discontinuity)
+        boundary_kwargs = dict(
+            boundary=boundary,
+            fill_value=fill_value,
+            ignore_connections=ignore_connections,
+            vector_partner=vector_partner,
+            boundary_discontinuity=boundary_discontinuity,
+        )
 
-        valid_positions = ['outer', 'inner', 'left', 'right', 'center']
+        valid_positions = ["outer", "inner", "left", "right", "center"]
 
         if position_to == position_from:
             raise ValueError("Can't get neighbor pairs for the same position.")
 
         if position_to not in valid_positions:
-            raise ValueError("`%s` is not a valid axis position name. Valid "
-                             "names are %r." % (position_to, valid_positions))
+            raise ValueError(
+                "`%s` is not a valid axis position name. Valid "
+                "names are %r." % (position_to, valid_positions)
+            )
 
         # This prevents the grid generation to work, I added an optional
         # kwarg that deactivates this check
@@ -425,23 +476,21 @@ class Axis:
 
         if position_check:
             if position_to not in self.coords:
-                raise ValueError("This axis doesn't contain a `%s` position"
-                                 % position_to)
+                raise ValueError(
+                    "This axis doesn't contain a `%s` position" % position_to
+                )
 
         transition = (position_from, position_to)
 
-        if ((transition == ('outer', 'center')) or
-                (transition == ('center', 'inner'))):
+        if (transition == ("outer", "center")) or (transition == ("center", "inner")):
             # don't need any edge values
             left = da.isel(**{dim: slice(None, -1)}).data
             right = da.isel(**{dim: slice(1, None)}).data
-        elif ((transition == ('center', 'outer')) or
-              (transition == ('inner', 'center'))):
+        elif (transition == ("center", "outer")) or (transition == ("inner", "center")):
             # need both edge values
             left = self._extend_left(da, **boundary_kwargs)
             right = self._extend_right(da, **boundary_kwargs)
-        elif (transition == ('center', 'left') or
-              transition == ('right', 'center')):
+        elif transition == ("center", "left") or transition == ("right", "center"):
             # need to slice *after* getting edge because otherwise we could
             # mess up complicated connections (e.g. cubed-sphere)
             left = self._extend_left(da, **boundary_kwargs)
@@ -450,8 +499,7 @@ class Axis:
             slc = axis_num * (slice(None),) + (slice(0, -1),)
             left = left[slc]
             right = da.data
-        elif (transition == ('center', 'right') or
-              transition == ('left', 'center')):
+        elif transition == ("center", "right") or transition == ("left", "center"):
             # need to slice *after* getting edge because otherwise we could
             # mess up complicated connections (e.g. cubed-sphere)
             right = self._extend_right(da, **boundary_kwargs)
@@ -461,14 +509,22 @@ class Axis:
             right = right[slc]
             left = da.data
         else:
-            raise NotImplementedError(' to '.join(transition) +
-                                      ' transition not yet supported.')
+            raise NotImplementedError(
+                " to ".join(transition) + " transition not yet supported."
+            )
 
         return left, right
 
     @docstrings.dedent
-    def interp(self, da, to=None, boundary=None, fill_value=0.0,
-               boundary_discontinuity=None, vector_partner=None):
+    def interp(
+        self,
+        da,
+        to=None,
+        boundary=None,
+        fill_value=0.0,
+        boundary_discontinuity=None,
+        vector_partner=None,
+    ):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -485,14 +541,26 @@ class Axis:
 
         """
 
-        return self._neighbor_binary_func(da, raw_interp_function, to,
-                                          boundary, fill_value,
-                                          boundary_discontinuity,
-                                          vector_partner)
+        return self._neighbor_binary_func(
+            da,
+            raw_interp_function,
+            to,
+            boundary,
+            fill_value,
+            boundary_discontinuity,
+            vector_partner,
+        )
 
     @docstrings.dedent
-    def diff(self, da, to=None, boundary=None, fill_value=0.0,
-             boundary_discontinuity=None, vector_partner=None):
+    def diff(
+        self,
+        da,
+        to=None,
+        boundary=None,
+        fill_value=0.0,
+        boundary_discontinuity=None,
+        vector_partner=None,
+    ):
         """
         Difference neighboring points to the intermediate grid point.
 
@@ -506,10 +574,15 @@ class Axis:
             The differenced data
         """
 
-        return self._neighbor_binary_func(da, raw_diff_function, to,
-                                          boundary, fill_value,
-                                          boundary_discontinuity,
-                                          vector_partner)
+        return self._neighbor_binary_func(
+            da,
+            raw_diff_function,
+            to,
+            boundary,
+            fill_value,
+            boundary_discontinuity,
+            vector_partner,
+        )
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
@@ -539,30 +612,36 @@ class Axis:
 
         # now pad / trim the data as necessary
         # here we enumerate all the valid possible shifts
-        if ((pos == 'center' and to == 'right') or
-            (pos == 'left' and to == 'center')):
+        if (pos == "center" and to == "right") or (pos == "left" and to == "center"):
             # do nothing, this is the default for how cumsum works
             data = da_cum.data
-        elif ((pos == 'center' and to == 'left') or
-              (pos == 'right' and to == 'center')):
-            data = _pad_array(da_cum.isel(**{dim: slice(0, -1)}), dim,
-                              left=True, **boundary_kwargs)
-        elif ((pos == 'center' and to == 'inner') or
-              (pos == 'outer' and to == 'center')):
+        elif (pos == "center" and to == "left") or (pos == "right" and to == "center"):
+            data = _pad_array(
+                da_cum.isel(**{dim: slice(0, -1)}), dim, left=True, **boundary_kwargs
+            )
+        elif (pos == "center" and to == "inner") or (pos == "outer" and to == "center"):
             data = da_cum.isel(**{dim: slice(0, -1)}).data
-        elif ((pos == 'center' and to == 'outer') or
-              (pos == 'inner' and to == 'center')):
+        elif (pos == "center" and to == "outer") or (pos == "inner" and to == "center"):
             data = _pad_array(da_cum, dim, left=True, **boundary_kwargs)
         else:
-            raise ValueError("From `%s` to `%s` is not a valid position "
-                             "shift for cumsum operation." % (pos, to))
+            raise ValueError(
+                "From `%s` to `%s` is not a valid position "
+                "shift for cumsum operation." % (pos, to)
+            )
 
         da_cum_newcoord = self._wrap_and_replace_coords(da, data, to)
         return da_cum_newcoord
 
     @docstrings.dedent
-    def min(self, da, to=None, boundary=None, fill_value=0.0,
-            boundary_discontinuity=None, vector_partner=None):
+    def min(
+        self,
+        da,
+        to=None,
+        boundary=None,
+        fill_value=0.0,
+        boundary_discontinuity=None,
+        vector_partner=None,
+    ):
         """
         Minimum of neighboring points on intermediate grid point.
 
@@ -576,13 +655,25 @@ class Axis:
             The differenced data
         """
 
-        return self._neighbor_binary_func(da, raw_min_function, to,
-                                          boundary, fill_value,
-                                          boundary_discontinuity,
-                                          vector_partner)
+        return self._neighbor_binary_func(
+            da,
+            raw_min_function,
+            to,
+            boundary,
+            fill_value,
+            boundary_discontinuity,
+            vector_partner,
+        )
 
-    def max(self, da, to=None, boundary=None, fill_value=0.0,
-            boundary_discontinuity=None, vector_partner=None):
+    def max(
+        self,
+        da,
+        to=None,
+        boundary=None,
+        fill_value=0.0,
+        boundary_discontinuity=None,
+        vector_partner=None,
+    ):
         """
         Maximum of neighboring points on intermediate grid point.
 
@@ -596,10 +687,15 @@ class Axis:
             The differenced data
         """
 
-        return self._neighbor_binary_func(da, raw_max_function, to,
-                                          boundary, fill_value,
-                                          boundary_discontinuity,
-                                          vector_partner)
+        return self._neighbor_binary_func(
+            da,
+            raw_max_function,
+            to,
+            boundary,
+            fill_value,
+            boundary_discontinuity,
+            vector_partner,
+        )
 
     def _wrap_and_replace_coords(self, da, data_new, position_to):
         """
@@ -610,8 +706,7 @@ class Axis:
         try:
             new_dim = self.coords[position_to]
         except KeyError:
-            raise KeyError("Position '%s' was not found in axis.coords."
-                           % position_to)
+            raise KeyError("Position '%s' was not found in axis.coords." % position_to)
 
         orig_dims = da.dims
 
@@ -633,7 +728,6 @@ class Axis:
 
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
-
     def _get_axis_coord(self, da):
         """Return the position and name of the axis coordiante in a DataArray.
         """
@@ -642,9 +736,10 @@ class Axis:
             if coord_name in da.dims:
                 return position, coord_name
 
-        raise KeyError("None of the DataArray's dims %s were found in axis "
-                       "coords." % repr(da.dims))
-
+        raise KeyError(
+            "None of the DataArray's dims %s were found in axis "
+            "coords." % repr(da.dims)
+        )
 
     def _get_axis_dim_num(self, da):
         """Return the dimension number of the axis coordinate in a DataArray.
@@ -653,15 +748,22 @@ class Axis:
         return da.get_axis_num(coord_name)
 
 
-
 class Grid:
     """
     An object with multiple :class:`xgcm.Axis` objects representing different
     independent axes.
     """
 
-    def __init__(self, ds, check_dims=True, periodic=True, default_shifts={},
-                 face_connections=None, coords=None, metrics=None):
+    def __init__(
+        self,
+        ds,
+        check_dims=True,
+        periodic=True,
+        default_shifts={},
+        face_connections=None,
+        coords=None,
+        metrics=None,
+    ):
         """
         Create a new Grid object from an input dataset.
 
@@ -714,9 +816,13 @@ class Grid:
                 axis_default_shifts = default_shifts[axis_name]
             else:
                 axis_default_shifts = {}
-            self.axes[axis_name] = Axis(ds, axis_name, is_periodic,
-                                        default_shifts=axis_default_shifts,
-                                        coords=coords.get(axis_name))
+            self.axes[axis_name] = Axis(
+                ds,
+                axis_name,
+                is_periodic,
+                default_shifts=axis_default_shifts,
+                coords=coords.get(axis_name),
+            )
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
@@ -730,8 +836,10 @@ class Grid:
         """
 
         if len(fc) > 1:
-            raise ValueError('Only one face dimension is supported for now. '
-                             'Instead found %r' % repr(fc.keys()))
+            raise ValueError(
+                "Only one face dimension is supported for now. "
+                "Instead found %r" % repr(fc.keys())
+            )
 
         # we will populate this with the axes we find in face_connections
         axis_connections = {}
@@ -756,28 +864,34 @@ class Grid:
                     try:
                         neighbor_link = face_links[idx][ax][correct_position]
                     except (KeyError, IndexError):
-                        raise KeyError("Couldn't find a face link for face %r"
-                                       "in axis %r at position %r"
-                                       % (idx, ax, correct_position))
+                        raise KeyError(
+                            "Couldn't find a face link for face %r"
+                            "in axis %r at position %r" % (idx, ax, correct_position)
+                        )
                     idx_n, ax_n, rev_n = neighbor_link
                     if ax not in self.axes:
-                        raise KeyError('axis %r is not a valid axis' % ax)
+                        raise KeyError("axis %r is not a valid axis" % ax)
                     if ax_n not in self.axes:
-                        raise KeyError('axis %r is not a valid axis' % ax_n)
+                        raise KeyError("axis %r is not a valid axis" % ax_n)
                     if idx not in self._ds[facedim].values:
-                        raise IndexError('%r is not a valid index for face'
-                                         'dimension %r' % (idx, facedim))
+                        raise IndexError(
+                            "%r is not a valid index for face"
+                            "dimension %r" % (idx, facedim)
+                        )
                     if idx_n not in self._ds[facedim].values:
-                        raise IndexError('%r is not a valid index for face'
-                                         'dimension %r' % (idx, facedim))
+                        raise IndexError(
+                            "%r is not a valid index for face"
+                            "dimension %r" % (idx, facedim)
+                        )
                     # check for consistent links from / to neighbor
                     if (idx_n != fidx) or (ax_n != axis) or (rev_n != rev):
-                        raise ValueError("Face link mismatch: neighbor doesn't"
-                                         " correctly link back to this face. "
-                                         "face: %r, axis: %r, position: %r, "
-                                         "rev: %r, link: %r, neighbor_link: %r"
-                                         % (fidx, axis, position, rev, link,
-                                            neighbor_link))
+                        raise ValueError(
+                            "Face link mismatch: neighbor doesn't"
+                            " correctly link back to this face. "
+                            "face: %r, axis: %r, position: %r, "
+                            "rev: %r, link: %r, neighbor_link: %r"
+                            % (fidx, axis, position, rev, link, neighbor_link)
+                        )
                     # convert the axis name to an acutal axis object
                     actual_axis = self.axes[ax]
                     return idx, actual_axis, rev
@@ -814,7 +928,6 @@ class Grid:
                 metric_var = self._ds[metric_varname].reset_coords(drop=True)
                 # TODO: check for consistency of metric_var dims with axis dims
                 # check for duplicate dimensions among each axis metric
-                print("Adding metric %r: %r" % (metric_axes, metric_varname))
                 self._metrics[metric_axes].append(metric_var)
 
     def get_metric(self, array, axes):
@@ -841,15 +954,17 @@ class Grid:
             items_set = frozenset(items)
             yield (items_set,)
             N = len(items)
-            for nleft in range(N-1, 0, -1):
+            for nleft in range(N - 1, 0, -1):
                 nright = N - nleft
                 for sub_loop, sub_items in itertools.product(
-                        range(min(nright, nleft), 0, -1),
-                        itertools.combinations(items_set, nleft)):
+                    range(min(nright, nleft), 0, -1),
+                    itertools.combinations(items_set, nleft),
+                ):
                     these = frozenset(sub_items)
                     those = items_set - these
-                    others = [frozenset(i)
-                              for i in itertools.combinations(those, sub_loop)]
+                    others = [
+                        frozenset(i) for i in itertools.combinations(those, sub_loop)
+                    ]
                     yield (these,) + tuple(others)
 
         metric_vars = None
@@ -878,12 +993,12 @@ class Grid:
         return functools.reduce(operator.mul, metric_vars, 1)
 
     def __repr__(self):
-        summary = ['<xgcm.Grid>']
+        summary = ["<xgcm.Grid>"]
         for name, axis in iteritems(self.axes):
-            is_periodic = 'periodic' if axis._periodic else 'not periodic'
-            summary.append('%s Axis (%s):' % (name, is_periodic))
+            is_periodic = "periodic" if axis._periodic else "not periodic"
+            summary.append("%s Axis (%s):" % (name, is_periodic))
             summary += axis._coord_desc()
-        return '\n'.join(summary)
+        return "\n".join(summary)
 
     @docstrings.dedent
     def interp(self, da, axis, **kwargs):
@@ -906,7 +1021,6 @@ class Grid:
         ax = self.axes[axis]
         return ax.interp(da, **kwargs)
 
-
     @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
         # the keys, should be axis names
@@ -914,37 +1028,43 @@ class Grid:
 
         # this is currently only tested for c-grid vectors defined on edges
         # moving to cell centers. We need to detect if we got something else
-        to = kwargs.get('to', 'center')
-        if to != 'center':
-            raise NotImplementedError('Only vector interpolation to cell '
-                                      'center is implemented, but got '
-                                      'to=%r' % to)
+        to = kwargs.get("to", "center")
+        if to != "center":
+            raise NotImplementedError(
+                "Only vector interpolation to cell "
+                "center is implemented, but got "
+                "to=%r" % to
+            )
         for axis_name, component in vector.items():
             axis = self.axes[axis_name]
             position, coord = axis._get_axis_coord(component)
-            if position == 'center':
-                raise NotImplementedError('Only vector interpolation to cell '
-                                          'center is implemented, but vector '
-                                          '%s component is defined at center '
-                                          '(dims: %r)' %
-                                          (axis_name, component.dims))
+            if position == "center":
+                raise NotImplementedError(
+                    "Only vector interpolation to cell "
+                    "center is implemented, but vector "
+                    "%s component is defined at center "
+                    "(dims: %r)" % (axis_name, component.dims)
+                )
 
         x_axis_name, y_axis_name = list(vector)
         x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
 
         # apply for each component
-        x_component = function(x_axis, vector[x_axis_name],
-                                    vector_partner={y_axis_name:
-                                                    vector[y_axis_name]},
-                                    **kwargs)
+        x_component = function(
+            x_axis,
+            vector[x_axis_name],
+            vector_partner={y_axis_name: vector[y_axis_name]},
+            **kwargs
+        )
 
-        y_component = function(y_axis, vector[y_axis_name],
-                                    vector_partner={x_axis_name:
-                                                    vector[x_axis_name]},
-                                    **kwargs)
+        y_component = function(
+            y_axis,
+            vector[y_axis_name],
+            vector_partner={x_axis_name: vector[x_axis_name]},
+            **kwargs
+        )
 
         return {x_axis_name: x_component, y_axis_name: y_component}
-
 
     @docstrings.dedent
     def interp_2d_vector(self, vector, **kwargs):
@@ -1008,7 +1128,7 @@ class Grid:
 
         ax = self.axes[axis]
         diff = ax.diff(da, **kwargs)
-        dx = self.get_metric(diff, ('X',))
+        dx = self.get_metric(diff, ("X",))
         return diff / dx
 
     @docstrings.dedent
@@ -1074,7 +1194,6 @@ class Grid:
 
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
 
-
     @docstrings.dedent
     def cumsum(self, da, axis, **kwargs):
         """
@@ -1102,13 +1221,13 @@ def add_to_slice(da, dim, sl, value):
     # beginning or end before or after will be empty)
     before = da[{dim: slice(0, sl)}]
     middle = da[{dim: sl}]
-    after = da[{dim: slice(sl+1, None)}]
+    after = da[{dim: slice(sl + 1, None)}]
     if sl < -1:
-        raise RuntimeError('slice can not be smaller value than -1')
+        raise RuntimeError("slice can not be smaller value than -1")
     elif sl == -1:
-        da_new = xr.concat([before, middle+value], dim=dim)
+        da_new = xr.concat([before, middle + value], dim=dim)
     else:
-        da_new = xr.concat([before, middle+value, after], dim=dim)
+        da_new = xr.concat([before, middle + value, after], dim=dim)
     # then add 'value' to middle and concatenate again
     return da_new
 
@@ -1116,23 +1235,22 @@ def add_to_slice(da, dim, sl, value):
 def raw_interp_function(data_left, data_right):
     # linear, centered interpolation
     # TODO: generalize to higher order interpolation
-    return 0.5*(data_left + data_right)
+    return 0.5 * (data_left + data_right)
 
 
 def raw_diff_function(data_left, data_right):
     return data_right - data_left
 
+
 def raw_min_function(data_left, data_right):
     return xr.ufuncs.minimum(data_right, data_left)
+
 
 def raw_max_function(data_left, data_right):
     return xr.ufuncs.maximum(data_right, data_left)
 
 
-
-
-
-_other_docstring_options="""
+_other_docstring_options = """
     * 'dirichlet'
        The value of the array at the boundary point is specified by
        `fill_value`.
