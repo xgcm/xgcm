@@ -232,12 +232,6 @@ def datasets():
         ("X", "Y"): ["area_t", "area_n", "area_e", "area_ne"],
         ("X", "Y", "Z"): ["volume_t"],
     }
-    # Used previously for some fail test. Retain for now.
-    # coords_outer = {
-    #     "X": {"center": "xt", "outer": "xu"},
-    #     "Y": {"center": "yt", "outer": "yu"},
-    #     "Z": {"center": "zt", "outer": "zw"},
-    # }
 
     # combine to different grid configurations (B and C grid)
     ds_b = _add_metrics(
@@ -251,27 +245,7 @@ def datasets():
         )
     )
 
-    # Some fail tests used in the weighted mean (retain for later)
-    # ds_fail = _add_metrics(
-    #     xr.Dataset(
-    #         {"u": u_b, "v": v_c, "tracer": tr, "timeseries": timeseries}
-    #     )
-    # )
-    # ds_fail2 = _add_metrics(
-    #     xr.Dataset(
-    #         {"u": u_b, "v": v_c, "tracer": tr, "timeseries": timeseries}
-    #     )
-    # )
-
-    return {
-        "B": ds_b,
-        "C": ds_c,
-        # "fail_gridtype": ds_fail,
-        # "fail_dimtype": ds_fail2,
-        "coords": coords,
-        "metrics": metrics,
-        # "fail_coords": coords_outer,
-    }
+    return {"B": ds_b, "C": ds_c, "coords": coords, "metrics": metrics}
 
 
 @pytest.mark.parametrize(
