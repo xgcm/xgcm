@@ -273,10 +273,8 @@ def datasets():
 @pytest.mark.parametrize(
     "key, metric_vars",
     [
-        # (("X"), ["dx_t"]), # this fails, can we raise a more useful error?
-        (("X",), ["dx_t"]),
-        (("X",), []),  # Should this pass?
-        (("X",), "dx_t"),
+        (("X",), ["dx_t"]), # recommended way
+        ("X", "dx_t"),
         (("X", "Y"), ["area_t"]),
         (
             ("X", "Y"),

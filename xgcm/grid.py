@@ -16,6 +16,14 @@ from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
 
+def _maybe_promote_str_to_list(a):
+    # TODO: improve this
+    if isinstance(a, str):
+        return [a]
+    else:
+        return a
+
+
 class Axis:
     """
     An object that represents a group of coodinates that all lie along the same
@@ -914,13 +922,13 @@ class Grid:
         self._metrics = {}
 
         for key, metric_vars in metrics.items():
-            metric_axes = frozenset(key)
+            metric_axes = frozenset(_maybe_promote_str_to_list(key))
             if not all([ma in self.axes for ma in metric_axes]):
                 raise KeyError('Metric axes %r not compatible with grid axes %r'
                                % (metric_axes, tuple(self.axes)))
             # initialize empty list
             self._metrics[metric_axes] = []
-            for metric_varname in metric_vars:
+            for metric_varname in _maybe_promote_str_to_list(metric_vars):
                 if metric_varname not in self._ds:
                     raise KeyError('Metric variable %s not found in dataset.'
                                     % metric_varname)
