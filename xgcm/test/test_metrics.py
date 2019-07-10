@@ -4,6 +4,29 @@ import numpy as np
 
 from xgcm.grid import Grid, Axis
 
+def test_multiple_metrics_per_axis():
+    # copied from test_derivatives.py - should refactor
+    dx = 10.0
+    ds = xr.Dataset(
+        {"foo": (("XC",), [1.0, 2.0, 4.0, 3.0]),
+         "bar": (("XG",), [10.0, 20.0, 30.0, 40.0])},
+        coords={
+            "XC": (("XC",), [0.5, 1.5, 2.5, 3.5]),
+            "XG": (("XG",), [0, 1.0, 2.0, 3.0]),
+            "dXC": (("XC",), [dx, dx, dx, dx]),
+            "dXG": (("XG",), [dx, dx, dx, dx]),
+        },
+    )
+
+    grid = Grid(
+        ds,
+        coords={"X": {"center": "XC", "left": "XG"}},
+        metrics={("X",): ["dXC", "dXG"]},
+        periodic=True,
+    )
+
+    assert grid.get_metric(ds.foo, ("X",)).equals(ds.dXC.reset_coords(drop=True))
+    assert grid.get_metric(ds.bar, ("X",)).equals(ds.dXG.reset_coords(drop=True))
 
 def test_metrics_2d_grid():
     # this is a uniform grid
