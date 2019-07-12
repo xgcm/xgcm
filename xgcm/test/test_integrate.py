@@ -21,10 +21,6 @@ def test_integrate_bgrid():
         ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
         ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
     ):
-        print(axis)
-        print(ds.tracer)
-        print(metrics)
-        print(grid.get_metric(ds.tracer, axis))
         integrated = grid.integrate(ds.tracer, axis)
         expected = (ds.tracer * ds[metric_name]).sum(dim)
         assert integrated.equals(expected)
