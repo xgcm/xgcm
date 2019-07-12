@@ -9,12 +9,14 @@ def test_derivative_uniform_grid():
     # a non-uniform grid would provide a more rigorous test
     dx = 10.0
     dy = 10.0
-    arr = [[1.0, 2.0, 4.0, 3.0], \
-           [4.0, 7.0, 1.0, 2.0], \
-           [3.0, 1.0, 0.0, 9.0], \
-           [8.0, 5.0, 2.0, 1.0]]
+    arr = [
+        [1.0, 2.0, 4.0, 3.0],
+        [4.0, 7.0, 1.0, 2.0],
+        [3.0, 1.0, 0.0, 9.0],
+        [8.0, 5.0, 2.0, 1.0],
+    ]
     ds = xr.Dataset(
-        {"foo": (("XC","YC"), arr)},
+        {"foo": (("XC", "YC"), arr)},
         coords={
             "XC": (("XC",), [0.5, 1.5, 2.5, 3.5]),
             "XG": (("XG",), [0, 1.0, 2.0, 3.0]),
@@ -29,10 +31,11 @@ def test_derivative_uniform_grid():
 
     grid = Grid(
         ds,
-        coords={"X": {"center": "XC", "left": "XG"},
-                "Y": {"center": "YC", "left": "YG"}},
-        metrics={("X",): ["dXC", "dXG"],
-                 ("Y",): ["dYC", "dYG"]},
+        coords={
+            "X": {"center": "XC", "left": "XG"},
+            "Y": {"center": "YC", "left": "YG"},
+        },
+        metrics={("X",): ["dXC", "dXG"], ("Y",): ["dYC", "dYG"]},
         periodic=True,
     )
 
@@ -45,4 +48,3 @@ def test_derivative_uniform_grid():
     dfoo_dy = grid.derivative(ds.foo, "Y")
     expected = grid.diff(ds.foo, "Y") / dy
     assert dfoo_dy.equals(expected)
-
