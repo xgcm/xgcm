@@ -97,3 +97,49 @@ def test_derivative_c_grid():
     test_dx = ["dx_e", "dy_n", "dz_t"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
+
+
+def test_derivative_b_grid():
+    # test derivatives with synthetic B grid data
+    # using test_metrics.datasets()
+
+    ds_full = datasets()
+    ds = ds_full["B"]
+    grid = Grid(ds, coords=ds_full["coords"], metrics=ds_full["metrics"])
+
+    # run this for each axis and each field in dataset
+    def test_single_derivative(axis, fld, dx):
+
+        dvar_dx = grid.derivative(fld, axis)
+        expected = grid.diff(fld, axis) / dx
+        abs_diff = np.sum(np.abs(dvar_dx - expected))
+
+        assert dvar_dx.equals(expected.reset_coords(drop=True))
+
+    # tracer point
+    var = "tracer"
+    test_axes = ["X", "Y", "Z"]
+    test_dx = ["dx_e", "dy_n", "dz_w"]
+    for ax, dx in zip(test_axes, test_dx):
+        test_single_derivative(ax, ds[var], ds[dx])
+
+    # zonal velocity point
+    var = "u"
+    test_axes = ["X", "Y"]
+    test_dx = ["dx_n", "dy_e"]
+    for ax, dx in zip(test_axes, test_dx):
+        test_single_derivative(ax, ds[var], ds[dx])
+
+    # meridional velocity point
+    var = "v"
+    test_axes = ["X", "Y"]
+    test_dx = ["dx_n", "dy_e"]
+    for ax, dx in zip(test_axes, test_dx):
+        test_single_derivative(ax, ds[var], ds[dx])
+
+    # vertical velocity point
+    var = "wt"
+    test_axes = ["X", "Y", "Z"]
+    test_dx = ["dx_e", "dy_n", "dz_t"]
+    for ax, dx in zip(test_axes, test_dx):
+        test_single_derivative(ax, ds[var], ds[dx])
