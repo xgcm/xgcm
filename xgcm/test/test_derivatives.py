@@ -68,10 +68,7 @@ def test_derivative_c_grid():
         expected = grid.diff(fld, axis) / dx
         abs_diff = np.sum(np.abs(dvar_dx - expected))
 
-        # for some reason .equals() returns false
-        # even though absolute value of difference is zero
-        assert abs_diff == 0.0
-        # assert dvar_dx.equals(expected)
+        assert dvar_dx.equals(expected.reset_coords(drop=True))
 
     # tracer point
     var = "tracer"
