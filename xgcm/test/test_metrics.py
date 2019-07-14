@@ -151,12 +151,8 @@ def datasets():
         np.ones([len(xt), len(yt)]) * dy + 0.4, coords=[("xt", xt), ("yt", yt)]
     )
 
-    dz_t = xr.DataArray(
-        np.ones(len(zt)) * dz, coords=[("zt", zt)]
-    )
-    dz_w = xr.DataArray(
-        np.ones(len(zt)) * dz, coords=[("zw", zw)]
-    )
+    dz_t = xr.DataArray(np.ones(len(zt)) * dz, coords=[("zt", zt)])
+    dz_w = xr.DataArray(np.ones(len(zt)) * dz, coords=[("zw", zw)])
 
     # Make sure the areas are not just the product of x and y distances
     area_ne = (dx_ne * dy_ne) + 0.1
