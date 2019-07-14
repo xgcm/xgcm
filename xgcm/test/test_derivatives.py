@@ -73,28 +73,25 @@ def test_derivative_c_grid():
     # tracer point
     var = "tracer"
     test_axes = ["X", "Y", "Z"]
-    test_dx = ["dx_e", "dy_n", "dz_w"]
+    test_dx = ["dx_e", "dy_n", "dz_t_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # zonal velocity point
     var = "u"
-    test_axes = ["X", "Y"]
-    test_dx = ["dx_t", "dy_ne"]
+    test_dx = ["dx_t", "dy_ne","dz_e_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # meridional velocity point
     var = "v"
-    test_axes = ["X", "Y"]
-    test_dx = ["dx_ne", "dy_t"]
+    test_dx = ["dx_ne", "dy_t","dz_n_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # vertical velocity point
     var = "wt"
-    test_axes = ["X", "Y", "Z"]
-    test_dx = ["dx_e", "dy_n", "dz_t"]
+    test_dx = ["dx_e", "dy_n", "dz_t_t"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
@@ -119,27 +116,24 @@ def test_derivative_b_grid():
     # tracer point
     var = "tracer"
     test_axes = ["X", "Y", "Z"]
-    test_dx = ["dx_e", "dy_n", "dz_w"]
+    test_dx = ["dx_e", "dy_n", "dz_t_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # zonal velocity point
     var = "u"
-    test_axes = ["X", "Y"]
-    test_dx = ["dx_n", "dy_e"]
+    test_dx = ["dx_n", "dy_e", "dz_ne_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # meridional velocity point
     var = "v"
-    test_axes = ["X", "Y"]
-    test_dx = ["dx_n", "dy_e"]
+    test_dx = ["dx_n", "dy_e", "dz_ne_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # vertical velocity point
     var = "wt"
-    test_axes = ["X", "Y", "Z"]
-    test_dx = ["dx_e", "dy_n", "dz_t"]
+    test_dx = ["dx_e", "dy_n", "dz_t_t"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
