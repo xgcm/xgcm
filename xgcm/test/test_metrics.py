@@ -155,19 +155,19 @@ def datasets():
     #   _<1> gives location in horizontal space
     #   _<2> gives location in vertical space
     dz_t_t = xr.DataArray(
-        data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zt", zt)]
+        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xt", xt), ("yt", yt), ("zt", zt)]
     )
     dz_t_w = xr.DataArray(
-        data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zw", zw)]
+        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xt", xt), ("yt", yt), ("zw", zw)]
     )
     dz_ne_w = xr.DataArray(
-        data_generator() * dz, coords=[("xu", xu), ("yu", yu), ("time", t), ("zw", zw)]
+        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xu", xu), ("yu", yu), ("zw", zw)]
     )
     dz_n_w = xr.DataArray(
-        data_generator() * dz, coords=[("xt", xt), ("yu", yu), ("time", t), ("zw", zw)]
+        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xt", xt), ("yu", yu), ("zw", zw)]
     )
     dz_e_w = xr.DataArray(
-        data_generator() * dz, coords=[("xu", xu), ("yt", yt), ("time", t), ("zw", zw)]
+        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xu", xu), ("yt", yt), ("zw", zw)]
     )
 
     # Make sure the areas are not just the product of x and y distances
