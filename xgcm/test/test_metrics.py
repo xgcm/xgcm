@@ -151,23 +151,11 @@ def datasets():
         np.ones([len(xt), len(yt)]) * dy + 0.4, coords=[("xt", xt), ("yt", yt)]
     )
 
-    # dz_<1>_<2>
-    #   _<1> gives location in horizontal space
-    #   _<2> gives location in vertical space
-    dz_t_t = xr.DataArray(
-        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xt", xt), ("yt", yt), ("zt", zt)]
+    dz_t = xr.DataArray(
+        np.ones(len(zt)) * dz, coords=[("zt", zt)]
     )
-    dz_t_w = xr.DataArray(
-        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xt", xt), ("yt", yt), ("zw", zw)]
-    )
-    dz_ne_w = xr.DataArray(
-        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xu", xu), ("yu", yu), ("zw", zw)]
-    )
-    dz_n_w = xr.DataArray(
-        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xt", xt), ("yu", yu), ("zw", zw)]
-    )
-    dz_e_w = xr.DataArray(
-        np.ones([len(xt), len(yt), len(zt)]) * dz, coords=[("xu", xu), ("yt", yt), ("zw", zw)]
+    dz_w = xr.DataArray(
+        np.ones(len(zt)) * dz, coords=[("zw", zw)]
     )
 
     # Make sure the areas are not just the product of x and y distances
@@ -177,7 +165,7 @@ def datasets():
     area_t = (dx_t * dy_t) + 0.4
 
     # calculate volumes, but again add small differences.
-    volume_t = (dx_t * dy_t * dz_t_t) + 0.25
+    volume_t = (dx_t * dy_t * dz_t) + 0.25
 
     def _add_metrics(obj):
         obj = obj.copy()
@@ -191,11 +179,8 @@ def datasets():
                 "dy_n",
                 "dy_e",
                 "dy_t",
-                "dz_t_t",
-                "dz_t_w",
-                "dz_ne_w",
-                "dz_n_w",
-                "dz_e_w",
+                "dz_t",
+                "dz_w",
                 "area_ne",
                 "area_n",
                 "area_e",
@@ -211,11 +196,8 @@ def datasets():
                 dy_n,
                 dy_e,
                 dy_t,
-                dz_t_t,
-                dz_t_w,
-                dz_ne_w,
-                dz_n_w,
-                dz_e_w,
+                dz_t,
+                dz_w,
                 area_ne,
                 area_n,
                 area_e,
@@ -247,7 +229,7 @@ def datasets():
     metrics = {
         ("X",): ["dx_t", "dx_n", "dx_e", "dx_ne"],
         ("Y",): ["dy_t", "dy_n", "dy_e", "dy_ne"],
-        ("Z",): ["dz_t_t", "dz_t_w","dz_ne_w","dz_n_w","dz_e_w"],
+        ("Z",): ["dz_t", "dz_w"],
         ("X", "Y"): ["area_t", "area_n", "area_e", "area_ne"],
         ("X", "Y", "Z"): ["volume_t"],
     }
@@ -304,7 +286,7 @@ def test_assign_metric(key, metric_vars):
         (("X", "Y", "Z"), "u", None, ["volume_t"], KeyError),  # This should error out
         # reconstructed cases
         (["X", "Y"], "tracer", ["area_t"], ["dx_t", "dy_t"], None),
-        (["X", "Y", "Z"], "tracer", ["volume_t"], ["area_t", "dz_t_t"], None),
+        (["X", "Y", "Z"], "tracer", ["volume_t"], ["area_t", "dz_t"], None),
     ],
 )
 def test_get_metric(axes, data_var, drop_vars, metric_expected_list, expected_error):

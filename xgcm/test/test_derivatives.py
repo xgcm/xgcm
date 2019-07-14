@@ -73,25 +73,25 @@ def test_derivative_c_grid():
     # tracer point
     var = "tracer"
     test_axes = ["X", "Y", "Z"]
-    test_dx = ["dx_e", "dy_n", "dz_t_w"]
+    test_dx = ["dx_e", "dy_n", "dz_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # zonal velocity point
     var = "u"
-    test_dx = ["dx_t", "dy_ne","dz_e_w"]
+    test_dx = ["dx_t", "dy_ne","dz_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # meridional velocity point
     var = "v"
-    test_dx = ["dx_ne", "dy_t","dz_n_w"]
+    test_dx = ["dx_ne", "dy_t","dz_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # vertical velocity point
     var = "wt"
-    test_dx = ["dx_e", "dy_n", "dz_t_t"]
+    test_dx = ["dx_e", "dy_n", "dz_t"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
@@ -116,24 +116,24 @@ def test_derivative_b_grid():
     # tracer point
     var = "tracer"
     test_axes = ["X", "Y", "Z"]
-    test_dx = ["dx_e", "dy_n", "dz_t_w"]
+    test_dx = ["dx_e", "dy_n", "dz_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # zonal velocity point
     var = "u"
-    test_dx = ["dx_n", "dy_e", "dz_ne_w"]
+    test_dx = ["dx_n", "dy_e", "dz_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # meridional velocity point
     var = "v"
-    test_dx = ["dx_n", "dy_e", "dz_ne_w"]
+    test_dx = ["dx_n", "dy_e", "dz_w"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # vertical velocity point
     var = "wt"
-    test_dx = ["dx_e", "dy_n", "dz_t_t"]
+    test_dx = ["dx_e", "dy_n", "dz_t"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
