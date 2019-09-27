@@ -1123,6 +1123,32 @@ class Grid:
         ax = self.axes[axis]
         return ax.diff(da, **kwargs)
 
+
+    @docstrings.dedent
+    def shift(self, da, axis, to=None):
+        """
+        Shift DataArray to
+
+        Parameters
+        ----------
+        da : xarray.DataArray
+
+        axis : str
+            axis name
+
+        to : str
+            new position to shift to
+
+        Returns
+        -------
+        da_s : xarray.DataArray
+            The shifted data
+        """
+
+        # TODO: probably need boundary here
+        return self.axes[axis]._wrap_and_replace_coords(da, da.data, position_to=to)
+
+
     @docstrings.dedent
     def derivative(self, da, axis, **kwargs):
         """
