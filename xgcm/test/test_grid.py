@@ -447,7 +447,8 @@ def test_axis_diff_and_interp_nonperiodic_2d(
     except TypeError:
         ax_periodic = periodic
 
-    axis = Axis(ds, axis_name, periodic=ax_periodic)
+    boundary_arg = boundary if not ax_periodic else None
+    axis = Axis(ds, axis_name, periodic=ax_periodic, boundary=boundary_arg)
     da = ds[varname]
 
     # everything is left shift
@@ -501,12 +502,22 @@ def test_axis_diff_and_interp_nonperiodic_2d(
     da_interp_expected = xr.DataArray(data_interp, dims=dims, coords=coords)
     da_diff_expected = xr.DataArray(data_diff, dims=dims, coords=coords)
 
-    boundary_arg = boundary if not ax_periodic else None
-    da_interp = axis.interp(da, to, boundary=boundary_arg)
-    da_diff = axis.diff(da, to, boundary=boundary_arg)
+    da_interp = axis.interp(da, to)
+    da_diff = axis.diff(da, to)
 
     assert da_interp_expected.equals(da_interp)
     assert da_diff_expected.equals(da_diff)
+
+    if boundary_arg is not None:
+        if boundary == "extend":
+            bad_boundary = "fill"
+        elif boundary == "fill":
+            bad_boundary = "extend"
+
+        da_interp_wrong = axis.interp(da, to, boundary=bad_boundary)
+        assert not da_interp_expected.equals(da_interp_wrong)
+        da_diff_wrong = axis.diff(da, to, boundary=bad_boundary)
+        assert not da_diff_expected.equals(da_diff_wrong)
 
 
 def test_axis_errors():
@@ -562,6 +573,11 @@ def test_grid_create(all_datasets):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
     assert grid is not None
+    for ax in grid.axes.values():
+        assert ax.boundary is None
+    grid = Grid(ds, periodic=periodic, boundary="extend")
+    for ax in grid.axes.values():
+        assert ax.boundary == "extend"
 
 
 def test_create_grid_no_comodo(all_datasets):

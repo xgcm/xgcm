@@ -56,7 +56,15 @@ class Axis:
     differentiated by their length.
     """
 
-    def __init__(self, ds, axis_name, periodic=True, default_shifts={}, coords=None):
+    def __init__(
+        self,
+        ds,
+        axis_name,
+        periodic=True,
+        default_shifts={},
+        coords=None,
+        boundary=None,
+    ):
         """
         Create a new Axis object from an input dataset.
 
@@ -84,6 +92,7 @@ class Axis:
         self._ds = ds
         self.name = axis_name
         self._periodic = periodic
+        self.boundary = boundary
 
         if coords:
             # use specified coords
@@ -168,7 +177,10 @@ class Axis:
 
     def __repr__(self):
         is_periodic = "periodic" if self._periodic else "not periodic"
-        summary = ["<xgcm.Axis '%s' %s>" % (self.name, is_periodic)]
+        summary = [
+            "<xgcm.Axis '%s' (%s, boundary=%r)>"
+            % (self.name, is_periodic, self.boundary)
+        ]
         summary.append("Axis Coodinates:")
         summary += self._coord_desc()
         return "\n".join(summary)
@@ -229,6 +241,8 @@ class Axis:
         if to is None:
             to = self._default_shifts[position_from]
 
+        if boundary is None:
+            boundary = self.boundary
         data_new = self._neighbor_binary_func_raw(
             da,
             f,
@@ -770,6 +784,7 @@ class Grid:
         face_connections=None,
         coords=None,
         metrics=None,
+        boundary=None,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -823,12 +838,23 @@ class Grid:
                 axis_default_shifts = default_shifts[axis_name]
             else:
                 axis_default_shifts = {}
+
+            if isinstance(boundary, dict):
+                axis_boundary = boundary.get(axis_name, None)
+            elif isinstance(boundary, str) or boundary is None:
+                axis_boundary = boundary
+            else:
+                raise ValueError(
+                    f"boundary={boundary} is invalid. Please specify a dictionary "
+                    "mapping axis name to default boundary option; a string or None."
+                )
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
                 is_periodic,
                 default_shifts=axis_default_shifts,
                 coords=coords.get(axis_name),
+                boundary=axis_boundary,
             )
 
         if face_connections is not None:
@@ -1038,7 +1064,9 @@ class Grid:
         summary = ["<xgcm.Grid>"]
         for name, axis in iteritems(self.axes):
             is_periodic = "periodic" if axis._periodic else "not periodic"
-            summary.append("%s Axis (%s):" % (name, is_periodic))
+            summary.append(
+                "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
+            )
             summary += axis._coord_desc()
         return "\n".join(summary)
 
@@ -1093,6 +1121,7 @@ class Grid:
         for axx in axis:
             kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
             ax = self.axes[axx]
+            kwargs.setdefault("boundary", ax.boundary)
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
 
