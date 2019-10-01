@@ -31,8 +31,8 @@ before_install:
 install:
   - conda env create --file ci/environment-$CONDA_ENV.yml
   - source activate test_env_xgcm
+  # Install xarray from master not conda to be able to react to changes quicker
   - if [[ "$CONDA_ENV" == "py37-upstream-master" ]]; then
-      # Install xarray from master not conda to be able to react to changes quicker
       pip install --no-deps git+https://github.com/pydata/xarray.git
     fi
 
