@@ -6,6 +6,9 @@ from xgcm.test.datasets import datasets_grid_metric
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Refactored b and c grid testing
 def test_integrate_bgrid():
     ds, coords, metrics = datasets_grid_metric("B")
     grid = Grid(ds, coords=coords, metrics=metrics)
