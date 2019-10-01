@@ -1,7 +1,6 @@
 name: test_env_xgcm
 dependencies:
-  - python=3.6
-  - xarray
+  - python=3.7
   - dask
   - numpy
   - pytest
