@@ -92,9 +92,8 @@ def test_metrics_2d_grid():
     ],
 )
 def test_assign_metric(key, metric_vars):
-    ds_full = datasets_grid_metric()
-    ds = ds_full["C"]
-    grid = Grid(ds, coords=ds_full["coords"], metrics={key: metric_vars})
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords, metrics={key: metric_vars})
 
 
 @pytest.mark.parametrize(
@@ -119,16 +118,14 @@ def test_assign_metric(key, metric_vars):
     ],
 )
 def test_get_metric(axes, data_var, drop_vars, metric_expected_list, expected_error):
-    ds_full = datasets_grid_metric()
-    ds = ds_full["C"]
-    metrics = ds_full["metrics"]
+    ds, coords, metrics = datasets_grid_metric("C")
     # drop metrics according to drop_vars input, and remove from metrics input
     if drop_vars:
         print(drop_vars)
         ds = ds.drop(drop_vars)
         metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
-    grid = Grid(ds, coords=ds_full["coords"], metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics)
     if expected_error:
         with pytest.raises(expected_error):
             metric = grid.get_metric(ds[data_var], axes)
