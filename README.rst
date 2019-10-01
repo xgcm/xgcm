@@ -23,7 +23,7 @@ Description
 In these datasets, different variables are located at different positions with
 respect to a volume or area element (e.g. cell center, cell face, etc.)
 xgcm solves the problem of how to interpolate and difference these variables
-from one position to another.
+from one position to another. 
 
 xgcm consumes and produces xarray_ data structures, which are coordinate and
 metadata-rich representations of multidimensional array data. xarray is ideal
