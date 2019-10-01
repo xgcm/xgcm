@@ -2,7 +2,7 @@ name: test_env_xgcm
 dependencies:
   - python=3.5
   - xarray
-  - dask
+  - dask >= 2.5
   - numpy >= 1.16
   - pytest
   - future
