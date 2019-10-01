@@ -34,7 +34,7 @@ install:
   - conda env create --file ci/environment-$CONDA_ENV.yml
   - source activate test_env_xgcm
   # Install xarray from master not conda to be able to react to changes quicker
-  - pip install --no-deps --upgrade https://github.com/pydata/xarray
+  - pip install --no-deps https://github.com/pydata/xarray
 
 # if we do this, the package gets installed into
 # /home/travis/build/xgcm/xgcm/build/lib/xgcm
