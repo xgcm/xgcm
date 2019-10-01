@@ -7,21 +7,15 @@ notifications:
 matrix:
   fast_finish: true
   include:
-  - python: 2.7
-    env: CONDA_ENV=py27
-  - python: 3.5
-    env: CONDA_ENV=py35
   - python: 3.6
     env: CONDA_ENV=py36
   - python: 3.7
     env: CONDA_ENV=py37
+  - python: 3.7_upstream
+    env: CONDA_ENV=py37-upstream-master
 
 before_install:
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      wget http://repo.continuum.io/miniconda/Miniconda-3.16.0-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget http://repo.continuum.io/miniconda/Miniconda3-3.16.0-Linux-x86_64.sh -O miniconda.sh;
-    fi
+  - wget http://repo.continuum.io/miniconda/Miniconda3-3.16.0-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
@@ -33,8 +27,10 @@ before_install:
 install:
   - conda env create --file ci/environment-$CONDA_ENV.yml
   - source activate test_env_xgcm
-  # Install xarray from master not conda to be able to react to changes quicker
-  - pip install --no-deps git+https://github.com/pydata/xarray.git
+  - if [[ "$CONDA_ENV" == "py37-upstream-master" ]]; then
+      # Install xarray from master not conda to be able to react to changes quicker
+      pip install --no-deps git+https://github.com/pydata/xarray.git
+    fi
 
 # if we do this, the package gets installed into
 # /home/travis/build/xgcm/xgcm/build/lib/xgcm
@@ -48,9 +44,7 @@ install:
 
 script:
   # only check code for py36 env
-  - if [[ "$CONDA_ENV" == py36 ]]; then
-      black --check xgcm;
-    fi
+  - black --check xgcm
   - py.test xgcm -v --cov=xgcm --cov-config .coveragerc --cov-report term-missing
 
 after_success:

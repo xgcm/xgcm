@@ -1,7 +1,7 @@
 name: test_env_xgcm
 dependencies:
   - python=3.7
-  # - xarray # Now installed from master to catch breaking changes earlier.
+  - xarray
   - dask
   - numpy
   - pytest
