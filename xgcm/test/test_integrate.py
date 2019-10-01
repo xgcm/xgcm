@@ -5,15 +5,8 @@ from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
 
-def _patch_dataset(grid_type):
-    """temporary fix for datasets_grid_metric"""
-    ds_full = datasets_grid_metric()
-    ds = ds_full[grid_type]
-    return ds, ds_full["coords"], ds_full["metrics"]
-
-
 def test_integrate_bgrid():
-    ds, coords, metrics = _patch_dataset("B")
+    ds, coords, metrics = datasets_grid_metric("B")
     grid = Grid(ds, coords=coords, metrics=metrics)
     # test tracer position
     for axis, metric_name, dim in zip(
@@ -51,7 +44,7 @@ def test_integrate_bgrid():
 
 
 def test_integrate_cgrid():
-    ds, coords, metrics = _patch_dataset("C")
+    ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, metrics=metrics)
     # test tracer position
     for axis, metric_name, dim in zip(
@@ -92,7 +85,7 @@ def test_integrate_cgrid():
 @pytest.mark.parametrize("axis", ["X", "Y", "Z"])
 def test_integrate_missingaxis(axis):
     # Error should be raised if integration axes include dimension not in datasets
-    ds, coords, metrics = _patch_dataset("C")
+    ds, coords, metrics = datasets_grid_metric("C")
 
     del coords[axis]
 
@@ -123,7 +116,7 @@ def test_integrate_missingaxis(axis):
 
 
 def test_integrate_missingdim():
-    ds, coords, metrics = _patch_dataset("C")
+    ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, metrics=metrics)
 
     with pytest.raises(ValueError, match="matching dimension corresponding to axis X"):

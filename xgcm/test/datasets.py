@@ -240,7 +240,7 @@ def nonperiodic_2d(request):
     return ds, periodic, expected_values[request.param]
 
 
-def datasets_grid_metric():
+def datasets_grid_metric(grid_type):
     """Uniform grid test dataset.
     Should eventually be extended to nonuniform grid"""
     xt = np.arange(4)
@@ -378,15 +378,22 @@ def datasets_grid_metric():
     }
 
     # combine to different grid configurations (B and C grid)
-    ds_b = _add_metrics(
-        xr.Dataset(
-            {"u": u_b, "v": v_b, "wt": wt, "tracer": tr, "timeseries": timeseries}
+    if grid_type == "B":
+        ds = _add_metrics(
+            xr.Dataset(
+                {"u": u_b, "v": v_b, "wt": wt, "tracer": tr, "timeseries": timeseries}
+            )
         )
-    )
-    ds_c = _add_metrics(
-        xr.Dataset(
-            {"u": u_c, "v": v_c, "wt": wt, "tracer": tr, "timeseries": timeseries}
+    elif grid_type == "C":
+        ds = _add_metrics(
+            xr.Dataset(
+                {"u": u_c, "v": v_c, "wt": wt, "tracer": tr, "timeseries": timeseries}
+            )
         )
-    )
+    else:
+        raise ValueError(
+            "Invalid input [%s] for `grid_type`. Only supports `B` and `C` at the moment "
+            % grid_type
+        )
 
-    return {"B": ds_b, "C": ds_c, "coords": coords, "metrics": metrics}
+    return ds, coords, metrics
