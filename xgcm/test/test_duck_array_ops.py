@@ -1,4 +1,9 @@
 from __future__ import print_function
+
+# experimental fix for inconsistent numpy behavior
+import os
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "1"
 import numpy as np
 import dask as dsk
 from xgcm.duck_array_ops import concatenate
@@ -15,5 +20,5 @@ def test_concatenate():
     assert isinstance(concat, np.ndarray)
     assert isinstance(concat_dask, dsk.array.Array)
     # assert isinstance(concat_mixed, np.ndarray)
-    # the resulting mixed array is a dask array, not np. due to changes in numpy?
+    # # the resulting mixed array is a dask array, not np. due to changes in numpy?
     assert isinstance(concat_mixed, dsk.array.Array)

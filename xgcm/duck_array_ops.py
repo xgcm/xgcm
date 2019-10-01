@@ -5,6 +5,11 @@ Shamelessly copied from xarray."""
 from __future__ import division
 from __future__ import print_function
 
+# experimental fix for inconsistent numpy behavior
+import os
+
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "1"
+
 import numpy as np
 
 try:
