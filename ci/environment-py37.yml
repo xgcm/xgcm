@@ -1,0 +1,13 @@
+name: test_env_xgcm
+dependencies:
+  - python=3.6
+  - xarray
+  - dask
+  - numpy
+  - pytest
+  - future
+  - pip:
+    - docrep
+    - codecov
+    - pytest-cov
+    - black
