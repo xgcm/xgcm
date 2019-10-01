@@ -29,6 +29,7 @@ before_install:
   - conda update -q conda
   - conda info -a
   - conda list
+  - pip install --no-deps --upgrade https://github.com/pydata/xarray
 
 install:
   - conda env create --file ci/environment-$CONDA_ENV.yml
