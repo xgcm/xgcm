@@ -1,20 +1,7 @@
 xgcm: General Circulation Model Postprocessing with xarray
 ==========================================================
 
-|pypi| |conda forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style|
-
-Binder Examples
----------------
-
-========= ============== ============================================================================
-Link      Provider       Description
-========= ============== ============================================================================
-|Binder|  mybinder.org   Basic self-contained example
-|PBinder| Pangeo Binder  More complex examples integrated with other Pangeo tools (dask, zarr, etc.)
-========= ============== ============================================================================
-
-Description
------------
+|pypi| |conda forge| |Build Status| |codecov| |docs| |DOI| |license|
 
 **xgcm** is a python package for working with the datasets produced by numerical
 `General Circulation Models <https://en.wikipedia.org/wiki/General_circulation_model>`_
@@ -69,10 +56,3 @@ For more information, including installation instructions, read the full
 .. |license| image:: https://img.shields.io/github/license/mashape/apistatus.svg
    :target: https://github.com/xgcm/xgcm
    :alt: license
-.. |Code style| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-   :target: https://github.com/python/black
-   :alt: Code style
-.. |Binder| image:: https://mybinder.org/badge_logo.svg
-   :target: https://mybinder.org/v2/gh/xgcm/xgcm/master?filepath=doc%2Fexample_mitgcm.ipynb
-.. |PBinder| image:: https://binder.pangeo.io/badge_logo.svg
-   :target: https://binder.pangeo.io/v2/gh/pangeo-data/pangeo-ocean-examples/master
