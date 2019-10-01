@@ -1235,7 +1235,10 @@ def add_to_slice(da, dim, sl, value):
     # beginning or end before or after will be empty)
     before = da[{dim: slice(0, sl)}]
     middle = da[{dim: sl}]
+    # the newest xarray version seems to not retain the singular dimension
+    middle = middle.expand_dims(dim)
     after = da[{dim: slice(sl + 1, None)}]
+
     if sl < -1:
         raise RuntimeError("slice can not be smaller value than -1")
     elif sl == -1:
