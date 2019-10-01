@@ -5,6 +5,7 @@ dependencies:
   - numpy >= 1.16
   - pytest
   - future
+  - dask
   - pip:
     - docrep
     - codecov
