@@ -35,6 +35,7 @@ install:
   - if [[ "$CONDA_ENV" == "py37-upstream-master" ]]; then
       pip install --no-deps git+https://github.com/pydata/xarray.git
     fi
+  - python -c "import xarray; print(xarray.__version__)"
 
 # if we do this, the package gets installed into
 # /home/travis/build/xgcm/xgcm/build/lib/xgcm
