@@ -5,8 +5,8 @@ Installation
 Requirements
 ^^^^^^^^^^^^
 
-xgcm is compatible with python 3 and python 2.7. It requires xarray_
-(>= version 0.8.2) and dask_ (>= version 0.11.2).
+xgcm is compatible with python 3 (>= version 3.6). It requires xarray_
+(>= version 0.13.0) numpy_ (>= version 1.16.0) and dask_ (>= version 0.16.0).
 
 Installation from Conda Forge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

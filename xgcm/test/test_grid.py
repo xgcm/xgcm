@@ -5,7 +5,7 @@ import xarray as xr
 import numpy as np
 from dask.array import from_array
 
-from xgcm.grid import Grid, Axis, add_to_slice
+from xgcm.grid import Grid, Axis
 
 from .datasets import (
     all_datasets,
@@ -638,33 +638,6 @@ def test_grid_ops(all_datasets):
                     da_cumsum = grid.cumsum(ds[varname], axis_name, boundary=boundary)
                     da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
                     assert da_cumsum.equals(da_cumsum_ax)
-
-
-def test_add_to_slice():
-    np_ar = xr.DataArray(np.ones([2, 2, 3]), dims=["lat", "z", "lon"])
-
-    da_ar = xr.DataArray(
-        from_array(np.ones([2, 2, 3]), chunks=1), dims=["lat", "z", "lon"]
-    )
-
-    np_new = add_to_slice(np_ar, "lon", 1, 3.0)
-    da_new = add_to_slice(da_ar, "lon", 1, 3.0)
-    da_new_last = add_to_slice(da_ar, "lon", -1, 3.0)
-
-    ref_last = np.array(
-        [[[1.0, 1.0, 4.0], [1.0, 1.0, 4.0]], [[1.0, 1.0, 4.0], [1.0, 1.0, 4.0]]]
-    )
-
-    ref = np.array(
-        [[[1.0, 4.0, 1.0], [1.0, 4.0, 1.0]], [[1.0, 4.0, 1.0], [1.0, 4.0, 1.0]]]
-    )
-
-    ref_ar = xr.DataArray(ref, dims=["lat", "z", "lon"])
-    ref_ar_last = xr.DataArray(ref_last, dims=["lat", "z", "lon"])
-
-    xr.testing.assert_equal(ref_ar, np_new)
-    xr.testing.assert_equal(ref_ar, da_new.compute())
-    xr.testing.assert_equal(ref_ar_last, da_new_last.compute())
 
 
 # Needs test for _extend_right, _extend_left and the boundary_discontinuity input...not sure how to do that.

@@ -1,7 +1,6 @@
 name: test_env_xgcm
 dependencies:
-  - python=2.7
-  - xarray
+  - python=3.7
   - dask
   - numpy
   - pytest
@@ -10,3 +9,5 @@ dependencies:
     - docrep
     - codecov
     - pytest-cov
+    - black
+    - git+https://github.com/pydata/xarray.git

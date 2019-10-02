@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 import numpy as np
 import dask as dsk
 from xgcm.duck_array_ops import concatenate
@@ -14,4 +15,4 @@ def test_concatenate():
     concat_mixed = concatenate([a, b_dask], axis=0)
     assert isinstance(concat, np.ndarray)
     assert isinstance(concat_dask, dsk.array.Array)
-    assert isinstance(concat_mixed, np.ndarray)
+    assert isinstance(concat_mixed, dsk.array.Array)
