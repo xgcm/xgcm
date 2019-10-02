@@ -3,7 +3,7 @@ dependencies:
   - python=3.6
   - xarray
   - dask
-  - numpy >= 1.16
+  - numpy
   - pytest
   - future
   - pip:
