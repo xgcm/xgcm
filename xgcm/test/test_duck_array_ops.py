@@ -1,9 +1,5 @@
 from __future__ import print_function
 
-# fix for inconsistent numpy behavior
-import os
-
-os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "1"
 import numpy as np
 import dask as dsk
 from xgcm.duck_array_ops import concatenate
