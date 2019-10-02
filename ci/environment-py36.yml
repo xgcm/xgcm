@@ -2,10 +2,10 @@ name: test_env_xgcm
 dependencies:
   - python=3.6
   - xarray
+  - dask
   - numpy >= 1.16
   - pytest
   - future
-  - dask
   - pip:
     - docrep
     - codecov

@@ -1,6 +1,7 @@
 name: test_env_xgcm
 dependencies:
   - python=3.7
+  - git+https://github.com/pydata/xarray.git
   - dask
   - numpy
   - pytest
