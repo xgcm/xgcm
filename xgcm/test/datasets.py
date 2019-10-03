@@ -314,10 +314,10 @@ def datasets_grid_metric(grid_type):
     )
 
     dz_t = xr.DataArray(
-        data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zt", zt)]
+        np.ones([len(zt)]) * dz, coords=[("zt", zt)]
     )
     dz_w = xr.DataArray(
-        data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zw", zw)]
+        np.ones([len(zt)]) * dz, coords=[("zw", zw)]
     )
 
     # Make sure the areas are not just the product of x and y distances
