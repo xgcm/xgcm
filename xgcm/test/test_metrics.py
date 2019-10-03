@@ -111,10 +111,11 @@ def test_assign_metric(key, metric_vars):
         (["X", "Y", "Z"], "tracer", None, ["volume_t"], None),
         (["X"], "u", None, ["dx_e"], None),
         (["X", "Y"], "u", None, ["area_e"], None),
-        (("X", "Y", "Z"), "u", None, ["volume_t"], KeyError),  # This should error out
+        (("X", "Y", "Z"), "u", ["dz_t"], ["volume_t"], KeyError),  # This should error out
         # reconstructed cases
         (["X", "Y"], "tracer", ["area_t"], ["dx_t", "dy_t"], None),
         (["X", "Y", "Z"], "tracer", ["volume_t"], ["area_t", "dz_t"], None),
+        (["X", "Y", "Z"], "u", None, ["area_e", "dz_t"], None),
     ],
 )
 def test_get_metric(axes, data_var, drop_vars, metric_expected_list, expected_error):
