@@ -4,7 +4,7 @@ import xarray as xr
 import numpy as np
 
 from xgcm.grid import Grid, Axis
-from xgcm.test.test_metrics import datasets
+from xgcm.test.datasets import datasets_grid_metric
 
 
 def test_derivative_uniform_grid():
@@ -55,11 +55,9 @@ def test_derivative_uniform_grid():
 
 def test_derivative_c_grid():
     # test derivatives with synthetic C grid data
-    # using test_metrics.datasets()
 
-    ds_full = datasets()
-    ds = ds_full["C"]
-    grid = Grid(ds, coords=ds_full["coords"], metrics=ds_full["metrics"])
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords, metrics=metrics)
 
     # run this for each axis and each field in dataset
     def test_single_derivative(axis, fld, dx):
@@ -98,11 +96,9 @@ def test_derivative_c_grid():
 
 def test_derivative_b_grid():
     # test derivatives with synthetic B grid data
-    # using test_metrics.datasets()
 
-    ds_full = datasets()
-    ds = ds_full["B"]
-    grid = Grid(ds, coords=ds_full["coords"], metrics=ds_full["metrics"])
+    ds, coords, metrics = datasets_grid_metric("B")
+    grid = Grid(ds, coords=coords, metrics=metrics)
 
     # run this for each axis and each field in dataset
     def test_single_derivative(axis, fld, dx):
