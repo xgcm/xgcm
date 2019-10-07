@@ -77,13 +77,13 @@ def test_derivative_c_grid():
 
     # zonal velocity point
     var = "u"
-    test_dx = ["dx_t", "dy_ne", "dz_w"]
+    test_dx = ["dx_t", "dy_ne", "dz_w_e"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # meridional velocity point
     var = "v"
-    test_dx = ["dx_ne", "dy_t", "dz_w"]
+    test_dx = ["dx_ne", "dy_t", "dz_w_n"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
@@ -118,13 +118,13 @@ def test_derivative_b_grid():
 
     # zonal velocity point
     var = "u"
-    test_dx = ["dx_n", "dy_e", "dz_w"]
+    test_dx = ["dx_n", "dy_e", "dz_w_ne"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
     # meridional velocity point
     var = "v"
-    test_dx = ["dx_n", "dy_e", "dz_w"]
+    test_dx = ["dx_n", "dy_e", "dz_w_ne"]
     for ax, dx in zip(test_axes, test_dx):
         test_single_derivative(ax, ds[var], ds[dx])
 
