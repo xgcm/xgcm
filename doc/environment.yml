@@ -1,4 +1,4 @@
-name: xgcm
+name: test_env_xgcm_docs
 dependencies:
   - python=3.6
   - xarray
