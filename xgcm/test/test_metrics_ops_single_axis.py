@@ -10,6 +10,9 @@ from xgcm.test.datasets import datasets_grid_metric
 @pytest.mark.parametrize("grid_type", ["B", "C"])
 @pytest.mark.parametrize("variable", ["tracer", "u", "v"])
 @pytest.mark.parametrize("axis", ["X", "Y"])
+# @pytest.mark.parametrize(
+#     "periodic", ["True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}]
+# )
 @pytest.mark.parametrize("metric_weighted", ["X", ("Y",), ("X", "Y"), ["X", "Y"]])
 def test_interp_conservative(grid_type, variable, axis, metric_weighted):
     ds, coords, metrics = datasets_grid_metric(grid_type)
@@ -20,6 +23,25 @@ def test_interp_conservative(grid_type, variable, axis, metric_weighted):
     metric_new = grid.get_metric(expected_raw, metric_weighted)
     expected = expected_raw / metric_new
     new = grid.interp(ds[variable], axis, metric_weighted=metric_weighted)
+    assert new.equals(expected)
+
+
+@pytest.mark.parametrize("grid_type", ["B", "C"])
+@pytest.mark.parametrize("variable", ["tracer", "u", "v"])
+@pytest.mark.parametrize("multi_axis", [["X", "Y"], ("Y", "X")])
+@pytest.mark.parametrize("metric_weighted", ["X", ("Y",), ("X", "Y"), ["X", "Y"]])  #
+def test_interp_conservative_multi_axis(
+    grid_type, variable, multi_axis, metric_weighted
+):
+    ds, coords, metrics = datasets_grid_metric(grid_type)
+    grid = Grid(ds, coords=coords, metrics=metrics)
+    expected = ds[variable]
+    for ax in multi_axis:
+        expected = grid.interp(expected, ax, metric_weighted=metric_weighted)
+
+    new = grid.interp(ds[variable], multi_axis, metric_weighted=metric_weighted)
+    print(expected)
+    print(new)
     assert new.equals(expected)
 
 
