@@ -1048,26 +1048,27 @@ class Grid:
         da_i : xarray.DataArray
             The interpolated data
         """
-        if isinstance(axis, list):
+        if isinstance(axis, list) or isinstance(axis, tuple):
             out = da
             for axx in axis:
-                out = self.interp(out, axx, **kwargs)
+                out = self.interp(out, axx, metric_weighted=metric_weighted, **kwargs)
                 #!!!the kwargs needs to be provided in a dict here?
+                # Also what about a case where one would want to preserve different metrics?
             return out
+        else:
+            ax = self.axes[axis]
 
-        ax = self.axes[axis]
+            if isinstance(metric_weighted, str):
+                metric_weighted = (metric_weighted,)
 
-        if isinstance(metric_weighted, str):
-            metric_weighted = (metric_weighted,)
-
-        if metric_weighted:
-            metric = self.get_metric(da, metric_weighted)
-            da = da * metric
-        out = ax.interp(da, **kwargs)
-        if metric_weighted:
-            metric_new = self.get_metric(out, metric_weighted)
-            out = out / metric_new
-        return out
+            if metric_weighted:
+                metric = self.get_metric(da, metric_weighted)
+                da = da * metric
+            out = ax.interp(da, **kwargs)
+            if metric_weighted:
+                metric_new = self.get_metric(out, metric_weighted)
+                out = out / metric_new
+            return out
 
     @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):

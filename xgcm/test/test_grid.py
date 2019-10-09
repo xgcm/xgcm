@@ -639,7 +639,7 @@ def test_grid_ops(all_datasets):
                     assert da_cumsum.equals(da_cumsum_ax)
 
 
-# @pytest.mark.parametrize("func", ["interp", "diff", "max", "min"])
+# @pytest.mark.parametrize("func", ["interp", "diff", "max", "min", 'cumsum'])
 @pytest.mark.parametrize("func", ["interp"])
 def test_multi_axis_input(all_datasets, func):
     ds, periodic, expected = all_datasets
