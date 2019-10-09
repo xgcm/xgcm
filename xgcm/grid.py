@@ -1049,6 +1049,12 @@ class Grid:
         da_i : xarray.DataArray
             The interpolated data
         """
+        if isinstance(axis, list):
+            out = da
+            for axx in axis:
+                out = self.interp(out, axx, **kwargs)
+                #!!!the kwargs needs to be provided in a dict here?
+            return out
 
         ax = self.axes[axis]
 

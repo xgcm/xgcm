@@ -639,4 +639,18 @@ def test_grid_ops(all_datasets):
                     assert da_cumsum.equals(da_cumsum_ax)
 
 
+# @pytest.mark.parametrize("func", ["interp", "diff", "max", "min"])
+@pytest.mark.parametrize("func", ["interp"])
+def test_multi_axis_input(all_datasets, func):
+    ds, periodic, expected = all_datasets
+    grid = Grid(ds)
+    axes = list(grid.axes.keys())
+    for varname in ["data_c", "data_g"]:
+        serial = ds[varname]
+        for axis in axes:
+            serial = getattr(grid, func)(serial, axis)
+        full = getattr(grid, func)(ds[varname], axes)
+        xr.testing.assert_allclose(serial, full)
+
+
 # Needs test for _extend_right, _extend_left and the boundary_discontinuity input...not sure how to do that.
