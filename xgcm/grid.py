@@ -941,6 +941,27 @@ class Grid:
                 # check for duplicate dimensions among each axis metric
                 self._metrics[metric_axes].append(metric_var)
 
+    def _check_axes(self, axis):
+        """Checks if axis(or axes) in `axis` are part of the grid"""
+        check_axes = [ax for ax in axis if ax not in self.axes]
+        check_axes_str = ",".join(check_axes)
+        if any(check_axes):
+            raise ValueError("Axis %s not found in grid object" % check_axes_str)
+
+    def _get_dims_from_axis(self, da, axis):
+        dim = []
+        for ax in axis:
+            all_dim = self.axes[ax].coords.values()
+            matching_dim = [di for di in all_dim if di in da.dims]
+            if len(matching_dim) == 1:
+                dim.append(matching_dim[0])
+            else:
+                raise ValueError(
+                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
+                    % (ax, matching_dim)
+                )
+        return dim
+
     def get_metric(self, array, axes):
         """
         Find the metric variable associated with a set of axes for a particular
@@ -1162,28 +1183,48 @@ class Grid:
         da_i : xarray.DataArray
             The integrated data
         """
-        check_axes = [ax for ax in axis if ax not in self.axes]
-        check_axes_str = ",".join(check_axes)
-        if any(check_axes):
-            raise ValueError("Axis %s not found in grid object" % check_axes_str)
+        # check if axis input is compatible
+        self._check_axes(axis)
 
-        dim = []
-        for ax in axis:
-            all_dim = self.axes[ax].coords.values()
-            matching_dim = [di for di in all_dim if di in da.dims]
-            if len(matching_dim) == 1:
-                dim.append(matching_dim[0])
-            else:
-                raise ValueError(
-                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
-                    % (ax, matching_dim)
-                )
-
+        # get dimension(s) corresponding
+        # to `da` and `axis` input
+        dim = self._get_dims_from_axis(da, axis)
+        print(dim)
         weight = self.get_metric(da, axis)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
         return weighted.sum(dim)
+
+    @docstrings.dedent
+    def average(self, da, axis, **kwargs):
+        """
+        Perform weighted average along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
+
+        Parameters
+        ----------
+        axis : str, list of str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The averaged data
+        """
+        # check if axis input is compatible
+        self._check_axes(axis)
+
+        # get dimension(s) corresponding
+        # to `da` and `axis` input
+        dim = self._get_dims_from_axis(da, axis)
+
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        return weighted.sum(dim) / weight.sum(dim)
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):
