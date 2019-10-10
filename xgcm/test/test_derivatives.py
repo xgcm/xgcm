@@ -47,7 +47,7 @@ def test_derivative_uniform_grid():
     expected = grid.diff(ds.foo, "X") / dx
     assert dfoo_dx.equals(expected)
 
-    # Test x direction
+    # Test y direction
     dfoo_dy = grid.derivative(ds.foo, "Y")
     expected = grid.diff(ds.foo, "Y") / dy
     assert dfoo_dy.equals(expected)
