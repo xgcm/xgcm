@@ -121,6 +121,5 @@ def _run_single_derivative_test(grid, axis, fld, dx):
 
     dvar_dx = grid.derivative(fld, axis)
     expected = grid.diff(fld, axis) / dx
-    abs_diff = np.sum(np.abs(dvar_dx - expected))
 
     assert dvar_dx.equals(expected.reset_coords(drop=True))
