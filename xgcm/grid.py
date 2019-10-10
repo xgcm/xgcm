@@ -1142,7 +1142,7 @@ class Grid:
 
         ax = self.axes[axis]
         diff = ax.diff(da, **kwargs)
-        dx = self.get_metric(diff, ("X",))
+        dx = self.get_metric(diff, (axis,))
         return diff / dx
 
     @docstrings.dedent

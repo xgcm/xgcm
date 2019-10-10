@@ -313,11 +313,22 @@ def datasets_grid_metric(grid_type):
         np.ones([len(xt), len(yt)]) * dy + 0.4, coords=[("xt", xt), ("yt", yt)]
     )
 
+    # dz elements at horizontal tracer points
     dz_t = xr.DataArray(
         data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zt", zt)]
     )
     dz_w = xr.DataArray(
         data_generator() * dz, coords=[("xt", xt), ("yt", yt), ("time", t), ("zw", zw)]
+    )
+    # dz elements at velocity points
+    dz_w_ne = xr.DataArray(
+        data_generator() * dz, coords=[("xu", xu), ("yu", yu), ("time", t), ("zw", zw)]
+    )
+    dz_w_n = xr.DataArray(
+        data_generator() * dz, coords=[("xt", xt), ("yu", yu), ("time", t), ("zw", zw)]
+    )
+    dz_w_e = xr.DataArray(
+        data_generator() * dz, coords=[("xu", xu), ("yt", yt), ("time", t), ("zw", zw)]
     )
 
     # Make sure the areas are not just the product of x and y distances
@@ -342,6 +353,9 @@ def datasets_grid_metric(grid_type):
             ("dy_t", dy_t),
             ("dz_t", dz_t),
             ("dz_w", dz_w),
+            ("dz_w_ne", dz_w_ne),
+            ("dz_w_n", dz_w_n),
+            ("dz_w_e", dz_w_e),
             ("area_ne", area_ne),
             ("area_n", area_n),
             ("area_e", area_e),
@@ -372,7 +386,7 @@ def datasets_grid_metric(grid_type):
     metrics = {
         ("X",): ["dx_t", "dx_n", "dx_e", "dx_ne"],
         ("Y",): ["dy_t", "dy_n", "dy_e", "dy_ne"],
-        ("Z",): ["dz_t", "dz_w"],
+        ("Z",): ["dz_t", "dz_w", "dz_w_ne", "dz_w_n", "dz_w_e"],
         ("X", "Y"): ["area_t", "area_n", "area_e", "area_ne"],
         ("X", "Y", "Z"): ["volume_t"],
     }
