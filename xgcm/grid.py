@@ -941,13 +941,6 @@ class Grid:
                 # check for duplicate dimensions among each axis metric
                 self._metrics[metric_axes].append(metric_var)
 
-    def _check_axes(self, axis):
-        """Checks if axis(or axes) in `axis` are part of the grid"""
-        check_axes = [ax for ax in axis if ax not in self.axes]
-        check_axes_str = ",".join(check_axes)
-        if any(check_axes):
-            raise ValueError("Axis %s not found in grid object" % check_axes_str)
-
     def _get_dims_from_axis(self, da, axis):
         dim = []
         for ax in axis:
@@ -1183,16 +1176,14 @@ class Grid:
         da_i : xarray.DataArray
             The integrated data
         """
-        # check if axis input is compatible
-        self._check_axes(axis)
+
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
 
         # get dimension(s) corresponding
         # to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
-        print(dim)
-        weight = self.get_metric(da, axis)
-        weighted = da * weight
-        # TODO: We should integrate xarray.weighted once available.
 
         return weighted.sum(dim)
 
@@ -1213,16 +1204,14 @@ class Grid:
         da_i : xarray.DataArray
             The averaged data
         """
-        # check if axis input is compatible
-        self._check_axes(axis)
-
-        # get dimension(s) corresponding
-        # to `da` and `axis` input
-        dim = self._get_dims_from_axis(da, axis)
 
         weight = self.get_metric(da, axis)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
+
+        # get dimension(s) corresponding
+        # to `da` and `axis` input
+        dim = self._get_dims_from_axis(da, axis)
 
         return weighted.sum(dim) / weight.sum(dim)
 

@@ -121,12 +121,14 @@ def test_missingaxis(axis, funcname):
 
     func = getattr(grid, funcname)
 
-    match_message = "Axis " + axis + " not found"
+    match_message = (
+        "Unable to find any combinations of metrics for array dims.*%s.*" % axis
+    )
 
-    with pytest.raises(ValueError, match=match_message):
+    with pytest.raises(KeyError, match=match_message):
         func(ds.tracer, ["X", "Y", "Z"])
 
-    with pytest.raises(ValueError, match=match_message):
+    with pytest.raises(KeyError, match=match_message):
         func(ds, axis)
 
     if axis == "Y":
@@ -140,11 +142,17 @@ def test_missingaxis(axis, funcname):
 
         func = getattr(grid, funcname)
 
-        match_message = "Axis X,Y not found"
-        with pytest.raises(ValueError, match=match_message):
+        match_message = (
+            "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
+        )
+        with pytest.raises(KeyError, match=match_message):
             func(ds, ["X", "Y", "Z"])
-        with pytest.raises(ValueError, match=match_message):
-            func(ds, ("X", "Y", "Z"))
+
+        match_message = (
+            "Unable to find any combinations of metrics for array dims.*X.*Y.*"
+        )
+        with pytest.raises(KeyError, match=match_message):
+            func(ds, ("X", "Y"))
 
 
 @pytest.mark.parametrize("funcname", ["integrate", "average"])
@@ -154,8 +162,12 @@ def test_missingdim(funcname):
 
     func = getattr(grid, funcname)
 
-    with pytest.raises(ValueError, match="matching dimension corresponding to axis X"):
+    match_message = "Unable to find any combinations of metrics for array dims.*X.*"
+    with pytest.raises(KeyError, match=match_message):
         func(ds.tracer.mean("xt"), "X")
 
-    with pytest.raises(ValueError, match="matching dimension corresponding to axis X"):
+    match_message = (
+        "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
+    )
+    with pytest.raises(KeyError, match=match_message):
         func(ds.tracer.mean("xt"), ["X", "Y", "Z"])
