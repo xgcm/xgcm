@@ -1146,6 +1146,46 @@ class Grid:
         return diff / dx
 
     @docstrings.dedent
+    def integrate(self, da, axis, **kwargs):
+        """
+        Perform finite volume integration along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
+
+        Parameters
+        ----------
+        axis : str, list of str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The integrated data
+        """
+        check_axes = [ax for ax in axis if ax not in self.axes]
+        check_axes_str = ",".join(check_axes)
+        if any(check_axes):
+            raise ValueError("Axis %s not found in grid object" % check_axes_str)
+
+        dim = []
+        for ax in axis:
+            all_dim = self.axes[ax].coords.values()
+            matching_dim = [di for di in all_dim if di in da.dims]
+            if len(matching_dim) == 1:
+                dim.append(matching_dim[0])
+            else:
+                raise ValueError(
+                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
+                    % (ax, matching_dim)
+                )
+
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        return weighted.sum(dim)
+
+    @docstrings.dedent
     def min(self, da, axis, **kwargs):
         """
         Minimum of neighboring points on the intermediate grid point.

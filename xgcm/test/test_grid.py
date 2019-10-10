@@ -528,9 +528,8 @@ def test_axis_errors():
     with pytest.raises(ValueError, match="Couldn't find any coordinates for axis X"):
         x_axis = Axis(ds_noattr, "X", periodic=True)
 
-    ds_chopped = ds.copy()
+    ds_chopped = ds.copy().isel(XG=slice(None, 3))
     del ds_chopped["data_g"]
-    ds_chopped["XG"] = ds_chopped["XG"][:-3]
     with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
         x_axis = Axis(ds_chopped, "X", periodic=True)
 
