@@ -1188,6 +1188,41 @@ class Grid:
         return weighted.sum(dim)
 
     @docstrings.dedent
+    # !!!! there is a problem here...I cant apply cumsum over multiple axes...
+    def cumint(self, da, axis, **kwargs):
+        """
+        Perform cumulative integral along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
+
+        Parameters
+        ----------
+        axis : str, list of str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The cumulatively integrated data
+        """
+
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        # This is a workaround, that should be eliminated
+        # once cumsum can axcept multiple axes
+
+        if isinstance(axis, str):
+            axis = [axis]
+
+        out = weighted
+        for ax in axis:
+            out = self.cumsum(out, ax, **kwargs)
+
+        return out
+
+    @docstrings.dedent
     def average(self, da, axis, **kwargs):
         """
         Perform weighted average along specified axis or axes,
@@ -1212,7 +1247,7 @@ class Grid:
         # get dimension(s) corresponding
         # to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
-
+        # do we need to pass kwargs?
         return weighted.sum(dim) / weight.sum(dim)
 
     @docstrings.dedent
