@@ -1204,7 +1204,6 @@ class Grid:
         return weighted.sum(dim)
 
     @docstrings.dedent
-    # !!!! there is a problem here...I cant apply cumsum over multiple axes...
     def cumint(self, da, axis, **kwargs):
         """
         Perform cumulative integral along specified axis or axes,
@@ -1228,6 +1227,7 @@ class Grid:
 
         # This is a workaround, that should be eliminated
         # once cumsum can axcept multiple axes
+        # (see https://github.com/xgcm/xgcm/pull/159)
 
         if isinstance(axis, str):
             axis = [axis]
