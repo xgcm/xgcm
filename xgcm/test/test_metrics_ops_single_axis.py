@@ -10,15 +10,16 @@ from xgcm.test.datasets import datasets_grid_metric
 @pytest.mark.parametrize("grid_type", ["B", "C"])
 @pytest.mark.parametrize("variable", ["tracer", "u", "v"])
 @pytest.mark.parametrize("axis", ["X", "Y"])
-def test_interp_conservative(grid_type, variable, axis):
-    ds, coords, metrics = datasets_grid_metric("B")
+@pytest.mark.parametrize("conserve", ["X", ("Y",), ("X", "Y"), ["X", "Y"]])
+def test_interp_conservative(grid_type, variable, axis, conserve):
+    ds, coords, metrics = datasets_grid_metric(grid_type)
     grid = Grid(ds, coords=coords, metrics=metrics)
 
-    dx = grid.get_metric(ds[variable], axis)
-    expected_raw = grid.interp(ds[variable] * dx, axis)
-    dx_new = grid.get_metric(expected_raw, axis)
-    expected = expected_raw / dx_new
-    new = grid.interp(ds[variable], axis, conservative=True)
+    metric = grid.get_metric(ds[variable], conserve)
+    expected_raw = grid.interp(ds[variable] * metric, axis)
+    metric_new = grid.get_metric(expected_raw, conserve)
+    expected = expected_raw / metric_new
+    new = grid.interp(ds[variable], axis, conserve=conserve)
     assert new.equals(expected)
 
 

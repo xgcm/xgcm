@@ -1029,15 +1029,39 @@ class Grid:
         return "\n".join(summary)
 
     @docstrings.dedent
-    def interp(self, da, axis, conservative=False, **kwargs):
+    def interp(self, da, axis, conserve=False, **kwargs):
+        """Short summary.
+
+        Parameters
+        ----------
+
+        axis : type
+            Description of parameter `axis`.
+
+        **kwargs : type
+            Description of parameter `**kwargs`.
+
+        Returns
+        -------
+        type
+            Description of returned object.
+
+        """
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
 
         Parameters
         ----------
+        da : xr.DataArray
+             `da`.
         axis : str
             Name of the axis on which to act
+        conserve : str or tuple of str
+             Axis along to conserve data. The data will be multiplied with the metric
+             appropriate to `conserve` and the interpolated data will be divided by
+             the same metric, except located at the new grid location
+             (the default is False).
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -1047,13 +1071,17 @@ class Grid:
         """
 
         ax = self.axes[axis]
-        if conservative:
-            dx = self.get_metric(da, (axis,))
-            da = da * dx
+
+        if isinstance(conserve, str):
+            conserve = (conserve,)
+
+        if conserve:
+            metric = self.get_metric(da, conserve)
+            da = da * metric
         out = ax.interp(da, **kwargs)
-        if conservative:
-            dx_new = self.get_metric(out, (axis,))
-            out = out / dx_new
+        if conserve:
+            metric_new = self.get_metric(out, conserve)
+            out = out / metric_new
         return out
 
     @docstrings.dedent
