@@ -1029,7 +1029,7 @@ class Grid:
         return "\n".join(summary)
 
     @docstrings.dedent
-    def interp(self, da, axis, **kwargs):
+    def interp(self, da, axis, conservative=False, **kwargs):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -1047,7 +1047,14 @@ class Grid:
         """
 
         ax = self.axes[axis]
-        return ax.interp(da, **kwargs)
+        if conservative:
+            dx = self.get_metric(da, (axis,))
+            da = da * dx
+        out = ax.interp(da, **kwargs)
+        if conservative:
+            dx_new = self.get_metric(out, (axis,))
+            out = out / dx_new
+        return out
 
     @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):

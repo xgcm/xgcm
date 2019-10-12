@@ -1,10 +1,25 @@
 from __future__ import print_function
+import pytest
 import xarray as xr
-
 import numpy as np
 
 from xgcm.grid import Grid, Axis
 from xgcm.test.datasets import datasets_grid_metric
+
+
+@pytest.mark.parametrize("grid_type", ["B", "C"])
+@pytest.mark.parametrize("variable", ["tracer", "u", "v"])
+@pytest.mark.parametrize("axis", ["X", "Y"])
+def test_interp_conservative(grid_type, variable, axis):
+    ds, coords, metrics = datasets_grid_metric("B")
+    grid = Grid(ds, coords=coords, metrics=metrics)
+
+    dx = grid.get_metric(ds[variable], axis)
+    expected_raw = grid.interp(ds[variable] * dx, axis)
+    dx_new = grid.get_metric(expected_raw, axis)
+    expected = expected_raw / dx_new
+    new = grid.interp(ds[variable], axis, conservative=True)
+    assert new.equals(expected)
 
 
 def test_derivative_uniform_grid():
