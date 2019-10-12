@@ -1030,31 +1030,12 @@ class Grid:
 
     @docstrings.dedent
     def interp(self, da, axis, conserve=False, **kwargs):
-        """Short summary.
-
-        Parameters
-        ----------
-
-        axis : type
-            Description of parameter `axis`.
-
-        **kwargs : type
-            Description of parameter `**kwargs`.
-
-        Returns
-        -------
-        type
-            Description of returned object.
-
-        """
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
 
         Parameters
         ----------
-        da : xr.DataArray
-             `da`.
         axis : str
             Name of the axis on which to act
         conserve : str or tuple of str
