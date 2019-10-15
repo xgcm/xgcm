@@ -1029,7 +1029,7 @@ class Grid:
         return "\n".join(summary)
 
     @docstrings.dedent
-    def interp(self, da, axis, conserve=False, **kwargs):
+    def interp(self, da, axis, metric_weighted=False, **kwargs):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -1038,11 +1038,10 @@ class Grid:
         ----------
         axis : str
             Name of the axis on which to act
-        conserve : str or tuple of str
-             Axis along to conserve data. The data will be multiplied with the metric
-             appropriate to `conserve` and the interpolated data will be divided by
-             the same metric, except located at the new grid location
-             (the default is False).
+        metric_weighted : str or tuple of str
+            If an axis or list of axes is specified,
+            the grid metrics will be used to determined the weight for interpolation.
+            If `False` (default), the points will be weighted equally.
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -1185,7 +1184,8 @@ class Grid:
         ----------
         axis : str, list of str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        **kwargs: dict
+            Additional arguments passed to `xarray.DataArray.sum`
 
         Returns
         -------
@@ -1241,14 +1241,16 @@ class Grid:
     @docstrings.dedent
     def average(self, da, axis, **kwargs):
         """
-        Perform weighted average along specified axis or axes,
+        Perform weighted mean reduction along specified axis or axes,
         accounting for grid metrics. (e.g. cell length, area, volume)
 
         Parameters
         ----------
         axis : str, list of str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        **kwargs: dict
+            Additional arguments passed to `xarray.DataArray.sum`
+
 
         Returns
         -------
