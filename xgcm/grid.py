@@ -941,6 +941,20 @@ class Grid:
                 # check for duplicate dimensions among each axis metric
                 self._metrics[metric_axes].append(metric_var)
 
+    def _get_dims_from_axis(self, da, axis):
+        dim = []
+        for ax in axis:
+            all_dim = self.axes[ax].coords.values()
+            matching_dim = [di for di in all_dim if di in da.dims]
+            if len(matching_dim) == 1:
+                dim.append(matching_dim[0])
+            else:
+                raise ValueError(
+                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
+                    % (ax, matching_dim)
+                )
+        return dim
+
     def get_metric(self, array, axes):
         """
         Find the metric variable associated with a set of axes for a particular
@@ -1015,7 +1029,7 @@ class Grid:
         return "\n".join(summary)
 
     @docstrings.dedent
-    def interp(self, da, axis, **kwargs):
+    def interp(self, da, axis, metric_weighted=False, **kwargs):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -1024,6 +1038,10 @@ class Grid:
         ----------
         axis : str
             Name of the axis on which to act
+        metric_weighted : str or tuple of str
+            If an axis or list of axes is specified,
+            the grid metrics will be used to determined the weight for interpolation.
+            If `False` (default), the points will be weighted equally.
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -1033,7 +1051,18 @@ class Grid:
         """
 
         ax = self.axes[axis]
-        return ax.interp(da, **kwargs)
+
+        if isinstance(metric_weighted, str):
+            metric_weighted = (metric_weighted,)
+
+        if metric_weighted:
+            metric = self.get_metric(da, metric_weighted)
+            da = da * metric
+        out = ax.interp(da, **kwargs)
+        if metric_weighted:
+            metric_new = self.get_metric(out, metric_weighted)
+            out = out / metric_new
+        return out
 
     @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
@@ -1155,35 +1184,89 @@ class Grid:
         ----------
         axis : str, list of str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        **kwargs: dict
+            Additional arguments passed to `xarray.DataArray.sum`
 
         Returns
         -------
         da_i : xarray.DataArray
             The integrated data
         """
-        check_axes = [ax for ax in axis if ax not in self.axes]
-        check_axes_str = ",".join(check_axes)
-        if any(check_axes):
-            raise ValueError("Axis %s not found in grid object" % check_axes_str)
-
-        dim = []
-        for ax in axis:
-            all_dim = self.axes[ax].coords.values()
-            matching_dim = [di for di in all_dim if di in da.dims]
-            if len(matching_dim) == 1:
-                dim.append(matching_dim[0])
-            else:
-                raise ValueError(
-                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
-                    % (ax, matching_dim)
-                )
 
         weight = self.get_metric(da, axis)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
-        return weighted.sum(dim)
+        # get dimension(s) corresponding
+        # to `da` and `axis` input
+        dim = self._get_dims_from_axis(da, axis)
+
+        return weighted.sum(dim, **kwargs)
+
+    @docstrings.dedent
+    def cumint(self, da, axis, **kwargs):
+        """
+        Perform cumulative integral along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
+
+        Parameters
+        ----------
+        axis : str, list of str
+            Name of the axis on which to act
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The cumulatively integrated data
+        """
+
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        # This is a workaround, that should be eliminated
+        # once cumsum can axcept multiple axes
+        # (see https://github.com/xgcm/xgcm/pull/159)
+
+        if isinstance(axis, str):
+            axis = [axis]
+
+        out = weighted
+        for ax in axis:
+            out = self.cumsum(out, ax, **kwargs)
+
+        return out
+
+    @docstrings.dedent
+    def average(self, da, axis, **kwargs):
+        """
+        Perform weighted mean reduction along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
+
+        Parameters
+        ----------
+        axis : str, list of str
+            Name of the axis on which to act
+        **kwargs: dict
+            Additional arguments passed to `xarray.DataArray.sum`
+
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The averaged data
+        """
+
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        # get dimension(s) corresponding
+        # to `da` and `axis` input
+        dim = self._get_dims_from_axis(da, axis)
+        # do we need to pass kwargs?
+        return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):
