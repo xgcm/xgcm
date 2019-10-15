@@ -1201,7 +1201,7 @@ class Grid:
         # to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
 
-        return weighted.sum(dim)
+        return weighted.sum(dim, **kwargs)
 
     @docstrings.dedent
     def cumint(self, da, axis, **kwargs):
@@ -1264,7 +1264,7 @@ class Grid:
         # to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
         # do we need to pass kwargs?
-        return weighted.sum(dim) / weight.sum(dim)
+        return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):
