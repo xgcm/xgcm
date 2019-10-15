@@ -1052,15 +1052,15 @@ class Grid:
 
         ax = self.axes[axis]
 
-        if isinstance(conserve, str):
-            conserve = (conserve,)
+        if isinstance(metric_weighted, str):
+            metric_weighted = (metric_weighted,)
 
-        if conserve:
-            metric = self.get_metric(da, conserve)
+        if metric_weighted:
+            metric = self.get_metric(da, metric_weighted)
             da = da * metric
         out = ax.interp(da, **kwargs)
-        if conserve:
-            metric_new = self.get_metric(out, conserve)
+        if metric_weighted:
+            metric_new = self.get_metric(out, metric_weighted)
             out = out / metric_new
         return out
 
