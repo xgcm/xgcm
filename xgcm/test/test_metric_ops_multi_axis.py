@@ -11,12 +11,7 @@ def _expected_result(da, metric, grid, dim, axes, funcname):
     elif funcname == "average":
         expected = (da * metric).sum(dim) / metric.sum(dim)
     elif funcname == "cumint":
-        # again stupid workaround
-        if isinstance(axes, str):
-            axes = [axes]
-        expected = da * metric
-        for ax in axes:
-            expected = grid.cumsum(expected, ax, boundary="fill")
+        expected = grid.cumsum(da * metric, axes, boundary="fill")
     else:
         raise ValueError("funcname (`%s`) not recognized" % funcname)
     return expected

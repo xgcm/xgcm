@@ -1256,18 +1256,7 @@ class Grid:
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
-        # This is a workaround, that should be eliminated
-        # once cumsum can axcept multiple axes
-        # (see https://github.com/xgcm/xgcm/pull/159)
-
-        if isinstance(axis, str):
-            axis = [axis]
-
-        out = weighted
-        for ax in axis:
-            out = self.cumsum(out, ax, **kwargs)
-
-        return out
+        return self.cumsum(weighted, axis, **kwargs)
 
     @docstrings.dedent
     def average(self, da, axis, **kwargs):
