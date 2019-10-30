@@ -639,17 +639,30 @@ def test_grid_ops(all_datasets):
                     assert da_cumsum.equals(da_cumsum_ax)
 
 
-# @pytest.mark.parametrize("func", ["interp", "diff", "max", "min", 'cumsum'])
-@pytest.mark.parametrize("func", ["interp"])
-def test_multi_axis_input(all_datasets, func):
+@pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
+@pytest.mark.parametrize("periodic", ["True", "False", ["X"], ["Y"], ["X", "Y"]])
+@pytest.mark.parametrize(
+    "boundary",
+    [
+        "fill",
+        # "extrapolate", # do we not support extrapolation anymore?
+        "extend",
+        {"X": "fill", "Y": "extend"},
+        {"X": "extend", "Y": "fill"},
+    ],
+)
+def test_multi_axis_input(all_datasets, func, periodic, boundary):
     ds, periodic, expected = all_datasets
-    grid = Grid(ds)
+    grid = Grid(ds, periodic=periodic)
     axes = list(grid.axes.keys())
     for varname in ["data_c", "data_g"]:
         serial = ds[varname]
         for axis in axes:
-            serial = getattr(grid, func)(serial, axis)
-        full = getattr(grid, func)(ds[varname], axes)
+            boundary_axis = boundary
+            if isinstance(boundary, dict):
+                boundary_axis = boundary[axis]
+            serial = getattr(grid, func)(serial, axis, boundary=boundary_axis)
+        full = getattr(grid, func)(ds[varname], axes, boundary=boundary)
         xr.testing.assert_allclose(serial, full)
 
 

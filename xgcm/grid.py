@@ -837,6 +837,17 @@ class Grid:
         if metrics is not None:
             self._assign_metrics(metrics)
 
+    def _parse_axes_kwargs(self, kwargs):
+        """Parse string kwargs input to dictionary for each axis.
+        Used e.g. for `boundary`"""
+        parsed_kwargs = dict()
+        if isinstance(kwargs, dict):
+            parsed_kwargs = kwargs
+        else:
+            for axis in self.axes:
+                parsed_kwargs[axis] = kwargs
+        return parsed_kwargs
+
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
         consistent.
@@ -1028,7 +1039,7 @@ class Grid:
         return "\n".join(summary)
 
     @docstrings.dedent
-    def interp(self, da, axis, metric_weighted=False, **kwargs):
+    def interp(self, da, axis, **kwargs):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
@@ -1049,14 +1060,17 @@ class Grid:
             The interpolated data
         """
         if isinstance(axis, list) or isinstance(axis, tuple):
+            # parse multi axis kwargs like `boundary`
+            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
             out = da
             for axx in axis:
-                out = self.interp(out, axx, metric_weighted=metric_weighted, **kwargs)
-                #!!!the kwargs needs to be provided in a dict here?
-                # Also what about a case where one would want to preserve different metrics?
+                out = self.interp(
+                    out, axx, **{k: v[axx] for k, v in multi_kwargs.items()}
+                )
             return out
         else:
             ax = self.axes[axis]
+            metric_weighted = kwargs.pop("metric_weighted", False)
 
             if isinstance(metric_weighted, str):
                 metric_weighted = (metric_weighted,)
@@ -1064,7 +1078,9 @@ class Grid:
             if metric_weighted:
                 metric = self.get_metric(da, metric_weighted)
                 da = da * metric
+
             out = ax.interp(da, **kwargs)
+
             if metric_weighted:
                 metric_new = self.get_metric(out, metric_weighted)
                 out = out / metric_new
@@ -1154,9 +1170,18 @@ class Grid:
         da_i : xarray.DataArray
             The differenced data
         """
-
-        ax = self.axes[axis]
-        return ax.diff(da, **kwargs)
+        if isinstance(axis, list) or isinstance(axis, tuple):
+            # parse multi axis kwargs like `boundary`
+            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+            out = da
+            for axx in axis:
+                out = self.diff(
+                    out, axx, **{k: v[axx] for k, v in multi_kwargs.items()}
+                )
+            return out
+        else:
+            ax = self.axes[axis]
+            return ax.diff(da, **kwargs)
 
     @docstrings.dedent
     def derivative(self, da, axis, **kwargs):
@@ -1290,9 +1315,16 @@ class Grid:
         da_i : xarray.DataArray
             The minimal data
         """
-
-        ax = self.axes[axis]
-        return ax.min(da, **kwargs)
+        if isinstance(axis, list) or isinstance(axis, tuple):
+            # parse multi axis kwargs like `boundary`
+            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+            out = da
+            for axx in axis:
+                out = self.min(out, axx, **{k: v[axx] for k, v in multi_kwargs.items()})
+            return out
+        else:
+            ax = self.axes[axis]
+            return ax.min(da, **kwargs)
 
     @docstrings.dedent
     def max(self, da, axis, **kwargs):
@@ -1310,9 +1342,16 @@ class Grid:
         da_i : xarray.DataArray
             The maximal data
         """
-
-        ax = self.axes[axis]
-        return ax.max(da, **kwargs)
+        if isinstance(axis, list) or isinstance(axis, tuple):
+            # parse multi axis kwargs like `boundary`
+            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+            out = da
+            for axx in axis:
+                out = self.max(out, axx, **{k: v[axx] for k, v in multi_kwargs.items()})
+            return out
+        else:
+            ax = self.axes[axis]
+            return ax.max(da, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
@@ -1355,8 +1394,18 @@ class Grid:
             The cumsummed data
         """
 
-        ax = self.axes[axis]
-        return ax.cumsum(da, **kwargs)
+        if isinstance(axis, list) or isinstance(axis, tuple):
+            # parse multi axis kwargs like `boundary`
+            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+            out = da
+            for axx in axis:
+                out = self.cumsum(
+                    out, axx, **{k: v[axx] for k, v in multi_kwargs.items()}
+                )
+            return out
+        else:
+            ax = self.axes[axis]
+            return ax.cumsum(da, **kwargs)
 
 
 def raw_interp_function(data_left, data_right):
