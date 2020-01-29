@@ -664,6 +664,3 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
             serial = getattr(grid, func)(serial, axis, boundary=boundary_axis)
         full = getattr(grid, func)(ds[varname], axes, boundary=boundary)
         xr.testing.assert_allclose(serial, full)
-
-
-# Needs test for _extend_right, _extend_left and the boundary_discontinuity input...not sure how to do that.
