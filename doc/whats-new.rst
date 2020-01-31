@@ -7,7 +7,7 @@ What's New
 
 v0.3.0 (31 January 2020)
 -----------------
-This release adds support for `model grid metrics <file:///Users/juliusbusecke/code/xgcm/doc/_build/html/grid_metrics.html#Grid-Metrics>`_ , bug fixes and extended documentation.
+This release adds support for `model grid metrics <https://xgcm.readthedocs.io/en/latest/grid_metrics.html>`_ , bug fixes and extended documentation.
 
 Breaking changes
 ~~~~~~~~~~~~~~~~
