@@ -1039,6 +1039,9 @@ class Grid:
             summary += axis._coord_desc()
         return "\n".join(summary)
 
+    def _multi_axis_func(self, funcname):
+        func
+
     @docstrings.dedent
     def interp(self, da, axis, **kwargs):
         """
