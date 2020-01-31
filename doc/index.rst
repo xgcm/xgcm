@@ -48,5 +48,6 @@ Contents
    example_mitgcm
    example_eccov4
    autogenerate_examples
+   whats-new
    contributor_guide
    api
