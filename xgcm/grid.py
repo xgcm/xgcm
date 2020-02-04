@@ -78,7 +78,7 @@ class Axis:
 
         REFERENCES
         ----------
-        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
+        .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
 
         self._ds = ds
@@ -803,7 +803,7 @@ class Grid:
 
         REFERENCES
         ----------
-        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
+        .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
         self._ds = ds
         self._check_dims = check_dims

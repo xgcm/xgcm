@@ -5,7 +5,7 @@ import xarray as xr
 import numpy as np
 
 # example from comodo website
-# http://pycomodo.forge.imag.fr/norm.html
+# https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
 # netcdf example {
 #         dimensions:
 #                 ni = 9 ;
