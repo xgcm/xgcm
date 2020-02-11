@@ -1054,7 +1054,6 @@ class Grid:
         out = da
         for axx in axis:
             kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
-            print("internal", axx)
             ax = self.axes[axx]
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
@@ -1063,7 +1062,7 @@ class Grid:
                 metric_weighted = (metric_weighted,)
 
             if metric_weighted:
-                metric = self.get_metric(da, metric_weighted)
+                metric = self.get_metric(out, metric_weighted)
                 out = out * metric
 
             out = func(out, **kwargs)

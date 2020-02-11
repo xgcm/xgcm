@@ -393,8 +393,6 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
         0.5 * (data_left + data_right), dims=[coord_to], coords={coord_to: ds[coord_to]}
     )
     data_interp = axis.interp(da, to, boundary=boundary)
-    print(data_interp_expected)
-    print(data_interp)
     assert data_interp_expected.equals(data_interp)
     # check without "to" specified
     assert data_interp.equals(axis.interp(da, boundary=boundary))
@@ -456,7 +454,6 @@ def test_axis_diff_and_interp_nonperiodic_2d(
     data = ds[varname].data
 
     axis_num = da.get_axis_num(axis.coords[this])
-    print(axis_num, ax_periodic)
 
     # lookups for numpy.pad
     numpy_pad_arg = {"extend": "edge", "fill": "constant"}
@@ -490,9 +487,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(
                 slice(1, None) if i == axis_num else slice(None)
                 for i in range(data.ndim)
             ]
-            print(the_slice)
             data_right = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
-            print(data_right.shape)
             data_left = data
 
     data_interp = 0.5 * (data_left + data_right)
@@ -605,7 +600,6 @@ def test_grid_no_coords(periodic_1d):
 def test_grid_repr(all_datasets):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
-    print(grid)
     r = repr(grid).split("\n")
     assert r[0] == "<xgcm.Grid>"
 
@@ -655,16 +649,12 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
     ds, periodic_unused, expected_unused = all_datasets
     grid = Grid(ds, periodic=periodic)
     axes = list(grid.axes.keys())
-    print(axes)
     for varname in ["data_c", "data_g"]:
         serial = ds[varname]
         for axis in axes:
-            print(axis)
             boundary_axis = boundary
             if isinstance(boundary, dict):
                 boundary_axis = boundary[axis]
             serial = getattr(grid, func)(serial, axis, boundary=boundary_axis)
         full = getattr(grid, func)(ds[varname], axes, boundary=boundary)
-        print(full)
-        print(serial)
         xr.testing.assert_allclose(serial, full)

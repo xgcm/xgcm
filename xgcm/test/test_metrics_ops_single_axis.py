@@ -7,55 +7,62 @@ from xgcm.grid import Grid, Axis
 from xgcm.test.datasets import datasets_grid_metric
 
 
+@pytest.mark.parametrize("funcname", ["interp", "diff", "min", "max"])
 @pytest.mark.parametrize("grid_type", ["B", "C"])
 @pytest.mark.parametrize("variable", ["tracer", "u", "v"])
-@pytest.mark.parametrize("axis", ["X", "Y"])
-@pytest.mark.parametrize(
-    "periodic", ["True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}]
-)
-@pytest.mark.parametrize("boundary", ["fill", "extend", "extrapolate"])
-@pytest.mark.parametrize("metric_weighted", ["X", ("Y",), ("X", "Y"), ["X", "Y"]])
-def test_interp_conservative(
-    grid_type, variable, axis, metric_weighted, periodic, boundary
-):
-    # metric_weighted allows the interpolation of e.g. a surface flux to be conservative
-    # It multiplies the values with a metric like the area, then performs interpolation
-    # and divides by the same metric (area) for the new grid position
-    ds, coords, metrics = datasets_grid_metric(grid_type)
-    grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
-
-    metric = grid.get_metric(ds[variable], metric_weighted)
-    expected_raw = grid.interp(ds[variable] * metric, axis, boundary=boundary)
-    metric_new = grid.get_metric(expected_raw, metric_weighted)
-    expected = expected_raw / metric_new
-    new = grid.interp(
-        ds[variable], axis, metric_weighted=metric_weighted, boundary=boundary
+class TestParametrized:
+    @pytest.mark.parametrize("axis", ["X", "Y"])
+    @pytest.mark.parametrize("metric_weighted", ["X", ("Y",), ("X", "Y"), ["X", "Y"]])
+    @pytest.mark.parametrize(
+        "periodic", ["True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}]
     )
-    assert new.equals(expected)
+    @pytest.mark.parametrize("boundary", ["fill", "extend", "extrapolate"])
+    def test_interp_conservative(
+        self, funcname, grid_type, variable, axis, metric_weighted, periodic, boundary
+    ):
+        """tests the correct execution of weighted ops along a single axis"""
+        # metric_weighted allows the interpolation of e.g. a surface flux to be conservative
+        # It multiplies the values with a metric like the area, then performs interpolation
+        # and divides by the same metric (area) for the new grid position
+        ds, coords, metrics = datasets_grid_metric(grid_type)
+        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+        func = getattr(grid, funcname)
 
+        metric = grid.get_metric(ds[variable], metric_weighted)
+        expected_raw = func(ds[variable] * metric, axis, boundary=boundary)
+        metric_new = grid.get_metric(expected_raw, metric_weighted)
+        expected = expected_raw / metric_new
+        new = func(
+            ds[variable], axis, metric_weighted=metric_weighted, boundary=boundary
+        )
+        assert new.equals(expected)
 
-@pytest.mark.parametrize("grid_type", ["B", "C"])
-@pytest.mark.parametrize("variable", ["tracer", "u", "v"])
-@pytest.mark.parametrize("multi_axis", [["X", "Y"], ("Y", "X")])
-@pytest.mark.parametrize(
-    "metric_weighted",
-    ["X", ("Y",), ("X", "Y"), ["X", "Y"], {"X": "Y", "Y": ["X", "Y"]}],
-)  #
-def test_interp_conservative_multi_axis(
-    grid_type, variable, multi_axis, metric_weighted
-):
-    ds, coords, metrics = datasets_grid_metric(grid_type)
-    grid = Grid(ds, coords=coords, metrics=metrics)
-    expected = ds[variable]
-    for ax in multi_axis:
-        if isinstance(metric_weighted, dict):
-            metric_weighted_axis = metric_weighted[ax]
-        else:
-            metric_weighted_axis = metric_weighted
-        expected = grid.interp(expected, ax, metric_weighted=metric_weighted_axis)
+    # @pytest.mark.parametrize("funcname", ["interp", "diff", "min", "max"])
+    # @pytest.mark.parametrize("grid_type", ["B", "C"])
+    # @pytest.mark.parametrize("variable", ["tracer", "u", "v"])
+    @pytest.mark.parametrize("multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")])
+    @pytest.mark.parametrize(
+        "metric_weighted", ["X", ["X", "Y"], {"X": "Y", "Y": ["X", "Y"]}]
+    )  #
+    def test_interp_conservative_multi_axis(
+        self, funcname, grid_type, variable, multi_axis, metric_weighted
+    ):
+        """tests if the output for multiple axis is the same as when
+        executing the single axis ops in serial"""
+        ds, coords, metrics = datasets_grid_metric(grid_type)
+        grid = Grid(ds, coords=coords, metrics=metrics)
 
-    new = grid.interp(ds[variable], multi_axis, metric_weighted=metric_weighted)
-    assert new.equals(expected)
+        func = getattr(grid, funcname)
+        expected = ds[variable]
+        for ax in multi_axis:
+            if isinstance(metric_weighted, dict):
+                metric_weighted_axis = metric_weighted[ax]
+            else:
+                metric_weighted_axis = metric_weighted
+            expected = func(expected, ax, metric_weighted=metric_weighted_axis)
+
+        new = func(ds[variable], multi_axis, metric_weighted=metric_weighted)
+        assert new.equals(expected)
 
 
 def test_derivative_uniform_grid():
