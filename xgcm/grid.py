@@ -1039,12 +1039,20 @@ class Grid:
         return "\n".join(summary)
 
     def _grid_func(self, funcname, da, axis, **kwargs):
-        # axis : str
-        #     Name of the axis on which to act
-        # metric_weighted : str or tuple of str
-        #     If an axis or list of axes is specified,
-        #     the grid metrics will be used to determined the weight for interpolation.
-        #     If `False` (default), the points will be weighted equally.
+        """this function calls appropriate functions from `Axis` objects.
+        It handles multiple axis input and weighting with metrics
+
+        Parameters
+        ----------
+        axis : {str, list, tuple}
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ['X', 'Y']). Functions will be executed over each axis in the
+            given order.
+        metric_weighted : str or tuple of str
+            If an axis or list of axes is specified,
+            the grid metrics will be used to determined the weight for interpolation.
+            If `False` (default), the points will be weighted equally.
+        """
 
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
             axis = [axis]

@@ -37,9 +37,6 @@ class TestParametrized:
         )
         assert new.equals(expected)
 
-    # @pytest.mark.parametrize("funcname", ["interp", "diff", "min", "max"])
-    # @pytest.mark.parametrize("grid_type", ["B", "C"])
-    # @pytest.mark.parametrize("variable", ["tracer", "u", "v"])
     @pytest.mark.parametrize("multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")])
     @pytest.mark.parametrize(
         "metric_weighted", ["X", ["X", "Y"], {"X": "Y", "Y": ["X", "Y"]}]
