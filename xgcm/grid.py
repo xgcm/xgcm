@@ -1038,8 +1038,41 @@ class Grid:
             summary += axis._coord_desc()
         return "\n".join(summary)
 
-    def _multi_axis_func(self, funcname):
-        func
+    def _grid_func(self, funcname, da, axis, **kwargs):
+        # axis : str
+        #     Name of the axis on which to act
+        # metric_weighted : str or tuple of str
+        #     If an axis or list of axes is specified,
+        #     the grid metrics will be used to determined the weight for interpolation.
+        #     If `False` (default), the points will be weighted equally.
+
+        if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
+            axis = [axis]
+        # parse multi axis kwargs like e.g. `boundary`
+        multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+
+        out = da
+        for axx in axis:
+            kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
+            print("internal", axx)
+            ax = self.axes[axx]
+            func = getattr(ax, funcname)
+            metric_weighted = kwargs.pop("metric_weighted", False)
+
+            if isinstance(metric_weighted, str):
+                metric_weighted = (metric_weighted,)
+
+            if metric_weighted:
+                metric = self.get_metric(da, metric_weighted)
+                out = out * metric
+
+            out = func(out, **kwargs)
+
+            if metric_weighted:
+                metric_new = self.get_metric(out, metric_weighted)
+                out = out / metric_new
+
+        return out
 
     @docstrings.dedent
     def interp(self, da, axis, **kwargs):
@@ -1049,12 +1082,7 @@ class Grid:
 
         Parameters
         ----------
-        axis : str
-            Name of the axis on which to act
-        metric_weighted : str or tuple of str
-            If an axis or list of axes is specified,
-            the grid metrics will be used to determined the weight for interpolation.
-            If `False` (default), the points will be weighted equally.
+        %(grid_func.parameters.no_f)s
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -1062,32 +1090,7 @@ class Grid:
         da_i : xarray.DataArray
             The interpolated data
         """
-        if isinstance(axis, list) or isinstance(axis, tuple):
-            # parse multi axis kwargs like `boundary`
-            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
-            out = da
-            for axx in axis:
-                out = self.interp(
-                    out, axx, **{k: v[axx] for k, v in multi_kwargs.items()}
-                )
-            return out
-        else:
-            ax = self.axes[axis]
-            metric_weighted = kwargs.pop("metric_weighted", False)
-
-            if isinstance(metric_weighted, str):
-                metric_weighted = (metric_weighted,)
-
-            if metric_weighted:
-                metric = self.get_metric(da, metric_weighted)
-                da = da * metric
-
-            out = ax.interp(da, **kwargs)
-
-            if metric_weighted:
-                metric_new = self.get_metric(out, metric_weighted)
-                out = out / metric_new
-            return out
+        return self._grid_func("interp", da, axis, **kwargs)
 
     @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
@@ -1164,8 +1167,7 @@ class Grid:
 
         Parameters
         ----------
-        axis : str
-            Name of the axis on which to act
+        %(grid_func.no_f)s
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
@@ -1173,18 +1175,7 @@ class Grid:
         da_i : xarray.DataArray
             The differenced data
         """
-        if isinstance(axis, list) or isinstance(axis, tuple):
-            # parse multi axis kwargs like `boundary`
-            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
-            out = da
-            for axx in axis:
-                out = self.diff(
-                    out, axx, **{k: v[axx] for k, v in multi_kwargs.items()}
-                )
-            return out
-        else:
-            ax = self.axes[axis]
-            return ax.diff(da, **kwargs)
+        return self._grid_func("diff", da, axis, **kwargs)
 
     @docstrings.dedent
     def derivative(self, da, axis, **kwargs):
@@ -1307,16 +1298,7 @@ class Grid:
         da_i : xarray.DataArray
             The minimal data
         """
-        if isinstance(axis, list) or isinstance(axis, tuple):
-            # parse multi axis kwargs like `boundary`
-            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
-            out = da
-            for axx in axis:
-                out = self.min(out, axx, **{k: v[axx] for k, v in multi_kwargs.items()})
-            return out
-        else:
-            ax = self.axes[axis]
-            return ax.min(da, **kwargs)
+        return self._grid_func("min", da, axis, **kwargs)
 
     @docstrings.dedent
     def max(self, da, axis, **kwargs):
@@ -1334,16 +1316,7 @@ class Grid:
         da_i : xarray.DataArray
             The maximal data
         """
-        if isinstance(axis, list) or isinstance(axis, tuple):
-            # parse multi axis kwargs like `boundary`
-            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
-            out = da
-            for axx in axis:
-                out = self.max(out, axx, **{k: v[axx] for k, v in multi_kwargs.items()})
-            return out
-        else:
-            ax = self.axes[axis]
-            return ax.max(da, **kwargs)
+        return self._grid_func("max", da, axis, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
@@ -1385,19 +1358,7 @@ class Grid:
         da_i : xarray.DataArray
             The cumsummed data
         """
-
-        if isinstance(axis, list) or isinstance(axis, tuple):
-            # parse multi axis kwargs like `boundary`
-            multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
-            out = da
-            for axx in axis:
-                out = self.cumsum(
-                    out, axx, **{k: v[axx] for k, v in multi_kwargs.items()}
-                )
-            return out
-        else:
-            ax = self.axes[axis]
-            return ax.cumsum(da, **kwargs)
+        return self._grid_func("cumsum", da, axis, **kwargs)
 
 
 def raw_interp_function(data_left, data_right):

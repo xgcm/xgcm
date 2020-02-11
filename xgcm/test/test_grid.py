@@ -652,15 +652,19 @@ def test_grid_ops(all_datasets):
     ],
 )
 def test_multi_axis_input(all_datasets, func, periodic, boundary):
-    ds, periodic, expected = all_datasets
+    ds, periodic_unused, expected_unused = all_datasets
     grid = Grid(ds, periodic=periodic)
     axes = list(grid.axes.keys())
+    print(axes)
     for varname in ["data_c", "data_g"]:
         serial = ds[varname]
         for axis in axes:
+            print(axis)
             boundary_axis = boundary
             if isinstance(boundary, dict):
                 boundary_axis = boundary[axis]
             serial = getattr(grid, func)(serial, axis, boundary=boundary_axis)
         full = getattr(grid, func)(ds[varname], axes, boundary=boundary)
+        print(full)
+        print(serial)
         xr.testing.assert_allclose(serial, full)
