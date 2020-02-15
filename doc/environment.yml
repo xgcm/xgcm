@@ -3,6 +3,7 @@ dependencies:
   - python=3.6
   - xarray
   - netcdf4
+  - cartopy
   - dask
   - numpy
   - future
