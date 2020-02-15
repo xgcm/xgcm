@@ -9,5 +9,4 @@ dependencies:
   - future
   - pip
   - pip:
-    - git+https://github.com/xgcm/xgcm.git
     - sphinx_pangeo_theme
