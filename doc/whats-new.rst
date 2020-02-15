@@ -1,12 +1,12 @@
-.. currentmodule:: xarray
+.. currentmodule:: xgcm
 
 What's New
-==========
+===========
 
 .. _whats-new.0.3.0:
 
 v0.3.0 (31 January 2020)
------------------
+-------------------------
 This release adds support for `model grid metrics <https://xgcm.readthedocs.io/en/latest/grid_metrics.html>`_ , bug fixes and extended documentation.
 
 Breaking changes
@@ -63,11 +63,11 @@ Internal Changes
 
 
 v0.2.0 (21 March 2019)
------------------
+----------------------
 Changes not documented for this release
 
 v0.1.0 (13 July 2014)
------------------
+----------------------
 Changes not documented for this release
 
 Initial release.
