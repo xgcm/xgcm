@@ -1174,7 +1174,7 @@ class Grid:
 
         Parameters
         ----------
-        %(grid_func.no_f)s
+        %(_grid_func.parameters.no_f)s
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
