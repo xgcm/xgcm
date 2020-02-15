@@ -18,3 +18,4 @@ dependencies:
     - docrep
     - nbsphinx
     - jupyter_client
+    - sphinx_pangeo_theme
