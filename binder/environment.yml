@@ -6,7 +6,6 @@ dependencies:
   - dask
   - numpy
   - matplotlib
-  - future
   - pip
   - pip:
     - git+https://github.com/xgcm/xgcm.git

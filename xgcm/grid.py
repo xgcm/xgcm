@@ -215,7 +215,6 @@ class Axis:
               (i.e. a Neumann boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Dirichlet boundary condition.)
-
         fill_value : float, optional
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
