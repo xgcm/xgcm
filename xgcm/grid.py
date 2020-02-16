@@ -1228,6 +1228,24 @@ class Grid:
         return self._grid_func("max", da, axis, **kwargs)
 
     @docstrings.dedent
+    def cumsum(self, da, axis, **kwargs):
+        """
+        Cumulatively sum a DataArray, transforming to the intermediate axis
+        position.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The cumsummed data
+        """
+        return self._grid_func("cumsum", da, axis, **kwargs)
+
+    @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
         # the keys, should be axis names
         assert len(vector) == 2
@@ -1422,24 +1440,6 @@ class Grid:
         """
 
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
-
-    @docstrings.dedent
-    def cumsum(self, da, axis, **kwargs):
-        """
-        Cumulatively sum a DataArray, transforming to the intermediate axis
-        position.
-
-        Parameters
-        ----------
-        %(grid_func.parameters)s
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The cumsummed data
-        """
-        return self._grid_func("cumsum", da, axis, **kwargs)
 
 
 def raw_interp_function(data_left, data_right):

@@ -7,7 +7,7 @@ from xgcm.grid import Grid, Axis
 from xgcm.test.datasets import datasets_grid_metric
 
 
-@pytest.mark.parametrize("funcname", ["interp", "diff", "min", "max"])
+@pytest.mark.parametrize("funcname", ["interp", "diff", "min", "max", "cumsum"])
 @pytest.mark.parametrize("grid_type", ["B", "C"])
 @pytest.mark.parametrize("variable", ["tracer", "u", "v"])
 class TestParametrized:
@@ -16,8 +16,8 @@ class TestParametrized:
     @pytest.mark.parametrize(
         "periodic", ["True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}]
     )
-    @pytest.mark.parametrize("boundary", ["fill", "extend", "extrapolate"])
-    def test_interp_conservative(
+    @pytest.mark.parametrize("boundary", ["fill", "extend"])
+    def test_weighted_metric(
         self, funcname, grid_type, variable, axis, metric_weighted, periodic, boundary
     ):
         """tests the correct execution of weighted ops along a single axis"""
@@ -37,29 +37,38 @@ class TestParametrized:
         )
         assert new.equals(expected)
 
-    @pytest.mark.parametrize("multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")])
-    @pytest.mark.parametrize(
-        "metric_weighted", ["X", ["X", "Y"], {"X": "Y", "Y": ["X", "Y"]}]
-    )  #
-    def test_interp_conservative_multi_axis(
-        self, funcname, grid_type, variable, multi_axis, metric_weighted
-    ):
-        """tests if the output for multiple axis is the same as when
-        executing the single axis ops in serial"""
-        ds, coords, metrics = datasets_grid_metric(grid_type)
-        grid = Grid(ds, coords=coords, metrics=metrics)
+        @pytest.mark.parametrize(
+            "multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")]
+        )
+        def test_weighted_metric_multi_axis(
+            self, funcname, grid_type, variable, multi_axis, metric_weighted, boundary
+        ):
+            """tests if the output for multiple axis is the same as when
+            executing the single axis ops in serial"""
+            ds, coords, metrics = datasets_grid_metric(grid_type)
+            grid = Grid(ds, coords=coords, metrics=metrics)
 
-        func = getattr(grid, funcname)
-        expected = ds[variable]
-        for ax in multi_axis:
-            if isinstance(metric_weighted, dict):
-                metric_weighted_axis = metric_weighted[ax]
-            else:
-                metric_weighted_axis = metric_weighted
-            expected = func(expected, ax, metric_weighted=metric_weighted_axis)
+            func = getattr(grid, funcname)
+            expected = ds[variable]
+            for ax in multi_axis:
+                if isinstance(metric_weighted, dict):
+                    metric_weighted_axis = metric_weighted[ax]
+                else:
+                    metric_weighted_axis = metric_weighted
+                expected = func(
+                    expected,
+                    ax,
+                    metric_weighted=metric_weighted_axis,
+                    boundary=boundary,
+                )
 
-        new = func(ds[variable], multi_axis, metric_weighted=metric_weighted)
-        assert new.equals(expected)
+            new = func(
+                ds[variable],
+                multi_axis,
+                metric_weighted=metric_weighted,
+                boundary=boundary,
+            )
+            assert new.equals(expected)
 
 
 def test_derivative_uniform_grid():
