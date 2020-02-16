@@ -837,6 +837,21 @@ class Grid:
         if metrics is not None:
             self._assign_metrics(metrics)
 
+    def _parse_axes_kwargs(self, kwargs):
+        """Convvert kwarg input into dict for each available axis
+        E.g. for a grid with 2 axes for the keyword argument `periodid`
+        periodic = True --> periodic = {'X': True, 'Y':True}
+        or if not all axes are provided, the other axes will be parsed as defaults (None)
+        periodic = {'X':True} --> periodic={'X': True, 'Y':None}
+        """
+        parsed_kwargs = dict()
+        if isinstance(kwargs, dict):
+            parsed_kwargs = kwargs
+        else:
+            for axis in self.axes:
+                parsed_kwargs[axis] = kwargs
+        return parsed_kwargs
+
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
         consistent.
@@ -1027,41 +1042,220 @@ class Grid:
             summary += axis._coord_desc()
         return "\n".join(summary)
 
+    @docstrings.get_sectionsf("grid_func", sections=["Parameters", "Examples"])
     @docstrings.dedent
-    def interp(self, da, axis, metric_weighted=False, **kwargs):
+    def _grid_func(self, funcname, da, axis, **kwargs):
+        """this function calls appropriate functions from `Axis` objects.
+        It handles multiple axis input and weighting with metrics
+
+        Parameters
+        ----------
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
+
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        vector_partner : dict, optional
+            A single key (string), value (DataArray).
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            If an axis or list of axes is specified,
+            the appropriate grid metrics will be used to determined the weight for interpolation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+
+        """
+
+        if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
+            axis = [axis]
+        # parse multi axis kwargs like e.g. `boundary`
+        multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+
+        out = da
+        for axx in axis:
+            kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
+            ax = self.axes[axx]
+            func = getattr(ax, funcname)
+            metric_weighted = kwargs.pop("metric_weighted", False)
+
+            if isinstance(metric_weighted, str):
+                metric_weighted = (metric_weighted,)
+
+            if metric_weighted:
+                metric = self.get_metric(out, metric_weighted)
+                out = out * metric
+
+            out = func(out, **kwargs)
+
+            if metric_weighted:
+                metric_new = self.get_metric(out, metric_weighted)
+                out = out / metric_new
+
+        return out
+
+    @docstrings.dedent
+    def interp(self, da, axis, **kwargs):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
 
+
         Parameters
         ----------
-        axis : str
-            Name of the axis on which to act
-        metric_weighted : str or tuple of str
-            If an axis or list of axes is specified,
-            the grid metrics will be used to determined the weight for interpolation.
-            If `False` (default), the points will be weighted equally.
-        %(neighbor_binary_func.parameters.no_f)s
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
 
         Returns
         -------
         da_i : xarray.DataArray
             The interpolated data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if a global 2D dataset should be interpolated on both X and Y axis, but it is
+        only periodic in the X axis, we can do this:
+
+        >>> grid.interp(da, ['X', 'Y'], periodic={'X':True, 'Y':False})
         """
+        return self._grid_func("interp", da, axis, **kwargs)
 
-        ax = self.axes[axis]
+    @docstrings.dedent
+    def diff(self, da, axis, **kwargs):
+        """
+        Difference neighboring points to the intermediate grid point.
 
-        if isinstance(metric_weighted, str):
-            metric_weighted = (metric_weighted,)
+        Parameters
+        ----------
+        %(grid_func.parameters)s
 
-        if metric_weighted:
-            metric = self.get_metric(da, metric_weighted)
-            da = da * metric
-        out = ax.interp(da, **kwargs)
-        if metric_weighted:
-            metric_new = self.get_metric(out, metric_weighted)
-            out = out / metric_new
-        return out
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if a global 2D dataset should be differenced on both X and Y axis, but the fill
+        value at the boundary should be differenc for each axis, we can do this:
+
+        >>> grid.diff(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("diff", da, axis, **kwargs)
+
+    @docstrings.dedent
+    def min(self, da, axis, **kwargs):
+        """
+        Minimum of neighboring points on the intermediate grid point.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The mimimum data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if we want to find the minimum of sourrounding grid cells for a global 2D dataset
+        in both X and Y axis, but the fill value at the boundary should be different
+        for each axis, we can do this:
+
+        >>> grid.min(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("min", da, axis, **kwargs)
+
+    @docstrings.dedent
+    def max(self, da, axis, **kwargs):
+        """
+        Maximum of neighboring points on the intermediate grid point.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The maximum data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if we want to find the maximum of sourrounding grid cells for a global 2D dataset
+        in both X and Y axis, but the fill value at the boundary should be different
+        for each axis, we can do this:
+
+        >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("max", da, axis, **kwargs)
+
+    @docstrings.dedent
+    def cumsum(self, da, axis, **kwargs):
+        """
+        Cumulatively sum a DataArray, transforming to the intermediate axis
+        position.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The cumsummed data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if we want to compute the cumulative sum of global 2D dataset
+        in both X and Y axis, but the fill value at the boundary should be different
+        for each axis, we can do this:
+
+        >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("cumsum", da, axis, **kwargs)
 
     @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
@@ -1130,26 +1324,6 @@ class Grid:
         """
 
         return self._apply_vector_function(Axis.interp, vector, **kwargs)
-
-    @docstrings.dedent
-    def diff(self, da, axis, **kwargs):
-        """
-        Difference neighboring points to the intermediate grid point.
-
-        Parameters
-        ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-
-        ax = self.axes[axis]
-        return ax.diff(da, **kwargs)
 
     @docstrings.dedent
     def derivative(self, da, axis, **kwargs):
@@ -1224,18 +1398,7 @@ class Grid:
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
-        # This is a workaround, that should be eliminated
-        # once cumsum can axcept multiple axes
-        # (see https://github.com/xgcm/xgcm/pull/159)
-
-        if isinstance(axis, str):
-            axis = [axis]
-
-        out = weighted
-        for ax in axis:
-            out = self.cumsum(out, ax, **kwargs)
-
-        return out
+        return self.cumsum(weighted, axis, **kwargs)
 
     @docstrings.dedent
     def average(self, da, axis, **kwargs):
@@ -1268,46 +1431,6 @@ class Grid:
         return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
 
     @docstrings.dedent
-    def min(self, da, axis, **kwargs):
-        """
-        Minimum of neighboring points on the intermediate grid point.
-
-        Parameters
-        ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The minimal data
-        """
-
-        ax = self.axes[axis]
-        return ax.min(da, **kwargs)
-
-    @docstrings.dedent
-    def max(self, da, axis, **kwargs):
-        """
-        Maximum of neighboring points on the intermediate grid point.
-
-        Parameters
-        ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The maximal data
-        """
-
-        ax = self.axes[axis]
-        return ax.max(da, **kwargs)
-
-    @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
         """
         Difference a 2D vector to the intermediate grid point. This method is
@@ -1329,27 +1452,6 @@ class Grid:
         """
 
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
-
-    @docstrings.dedent
-    def cumsum(self, da, axis, **kwargs):
-        """
-        Cumulatively sum a DataArray, transforming to the intermediate axis
-        position.
-
-        Parameters
-        ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The cumsummed data
-        """
-
-        ax = self.axes[axis]
-        return ax.cumsum(da, **kwargs)
 
 
 def raw_interp_function(data_left, data_right):
