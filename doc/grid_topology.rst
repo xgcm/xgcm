@@ -24,7 +24,10 @@ xgcm is capable of understanding the connections between these grid
   :scale: 20 %
   :alt: Cubed Sphre Grid
 
-  Example of a cubed-sphere grid from the MIT General Circulation Model.
+  Example of a lat-lon-cap grid from the MIT General Circulation Model.
+  Image credit `Gael Forget <http://www.gaelforget.net/>`_.
+  More information about the simulation and grid available at
+  https://doi.org/10.5194/gmd-8-3071-2015.
 
 In order to construct such a complex grid topology, we need a way to tell
 xgcm about the connections between faces. This is accomplished via the
