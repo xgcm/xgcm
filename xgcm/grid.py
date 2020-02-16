@@ -1191,7 +1191,7 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if we want to find the minimum of sourrounding grid cells for a global 2D dataset
-        in both X and Y axis, but the fill value at the boundary should be differenc
+        in both X and Y axis, but the fill value at the boundary should be different
         for each axis, we can do this:
 
         >>> grid.min(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
@@ -1220,7 +1220,7 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if we want to find the maximum of sourrounding grid cells for a global 2D dataset
-        in both X and Y axis, but the fill value at the boundary should be differenc
+        in both X and Y axis, but the fill value at the boundary should be different
         for each axis, we can do this:
 
         >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
@@ -1236,12 +1236,24 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
-        %(neighbor_binary_func.parameters.no_f)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
 
         Returns
         -------
         da_i : xarray.DataArray
             The cumsummed data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if we want to compute the cumulative sum of global 2D dataset
+        in both X and Y axis, but the fill value at the boundary should be different
+        for each axis, we can do this:
+
+        >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
         """
         return self._grid_func("cumsum", da, axis, **kwargs)
 
