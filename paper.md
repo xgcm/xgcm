@@ -13,11 +13,16 @@ authors:
   - name: Julius Busecke
     orcid: XXX
     affiliation: "1, 2"
+  - name: Ci Zhang
+    orcid: 0000-0001-8584-8569
+    affiliation: "1, 3"
 affiliations:
  - name: Lamont Doherty Earth Observatory of Columbia University
    index: 1
  - name: Princeton University
    index: 2
+ - name: Tsinghua University
+   index: 3
 date: 15 February 2020
 bibliography: paper.bib
 ---
