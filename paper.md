@@ -16,13 +16,18 @@ authors:
   - name: Ci Zhang
     orcid: 0000-0001-8584-8569
     affiliation: "1, 3"
+  - name: Timothy Smith
+    orcid: 0000-0003-4463-6126
+    affiliation: 4
 affiliations:
  - name: Lamont Doherty Earth Observatory of Columbia University
    index: 1
  - name: Princeton University
    index: 2
  - name: Tsinghua University
-   index: 3
+   index: 4
+ - name: The Oden Institute for Computational Engineering and Sciences, The University of Texas at Austin
+   index: 4
 date: 15 February 2020
 bibliography: paper.bib
 ---
