@@ -13,11 +13,16 @@ authors:
   - name: Julius Busecke
     orcid: XXX
     affiliation: "1, 2"
+  - name: Timothy Smith
+    orcid: 0000-0003-4463-6126
+    affiliation: 3
 affiliations:
  - name: Lamont Doherty Earth Observatory of Columbia University
    index: 1
  - name: Princeton University
    index: 2
+ - name: The Oden Institute for Computational Engineering and Sciences, The University of Texas at Austin
+   index: 3
 date: 15 February 2020
 bibliography: paper.bib
 ---
