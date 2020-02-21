@@ -1,0 +1,11 @@
+name: xgcm
+dependencies:
+  - python=3.6
+  - xarray
+  - netcdf4
+  - dask
+  - numpy
+  - matplotlib
+  - pip
+  - pip:
+    - git+https://github.com/xgcm/xgcm.git

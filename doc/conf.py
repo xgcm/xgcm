@@ -15,6 +15,7 @@
 import sys
 import os
 import xgcm
+import sphinx_pangeo_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -45,12 +46,13 @@ extensions = [
     "nbsphinx",
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
+    "sphinxcontrib.srclinks",
 ]
 
 # never execute notebooks: avoids lots of expensive imports on rtd
 # https://nbsphinx.readthedocs.io/en/0.2.14/never-execute.html
-nbsphinx_execute = "never"
-
+# nbsphinx_execute = 'never'
+exclude_patterns = ["_build", ".ipynb_checkpoints"]
 
 # http://stackoverflow.com/questions/5599254/how-to-use-sphinxs-autodoc-to-document-a-classs-init-self-method
 def skip(app, what, name, obj, skip, options):
@@ -86,6 +88,11 @@ master_doc = "index"
 project = u"xgcm"
 copyright = u"2016-2019, xgcm developers"
 
+html_show_sourcelink = True
+srclink_project = "https://github.com/xgcm/xgcm"
+srclink_branch = "master"
+srclink_src_path = "doc/"
+
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
@@ -107,7 +114,6 @@ version = ".".join(release.split(".")[:2])
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["_build"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -136,18 +142,18 @@ pygments_style = "sphinx"
 
 # -- Options for HTML output ----------------------------------------------
 
-on_rtd = os.environ.get("READTHEDOCS", None) == "True"
+# on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 
-if not on_rtd:  # only import and set the theme if we're building docs locally
-    import sphinx_rtd_theme
+# if not on_rtd:  # only import and set the theme if we're building docs locally
+#    import sphinx_rtd_theme
 
-    html_theme = "sphinx_rtd_theme"
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+#    html_theme = "sphinx_rtd_theme"
+#    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # tml_theme = 'default'
-html_theme = "sphinx_rtd_theme"
+html_theme = "pangeo"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -192,8 +198,7 @@ html_static_path = ["_static"]
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-# html_sidebars = {}
-
+html_sidebars = {"index": [], "**": ["localtoc.html", "srclinks.html"]}
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
 # html_additional_pages = {}

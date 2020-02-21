@@ -44,7 +44,10 @@ Contents
    installation
    grids
    grid_topology
+   grid_metrics
    example_mitgcm
    example_eccov4
    autogenerate_examples
+   whats-new
+   contributor_guide
    api

@@ -5,8 +5,8 @@ Installation
 Requirements
 ^^^^^^^^^^^^
 
-xgcm is compatible with python 3 and python 2.7. It requires xarray_
-(>= version 0.8.2) and dask_ (>= version 0.11.2).
+xgcm is compatible with python 3 (>= version 3.6). It requires xarray_
+(>= version 0.13.0) numpy_ (>= version 1.16.0) and dask_ (>= version 0.16.0).
 
 Installation from Conda Forge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,6 +46,7 @@ Users are encouraged to `fork <https://help.github.com/articles/fork-a-repo/>`_
 xgcm and submit issues_ and `pull requests`_.
 
 .. _dask: http://dask.pydata.org
+.. _numpy: https://numpy.org
 .. _xarray: http://xarray.pydata.org
 .. _issues: https://github.com/xgcm/xgcm/issues
 .. _`pull requests`: https://github.com/xgcm/xgcm/pulls

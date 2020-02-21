@@ -21,7 +21,7 @@ conservation properties.
 
   Layout of variables with respect to cell centers and edges in a C-grid
   ocean model. Image from the
-  `pycomodo project <http://pycomodo.forge.imag.fr/norm.html>`_.
+  `pycomodo project <https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html>`_.
 
 These grids present a dilemma for the `xarray`_ data model. The ``u`` and ``t``
 points in the example above are located at different points along the x-axis,
@@ -297,4 +297,4 @@ This is described in the :ref:`grid_topology` page.
 .. _xarray: http://xarray.pydata.org
 .. _MITgcm notation: http://mitgcm.org/public/r2_manual/latest/online_documents/node31.html
 .. _CF Conventions: http://cfconventions.org/
-.. _COMODO Conventions: http://pycomodo.forge.imag.fr/norm.html
+.. _COMODO Conventions: https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html

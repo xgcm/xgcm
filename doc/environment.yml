@@ -1,7 +1,9 @@
-name: xgcm
+name: test_env_xgcm_docs
 dependencies:
-  - python=2.7
+  - python=3.6
   - xarray
+  - netcdf4
+  - cartopy
   - dask
   - numpy
   - future
@@ -10,6 +12,12 @@ dependencies:
   - sphinx
   - ipython
   - matplotlib
+  - sphinx_rtd_theme
+  - ipykernel
   - pip:
     - docrep
     - nbsphinx
+    - jupyter_client
+    - sphinx_pangeo_theme
+    - sphinx-copybutton
+    - sphinxcontrib-srclinks

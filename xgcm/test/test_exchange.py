@@ -5,7 +5,7 @@ import xarray as xr
 import numpy as np
 from dask.array import from_array
 
-from xgcm.grid import Grid, Axis, add_to_slice
+from xgcm.grid import Grid, Axis
 
 
 @pytest.fixture(scope="module")

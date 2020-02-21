@@ -16,6 +16,14 @@ from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
 
+def _maybe_promote_str_to_list(a):
+    # TODO: improve this
+    if isinstance(a, str):
+        return [a]
+    else:
+        return a
+
+
 class Axis:
     """
     An object that represents a group of coodinates that all lie along the same
@@ -70,7 +78,7 @@ class Axis:
 
         REFERENCES
         ----------
-        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
+        .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
 
         self._ds = ds
@@ -207,7 +215,6 @@ class Axis:
               (i.e. a Neumann boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Dirichlet boundary condition.)
-
         fill_value : float, optional
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
@@ -790,10 +797,12 @@ class Grid:
             Each key should be the name of an axis. The value should be
             a dictionary mapping positions (e.g. ``'left'``) to names of
             coordinates in ``ds``.
+        metrics : dict, optional
+            Specification of grid metrics
 
         REFERENCES
         ----------
-        .. [1] Comodo Conventions http://pycomodo.forge.imag.fr/norm.html
+        .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
         self._ds = ds
         self._check_dims = check_dims
@@ -827,6 +836,21 @@ class Grid:
 
         if metrics is not None:
             self._assign_metrics(metrics)
+
+    def _parse_axes_kwargs(self, kwargs):
+        """Convvert kwarg input into dict for each available axis
+        E.g. for a grid with 2 axes for the keyword argument `periodid`
+        periodic = True --> periodic = {'X': True, 'Y':True}
+        or if not all axes are provided, the other axes will be parsed as defaults (None)
+        periodic = {'X':True} --> periodic={'X': True, 'Y':None}
+        """
+        parsed_kwargs = dict()
+        if isinstance(kwargs, dict):
+            parsed_kwargs = kwargs
+        else:
+            for axis in self.axes:
+                parsed_kwargs[axis] = kwargs
+        return parsed_kwargs
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -905,31 +929,64 @@ class Grid:
     def _assign_metrics(self, metrics):
         """
         metrics should look like
-           {('X', 'Y'): 'rAC'}
+           {('X', 'Y'): ['rAC']}
         check to make sure everything is a valid dimension
         """
 
         self._metrics = {}
 
         for key, metric_vars in metrics.items():
-            for metric_var in metric_vars:
-                if metric_var not in self._ds:
-                    raise KeyError(
-                        "Metric variable %s not found in dataset." % metric_var
-                    )
-            metric_axes = frozenset(key)
-            # resetting coords avoids potential broadcasting / alignment issues
-            metric_var = self._ds[metric_var].reset_coords(drop=True)
+            metric_axes = frozenset(_maybe_promote_str_to_list(key))
             if not all([ma in self.axes for ma in metric_axes]):
                 raise KeyError(
                     "Metric axes %r not compatible with grid axes %r"
                     % (metric_axes, tuple(self.axes))
                 )
-            # TODO: check for consistency of metric_var dims with axis dims
-            # check for duplicate dimensions among each axis metric
-            self._metrics[metric_axes] = metric_var
+            # initialize empty list
+            self._metrics[metric_axes] = []
+            for metric_varname in _maybe_promote_str_to_list(metric_vars):
+                if metric_varname not in self._ds:
+                    raise KeyError(
+                        "Metric variable %s not found in dataset." % metric_varname
+                    )
+                # resetting coords avoids potential broadcasting / alignment issues
+                metric_var = self._ds[metric_varname].reset_coords(drop=True)
+                # TODO: check for consistency of metric_var dims with axis dims
+                # check for duplicate dimensions among each axis metric
+                self._metrics[metric_axes].append(metric_var)
+
+    def _get_dims_from_axis(self, da, axis):
+        dim = []
+        for ax in axis:
+            all_dim = self.axes[ax].coords.values()
+            matching_dim = [di for di in all_dim if di in da.dims]
+            if len(matching_dim) == 1:
+                dim.append(matching_dim[0])
+            else:
+                raise ValueError(
+                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
+                    % (ax, matching_dim)
+                )
+        return dim
 
     def get_metric(self, array, axes):
+        """
+        Find the metric variable associated with a set of axes for a particular
+        array.
+
+        Parameters
+        ----------
+        array : xarray.DataArray
+            The array for which we are looking for a metric. Only its
+            dimensions are considered.
+        axes : iterable
+            A list of axes for which to find the metric.
+
+        Returns
+        -------
+        metric : xarray.DataArray
+            A metric which can broadcast against ``array``
+        """
 
         # a function to find the right combination of metrics
         def iterate_axis_combinations(items):
@@ -955,18 +1012,23 @@ class Grid:
             try:
                 # will raise KeyError if the axis combination is not in metrics
                 possible_metric_vars = [self._metrics[ac] for ac in axis_combinations]
-                metric_dims = set([d for mv in possible_metric_vars for d in mv.dims])
-                if metric_dims.issubset(array_dims):
-                    # we found a set of metrics with dimensions compatible with
-                    # the array
-                    metric_vars = possible_metric_vars
+                for possible_combinations in itertools.product(*possible_metric_vars):
+                    metric_dims = set(
+                        [d for mv in possible_combinations for d in mv.dims]
+                    )
+                    if metric_dims.issubset(array_dims):
+                        # we found a set of metrics with dimensions compatible
+                        # with the array
+                        metric_vars = possible_combinations
+                        break
+                if metric_vars is not None:
                     break
             except KeyError:
                 pass
         if metric_vars is None:
             raise KeyError(
-                "Unable to find any combinations of metrics for"
-                "metric dims %r" % metric_dims
+                "Unable to find any combinations of metrics for "
+                "array dims %r and axes %r" % (array_dims, axes)
             )
 
         # return the product of the metrics
@@ -980,26 +1042,220 @@ class Grid:
             summary += axis._coord_desc()
         return "\n".join(summary)
 
+    @docstrings.get_sectionsf("grid_func", sections=["Parameters", "Examples"])
+    @docstrings.dedent
+    def _grid_func(self, funcname, da, axis, **kwargs):
+        """this function calls appropriate functions from `Axis` objects.
+        It handles multiple axis input and weighting with metrics
+
+        Parameters
+        ----------
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
+
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        vector_partner : dict, optional
+            A single key (string), value (DataArray).
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            If an axis or list of axes is specified,
+            the appropriate grid metrics will be used to determined the weight for interpolation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+
+        """
+
+        if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
+            axis = [axis]
+        # parse multi axis kwargs like e.g. `boundary`
+        multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+
+        out = da
+        for axx in axis:
+            kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
+            ax = self.axes[axx]
+            func = getattr(ax, funcname)
+            metric_weighted = kwargs.pop("metric_weighted", False)
+
+            if isinstance(metric_weighted, str):
+                metric_weighted = (metric_weighted,)
+
+            if metric_weighted:
+                metric = self.get_metric(out, metric_weighted)
+                out = out * metric
+
+            out = func(out, **kwargs)
+
+            if metric_weighted:
+                metric_new = self.get_metric(out, metric_weighted)
+                out = out / metric_new
+
+        return out
+
     @docstrings.dedent
     def interp(self, da, axis, **kwargs):
         """
         Interpolate neighboring points to the intermediate grid point along
         this axis.
 
+
         Parameters
         ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
 
         Returns
         -------
         da_i : xarray.DataArray
             The interpolated data
-        """
 
-        ax = self.axes[axis]
-        return ax.interp(da, **kwargs)
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if a global 2D dataset should be interpolated on both X and Y axis, but it is
+        only periodic in the X axis, we can do this:
+
+        >>> grid.interp(da, ['X', 'Y'], periodic={'X':True, 'Y':False})
+        """
+        return self._grid_func("interp", da, axis, **kwargs)
+
+    @docstrings.dedent
+    def diff(self, da, axis, **kwargs):
+        """
+        Difference neighboring points to the intermediate grid point.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The differenced data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if a global 2D dataset should be differenced on both X and Y axis, but the fill
+        value at the boundary should be differenc for each axis, we can do this:
+
+        >>> grid.diff(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("diff", da, axis, **kwargs)
+
+    @docstrings.dedent
+    def min(self, da, axis, **kwargs):
+        """
+        Minimum of neighboring points on the intermediate grid point.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The mimimum data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if we want to find the minimum of sourrounding grid cells for a global 2D dataset
+        in both X and Y axis, but the fill value at the boundary should be different
+        for each axis, we can do this:
+
+        >>> grid.min(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("min", da, axis, **kwargs)
+
+    @docstrings.dedent
+    def max(self, da, axis, **kwargs):
+        """
+        Maximum of neighboring points on the intermediate grid point.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The maximum data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if we want to find the maximum of sourrounding grid cells for a global 2D dataset
+        in both X and Y axis, but the fill value at the boundary should be different
+        for each axis, we can do this:
+
+        >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("max", da, axis, **kwargs)
+
+    @docstrings.dedent
+    def cumsum(self, da, axis, **kwargs):
+        """
+        Cumulatively sum a DataArray, transforming to the intermediate axis
+        position.
+
+        Parameters
+        ----------
+        %(grid_func.parameters)s
+
+        Examples
+        --------
+        %(grid_func.examples)s
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The cumsummed data
+
+        Examples
+        --------
+        Each keyword argument can be provided as a `per-axis` dictionary. For instance,
+        if we want to compute the cumulative sum of global 2D dataset
+        in both X and Y axis, but the fill value at the boundary should be different
+        for each axis, we can do this:
+
+        >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        """
+        return self._grid_func("cumsum", da, axis, **kwargs)
 
     @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
@@ -1070,26 +1326,6 @@ class Grid:
         return self._apply_vector_function(Axis.interp, vector, **kwargs)
 
     @docstrings.dedent
-    def diff(self, da, axis, **kwargs):
-        """
-        Difference neighboring points to the intermediate grid point.
-
-        Parameters
-        ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-
-        ax = self.axes[axis]
-        return ax.diff(da, **kwargs)
-
-    @docstrings.dedent
     def derivative(self, da, axis, **kwargs):
         """
         Take the centered-difference derivative along specified axis.
@@ -1108,48 +1344,91 @@ class Grid:
 
         ax = self.axes[axis]
         diff = ax.diff(da, **kwargs)
-        dx = self.get_metric(diff, ("X",))
+        dx = self.get_metric(diff, (axis,))
         return diff / dx
 
     @docstrings.dedent
-    def min(self, da, axis, **kwargs):
+    def integrate(self, da, axis, **kwargs):
         """
-        Minimum of neighboring points on the intermediate grid point.
+        Perform finite volume integration along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
 
         Parameters
         ----------
-        axis : str
+        axis : str, list of str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        **kwargs: dict
+            Additional arguments passed to `xarray.DataArray.sum`
 
         Returns
         -------
         da_i : xarray.DataArray
-            The minimal data
+            The integrated data
         """
 
-        ax = self.axes[axis]
-        return ax.min(da, **kwargs)
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        # get dimension(s) corresponding
+        # to `da` and `axis` input
+        dim = self._get_dims_from_axis(da, axis)
+
+        return weighted.sum(dim, **kwargs)
 
     @docstrings.dedent
-    def max(self, da, axis, **kwargs):
+    def cumint(self, da, axis, **kwargs):
         """
-        Maximum of neighboring points on the intermediate grid point.
+        Perform cumulative integral along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
 
         Parameters
         ----------
-        axis : str
+        axis : str, list of str
             Name of the axis on which to act
         %(neighbor_binary_func.parameters.no_f)s
 
         Returns
         -------
         da_i : xarray.DataArray
-            The maximal data
+            The cumulatively integrated data
         """
 
-        ax = self.axes[axis]
-        return ax.max(da, **kwargs)
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        return self.cumsum(weighted, axis, **kwargs)
+
+    @docstrings.dedent
+    def average(self, da, axis, **kwargs):
+        """
+        Perform weighted mean reduction along specified axis or axes,
+        accounting for grid metrics. (e.g. cell length, area, volume)
+
+        Parameters
+        ----------
+        axis : str, list of str
+            Name of the axis on which to act
+        **kwargs: dict
+            Additional arguments passed to `xarray.DataArray.sum`
+
+
+        Returns
+        -------
+        da_i : xarray.DataArray
+            The averaged data
+        """
+
+        weight = self.get_metric(da, axis)
+        weighted = da * weight
+        # TODO: We should integrate xarray.weighted once available.
+
+        # get dimension(s) corresponding
+        # to `da` and `axis` input
+        dim = self._get_dims_from_axis(da, axis)
+        # do we need to pass kwargs?
+        return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
@@ -1173,43 +1452,6 @@ class Grid:
         """
 
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
-
-    @docstrings.dedent
-    def cumsum(self, da, axis, **kwargs):
-        """
-        Cumulatively sum a DataArray, transforming to the intermediate axis
-        position.
-
-        Parameters
-        ----------
-        axis : str
-            Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The cumsummed data
-        """
-
-        ax = self.axes[axis]
-        return ax.cumsum(da, **kwargs)
-
-
-def add_to_slice(da, dim, sl, value):
-    # split array into before, middle and after (if slice is the
-    # beginning or end before or after will be empty)
-    before = da[{dim: slice(0, sl)}]
-    middle = da[{dim: sl}]
-    after = da[{dim: slice(sl + 1, None)}]
-    if sl < -1:
-        raise RuntimeError("slice can not be smaller value than -1")
-    elif sl == -1:
-        da_new = xr.concat([before, middle + value], dim=dim)
-    else:
-        da_new = xr.concat([before, middle + value, after], dim=dim)
-    # then add 'value' to middle and concatenate again
-    return da_new
 
 
 def raw_interp_function(data_left, data_right):

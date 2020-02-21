@@ -1,5 +1,7 @@
 conda:
     file: doc/environment.yml
 python:
-   version: 2
-   setup_py_install: true
+   version: 3.6
+   install:
+      - method: setuptools
+        path: package
