@@ -11,8 +11,8 @@ authors:
     orcid: XXX
     affiliation: 1 # (Multiple affiliations must be quoted)
   - name: Julius Busecke
-    orcid: XXX
-    affiliation: "1, 2"
+    orcid: 0000-0001-8571-865X
+    affiliation: 2
   - name: Anderson Banihirwe
     orcid: 0000-0001-6583-571X
     affiliation: 3
