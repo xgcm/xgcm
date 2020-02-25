@@ -16,6 +16,12 @@ authors:
   - name: Anderson Banihirwe
     orcid: 0000-0001-6583-571X
     affiliation: 3
+  - name: Ci Zhang
+    orcid: 0000-0001-8584-8569
+    affiliation: "1, 4"
+  - name: Timothy Smith
+    orcid: 0000-0003-4463-6126
+    affiliation: 5
 affiliations:
  - name: Lamont Doherty Earth Observatory of Columbia University
    index: 1
@@ -23,10 +29,12 @@ affiliations:
    index: 2
  - name: The US National Center for Atmospheric Research, USA
    index: 3 
-   
+ - name: Tsinghua University
+   index: 4
+ - name: The Oden Institute for Computational Engineering and Sciences, The University of Texas at Austin
+   index: 5
 date: 15 February 2020
 bibliography: paper.bib
----
 
 # Summary
 
