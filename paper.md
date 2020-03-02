@@ -97,13 +97,14 @@ Some published results include:
 - Analysis of the momentum budget in the equatorial undercurrent `[@busecke_ocean_2019]`
 - Diagnostics of temporal variability the global ocean heat budget in the ECCOv4 state estimate `[@tesdal_abernathey_2020]`
 
-Xgcm provides the computational backbone for computing diagnostics from the
-ECCOv4 state estimate `[@forgetECCOv4]` within the ECCOv4-py package `[@eccov4py]`.
+Xgcm provides the computational backbone for the ECCOv4-py package `[@eccov4py]`, which
+is used to postprocess and analyze output from the ECCOv4 state estimate `[@forgetECCOv4]`, 
+a global ocean model constrained to 25 years of observational data.
 The finite volume grid on which the ECCOv4 solution lives is made up of 13 connected tiles
-(see Fig. 1, `[@forgetECCOv4]`) which makes standard computations more challenging.
-For example, computing meridional heat transport, a standard diagnostic for verifying
-the quality of the state estimate, requires rotating and exchanging horizontal heat fluxes
-on some of the tiles.
+(see Fig. 1, `[@forgetECCOv4]`) which, due to the orientation of some of the tiles, 
+can make standard computations challenging.
+For example, computing meridional heat transport requires realigning the vector components of
+the horizontal heat fluxes on some grid tiles.
 Notably, the generic differencing and interpolation operations in xgcm
 make computations like this
 (1) intuitive and transparent within the ECCOv4-py code, and
