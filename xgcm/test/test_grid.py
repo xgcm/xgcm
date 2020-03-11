@@ -405,6 +405,7 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
     assert data_diff_expected.equals(data_diff)
     # check without "to" specified
     assert data_diff.equals(axis.diff(da, boundary=boundary))
+    # test keep_coords
 
     # max
     data_max_expected = xr.DataArray(
@@ -507,6 +508,8 @@ def test_axis_diff_and_interp_nonperiodic_2d(
 
     assert da_interp_expected.equals(da_interp)
     assert da_diff_expected.equals(da_diff)
+    
+    # test keep_coords?
 
 
 def test_axis_errors():
@@ -595,6 +598,7 @@ def test_grid_no_coords(periodic_1d):
     assert len(diff.coords) == 0
     interp = grid.interp(ds["data_c"], "X")
     assert len(interp.coords) == 0
+    # test keep_coords fail safe
 
 
 def test_grid_repr(all_datasets):
@@ -631,6 +635,7 @@ def test_grid_ops(all_datasets):
                     da_cumsum = grid.cumsum(ds[varname], axis_name, boundary=boundary)
                     da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
                     assert da_cumsum.equals(da_cumsum_ax)
+                # test diff keep_coords?
 
 
 @pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])

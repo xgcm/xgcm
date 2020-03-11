@@ -567,6 +567,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False
     ):
         """
         Difference neighboring points to the intermediate grid point.
