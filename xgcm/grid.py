@@ -532,6 +532,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Interpolate neighboring points to the intermediate grid point along
@@ -557,6 +558,7 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords=keep_coords,
         )
 
     @docstrings.dedent
@@ -591,11 +593,11 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
-            keep_coords,
+            keep_coords=keep_coords,
         )
 
     @docstrings.dedent
-    def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
+    def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
         position.
@@ -639,7 +641,7 @@ class Axis:
                 "shift for cumsum operation." % (pos, to)
             )
 
-        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to)
+        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to, keep_coords)
         return da_cum_newcoord
 
     @docstrings.dedent

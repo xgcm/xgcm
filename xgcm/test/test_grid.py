@@ -187,12 +187,12 @@ def test_axis_wrap_and_replace_2d(periodic_2d):
     da_xg_yc = 0 * ds.XG * ds.YC + 1
 
     da_xc_yg_test = axis_objs["Y"]._wrap_and_replace_coords(
-        da_xc_yc, da_xc_yc.data, "left"
+        da_xc_yc, da_xc_yc.data, "left", False
     )
     assert da_xc_yg.equals(da_xc_yg_test)
 
     da_xg_yc_test = axis_objs["X"]._wrap_and_replace_coords(
-        da_xc_yc, da_xc_yc.data, "left"
+        da_xc_yc, da_xc_yc.data, "left", False
     )
     assert da_xg_yc.equals(da_xg_yc_test)
 
@@ -206,10 +206,10 @@ def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
 
     to = (set(expected["axes"]["X"].keys()) - {"center"}).pop()
 
-    da_g_test = axis._wrap_and_replace_coords(da_c, da_g.data, to)
+    da_g_test = axis._wrap_and_replace_coords(da_c, da_g.data, to, False)
     assert da_g.equals(da_g_test)
 
-    da_c_test = axis._wrap_and_replace_coords(da_g, da_c.data, "center")
+    da_c_test = axis._wrap_and_replace_coords(da_g, da_c.data, "center", False)
     assert da_c.equals(da_c_test)
 
 
