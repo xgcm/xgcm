@@ -508,7 +508,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(
 
     assert da_interp_expected.equals(da_interp)
     assert da_diff_expected.equals(da_diff)
-    
+
     # test keep_coords?
 
 

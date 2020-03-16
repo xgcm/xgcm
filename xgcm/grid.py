@@ -193,6 +193,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Apply a function to neighboring points.
@@ -239,7 +240,7 @@ class Axis:
             vector_partner=vector_partner,
         )
         # wrap in a new xarray wrapper
-        da_new = self._wrap_and_replace_coords(da, data_new, to)
+        da_new = self._wrap_and_replace_coords(da, data_new, to, keep_coords)
 
         return da_new
 
@@ -567,7 +568,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
-        keep_coords=False
+        keep_coords=False,
     ):
         """
         Difference neighboring points to the intermediate grid point.
@@ -590,6 +591,7 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords,
         )
 
     @docstrings.dedent
@@ -705,7 +707,7 @@ class Axis:
             vector_partner,
         )
 
-    def _wrap_and_replace_coords(self, da, data_new, position_to):
+    def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords):
         """
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
@@ -733,6 +735,17 @@ class Axis:
                 # only add coordinate if it actually exists...
                 if d in da.coords:
                     coords[d] = da.coords[d]
+
+        # add compatible coords
+        if keep_coords:
+            # v0: compact but not readable version:
+            # coords.update(**{c: da[c] for c in da.coords
+            #                 if c not in coords and all([d in coords for d in da[c].dims])})
+            # v1: less compact but more readable version:
+            for c in da.coords:
+                if c not in coords and all([d in coords for d in da[c].dims]):
+                    coords[c] = da[c]
+            # v2: other xarray based solution?
 
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
