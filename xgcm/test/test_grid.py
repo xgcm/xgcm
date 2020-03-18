@@ -187,12 +187,12 @@ def test_axis_wrap_and_replace_2d(periodic_2d):
     da_xg_yc = 0 * ds.XG * ds.YC + 1
 
     da_xc_yg_test = axis_objs["Y"]._wrap_and_replace_coords(
-        da_xc_yc, da_xc_yc.data, "left", False
+        da_xc_yc, da_xc_yc.data, "left"
     )
     assert da_xc_yg.equals(da_xc_yg_test)
 
     da_xg_yc_test = axis_objs["X"]._wrap_and_replace_coords(
-        da_xc_yc, da_xc_yc.data, "left", False
+        da_xc_yc, da_xc_yc.data, "left"
     )
     assert da_xg_yc.equals(da_xg_yc_test)
 

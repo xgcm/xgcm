@@ -709,7 +709,7 @@ class Axis:
             vector_partner,
         )
 
-    def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords):
+    def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords=False):
         """
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
