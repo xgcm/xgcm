@@ -471,9 +471,12 @@ def test_axis_diff_and_interp_nonperiodic_2d(
             pad_width = [
                 pad_left if i == axis_num else pad_none for i in range(data.ndim)
             ]
-            the_slice = [
-                slice(0, -1) if i == axis_num else slice(None) for i in range(data.ndim)
-            ]
+            the_slice = tuple(
+                [
+                    slice(0, -1) if i == axis_num else slice(None)
+                    for i in range(data.ndim)
+                ]
+            )
             data_left = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
             data_right = data
     elif this == "left":
@@ -484,10 +487,12 @@ def test_axis_diff_and_interp_nonperiodic_2d(
             pad_width = [
                 pad_right if i == axis_num else pad_none for i in range(data.ndim)
             ]
-            the_slice = [
-                slice(1, None) if i == axis_num else slice(None)
-                for i in range(data.ndim)
-            ]
+            the_slice = tuple(
+                [
+                    slice(1, None) if i == axis_num else slice(None)
+                    for i in range(data.ndim)
+                ]
+            )
             data_right = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
             data_left = data
 
@@ -602,7 +607,7 @@ def test_grid_no_coords(periodic_1d):
     ds, periodic, expected = periodic_1d
     grid_expected = Grid(ds, periodic=periodic)
 
-    ds_nocoords = ds.drop(list(ds.dims.keys()))
+    ds_nocoords = ds.drop_dims(list(ds.dims.keys()))
 
     coords = expected["axes"]
     grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
