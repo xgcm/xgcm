@@ -143,7 +143,7 @@ def test_create_axis_no_coords(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
 
-    ds_drop = ds.drop(list(ds.coords))
+    ds_drop = ds.drop_vars(list(ds.coords))
 
     for axis_name, axis_coords in expected["axes"].items():
         # now create the axis from scratch with no attributes OR coords
