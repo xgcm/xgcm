@@ -1319,14 +1319,14 @@ class Grid:
             x_axis,
             vector[x_axis_name],
             vector_partner={y_axis_name: vector[y_axis_name]},
-            **kwargs
+            **kwargs,
         )
 
         y_component = function(
             y_axis,
             vector[y_axis_name],
             vector_partner={x_axis_name: vector[x_axis_name]},
-            **kwargs
+            **kwargs,
         )
 
         return {x_axis_name: x_component, y_axis_name: y_component}
