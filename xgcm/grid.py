@@ -653,6 +653,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Minimum of neighboring points on intermediate grid point.
@@ -675,6 +676,7 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords,
         )
 
     def max(
@@ -685,6 +687,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Maximum of neighboring points on intermediate grid point.
@@ -707,6 +710,7 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords,
         )
 
     def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords=False):

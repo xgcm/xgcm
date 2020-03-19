@@ -15,6 +15,7 @@ from .datasets import (
     nonperiodic_2d,
     all_2d,
     datasets,
+    datasets_grid_metric,
 )
 
 
@@ -206,10 +207,10 @@ def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
 
     to = (set(expected["axes"]["X"].keys()) - {"center"}).pop()
 
-    da_g_test = axis._wrap_and_replace_coords(da_c, da_g.data, to, False)
+    da_g_test = axis._wrap_and_replace_coords(da_c, da_g.data, to)
     assert da_g.equals(da_g_test)
 
-    da_c_test = axis._wrap_and_replace_coords(da_g, da_c.data, "center", False)
+    da_c_test = axis._wrap_and_replace_coords(da_g, da_c.data, "center")
     assert da_c.equals(da_c_test)
 
 
@@ -405,7 +406,6 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
     assert data_diff_expected.equals(data_diff)
     # check without "to" specified
     assert data_diff.equals(axis.diff(da, boundary=boundary))
-    # test keep_coords
 
     # max
     data_max_expected = xr.DataArray(
@@ -509,8 +509,6 @@ def test_axis_diff_and_interp_nonperiodic_2d(
     assert da_interp_expected.equals(da_interp)
     assert da_diff_expected.equals(da_diff)
 
-    # test keep_coords?
-
 
 def test_axis_errors():
     ds = datasets["1d_left"]
@@ -598,7 +596,6 @@ def test_grid_no_coords(periodic_1d):
     assert len(diff.coords) == 0
     interp = grid.interp(ds["data_c"], "X")
     assert len(interp.coords) == 0
-    # test keep_coords fail safe
 
 
 def test_grid_repr(all_datasets):
@@ -635,7 +632,6 @@ def test_grid_ops(all_datasets):
                     da_cumsum = grid.cumsum(ds[varname], axis_name, boundary=boundary)
                     da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
                     assert da_cumsum.equals(da_cumsum_ax)
-                # test diff keep_coords?
 
 
 @pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
@@ -663,3 +659,26 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
             serial = getattr(grid, func)(serial, axis, boundary=boundary_axis)
         full = getattr(grid, func)(ds[varname], axes, boundary=boundary)
         xr.testing.assert_allclose(serial, full)
+
+
+# @pytest.mark.parametrize("funcname", ["diff", "interp", "min", "max", "integrate", "average", "cumint"])
+# integrate, average and cumsum call xarray sum method directly and
+# not _wrap_and_replace_coords
+@pytest.mark.parametrize("funcname", ["diff", "interp", "min", "max"])
+def test_keep_coords(funcname):
+    # ds, periodic, expected = all_datasets
+    ds, coords, metrics = datasets_grid_metric("C")
+    ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
+    grid = Grid(ds, coords=coords, metrics=metrics)
+    func = getattr(grid, funcname)
+    # print(ds)
+    for axis_name in grid.axes.keys():
+        coords = list(func(ds.tracer, axis_name).coords)
+        assert "xt_bis" not in coords
+        assert "yt_bis" not in coords
+        #
+        coords = list(func(ds.tracer, axis_name, keep_coords=True).coords)
+        if axis_name == "X":
+            assert "yt_bis" in coords
+        elif axis_name == "Y":
+            assert "xt_bis" in coords
