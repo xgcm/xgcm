@@ -86,7 +86,7 @@ class Axis:
         coords : dict, optional
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
-        boundary : {None, 'fill', 'extend'}
+        boundary : {None, 'fill', 'extend', 'extrapolate'}
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -95,6 +95,8 @@ class Axis:
               (i.e. a Neumann boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Dirichlet boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
 
         REFERENCES
         ----------
@@ -830,7 +832,7 @@ class Grid:
             coordinates in ``ds``.
         metrics : dict, optional
             Specification of grid metrics
-        boundary : {None, 'fill', 'extend'}
+        boundary : {None, 'fill', 'extend', 'extrapolate'}
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -839,6 +841,9 @@ class Grid:
               (i.e. a Neumann boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Dirichlet boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+
 
         REFERENCES
         ----------
