@@ -86,6 +86,15 @@ class Axis:
         coords : dict, optional
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
 
         REFERENCES
         ----------
@@ -821,6 +830,15 @@ class Grid:
             coordinates in ``ds``.
         metrics : dict, optional
             Specification of grid metrics
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
 
         REFERENCES
         ----------
