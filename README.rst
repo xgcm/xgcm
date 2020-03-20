@@ -1,7 +1,7 @@
 xgcm: General Circulation Model Postprocessing with xarray
 ==========================================================
 
-|pypi| |conda forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style|
+|pypi| |conda forge| |conda-forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style|
 
 Binder Examples
 ---------------
@@ -76,3 +76,5 @@ For more information, including installation instructions, read the full
    :target: https://mybinder.org/v2/gh/xgcm/xgcm/master?filepath=doc%2Fexample_mitgcm.ipynb
 .. |PBinder| image:: https://binder.pangeo.io/badge_logo.svg
    :target: https://binder.pangeo.io/v2/gh/pangeo-data/pangeo-ocean-examples/master
+.. |conda-forge| image:: https://img.shields.io/conda/dn/conda-forge/xgcm?label=conda-forge
+   :target: https://anaconda.org/conda-forge/xgcm
