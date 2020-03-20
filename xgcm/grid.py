@@ -744,14 +744,9 @@ class Axis:
 
         # add compatible coords
         if keep_coords:
-            # v0: compact but not readable version:
-            # coords.update(**{c: da[c] for c in da.coords
-            #                 if c not in coords and all([d in coords for d in da[c].dims])})
-            # v1: less compact but more readable version:
             for c in da.coords:
-                if c not in coords and all([d in coords for d in da[c].dims]):
+                if c not in coords and set(da[c].dims).issubset(dims):
                     coords[c] = da[c]
-            # v2: other xarray based solution?
 
         return xr.DataArray(data_new, dims=dims, coords=coords)
 

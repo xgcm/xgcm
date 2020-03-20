@@ -661,24 +661,29 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
         xr.testing.assert_allclose(serial, full)
 
 
-# @pytest.mark.parametrize("funcname", ["diff", "interp", "min", "max", "integrate", "average", "cumint"])
-# integrate, average and cumsum call xarray sum method directly and
-# not _wrap_and_replace_coords
-@pytest.mark.parametrize("funcname", ["diff", "interp", "min", "max"])
+@pytest.mark.parametrize(
+    "funcname",
+    ["diff", "interp", "min", "max", "integrate", "average", "cumint", "derivative"],
+)
 def test_keep_coords(funcname):
-    # ds, periodic, expected = all_datasets
     ds, coords, metrics = datasets_grid_metric("C")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(ds, coords=coords, metrics=metrics)
     func = getattr(grid, funcname)
-    # print(ds)
     for axis_name in grid.axes.keys():
-        coords = list(func(ds.tracer, axis_name).coords)
-        assert "xt_bis" not in coords
-        assert "yt_bis" not in coords
+        result = func(ds.tracer, axis_name)
+        base_coords = list(result.dims)
+        augmented_coords = [
+            c for c in ds.tracer.coords if set(ds[c].dims).issubset(result.dims)
+        ]
+        if funcname in ["integrate", "average"]:
+            assert set(result.coords) == set(base_coords + augmented_coords)
+        else:
+            assert set(result.coords) == set(base_coords)
         #
-        coords = list(func(ds.tracer, axis_name, keep_coords=True).coords)
-        if axis_name == "X":
-            assert "yt_bis" in coords
-        elif axis_name == "Y":
-            assert "xt_bis" in coords
+        if funcname not in ["integrate", "average"]:
+            result = func(ds.tracer, axis_name, keep_coords=False)
+            assert set(result.coords) == set(base_coords)
+            #
+            result = func(ds.tracer, axis_name, keep_coords=True)
+            assert set(result.coords) == set(base_coords + augmented_coords)
