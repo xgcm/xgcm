@@ -663,7 +663,17 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
 
 @pytest.mark.parametrize(
     "funcname",
-    ["diff", "interp", "min", "max", "integrate", "average", "cumint", "derivative"],
+    [
+        "diff",
+        "interp",
+        "min",
+        "max",
+        "integrate",
+        "average",
+        "cumsum",
+        "cumint",
+        "derivative",
+    ],
 )
 def test_keep_coords(funcname):
     ds, coords, metrics = datasets_grid_metric("C")
