@@ -24,6 +24,9 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
+_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
+
+
 class Axis:
     """
     An object that represents a group of coodinates that all lie along the same
@@ -92,6 +95,10 @@ class Axis:
         self._ds = ds
         self.name = axis_name
         self._periodic = periodic
+        if boundary not in _VALID_BOUNDARY:
+            raise ValueError(
+                f"Expected 'boundary' to be one of {_VALID_BOUNDARY}. Received {boundary!r} instead."
+            )
         self.boundary = boundary
 
         if coords:
@@ -846,7 +853,7 @@ class Grid:
             else:
                 raise ValueError(
                     f"boundary={boundary} is invalid. Please specify a dictionary "
-                    "mapping axis name to default boundary option; a string or None."
+                    "mapping axis name to a boundary option; a string or None."
                 )
             self.axes[axis_name] = Axis(
                 ds,

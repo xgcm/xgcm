@@ -679,3 +679,17 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
             serial = getattr(grid, func)(serial, axis, boundary=boundary_axis)
         full = getattr(grid, func)(ds[varname], axes, boundary=boundary)
         xr.testing.assert_allclose(serial, full)
+
+
+def test_invalid_boundary_error():
+    ds = datasets["1d_left"]
+    with pytest.raises(ValueError):
+        Axis(ds, "X", boundary="bad")
+    with pytest.raises(ValueError):
+        Grid(ds, boundary="bad")
+    with pytest.raises(ValueError):
+        Grid(ds, boundary={"X": "bad"})
+    with pytest.raises(ValueError):
+        Grid(ds, boundary={"X": 0})
+    with pytest.raises(ValueError):
+        Grid(ds, boundary=0)
