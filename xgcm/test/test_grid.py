@@ -675,8 +675,9 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
         "derivative",
     ],
 )
-def test_keep_coords(funcname):
-    ds, coords, metrics = datasets_grid_metric("C")
+@pytest.mark.parametrize("gridtype", ["B", "C"])
+def test_keep_coords(funcname, gridtype):
+    ds, coords, metrics = datasets_grid_metric(gridtype)
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(ds, coords=coords, metrics=metrics)
     func = getattr(grid, funcname)
