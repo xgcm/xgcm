@@ -1494,11 +1494,11 @@ def raw_diff_function(data_left, data_right):
 
 
 def raw_min_function(data_left, data_right):
-    return xr.ufuncs.minimum(data_right, data_left)
+    return np.minimum(data_right, data_left)
 
 
 def raw_max_function(data_left, data_right):
-    return xr.ufuncs.maximum(data_right, data_left)
+    return np.maximum(data_right, data_left)
 
 
 _other_docstring_options = """

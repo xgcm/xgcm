@@ -408,7 +408,7 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 
     # max
     data_max_expected = xr.DataArray(
-        xr.ufuncs.maximum(data_right, data_left),
+        np.maximum(data_right, data_left),
         dims=[coord_to],
         coords={coord_to: ds[coord_to]},
     )
@@ -419,7 +419,7 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 
     # min
     data_min_expected = xr.DataArray(
-        xr.ufuncs.minimum(data_right, data_left),
+        np.minimum(data_right, data_left),
         dims=[coord_to],
         coords={coord_to: ds[coord_to]},
     )
