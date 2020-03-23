@@ -574,15 +574,20 @@ def test_axis_errors():
     #    ax.interp(ds.data_c, "left", boundary="fill")
 
 
-def test_grid_create(all_datasets):
+@pytest.mark.parametrize("boundary", [None, "fill", "extend", {"X": "fill", "Y": "extend"}])
+def test_grid_create(all_datasets, boundary):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
     assert grid is not None
     for ax in grid.axes.values():
         assert ax.boundary is None
-    grid = Grid(ds, periodic=periodic, boundary="extend")
-    for ax in grid.axes.values():
-        assert ax.boundary == "extend"
+    grid = Grid(ds, periodic=periodic, boundary=boundary)
+    for name, ax in grid.axes.items():
+        if isinstance(boundary, dict):
+            expected = boundary.get(name)
+        else:
+            expected = boundary
+        assert ax.boundary == expected
 
 
 def test_create_grid_no_comodo(all_datasets):
