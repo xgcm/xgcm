@@ -226,7 +226,10 @@ def _pad_right(data, boundary, fill_value=0.0):
     return np.hstack([data, pad_val])
 
 
-@pytest.mark.parametrize("boundary", [None, "extend", "fill"])
+@pytest.mark.parametrize(
+    "boundary",
+    [None, "extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)],
+)
 @pytest.mark.parametrize("from_center", [True, False])
 def test_axis_neighbor_pairs_nonperiodic_1d(nonperiodic_1d, boundary, from_center):
     ds, periodic, expected = nonperiodic_1d
@@ -279,7 +282,9 @@ def test_axis_neighbor_pairs_nonperiodic_1d(nonperiodic_1d, boundary, from_cente
         np.testing.assert_allclose(data_right, expected_right)
 
 
-@pytest.mark.parametrize("boundary", ["extend", "fill"])
+@pytest.mark.parametrize(
+    "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
+)
 def test_axis_cumsum(nonperiodic_1d, boundary):
     ds, periodic, expected = nonperiodic_1d
     axis = Axis(ds, "X", periodic=periodic)
@@ -353,7 +358,9 @@ def test_axis_neighbor_pairs_2d(
     np.testing.assert_allclose(data_right, data.data)
 
 
-@pytest.mark.parametrize("boundary", ["extend", "fill"])
+@pytest.mark.parametrize(
+    "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
+)
 @pytest.mark.parametrize("from_center", [True, False])
 def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_center):
     ds, periodic, expected = nonperiodic_1d
@@ -432,7 +439,9 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 # this mega test covers all options for 2D data
 
 
-@pytest.mark.parametrize("boundary", ["extend", "fill"])
+@pytest.mark.parametrize(
+    "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
+)
 @pytest.mark.parametrize("axis_name", ["X", "Y"])
 @pytest.mark.parametrize(
     "varname, this, to", [("data_c", "center", "left"), ("data_g", "left", "center")]
@@ -574,7 +583,9 @@ def test_axis_errors():
     #    ax.interp(ds.data_c, "left", boundary="fill")
 
 
-@pytest.mark.parametrize("boundary", [None, "fill", "extend", {"X": "fill", "Y": "extend"}])
+@pytest.mark.parametrize(
+    "boundary", [None, "fill", "extend", "extrapolate", {"X": "fill", "Y": "extend"}]
+)
 def test_grid_create(all_datasets, boundary):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
