@@ -86,8 +86,10 @@ class Axis:
         coords : dict, optional
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
-        boundary : {None, 'fill', 'extend', 'extrapolate'}
-            A flag indicating how to handle boundaries:
+        boundary : str or dict, optional,
+            boundary can either be one of  {None, 'fill', 'extend', 'extrapolate'}
+            the above strings (in which case it is set as boundary for all axes)
+            or a dict mapping axis name to a string (e.g. {"X": "fill", "Y": "extend"}).
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
