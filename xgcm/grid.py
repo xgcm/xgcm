@@ -220,6 +220,8 @@ class Axis:
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -1136,6 +1138,8 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1164,6 +1168,8 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1192,6 +1198,8 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1221,6 +1229,8 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1251,6 +1261,8 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1350,6 +1362,8 @@ class Grid:
         axis : str
             Name of the axis on which to act
         %(neighbor_binary_func.parameters.no_f)s
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -1402,6 +1416,8 @@ class Grid:
         axis : str, list of str
             Name of the axis on which to act
         %(neighbor_binary_func.parameters.no_f)s
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
