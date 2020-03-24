@@ -681,6 +681,7 @@ class Axis:
             keep_coords,
         )
 
+    @docstrings.dedent
     def max(
         self,
         da,
@@ -816,7 +817,9 @@ class Grid:
             coordinates in ``ds``.
         metrics : dict, optional
             Specification of grid metrics
-
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
+            
         REFERENCES
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
@@ -1138,8 +1141,6 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1168,8 +1169,6 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1198,8 +1197,6 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1229,8 +1226,6 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Examples
         --------
@@ -1261,8 +1256,6 @@ class Grid:
         Parameters
         ----------
         %(grid_func.parameters)s
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Examples
         --------
