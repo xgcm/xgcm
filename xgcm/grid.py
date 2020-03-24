@@ -1354,9 +1354,7 @@ class Grid:
         ----------
         axis : str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
+        %(grid_func.parameters)s
 
         Returns
         -------
@@ -1408,9 +1406,7 @@ class Grid:
         ----------
         axis : str, list of str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
+        %(grid_func.parameters)s
 
         Returns
         -------
