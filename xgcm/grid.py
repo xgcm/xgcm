@@ -67,6 +67,7 @@ class Axis:
         default_shifts={},
         coords=None,
         boundary=None,
+        fill_value=None,
     ):
         """
         Create a new Axis object from an input dataset.
@@ -99,6 +100,8 @@ class Axis:
               value. (i.e. a limited form of Dirichlet boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+        fill_value : {float}, optional
+            The value to use in the boundary condition when `boundary='fill'`.
 
         REFERENCES
         ----------
@@ -113,6 +116,9 @@ class Axis:
                 f"Expected 'boundary' to be one of {_VALID_BOUNDARY}. Received {boundary!r} instead."
             )
         self.boundary = boundary
+        if fill_value is not None and not isinstance(fill_value, (int, float)):
+            raise ValueError(f"Expected 'fill_value' to be a number.")
+        self.fill_value = fill_value if fill_value is not None else 0.0
 
         if coords:
             # use specified coords
@@ -222,7 +228,7 @@ class Axis:
         f,
         to,
         boundary=None,
-        fill_value=0.0,
+        fill_value=None,
         boundary_discontinuity=None,
         vector_partner=None,
     ):
@@ -263,6 +269,8 @@ class Axis:
 
         if boundary is None:
             boundary = self.boundary
+        if fill_value is None:
+            fill_value = self.fill_value
         data_new = self._neighbor_binary_func_raw(
             da,
             f,
@@ -805,6 +813,7 @@ class Grid:
         coords=None,
         metrics=None,
         boundary=None,
+        fill_value=None,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -847,6 +856,10 @@ class Grid:
               points nearest to the edge
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
 
         REFERENCES
         ----------
@@ -881,6 +894,17 @@ class Grid:
                     f"boundary={boundary} is invalid. Please specify a dictionary "
                     "mapping axis name to a boundary option; a string or None."
                 )
+
+            if isinstance(fill_value, dict):
+                axis_fillvalue = fill_value.get(axis_name, None)
+            elif isinstance(fill_value, (int, float)) or fill_value is None:
+                axis_fillvalue = fill_value
+            else:
+                raise ValueError(
+                    f"fill_value={fill_value} is invalid. Please specify a dictionary "
+                    "mapping axis name to a boundary option; a number or None."
+                )
+
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
@@ -888,6 +912,7 @@ class Grid:
                 default_shifts=axis_default_shifts,
                 coords=coords.get(axis_name),
                 boundary=axis_boundary,
+                fill_value=fill_value,
             )
 
         if face_connections is not None:
