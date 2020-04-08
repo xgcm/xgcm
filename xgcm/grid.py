@@ -834,7 +834,7 @@ class Grid:
             coordinates in ``ds``.
         metrics : dict, optional
             Specification of grid metrics
-        boundary : {None, 'fill', 'extend', 'extrapolate'}
+        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -845,7 +845,8 @@ class Grid:
               value. (i.e. a limited form of Dirichlet boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
-
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
 
         REFERENCES
         ----------
