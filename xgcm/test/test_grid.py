@@ -718,3 +718,12 @@ def test_invalid_boundary_error():
         Grid(ds, boundary={"X": 0})
     with pytest.raises(ValueError):
         Grid(ds, boundary=0)
+
+def test_invalid_fill_value_error():
+    ds = datasets["1d_left"]
+    with pytest.raises(ValueError):
+        Axis(ds, "X", fill_value="x")
+    with pytest.raises(ValueError):
+        Grid(ds, fill_value="bad")
+    with pytest.raises(ValueError):
+        Grid(ds, fill_value={"X": "bad"})
