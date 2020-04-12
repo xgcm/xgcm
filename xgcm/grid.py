@@ -9,11 +9,26 @@ import operator
 import docrep
 import xarray as xr
 import numpy as np
+import weakref
 
 from . import comodo
 from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
+
+_global_grids = weakref.WeakSet()
+
+
+def _get_global_grids():
+    return _global_grids
+
+
+def _add_to_global_grids(grid):
+    _global_grids.add(grid)
+
+
+def _clear_global_grids():
+    _global_grids.clear()
 
 
 def _maybe_promote_str_to_list(a):
@@ -836,6 +851,8 @@ class Grid:
 
         if metrics is not None:
             self._assign_metrics(metrics)
+
+        _add_to_global_grids(self)
 
     def _parse_axes_kwargs(self, kwargs):
         """Convvert kwarg input into dict for each available axis

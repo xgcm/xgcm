@@ -5,3 +5,4 @@ del get_versions
 
 from .grid import Grid, Axis
 from .autogenerate import generate_grid_ds
+from .accessor import GridAccessor

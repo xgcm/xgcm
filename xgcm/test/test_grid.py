@@ -5,7 +5,7 @@ import xarray as xr
 import numpy as np
 from dask.array import from_array
 
-from xgcm.grid import Grid, Axis
+from xgcm.grid import Grid, Axis, _clear_global_grids
 
 from .datasets import (
     all_datasets,
@@ -631,6 +631,37 @@ def test_grid_ops(all_datasets):
                     da_cumsum = grid.cumsum(ds[varname], axis_name, boundary=boundary)
                     da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
                     assert da_cumsum.equals(da_cumsum_ax)
+
+
+def test_accessor(all_datasets):
+    """
+    Check that we get the same answer using Grid object vs Accessor
+    """
+    ds, periodic, expected = all_datasets
+
+    # explicitly clear the cache of global grids; otherwise each test adds
+    # more and more to the list of options, and we run into an underdetermined
+    # alignment problem.
+    # TODO: see if we can resolve the case when there are many possible grids
+    # to choose from. This is not the most common use case
+    _clear_global_grids()
+
+    grid = Grid(ds, periodic=periodic)
+
+    for axis_name in grid.axes.keys():
+        try:
+            ax_periodic = axis_name in periodic
+        except TypeError:
+            ax_periodic = periodic
+
+        bcs = [None] if ax_periodic else ["fill", "extend"]
+        for varname in ["data_c", "data_g"]:
+            for boundary in bcs:
+                da = ds[varname]
+                expected = grid.interp(da, axis_name, boundary=boundary)
+                actual = da.grid.interp(axis_name, boundary=boundary)
+                assert expected.equals(actual)
+                # TODO: test other methods
 
 
 @pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
