@@ -60,11 +60,11 @@ as plasma physics or astrophysical modeling, which use similar numerical grids.
 
 # Statement of Need
 
-The Python package Xarray  `[@hoyer2017xarray]` is, in many ways, an ideal tool for analyzing GCM
+The Python package Xarray  [@hoyer2017xarray] is, in many ways, an ideal tool for analyzing GCM
 data, providing file I/O, convenient indexing and grouping, coordinate-aware data
-transformations, and (via Dask, `@rocklin2015dask`) parallel, out-of-core array computation.
+transformations, and (via Dask, @rocklin2015dask) parallel, out-of-core array computation.
 However, GCM data provides a challenge to Xarray's data model: most finite-volume GCMs use
-_Arakawa Grids_ `[@ARAKAWA1977173]`, in which different variables are offset (a.k.a. staggered) from one another and situated at different locations with respect to the cell center and edge points.
+_Arakawa Grids_ [@ARAKAWA1977173], in which different variables are offset (a.k.a. staggered) from one another and situated at different locations with respect to the cell center and edge points.
 An example, illustrated in Fig. 1, is the C-grid geometry, which places scalars
 (such as temperature) at the cell center and vector components (such as velocity)
 at the cell faces.
@@ -83,7 +83,7 @@ derivatives in a manner consistent with simulation internals.
 Xgcm therefore can serve as a foundation for advanced GCM analytics, such as
 tracer, momentum, vorticity, and energy budgets.  
 Xgcm supports orthogonal curvilinear grids, including complex, multiply-connected
-grid topologies such as cubed-sphere `@ref`.
+grid topologies such as the cubed-sphere.
 
 # Scientific Applications
 
@@ -93,26 +93,25 @@ Xgcm is most frequently used to compute finite-volume budgets for quantities
 like heat, salinity, or chemical concentration.
 
 Some published results include:
-- Analysis of kinematic simulations of tracer mixing in the global ocean `[@busecke_ocean_2019]`
-- Analysis of simulations of the southern ocean phytoplankton ecosystem `[@uchida2019contribution]`
-- Analysis of the momentum budget in the equatorial undercurrent `[@busecke_ocean_2019]`
-- Diagnostics of temporal variability the global ocean heat budget in the ECCOv4 state estimate `[@tesdal_abernathey_2020]`
+- Analysis of kinematic simulations of tracer mixing in the global ocean [@busecke_ocean_2019].
+- Analysis of simulations of the southern ocean phytoplankton ecosystem [@uchida2019contribution].
+- Analysis of the momentum budget in the equatorial undercurrent [@busecke_ocean_2019].
+- Diagnostics of temporal variability the global ocean heat budget in the ECCOv4 state estimate [@tesdal_abernathey_2020].
 
 Xgcm also provides the computational backbone for several downstream tools, including
-OceanSpy `[@almansi_et_al_2019]`, a Python package for ocean model
-data analysis and visualization and ECCOv4-py `[@eccov4py]`, a tool used
-for to postprocess and analyze output from the ECCOv4 state estimate `[@forgetECCOv4]`,
+OceanSpy [@almansi_et_al_2019], a Python package for ocean model
+data analysis and visualization and ECCOv4-py [@eccov4py], a tool used
+for to postprocess and analyze output from the ECCOv4 state estimate [@forgetECCOv4],
 a global ocean model constrained to 25 years of observational data.
 The finite volume grid on which the ECCOv4 solution lives is made up of 13 connected tiles
-(see Fig. 1, `[@forgetECCOv4]`) which, due to the orientation of some of the tiles,
+(see Fig. 1, [@forgetECCOv4]) which, due to the orientation of some of the tiles,
 can make standard computations challenging.
 For example, computing meridional heat transport requires realigning the vector components of
 the horizontal heat fluxes on some grid tiles.
 Notably, the generic differencing and interpolation operations in xgcm
 make computations like this
-(1) intuitive and transparent within the ECCOv4-py code, and
-(2) computationally flexible because of integration with
-xarray `[@hoyer2017xarray]` and dask `@[rocklin2015dask]`.
+1. intuitive and transparent within the ECCOv4-py code, and
+2. computationally flexible because of integration with Xarray and Dask.
 
 We welcome reports of applications in other domains.
 
