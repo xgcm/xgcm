@@ -8,7 +8,7 @@ tags:
   - climate modeling
 authors:
   - name: Ryan Abernathey
-    orcid: XXX
+    orcid: 0000-0001-5999-4917
     affiliation: 1 # (Multiple affiliations must be quoted)
   - name: Julius Busecke
     orcid: 0000-0001-8571-865X
@@ -28,7 +28,7 @@ affiliations:
  - name: Princeton University
    index: 2
  - name: The US National Center for Atmospheric Research, USA
-   index: 3 
+   index: 3
  - name: Tsinghua University
    index: 4
  - name: The Oden Institute for Computational Engineering and Sciences, The University of Texas at Austin
@@ -41,7 +41,7 @@ bibliography: paper.bib
 Xgcm is a python package whose goal is to enable scientists to analyze
 finite-volume datasets easily, efficiently, and accurately.
 Finite volume methods are used throughout science and engineering to
-discretize and solve partial differential equations, especially computational fluid dynamics.
+discretize and solve partial differential equations, especially in computational fluid dynamics.
 Xgcm is not an equation solver--rather, it is a package aimed at analyzing
 the *output* of such simulations, i.e. "post-processsing."
 Post-processing is important because large-scale simulations are often run
@@ -97,11 +97,13 @@ Some published results include:
 - Analysis of the momentum budget in the equatorial undercurrent `[@busecke_ocean_2019]`
 - Diagnostics of temporal variability the global ocean heat budget in the ECCOv4 state estimate `[@tesdal_abernathey_2020]`
 
-Xgcm provides the computational backbone for the ECCOv4-py package `[@eccov4py]`, which
-is used to postprocess and analyze output from the ECCOv4 state estimate `[@forgetECCOv4]`, 
+Xgcm also provides the computational backbone for several downstream tools, including
+OceanSpy `[@almansi_et_al_2019]`, a Python package for ocean model
+data analysis and visualization and ECCOv4-py `[@eccov4py]`, a tool used
+for to postprocess and analyze output from the ECCOv4 state estimate `[@forgetECCOv4]`,
 a global ocean model constrained to 25 years of observational data.
 The finite volume grid on which the ECCOv4 solution lives is made up of 13 connected tiles
-(see Fig. 1, `[@forgetECCOv4]`) which, due to the orientation of some of the tiles, 
+(see Fig. 1, `[@forgetECCOv4]`) which, due to the orientation of some of the tiles,
 can make standard computations challenging.
 For example, computing meridional heat transport requires realigning the vector components of
 the horizontal heat fluxes on some grid tiles.
