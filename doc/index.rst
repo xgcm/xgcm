@@ -47,6 +47,7 @@ Contents
    grid_metrics
    example_mitgcm
    example_eccov4
+   example_MOM6
    autogenerate_examples
    whats-new
    contributor_guide
