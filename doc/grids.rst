@@ -247,7 +247,7 @@ We see that the resulting ``Grid`` object is the same as in the manual example.
 Core Grid Operations: ``diff``, ``interp``, and ``cumsum``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Regardless of how our ``Grid`` objet was created, we can now use it to
+Regardless of how our ``Grid`` object was created, we can now use it to
 interpolate or take differences along the axis. First we create some test data:
 
 .. ipython:: python
