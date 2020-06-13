@@ -1,6 +1,7 @@
 from __future__ import print_function
 import pytest
 import xarray as xr
+import numpy as np
 
 from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
@@ -8,6 +9,11 @@ from xgcm.test.datasets import datasets_grid_metric
 
 def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     """this is factoring out the expected output of metric aware operations"""
+
+    # make sure nans in the data are reflected in the metric
+    nanmask = np.isnan(da)
+    metric = metric.where(~nanmask)
+
     if funcname == "integrate":
         expected = (da * metric).sum(dim)
     elif funcname == "average":
@@ -19,6 +25,48 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     return expected
 
 
+def _parse_metrics_for_grid(grid_config, grid_position):
+    # parses the appropriate axes, metrics and dims for the different grid configs and grid positions
+    if grid_config == "B":
+        if grid_position == "tracer":
+            return zip(
+                ["X", "Y", "Z", ["X", "Y"], ["X", "Y", "Z"]],
+                ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
+                ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
+            )
+        elif grid_position == "u":
+            return zip(
+                ["X", "Y", ["X", "Y"]],
+                ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
+                ["xu", "yu", ["xu", "yu"]],
+            )
+        elif grid_position == "v":
+            return zip(
+                ["X", "Y", ["X", "Y"]],
+                ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
+                ["xu", "yu", ["xu", "yu"]],
+            )
+    elif grid_config == "C":
+        if grid_position == "tracer":
+            return zip(
+                ["X", "Y", "Z", ["X", "Y"], ["X", "Y", "Z"]],
+                ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
+                ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
+            )
+        elif grid_position == "u":
+            return zip(
+                ["X", "Y", ["X", "Y"]],
+                ["dx_e", "dy_e", "area_e"],  # need more metrics?
+                ["xu", "yt", ["xu", "yt"]],
+            )
+        elif grid_position == "v":
+            return zip(
+                ["X", "Y", ["X", "Y"]],
+                ["dx_n", "dy_n", "area_n"],  # need more metrics?
+                ["xt", "yu", ["xt", "yu"]],
+            )
+
+
 @pytest.mark.parametrize("funcname", ["integrate", "average", "cumint"])
 @pytest.mark.parametrize(
     "boundary", ["fill", "extend"]
@@ -28,8 +76,13 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     [None, "True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}],
 )
 class TestParametrized:
-    def test_bgrid(self, funcname, boundary, periodic):
-        ds, coords, metrics = datasets_grid_metric("B")
+    @pytest.mark.parametrize("grid_config", ["B", "C"])
+    @pytest.mark.parametrize("grid_position", ["tracer", "u", "v"])
+    @pytest.mark.parametrize("missing_values", [False, True])
+    def test_grids(
+        self, funcname, boundary, periodic, missing_values, grid_config, grid_position
+    ):
+        ds, coords, metrics = datasets_grid_metric(grid_config)
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
 
         if funcname == "cumint":
@@ -41,100 +94,25 @@ class TestParametrized:
 
         func = getattr(grid, funcname)
 
-        # test tracer position
-        for axis, metric_name, dim in zip(
-            ["X", "Y", "Z", ["X", "Y"], ["X", "Y", "Z"]],
-            ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
-            ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
+        da = ds[grid_position]
+        if missing_values:
+            mask = np.random.choice([True, False], size=ds.tracer.data.shape)
+            da = da.where(mask)
+
+        for axis, metric_name, dim in _parse_metrics_for_grid(
+            grid_config, grid_position
         ):
-            new = func(ds.tracer, axis, **kwargs)
+            new = func(da, axis, **kwargs)
             expected = _expected_result(
-                ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs
+                da, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
 
             xr.testing.assert_allclose(new, expected)
 
             # test with tuple input if list is provided
             if isinstance(axis, list):
-                new = func(ds.tracer, tuple(axis), **kwargs)
+                new = func(da, tuple(axis), **kwargs)
                 xr.testing.assert_allclose(new, expected)
-
-        # test u position
-        for axis, metric_name, dim in zip(
-            ["X", "Y", ["X", "Y"]],
-            ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
-            ["xu", "yu", ["xu", "yu"]],
-        ):
-            new = func(ds.u, axis, **kwargs)
-            expected = _expected_result(
-                ds.u, ds[metric_name], grid, dim, axis, funcname, **kwargs
-            )
-            xr.testing.assert_allclose(new, expected)
-
-        # test v position
-        for axis, metric_name, dim in zip(
-            ["X", "Y", ["X", "Y"]],
-            ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
-            ["xu", "yu", ["xu", "yu"]],
-        ):
-            new = func(ds.v, axis, **kwargs)
-            expected = _expected_result(
-                ds.v, ds[metric_name], grid, dim, axis, funcname, **kwargs
-            )
-            xr.testing.assert_allclose(new, expected)
-
-    def test_cgrid(self, funcname, boundary, periodic):
-        ds, coords, metrics = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
-
-        func = getattr(grid, funcname)
-
-        if funcname == "cumint":
-            # cumint needs a boundary...
-            kwargs = dict(boundary=boundary)
-        else:
-            # integrate and average do use the boundary input
-            kwargs = dict()
-
-        # test tracer position
-        for axis, metric_name, dim in zip(
-            ["X", "Y", "Z", ["X", "Y"], ["X", "Y", "Z"]],
-            ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
-            ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
-        ):
-            new = func(ds.tracer, axis, **kwargs)
-            expected = _expected_result(
-                ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs
-            )
-            xr.testing.assert_allclose(new, expected)
-            # test with tuple input if list is provided
-            if isinstance(axis, list):
-                new = func(ds.tracer, tuple(axis), **kwargs)
-                xr.testing.assert_allclose(new, expected)
-
-        # test u positon
-        for axis, metric_name, dim in zip(
-            ["X", "Y", ["X", "Y"]],
-            ["dx_e", "dy_e", "area_e"],  # need more metrics?
-            ["xu", "yt", ["xu", "yt"]],
-        ):
-            new = func(ds.u, axis, **kwargs)
-            expected = _expected_result(
-                ds.u, ds[metric_name], grid, dim, axis, funcname, **kwargs
-            )
-            xr.testing.assert_allclose(new, expected)
-
-        # test v positon
-        for axis, metric_name, dim in zip(
-            ["X", "Y", ["X", "Y"]],
-            ["dx_n", "dy_n", "area_n"],  # need more metrics?
-            ["xt", "yu", ["xt", "yu"]],
-        ):
-            new = func(ds.v, axis, **kwargs)
-            expected = _expected_result(
-                ds.v, ds[metric_name], grid, dim, axis, funcname, **kwargs
-            )
-            xr.testing.assert_allclose(new, expected)
 
     @pytest.mark.parametrize("axis", ["X", "Y", "Z"])
     def test_missingaxis(self, axis, funcname, periodic, boundary):
