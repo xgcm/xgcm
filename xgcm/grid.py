@@ -1431,7 +1431,7 @@ class Grid:
         axis : str, list of str
             Name of the axis on which to act
         **kwargs: dict
-            Additional arguments passed to `xarray.DataArray.sum`
+            Additional arguments passed to `xarray.DataArray.weighted.mean`
 
 
         Returns
@@ -1439,16 +1439,13 @@ class Grid:
         da_i : xarray.DataArray
             The averaged data
         """
-
+        da = da.copy()
         weight = self.get_metric(da, axis)
-        weighted = da * weight
-        # TODO: We should integrate xarray.weighted once available.
-
+        weighted = da.weighted(weight)
         # get dimension(s) corresponding
         # to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
-        # do we need to pass kwargs?
-        return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
+        return weighted.mean(dim, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
