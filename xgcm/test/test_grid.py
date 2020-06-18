@@ -15,6 +15,7 @@ from .datasets import (
     nonperiodic_2d,
     all_2d,
     datasets,
+    datasets_grid_metric,
 )
 
 
@@ -719,6 +720,7 @@ def test_invalid_boundary_error():
     with pytest.raises(ValueError):
         Grid(ds, boundary=0)
 
+
 def test_invalid_fill_value_error():
     ds = datasets["1d_left"]
     with pytest.raises(ValueError):
@@ -727,3 +729,42 @@ def test_invalid_fill_value_error():
         Grid(ds, fill_value="bad")
     with pytest.raises(ValueError):
         Grid(ds, fill_value={"X": "bad"})
+
+
+@pytest.mark.parametrize(
+    "funcname",
+    [
+        "diff",
+        "interp",
+        "min",
+        "max",
+        "integrate",
+        "average",
+        "cumsum",
+        "cumint",
+        "derivative",
+    ],
+)
+@pytest.mark.parametrize("gridtype", ["B", "C"])
+def test_keep_coords(funcname, gridtype):
+    ds, coords, metrics = datasets_grid_metric(gridtype)
+    ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
+    grid = Grid(ds, coords=coords, metrics=metrics)
+    func = getattr(grid, funcname)
+    for axis_name in grid.axes.keys():
+        result = func(ds.tracer, axis_name)
+        base_coords = list(result.dims)
+        augmented_coords = [
+            c for c in ds.tracer.coords if set(ds[c].dims).issubset(result.dims)
+        ]
+        if funcname in ["integrate", "average"]:
+            assert set(result.coords) == set(base_coords + augmented_coords)
+        else:
+            assert set(result.coords) == set(base_coords)
+        #
+        if funcname not in ["integrate", "average"]:
+            result = func(ds.tracer, axis_name, keep_coords=False)
+            assert set(result.coords) == set(base_coords)
+            #
+            result = func(ds.tracer, axis_name, keep_coords=True)
+            assert set(result.coords) == set(base_coords + augmented_coords)
