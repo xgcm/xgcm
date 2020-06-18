@@ -880,7 +880,7 @@ class Grid:
             can be passed.
         keep_coords : boolean, optional
             Preserves compatible coordinates. False by default.
-            
+
         REFERENCES
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
