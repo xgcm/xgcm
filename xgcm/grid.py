@@ -193,6 +193,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Apply a function to neighboring points.
@@ -219,6 +220,8 @@ class Axis:
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -239,7 +242,7 @@ class Axis:
             vector_partner=vector_partner,
         )
         # wrap in a new xarray wrapper
-        da_new = self._wrap_and_replace_coords(da, data_new, to)
+        da_new = self._wrap_and_replace_coords(da, data_new, to, keep_coords)
 
         return da_new
 
@@ -531,6 +534,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Interpolate neighboring points to the intermediate grid point along
@@ -556,6 +560,7 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords=keep_coords,
         )
 
     @docstrings.dedent
@@ -567,6 +572,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Difference neighboring points to the intermediate grid point.
@@ -589,10 +595,11 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords=keep_coords,
         )
 
     @docstrings.dedent
-    def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
+    def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
         position.
@@ -636,7 +643,7 @@ class Axis:
                 "shift for cumsum operation." % (pos, to)
             )
 
-        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to)
+        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to, keep_coords)
         return da_cum_newcoord
 
     @docstrings.dedent
@@ -648,6 +655,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Minimum of neighboring points on intermediate grid point.
@@ -670,8 +678,10 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords,
         )
 
+    @docstrings.dedent
     def max(
         self,
         da,
@@ -680,6 +690,7 @@ class Axis:
         fill_value=0.0,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Maximum of neighboring points on intermediate grid point.
@@ -702,9 +713,10 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords,
         )
 
-    def _wrap_and_replace_coords(self, da, data_new, position_to):
+    def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords=False):
         """
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
@@ -732,6 +744,12 @@ class Axis:
                 # only add coordinate if it actually exists...
                 if d in da.coords:
                     coords[d] = da.coords[d]
+
+        # add compatible coords
+        if keep_coords:
+            for c in da.coords:
+                if c not in coords and set(da[c].dims).issubset(dims):
+                    coords[c] = da[c]
 
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
@@ -799,7 +817,9 @@ class Grid:
             coordinates in ``ds``.
         metrics : dict, optional
             Specification of grid metrics
-
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
+            
         REFERENCES
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
@@ -1334,7 +1354,7 @@ class Grid:
         ----------
         axis : str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        %(grid_func.parameters)s
 
         Returns
         -------
@@ -1386,7 +1406,7 @@ class Grid:
         ----------
         axis : str, list of str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        %(grid_func.parameters)s
 
         Returns
         -------

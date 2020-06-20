@@ -3,6 +3,15 @@
 What's New
 ===========
 
+v0.4.0 (date)
+-------------------------
+Description
+
+New Features
+~~~~~~~~~~~~
+- Support for keeping compatible coordinates in most Grid operations (:issue:`186`).
+  By `Aurélien Ponte <https://github.com/apatlpo>`_.
+
 .. _whats-new.0.3.0:
 
 v0.3.0 (31 January 2020)
