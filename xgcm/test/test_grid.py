@@ -768,3 +768,14 @@ def test_keep_coords(funcname, gridtype):
             #
             result = func(ds.tracer, axis_name, keep_coords=True)
             assert set(result.coords) == set(base_coords + augmented_coords)
+
+
+def test_boundary_kwarg_same_as_grid_constructor_kwarg():
+    ds = datasets["2d_left"]
+    grid1 = Grid(ds, periodic=False)
+    grid2 = Grid(ds, periodic=False, boundary={"X": "fill", "Y": "fill"})
+
+    actual1 = grid1.interp(ds.data_g, ("X", "Y"), boundary={"X": "fill", "Y": "fill"})
+    actual2 = grid2.interp(ds.data_g, ("X", "Y"))
+
+    xr.testing.assert_identical(actual1, actual2)

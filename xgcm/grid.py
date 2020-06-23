@@ -29,7 +29,7 @@ _VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
 
 class Axis:
     """
-    An object that represents a group of coodinates that all lie along the same
+    An object that represents a group of coordinates that all lie along the same
     physical dimension but at different positions with respect to a grid cell.
     There are four possible positions::
 
@@ -207,7 +207,7 @@ class Axis:
             "<xgcm.Axis '%s' (%s, boundary=%r)>"
             % (self.name, is_periodic, self.boundary)
         ]
-        summary.append("Axis Coodinates:")
+        summary.append("Axis Coordinates:")
         summary += self._coord_desc()
         return "\n".join(summary)
 
