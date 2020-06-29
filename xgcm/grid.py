@@ -88,9 +88,7 @@ class Axis:
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
         boundary : str or dict, optional,
-            boundary can either be one of  {None, 'fill', 'extend', 'extrapolate'}
-            the above strings (in which case it is set as boundary for all axes)
-            or a dict mapping axis name to a string (e.g. {"X": "fill", "Y": "extend"}).
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -100,6 +98,8 @@ class Axis:
               value. (i.e. a limited form of Dirichlet boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+            This sets the default value. It can be overriden by specifying the
+            boundary kwarg when calling specific methods.
         fill_value : {float}, optional
             The value to use in the boundary condition when `boundary='fill'`.
 
