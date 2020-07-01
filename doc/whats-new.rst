@@ -12,6 +12,10 @@ New Features
 - Support for keeping compatible coordinates in most Grid operations (:issue:`186`).
   By `Aurélien Ponte <https://github.com/apatlpo>`_.
 
+- Support for specifying default ``boundary`` and ``fill_value`` in the :py:class:`Grid` constructor.
+  Default values can be overridden in individual method calls (e.g. :py:meth:`Grid.interp`) as usual.
+  By `Deepak Cherian <https://githun.com/dcherian`_.
+
 .. _whats-new.0.3.0:
 
 v0.3.0 (31 January 2020)
