@@ -14,7 +14,7 @@ New Features
 
 - Support for specifying default ``boundary`` and ``fill_value`` in the :py:class:`Grid` constructor.
   Default values can be overridden in individual method calls (e.g. :py:meth:`Grid.interp`) as usual.
-  By `Deepak Cherian <https://githun.com/dcherian`_.
+  By `Deepak Cherian <https://github.com/dcherian>`_.
 
 .. _whats-new.0.3.0:
 
