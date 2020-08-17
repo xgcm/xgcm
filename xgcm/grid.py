@@ -24,9 +24,12 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
+_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
+
+
 class Axis:
     """
-    An object that represents a group of coodinates that all lie along the same
+    An object that represents a group of coordinates that all lie along the same
     physical dimension but at different positions with respect to a grid cell.
     There are four possible positions::
 
@@ -56,7 +59,16 @@ class Axis:
     differentiated by their length.
     """
 
-    def __init__(self, ds, axis_name, periodic=True, default_shifts={}, coords=None):
+    def __init__(
+        self,
+        ds,
+        axis_name,
+        periodic=True,
+        default_shifts={},
+        coords=None,
+        boundary=None,
+        fill_value=None,
+    ):
         """
         Create a new Axis object from an input dataset.
 
@@ -75,6 +87,21 @@ class Axis:
         coords : dict, optional
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
+        boundary : str or dict, optional,
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            This sets the default value. It can be overriden by specifying the
+            boundary kwarg when calling specific methods.
+        fill_value : {float}, optional
+            The value to use in the boundary condition when `boundary='fill'`.
 
         REFERENCES
         ----------
@@ -84,6 +111,14 @@ class Axis:
         self._ds = ds
         self.name = axis_name
         self._periodic = periodic
+        if boundary not in _VALID_BOUNDARY:
+            raise ValueError(
+                f"Expected 'boundary' to be one of {_VALID_BOUNDARY}. Received {boundary!r} instead."
+            )
+        self.boundary = boundary
+        if fill_value is not None and not isinstance(fill_value, (int, float)):
+            raise ValueError(f"Expected 'fill_value' to be a number.")
+        self.fill_value = fill_value if fill_value is not None else 0.0
 
         if coords:
             # use specified coords
@@ -168,8 +203,11 @@ class Axis:
 
     def __repr__(self):
         is_periodic = "periodic" if self._periodic else "not periodic"
-        summary = ["<xgcm.Axis '%s' %s>" % (self.name, is_periodic)]
-        summary.append("Axis Coodinates:")
+        summary = [
+            "<xgcm.Axis '%s' (%s, boundary=%r)>"
+            % (self.name, is_periodic, self.boundary)
+        ]
+        summary.append("Axis Coordinates:")
         summary += self._coord_desc()
         return "\n".join(summary)
 
@@ -190,7 +228,7 @@ class Axis:
         f,
         to,
         boundary=None,
-        fill_value=0.0,
+        fill_value=None,
         boundary_discontinuity=None,
         vector_partner=None,
         keep_coords=False,
@@ -232,6 +270,10 @@ class Axis:
         if to is None:
             to = self._default_shifts[position_from]
 
+        if boundary is None:
+            boundary = self.boundary
+        if fill_value is None:
+            fill_value = self.fill_value
         data_new = self._neighbor_binary_func_raw(
             da,
             f,
@@ -788,6 +830,8 @@ class Grid:
         face_connections=None,
         coords=None,
         metrics=None,
+        boundary=None,
+        fill_value=None,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -817,9 +861,26 @@ class Grid:
             coordinates in ``ds``.
         metrics : dict, optional
             Specification of grid metrics
+        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         keep_coords : boolean, optional
             Preserves compatible coordinates. False by default.
-            
+
         REFERENCES
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
@@ -843,12 +904,35 @@ class Grid:
                 axis_default_shifts = default_shifts[axis_name]
             else:
                 axis_default_shifts = {}
+
+            if isinstance(boundary, dict):
+                axis_boundary = boundary.get(axis_name, None)
+            elif isinstance(boundary, str) or boundary is None:
+                axis_boundary = boundary
+            else:
+                raise ValueError(
+                    f"boundary={boundary} is invalid. Please specify a dictionary "
+                    "mapping axis name to a boundary option; a string or None."
+                )
+
+            if isinstance(fill_value, dict):
+                axis_fillvalue = fill_value.get(axis_name, None)
+            elif isinstance(fill_value, (int, float)) or fill_value is None:
+                axis_fillvalue = fill_value
+            else:
+                raise ValueError(
+                    f"fill_value={fill_value} is invalid. Please specify a dictionary "
+                    "mapping axis name to a boundary option; a number or None."
+                )
+
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
                 is_periodic,
                 default_shifts=axis_default_shifts,
                 coords=coords.get(axis_name),
+                boundary=axis_boundary,
+                fill_value=fill_value,
             )
 
         if face_connections is not None:
@@ -1058,7 +1142,9 @@ class Grid:
         summary = ["<xgcm.Grid>"]
         for name, axis in iteritems(self.axes):
             is_periodic = "periodic" if axis._periodic else "not periodic"
-            summary.append("%s Axis (%s):" % (name, is_periodic))
+            summary.append(
+                "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
+            )
             summary += axis._coord_desc()
         return "\n".join(summary)
 
@@ -1113,6 +1199,7 @@ class Grid:
         for axx in axis:
             kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
             ax = self.axes[axx]
+            kwargs.setdefault("boundary", ax.boundary)
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
 
@@ -1310,14 +1397,14 @@ class Grid:
             x_axis,
             vector[x_axis_name],
             vector_partner={y_axis_name: vector[y_axis_name]},
-            **kwargs
+            **kwargs,
         )
 
         y_component = function(
             y_axis,
             vector[y_axis_name],
             vector_partner={x_axis_name: vector[x_axis_name]},
-            **kwargs
+            **kwargs,
         )
 
         return {x_axis_name: x_component, y_axis_name: y_component}
@@ -1485,11 +1572,11 @@ def raw_diff_function(data_left, data_right):
 
 
 def raw_min_function(data_left, data_right):
-    return xr.ufuncs.minimum(data_right, data_left)
+    return np.minimum(data_right, data_left)
 
 
 def raw_max_function(data_left, data_right):
-    return xr.ufuncs.maximum(data_right, data_left)
+    return np.maximum(data_right, data_left)
 
 
 _other_docstring_options = """
