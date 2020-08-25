@@ -48,6 +48,7 @@ Contents
    example_mitgcm
    example_eccov4
    example_MOM6
+   example_nemo_idealized
    autogenerate_examples
    whats-new
    contributor_guide
