@@ -45,6 +45,7 @@ Contents
    grids
    grid_topology
    grid_metrics
+   inferring_metrics
    example_mitgcm
    example_eccov4
    autogenerate_examples
