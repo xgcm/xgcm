@@ -22,26 +22,26 @@ jobs:
           python-version: 3.8
       - name: Install Black
         run: |
-          python -m pip install black
+          python -m pip install black<=
       - name: Black Code Formatter
         run: |
           black --check . -v
-  # lint-flake8:
-  #   name: flake8
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v1
-  #     - name: Set up Python 3.8
-  #       uses: actions/setup-python@v1
-  #       with:
-  #         python-version: 3.8
-  #     - name: Install Flake8
-  #       run: |
-  #         python -m pip install flake8
-  #     - name: Flake8 check
-  #       run: |
-  #         flake8 .
+  lint-flake8:
+    name: flake8
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install Flake8
+        run: |
+          python -m pip install flake8
+      - name: Flake8 check
+        run: |
+          flake8 .
   # we should discuss if we want to enable this?
   # lint-isort:
   #   name: isort
