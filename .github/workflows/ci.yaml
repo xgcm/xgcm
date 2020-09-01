@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    name: Build (${{ matrix.python-version }}, ${{ matrix.os }})
+    name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -54,7 +54,7 @@ jobs:
           fail_ci_if_error: false
 
   upstream-dev:
-    name: upstream-dev
+    name: Build (upstream-dev | ${{ matrix.os }})
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
