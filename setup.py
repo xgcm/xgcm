@@ -6,13 +6,7 @@ here = os.path.dirname(__file__)
 with open(os.path.join(here, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
-install_requires = [
-   "xarray>=0.14.1",
-   "dask",
-   "numpy",
-   "future",
-   "docrep<=0.2.7"
-]
+install_requires = ["xarray>=0.14.1", "dask", "numpy", "future", "docrep<=0.2.7"]
 doc_requires = [
     "sphinx",
     "sphinxcontrib-srclinks",
@@ -23,7 +17,7 @@ doc_requires = [
 ]
 
 extras_require = {
-    "complete": install_requires
+    "complete": install_requires,
     "docs": doc_requires,
 }
 extras_require["dev"] = extras_require["complete"] + [
