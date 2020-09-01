@@ -69,7 +69,7 @@ An example, illustrated in Fig. 1, is the C-grid geometry, which places scalars
 (such as temperature) at the cell center and vector components (such as velocity)
 at the cell faces.
 
-![Example figure.](doc/images/grid2d_hv.png)
+![Arakawa C Grid Diagram. Figure from [PyComodo](https://prod-gitlab.inria.fr/pycomodo/pycomodo/-/blob/master/doc/source/figures/grid2d_hv.svg)](doc/images/grid2d_hv.png)
 
 Xarray has no concept of a grid cell center, face, etc. in its data model.
 Xgcm augments xarray with an understanding of these staggered grids and
@@ -113,10 +113,12 @@ make computations like this
 1. intuitive and transparent within the ECCOv4-py code, and
 2. computationally flexible because of integration with Xarray and Dask.
 
+
 We welcome reports of applications in other domains.
 
 # Acknowledgements
 
-Some Xgcm development has been support by NSF award OAC-1835778.
+Some Xgcm development has been support by NSF award OAC-1835778 and the Gordon and Betty Moore Foundation.
+However, much of the development occurred outside the context of any funded project.
 
 # References
