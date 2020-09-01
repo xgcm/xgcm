@@ -54,7 +54,7 @@ jobs:
           fail_ci_if_error: false
 
   upstream-dev:
-    name: Build (upstream-dev | ${{ matrix.os }})
+    name: Build (upstream-dev)
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
