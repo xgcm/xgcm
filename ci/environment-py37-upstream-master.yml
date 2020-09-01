@@ -5,6 +5,7 @@ dependencies:
   - numpy
   - pytest
   - future
+  - pip
   - pip:
     - docrep<=0.2.7
     - codecov
