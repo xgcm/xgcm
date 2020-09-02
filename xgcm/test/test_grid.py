@@ -707,6 +707,19 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
         xr.testing.assert_allclose(serial, full)
 
 
+def test_grid_dict_input_boundary_fill(nonperiodic_1d):
+    """Test axis kwarg input functionality using dict input"""
+    ds, _, _ = nonperiodic_1d
+    grid_direct = Grid(ds, periodic=False, boundary="fill", fill_value=5)
+    grid_dict = Grid(ds, periodic=False, boundary={"X": "fill"}, fill_value={"X": 5})
+    print(grid_direct.axes["X"].fill_value)
+    print(grid_dict.axes["X"].fill_value)
+
+    print(grid_direct.axes["X"].boundary)
+    print(grid_dict.axes["X"].boundary)
+    assert 1 == 0
+
+
 def test_invalid_boundary_error():
     ds = datasets["1d_left"]
     with pytest.raises(ValueError):
