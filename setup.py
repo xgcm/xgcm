@@ -1,54 +1,56 @@
-#!/usr/bin/env python
 import os
-import re
-import sys
-import warnings
 import versioneer
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
-VERSION = "0.1.0"
-DISTNAME = "xgcm"
-LICENSE = "MIT"
-AUTHOR = "xgcm Developers"
-AUTHOR_EMAIL = "rpa@ldeo.columbia.edu"
-URL = "https://github.com/xgcm/xgcm"
-CLASSIFIERS = [
-    "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-    "Intended Audience :: Science/Research",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Topic :: Scientific/Engineering",
+here = os.path.dirname(__file__)
+with open(os.path.join(here, "README.rst"), encoding="utf-8") as f:
+    long_description = f.read()
+
+install_requires = ["xarray>=0.14.1", "dask", "numpy", "future", "docrep<=0.2.7"]
+doc_requires = [
+    "sphinx",
+    "sphinxcontrib-srclinks",
+    "sphinx-pangeo-theme",
+    "numpydoc",
+    "IPython",
+    "nbsphinx",
 ]
 
-INSTALL_REQUIRES = ["xarray>=0.14.1", "dask", "numpy", "future", "docrep"]
-SETUP_REQUIRES = ["pytest-runner"]
-TESTS_REQUIRE = ["pytest >= 2.8", "coverage"]
-
-DESCRIPTION = "General Circulation Model Postprocessing with xarray"
-
-
-def readme():
-    with open("README.rst") as f:
-        return f.read()
-
+extras_require = {
+    "complete": install_requires,
+    "docs": doc_requires,
+}
+extras_require["dev"] = extras_require["complete"] + [
+    "pytest",
+    "pytest-cov",
+    "flake8",
+    "black",
+    "codecov",
+]
 
 setup(
-    name=DISTNAME,
+    name="xgcm",
+    description="General Circulation Model Postprocessing with xarray",
+    url="https://github.com/xgcm/xgcm",
+    author="xgcm Developers",
+    author_email="rpa@ldeo.columbia.edu",
+    license="MIT",
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+    ],
+    packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
+    install_requires=install_requires,
+    extras_require=extras_require,
+    python_requires=">=3.6",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    license=LICENSE,
-    author=AUTHOR,
-    author_email=AUTHOR_EMAIL,
-    classifiers=CLASSIFIERS,
-    description=DESCRIPTION,
-    long_description=readme(),
-    install_requires=INSTALL_REQUIRES,
-    setup_requires=SETUP_REQUIRES,
-    tests_require=TESTS_REQUIRE,
-    url=URL,
-    packages=find_packages(),
+    long_description=long_description,
+    long_description_content_type="text/x-rst",
 )

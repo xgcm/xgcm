@@ -54,9 +54,9 @@ For more information, including installation instructions, read the full
    :target: https://anaconda.org/conda-forge/xgcm
 .. |DOI| image:: https://zenodo.org/badge/41581350.svg
    :target: https://zenodo.org/badge/latestdoi/41581350
-.. |Build Status| image:: https://travis-ci.org/xgcm/xgcm.svg?branch=master
-   :target: https://travis-ci.org/xgcm/xgcm
-   :alt: travis-ci build status
+.. |Build Status| image:: https://img.shields.io/github/workflow/status/xgcm/xgcm/CI?logo=github
+   :target: https://github.com/xgcm/xgcm/actions
+   :alt: GitHub Workflow CI Status
 .. |codecov| image:: https://codecov.io/github/xgcm/xgcm/coverage.svg?branch=master
    :target: https://codecov.io/github/xgcm/xgcm?branch=master
    :alt: code coverage

@@ -796,8 +796,7 @@ class Axis:
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
     def _get_axis_coord(self, da):
-        """Return the position and name of the axis coordiante in a DataArray.
-        """
+        """Return the position and name of the axis coordiante in a DataArray."""
         for position, coord_name in iteritems(self.coords):
             # TODO: should we have more careful checking of alignment here?
             if coord_name in da.dims:
@@ -809,8 +808,7 @@ class Axis:
         )
 
     def _get_axis_dim_num(self, da):
-        """Return the dimension number of the axis coordinate in a DataArray.
-        """
+        """Return the dimension number of the axis coordinate in a DataArray."""
         _, coord_name = self._get_axis_coord(da)
         return da.get_axis_num(coord_name)
 
