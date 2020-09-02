@@ -930,7 +930,7 @@ class Grid:
                 default_shifts=axis_default_shifts,
                 coords=coords.get(axis_name),
                 boundary=axis_boundary,
-                fill_value=fill_value,
+                fill_value=axis_fillvalue,
             )
 
         if face_connections is not None:
