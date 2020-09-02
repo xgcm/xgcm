@@ -712,12 +712,8 @@ def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     ds, _, _ = nonperiodic_1d
     grid_direct = Grid(ds, periodic=False, boundary="fill", fill_value=5)
     grid_dict = Grid(ds, periodic=False, boundary={"X": "fill"}, fill_value={"X": 5})
-    print(grid_direct.axes["X"].fill_value)
-    print(grid_dict.axes["X"].fill_value)
-
-    print(grid_direct.axes["X"].boundary)
-    print(grid_dict.axes["X"].boundary)
-    assert 1 == 0
+    assert grid_direct.axes["X"].fill_value == grid_dict.axes["X"].fill_value
+    assert grid_direct.axes["X"].boundary == grid_dict.axes["X"].boundary
 
 
 def test_invalid_boundary_error():
