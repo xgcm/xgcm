@@ -3,7 +3,7 @@
 What's New
 ===========
 
-v0.4.0 (date)
+v0.4.0 (2020/9/2)
 -------------------------
 Description
 
@@ -15,8 +15,18 @@ New Features
 - Support for specifying default ``boundary`` and ``fill_value`` in the :py:class:`Grid` constructor.
   Default values can be overridden in individual method calls (e.g. :py:meth:`Grid.interp`) as usual.
   By `Deepak Cherian <https://github.com/dcherian>`_.
+  
+  Bug fixes
+~~~~~~~~~
+- Fix for parsing fill_values as dictionary (:issue:`218`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+  
+Internal Changes
+~~~~~~~~~~~~~~~~
+- Complete refactor of the CI to github actions (:issue:`214`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
-.. _whats-new.0.3.0:
+.. _whats-new.0.4.0:
 
 v0.3.0 (31 January 2020)
 -------------------------
