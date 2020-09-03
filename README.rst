@@ -50,7 +50,7 @@ For more information, including installation instructions, read the full
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grid
 .. _xgcm documentation: https://xgcm.readthedocs.io/
 
-.. |conda forge| image:: https://anaconda.org/conda-forge/xgcm/badges/version.svg
+.. |conda forge| image:: https://img.shields.io/conda/vn/conda-forge/xgcm
    :target: https://anaconda.org/conda-forge/xgcm
 .. |DOI| image:: https://zenodo.org/badge/41581350.svg
    :target: https://zenodo.org/badge/latestdoi/41581350
