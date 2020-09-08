@@ -4,12 +4,11 @@ dependencies:
   - xarray
   - dask
   - numpy
+  - numba
   - pytest
   - future
-  - pip
-  - black
   - pip:
-    - docrep<=0.2.7
+    - docrep
     - codecov
     - pytest-cov
-
+    - black
