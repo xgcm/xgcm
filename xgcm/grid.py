@@ -783,9 +783,12 @@ class Axis:
                 target_data,
                 target,
                 dim,
+                dim,  # in this case the dimension of phi and theta are the same
                 target_dim,
                 mask_edges=mask_edges,
             )
+        elif method == "conservative":
+            pass
 
         return out
 
