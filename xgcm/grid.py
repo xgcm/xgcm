@@ -12,6 +12,7 @@ import numpy as np
 
 from . import comodo
 from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
+from .transform import linear_interpolation
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1564,6 +1565,10 @@ class Grid:
         dim = self._get_dims_from_axis(da, axis)
         # do we need to pass kwargs?
         return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
+
+    def transform(self, da, axis, target, **kwargs):
+        ax = self.axes[axis]
+        return ax.transform(da, target, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
