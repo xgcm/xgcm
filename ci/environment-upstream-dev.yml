@@ -1,9 +1,7 @@
 name: test_env_xgcm
 dependencies:
   - python
-  - dask
   - numpy
-  - numba
   - pytest
   - future
   - pip
@@ -13,3 +11,6 @@ dependencies:
     - codecov
     - pytest-cov
     - git+https://github.com/pydata/xarray.git
+    - git+https://github.com/dask/dask.git
+    - toolz
+    - git+https://github.com/numba/numba.git
