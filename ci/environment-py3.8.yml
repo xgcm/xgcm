@@ -7,8 +7,9 @@ dependencies:
   - numba
   - pytest
   - future
+  - pip
+  - black
   - pip:
-    - docrep
+    - docrep<=0.2.7
     - codecov
     - pytest-cov
-    - black
