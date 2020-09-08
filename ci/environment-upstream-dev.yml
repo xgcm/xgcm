@@ -3,6 +3,7 @@ dependencies:
   - python
   - dask
   - numpy
+  - numba
   - pytest
   - future
   - pip
