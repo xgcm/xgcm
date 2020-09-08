@@ -1,7 +1,7 @@
 """
 Classes and functions for 1D coordinate transformation.
 """
-
+import functools
 import numpy as np
 import xarray as xr
 from numba import jit, guvectorize, float32, float64, boolean
@@ -130,22 +130,45 @@ Higher level functions (xarray wrappers).
 """
 
 
+def input_handling(func):
+    """Decorator that handles input for interpolations."""
+
+    @functools.wraps(func)
+    def wrapper_input_handling(*args, **kwargs):
+
+        # unpack args
+        phi, theta, target_theta_levels, dim, target_dim = args
+
+        # complain if the target values are not provided as xr.dataarray
+        if not isinstance(target_theta_levels, xr.DataArray):
+            raise ValueError("`target_theta_levels` should be passed as xr.DataArray")
+
+        # Check the input dimensions. If they are the same the target array has to be temporarily renamed,
+        # and will be renamed again at the end
+
+        rename_trigger = False
+        if dim == target_dim:
+            saved_dim = target_dim
+            temp_dim = "temp_dim_xyz"
+            target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
+            target_dim = temp_dim
+            rename_trigger = True
+
+        args = (phi, theta, target_theta_levels, dim, target_dim)
+
+        value = func(*args, **kwargs)
+
+        # rename back to original name if trigger is set
+        if rename_trigger:
+            value = value.rename({temp_dim: saved_dim})
+
+        return value
+
+    return wrapper_input_handling
+
+
+@input_handling
 def linear_interpolation(phi, theta, target_theta_levels, dim, target_dim, **kwargs):
-    # complain if the target values are not provided as dataarray
-    if not isinstance(target_theta_levels, xr.DataArray):
-        raise ValueError("`target_theta_levels` should be passed as xr.DataArray")
-
-    # if `dim` and `target_dim` are the same
-    # (e.g. simple interpoaltion to different depths)
-    # the dimension needs to be temporarily renamed
-    rename_trigger = False
-    if dim == target_dim:
-        saved_dim = target_dim
-        temp_dim = "temp_dim_xyz"
-        target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
-        target_dim = temp_dim
-        rename_trigger = True
-
     out = xr.apply_ufunc(
         interp_1d_linear,
         phi,
@@ -157,7 +180,22 @@ def linear_interpolation(phi, theta, target_theta_levels, dim, target_dim, **kwa
         dask="parallelized",
         output_dtypes=[phi.dtype],
     )
+    return out
 
-    if rename_trigger:
-        out = out.rename({temp_dim: saved_dim})
+
+@input_handling
+def conservative_interpolation(
+    phi, theta, target_theta_levels, dim, target_dim, **kwargs
+):
+    out = xr.apply_ufunc(
+        interp_1d_conservative,
+        phi,
+        theta,
+        target_theta_levels,
+        kwargs=kwargs,
+        input_core_dims=[[dim], [dim], [target_dim]],
+        output_core_dims=[[target_dim]],
+        dask="parallelized",
+        output_dtypes=[phi.dtype],
+    )
     return out
