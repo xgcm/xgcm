@@ -758,6 +758,36 @@ class Axis:
             keep_coords,
         )
 
+    def transform(
+        self,
+        da,
+        target,
+        target_data=None,
+        target_dim=None,
+        method="linear",
+        mask_edges=False,
+    ):
+        # TODO: We might consider wrapping a numpy `target` input here if target data is None.
+        pos, dim = self._get_axis_coord(da)
+
+        if target_data is None:
+            target_data = da[dim]
+
+        if target_dim is None:
+            target_dim = dim
+
+        if method == "linear":
+            out = linear_interpolation(
+                da,
+                target_data,
+                target,
+                dim,
+                target_dim,
+                mask_edges=mask_edges,
+            )
+
+        return out
+
     def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords=False):
         """
         Take the base coords from da, the data from data_new, and return
