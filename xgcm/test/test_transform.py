@@ -116,7 +116,9 @@ def raw_datasets():
     ],
 )
 def dataset(request):
-    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets[request.param]
+    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets()[
+        request.param
+    ]
     return input, grid_kwargs, target, transform_kwargs, expected
 
 
