@@ -137,7 +137,7 @@ def input_handling(func):
     def wrapper_input_handling(*args, **kwargs):
 
         # unpack args
-        phi, theta, target_theta_levels, dim, target_dim = args
+        phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim = args
 
         # complain if the target values are not provided as xr.dataarray
         if not isinstance(target_theta_levels, xr.DataArray):
@@ -146,15 +146,21 @@ def input_handling(func):
         # Check the input dimensions. If they are the same the target array has to be temporarily renamed,
         # and will be renamed again at the end
 
+        if phi_dim == theta_dim:
+            # The phi_dim doesnt matter for the final product, so just rename to something unique
+            unique_dim = "temp_unique"
+            phi = phi.rename({phi_dim: unique_dim})
+            phi_dim = unique_dim
+
         rename_trigger = False
-        if dim == target_dim:
+        if theta_dim == target_dim:
             saved_dim = target_dim
-            temp_dim = "temp_dim_xyz"
+            temp_dim = "temp_dim_target"
             target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
             target_dim = temp_dim
             rename_trigger = True
 
-        args = (phi, theta, target_theta_levels, dim, target_dim)
+        args = (phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim)
 
         value = func(*args, **kwargs)
 
@@ -168,14 +174,16 @@ def input_handling(func):
 
 
 @input_handling
-def linear_interpolation(phi, theta, target_theta_levels, dim, target_dim, **kwargs):
+def linear_interpolation(
+    phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim, **kwargs
+):
     out = xr.apply_ufunc(
         interp_1d_linear,
         phi,
         theta,
         target_theta_levels,
         kwargs=kwargs,
-        input_core_dims=[[dim], [dim], [target_dim]],
+        input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
         output_core_dims=[[target_dim]],
         dask="parallelized",
         output_dtypes=[phi.dtype],
@@ -185,17 +193,33 @@ def linear_interpolation(phi, theta, target_theta_levels, dim, target_dim, **kwa
 
 @input_handling
 def conservative_interpolation(
-    phi, theta, target_theta_levels, dim, target_dim, **kwargs
+    phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim, **kwargs
 ):
+
     out = xr.apply_ufunc(
         interp_1d_conservative,
         phi,
         theta,
         target_theta_levels,
         kwargs=kwargs,
-        input_core_dims=[[dim], [dim], [target_dim]],
-        output_core_dims=[[target_dim]],
+        input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
+        output_core_dims=[["remapped"]],
         dask="parallelized",
         output_dtypes=[phi.dtype],
     )
+    print(target_theta_levels)
+
+    # assign the target cell center
+    target_centers = (target_theta_levels.data[1:] + target_theta_levels.data[:-1]) / 2
+    out = out.assign_coords(
+        {
+            "remapped": xr.DataArray(
+                target_centers, dims=["remapped"], coords={"remapped": target_centers}
+            )
+        }
+    )
+    out = out.rename({"remapped": target_dim})
+
+    # TODO: Somehow preserve the original bounds
+
     return out

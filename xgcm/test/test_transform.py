@@ -4,7 +4,12 @@ import pytest
 
 import numpy as np
 import xarray as xr
-from ..transform import interp_1d_linear, interp_1d_conservative, linear_interpolation
+from ..transform import (
+    interp_1d_linear,
+    interp_1d_conservative,
+    linear_interpolation,
+    conservative_interpolation,
+)
 
 from xgcm.grid import Grid, Axis
 
@@ -80,6 +85,25 @@ def raw_datasets():
     )
     #####
     # Second set of examples: Conservative remapping to other depth levels.
+    data = np.array([1, 4, 0])
+    target_z_bounds = np.array([0, 1, 10, 50, 80])
+    target_z = (
+        target_z_bounds[1:] + target_z_bounds[0:-1]
+    ) / 2  # simply infer the cell center
+    input_conservative_depth_depth = xr.Dataset(
+        {"data": xr.DataArray(data, dims=["z"], coords={"z": z})}
+    )
+    input_conservative_depth_depth = input_conservative_depth_depth.assign_coords(
+        {"zc": xr.DataArray(z_outer, dims=["zc"], coords={"zc": z_outer})}
+    )
+    # TODO: reimplement the weighted matrix from xrutils for testing
+    # TODO: TEST for conservation...
+    # for now just take the recorded result (this is really cheating.)
+    expected_conservative_depth_depth = xr.DataArray(
+        np.array([0.1, 0.9, 4.0, 0.0]),
+        dims=["zc"],
+        coords={"zc": target_z},
+    )
 
     datasets = {
         "linear_depth_depth": (
@@ -102,6 +126,13 @@ def raw_datasets():
             target_z,
             {"mask_edges": True},
             expected_linear_depth_depth_masked_outcrops,
+        ),
+        "conservative_depth_depth": (
+            input_conservative_depth_depth,
+            {"coords": {"Z": {"inner": "z", "outer": "zc"}}},
+            target_z_bounds,
+            {},
+            expected_conservative_depth_depth,
         ),
     }
     return datasets
@@ -132,15 +163,49 @@ def test_linear_interpolation_target_value_error():
     ]
     with pytest.raises(ValueError):
         interpolated = linear_interpolation(input.data, input["z"], target, "z", "z")
+    # TODO: test with the other method
 
 
-def test_low_level_interpolate(dataset):
-    input, grid_kwargs, target, transform_kwargs, expected = dataset
+# Test the linear interpolations only
+@pytest.mark.parametrize(
+    "name",
+    [
+        "linear_depth_depth",
+        "linear_depth_depth_masked_outcrops",
+        "linear_depth_depth_renamed",
+    ],
+)
+def test_low_level_linear(name):
+    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets()[name]
     dim = grid_kwargs["coords"]["Z"]["center"]
     da_target = xr.DataArray(target, dims=[dim], coords={dim: target})
     print(transform_kwargs)
     interpolated = linear_interpolation(
-        input.data, input[dim], da_target, dim, dim, **transform_kwargs
+        input.data, input[dim], da_target, dim, dim, dim, **transform_kwargs
+    )
+    xr.testing.assert_allclose(interpolated, expected)
+
+
+# Test the conservative interpolations only
+@pytest.mark.parametrize(
+    "name",
+    [
+        "conservative_depth_depth",
+    ],
+)
+def test_low_level_conservative(name):
+    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets()[name]
+    dim = grid_kwargs["coords"]["Z"]["inner"]
+    target_dim = grid_kwargs["coords"]["Z"]["outer"]
+    da_target = xr.DataArray(target, dims=[target_dim], coords={target_dim: target})
+    interpolated = conservative_interpolation(
+        input.data,
+        input[target_dim],
+        da_target,
+        dim,
+        target_dim,
+        target_dim,
+        **transform_kwargs
     )
     xr.testing.assert_allclose(interpolated, expected)
 
