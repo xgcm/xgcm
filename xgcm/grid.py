@@ -12,7 +12,7 @@ import numpy as np
 
 from . import comodo
 from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
-from .transform import linear_interpolation
+from .transform import linear_interpolation, conservative_interpolation
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -768,16 +768,35 @@ class Axis:
         method="linear",
         mask_edges=False,
     ):
-        # TODO: We might consider wrapping a numpy `target` input here if target data is None.
-        pos, dim = self._get_axis_coord(da)
+        def _parse_target(target, target_dim, target_data_dim, target_data):
+            # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
+            if target_data is None:
+                target_data = self._ds[target_data_dim]
 
-        if target_data is None:
-            target_data = da[dim]
+            # Infer target_dim from target
+            if isinstance(target, xr.DataArray):
+                if len(target.dims) == 1:
+                    if target_dim is None:
+                        target_dim = list(target.dims)[0]
+                else:
+                    if target_dim is None:
+                        raise ValueError(
+                            f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. Please specify `target_dim`."
+                        )
+            else:
+                # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
+                target_dim = target_data.name
+                target = xr.Dataarray(
+                    target, dims=[target_dim], coords={target_dim: target}
+                )
+            return target, target_dim, target_data
 
-        if target_dim is None:
-            target_dim = dim
+        _, dim = self._get_axis_coord(da)
 
         if method == "linear":
+            target, target_dim, target_data = _parse_target(
+                target, target_dim, dim, target_data
+            )
             out = linear_interpolation(
                 da,
                 target_data,
@@ -788,7 +807,25 @@ class Axis:
                 mask_edges=mask_edges,
             )
         elif method == "conservative":
-            pass
+
+            # for this method we need the `outer` position. Error out if its not there.
+            try:
+                target_data_dim = self.coords["outer"]
+            except KeyError:
+                raise RuntimeError(
+                    "In order to use the method `conservative` the grid object needs to have `outer` coordinates."
+                )
+            target, target_dim, target_data = _parse_target(
+                target, target_dim, target_data_dim, target_data
+            )
+            out = conservative_interpolation(
+                da,
+                target_data,
+                target,
+                dim,
+                target_data_dim,  # in this case the dimension of phi and theta are the same
+                target_dim,
+            )
 
         return out
 

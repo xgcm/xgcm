@@ -144,6 +144,40 @@ def cases():
             "grid_kwargs": {"coords": {"Z": {"center": "z", "outer": "zc"}}},
             "transform_kwargs": {"method": "conservative"},
         },
+        "conservative_depth_depth_rename": {
+            "input_coord": ("depth", [5, 25, 60]),
+            "input_bounds_coord": ("depth_bnds", [0, 10, 50, 75]),
+            "input_data": ("data", [1, 4, 0]),
+            "target_coord": ("something", [0, 1, 10, 50, 80]),
+            "target_data": ("something", [0, 1, 10, 50, 80]),
+            "expected_coord": ("something", [0.5, 5.5, 30, 65]),
+            "expected_data": (
+                "data",
+                [0.1, 0.9, 4.0, 0.0],
+            ),  # same input as in `input_data`
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {"method": "conservative"},
+        },
+        # "conservative_depth_temp": {
+        #     "input_coord": ("depth", [5, 25, 60]),
+        #     "input_bounds_coord": ("depth_bnds", [0, 10, 50, 75]),
+        #     "input_data": ("data", [1, 4, 0]),
+        #     "additional_data": ("temp", [35, 20, 10]),
+        #     "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+        #     "target_data": ("something", [0, 1, 10, 50, 80]),
+        #     "expected_coord": ("temp", [0, 5, 10, 11, 15, 20, 25, 27]),
+        #     "expected_data": (
+        #         "data",
+        #         [0, 5, 10, 11, 15, 20, 25, 27],
+        #     ),  # same input as in `input_data`
+        #     "grid_kwargs": {
+        #         "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+        #     },
+        #     "transform_kwargs": {"method": "conservative"},
+        # },
+        # target_data=da_temp
     }
 
 
@@ -291,13 +325,27 @@ def test_low_level_conservative(conservative_cases):
     xr.testing.assert_allclose(interpolated, expected.data)
 
 
-# def test_grid_transform(all_cases):
-#     input, grid_kwargs, target, transform_kwargs, expected = dataset
+def test_grid_transform(all_cases):
+    input, grid_kwargs, target, transform_kwargs, expected = all_cases
 
-#     axis = list(grid_kwargs["coords"].keys())[0]
-#     dim = grid_kwargs["coords"][axis]["center"]
-#     da_target = xr.DataArray(target, dims=[dim], coords={dim: target})
+    axis = list(grid_kwargs["coords"].keys())[0]
 
-#     grid = Grid(input, **grid_kwargs)
-#     transformed = grid.transform(input.data, axis, da_target, **transform_kwargs)
-#     xr.testing.assert_allclose(transformed, expected)
+    grid = Grid(input, **grid_kwargs)
+    transformed = grid.transform(input.data, axis, target, **transform_kwargs)
+    xr.testing.assert_allclose(transformed, expected.data)
+
+
+def test_grid_transform_auto_naming(all_cases):
+    """Check that the naming for the new dimension is adapted for the output if the target is not passed as xr.Dataarray"""
+    # input, grid_kwargs, target, transform_kwargs, expected = all_cases
+
+    # axis = list(grid_kwargs["coords"].keys())[0]
+
+    # grid = Grid(input, **grid_kwargs)
+    # transformed = grid.transform(input.data, axis, da_target.data, **transform_kwargs)
+    # xr.testing.assert_allclose(transformed, expected.data)
+
+
+# TODO:
+# - What happens when target_data and data are on difference coords? Should we interpolate onto the same.
+# - Check that naming is taking from target_data

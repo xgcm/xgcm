@@ -146,6 +146,8 @@ def input_handling(func):
         # Check the input dimensions. If they are the same the target array has to be temporarily renamed,
         # and will be renamed again at the end
 
+        # rename phi_dim to a unique name. This wont be used afterwards
+
         rename_trigger = False
         if theta_dim == target_dim:
             saved_dim = target_dim
