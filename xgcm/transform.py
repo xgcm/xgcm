@@ -146,12 +146,6 @@ def input_handling(func):
         # Check the input dimensions. If they are the same the target array has to be temporarily renamed,
         # and will be renamed again at the end
 
-        if phi_dim == theta_dim:
-            # The phi_dim doesnt matter for the final product, so just rename to something unique
-            unique_dim = "temp_unique"
-            phi = phi.rename({phi_dim: unique_dim})
-            phi_dim = unique_dim
-
         rename_trigger = False
         if theta_dim == target_dim:
             saved_dim = target_dim
@@ -159,6 +153,11 @@ def input_handling(func):
             target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
             target_dim = temp_dim
             rename_trigger = True
+
+        # The phi_dim doesnt matter for the final product, so just rename to something unique to avoid conflicts in apply_ufunc
+        unique_dim = "temp_unique"
+        phi = phi.rename({phi_dim: unique_dim})
+        phi_dim = unique_dim
 
         args = (phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim)
 
@@ -195,6 +194,7 @@ def linear_interpolation(
 def conservative_interpolation(
     phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim, **kwargs
 ):
+    print(phi_dim, theta_dim, target_dim)
 
     out = xr.apply_ufunc(
         interp_1d_conservative,

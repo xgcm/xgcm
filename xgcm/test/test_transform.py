@@ -55,102 +55,154 @@ def test_interp_1d_conservative():
     np.testing.assert_allclose(dz_theta.sum(axis=-1), dz.sum(axis=-1))
 
 
-"""1D Test datasets for various transformations."""
+"""1D Test datasets for various transformations.
+This part of the module is organized as follows:
+
+1. A nested dictionary with all parameters needed to construct a set of test datasets
+2. Fixtures that use a constructor function and all or a subset of the dictionary entries from 1. to returns:
+     (input_dataset, grid_kwargs, target, transform_kwargs, expected_dataarray)
+3. Test functions
+
+"""
+cases = {
+    "linear_depth_depth": {
+        "input_coord": ("z", [5, 25, 60]),
+        "input_data": ("data", [0.23246861, 0.45175654, 0.58320681]),  # random numbers
+        "target_coord": ("z", [0, 7, 30, 60, 70]),
+        "target_data": ("z", [0, 7, 30, 60, 70]),
+        "expected_coord": ("z", [0, 7, 30, 60, 70]),
+        "expected_data": (
+            "data",
+            np.interp(
+                [0, 7, 30, 60, 70], [5, 25, 60], [0.23246861, 0.45175654, 0.58320681]
+            ),
+        ),  # same input as in `input_data`
+        "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
+        "transform_kwargs": {"mask_edges": False, "method": "linear"},
+    },
+    "linear_depth_depth_masked_outcrops": {
+        "input_coord": ("z", [5, 25, 60]),
+        "input_data": ("data", [0.23246861, 0.45175654, 0.58320681]),  # random numbers
+        "target_coord": ("z", [0, 7, 30, 60, 70]),
+        "target_data": ("z", [0, 7, 30, 60, 70]),
+        "expected_coord": ("z", [0, 7, 30, 60, 70]),
+        "expected_data": (
+            "data",
+            np.interp(
+                [0, 7, 30, 60, 70], [5, 25, 60], [0.23246861, 0.45175654, 0.58320681]
+            ),
+        ),  # same input as in `input_data`
+        "expected_data_mask_index": [0, -1],
+        "expected_data_mask_value": np.nan,
+        "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
+        "transform_kwargs": {"mask_edges": True, "method": "linear"},
+    },
+    "linear_depth_depth_renamed": {
+        "input_coord": ("test", [5, 25, 60]),
+        "input_data": ("data", [0.23246861, 0.45175654, 0.58320681]),  # random numbers
+        "target_coord": ("something", [0, 7, 30, 60, 70]),
+        "target_data": ("something", [0, 7, 30, 60, 70]),
+        "expected_coord": ("something", [0, 7, 30, 60, 70]),
+        "expected_data": (
+            "data",
+            np.interp(
+                [0, 7, 30, 60, 70], [5, 25, 60], [0.23246861, 0.45175654, 0.58320681]
+            ),
+        ),  # same input as in `input_data`
+        "grid_kwargs": {"coords": {"Z": {"center": "test"}}},
+        "transform_kwargs": {"mask_edges": False, "method": "linear"},
+    },
+    "conservative_depth_depth": {
+        "input_coord": ("z", [5, 25, 60]),
+        "input_bounds_coord": ("zc", [0, 10, 50, 75]),
+        "input_data": ("data", [1, 4, 0]),
+        "target_coord": ("z", [0, 1, 10, 50, 80]),
+        "target_data": ("z", [0, 1, 10, 50, 80]),
+        "expected_coord": ("z", [0.5, 5.5, 30, 65]),
+        "expected_data": (
+            "data",
+            [0.1, 0.9, 4.0, 0.0],
+        ),  # same input as in `input_data`
+        "grid_kwargs": {"coords": {"Z": {"center": "z", "outer": "zc"}}},
+        "transform_kwargs": {"method": "conservative"},
+    },
+}
+
+
+def constructor(case_param_dict):
+    """create test components from `cases` dictionary parameters"""
+
+    def _construct_ds(dict, prefix):
+        # ds = xr.Dataset({'test':xr.DataArray(case_param_dict[prefix+"_data"][1])})
+        data = case_param_dict[prefix + "_data"][1]
+
+        ds = xr.Dataset(
+            {
+                case_param_dict[prefix + "_data"][0]: xr.DataArray(
+                    data,
+                    dims=[case_param_dict[prefix + "_coord"][0]],
+                    coords={
+                        case_param_dict[prefix + "_coord"][0]: case_param_dict[
+                            prefix + "_coord"
+                        ][1]
+                    },
+                )
+            }
+        )
+        # add additional coords (bounds)
+        if prefix + "_bounds_coord" in case_param_dict.keys():
+            bounds = case_param_dict[prefix + "_bounds_coord"]
+            ds = ds.assign_coords({bounds[0]: bounds[1]})
+
+        # mask values from the output
+        if prefix + "_data_mask_index" in case_param_dict.keys():
+            for ii in case_param_dict[prefix + "_data_mask_index"]:
+                ds.data.data[ii] = case_param_dict[prefix + "_data_mask_value"]
+        return ds
+
+    input = _construct_ds(case_param_dict, "input")
+    expected = _construct_ds(case_param_dict, "expected")
+    target = xr.DataArray(
+        case_param_dict["target_data"][1],
+        dims=[case_param_dict["target_coord"][0]],
+        coords={case_param_dict["target_coord"][0]: case_param_dict["target_coord"][1]},
+        name=case_param_dict["target_data"][0],
+    )
+
+    return (
+        input,
+        case_param_dict["grid_kwargs"],
+        target,
+        case_param_dict["transform_kwargs"],
+        expected,
+    )
+
 
 # TODO: I am not sure how we would handle periodic axes atm. Should we raise an error?
-def raw_datasets():
-    z = np.array([5, 25, 60])
-    z_outer = np.array([0, 10, 50, 75])
-
-    #####
-    # First set of examples: Linear interpolation on different depth levels
-    target_z = np.array([0, 7, 30, 60, 70])
-    data = np.random.rand(len(z))
-
-    data_expected = np.interp(target_z, z, data)
-
-    input_linear_depth_depth = xr.Dataset(
-        {"data": xr.DataArray(data, dims=["z"], coords={"z": z})}
-    )
-    expected_linear_depth_depth = xr.DataArray(
-        data_expected, dims=["z"], coords={"z": target_z}
-    )
-
-    # same with masked outcrops
-    data_expected_masked_outcrops = data_expected.copy()
-    data_expected_masked_outcrops[0] = np.nan
-    data_expected_masked_outcrops[-1] = np.nan
-    expected_linear_depth_depth_masked_outcrops = xr.DataArray(
-        data_expected_masked_outcrops, dims=["z"], coords={"z": target_z}
-    )
-    #####
-    # Second set of examples: Conservative remapping to other depth levels.
-    data = np.array([1, 4, 0])
-    target_z_bounds = np.array([0, 1, 10, 50, 80])
-    input_conservative_depth_depth = xr.Dataset(
-        {"data": xr.DataArray(data, dims=["z"], coords={"z": z})}
-    )
-    input_conservative_depth_depth = input_conservative_depth_depth.assign_coords(
-        {"zc": xr.DataArray(z_outer, dims=["zc"], coords={"zc": z_outer})}
-    )
-    # TODO: reimplement the weighted matrix from xrutils for testing
-    # TODO: TEST for conservation...
-    # for now just take the recorded result (this is really cheating.)
-    expected_conservative_depth_depth = xr.DataArray(
-        np.array([0.1, 0.9, 4.0, 0.0]),
-        dims=["zc"],
-        coords={
-            "zc": (target_z_bounds[1:] + target_z_bounds[0:-1]) / 2
-        },  # simply infer the cell center
-    )
-
-    datasets = {
-        "linear_depth_depth": (
-            input_linear_depth_depth,
-            {"coords": {"Z": {"center": "z"}}},
-            target_z,
-            {"mask_edges": False, "method": "linear"},
-            expected_linear_depth_depth,
-        ),
-        "linear_depth_depth_renamed": (
-            input_linear_depth_depth.rename({"z": "test"}),
-            {"coords": {"Z": {"center": "test"}}},
-            target_z,
-            {"mask_edges": True, "method": "linear"},
-            expected_linear_depth_depth_masked_outcrops.rename({"z": "test"}),
-        ),
-        "linear_depth_depth_masked_outcrops": (
-            input_linear_depth_depth,
-            {"coords": {"Z": {"center": "z"}}},
-            target_z,
-            {"mask_edges": True, "method": "linear"},
-            expected_linear_depth_depth_masked_outcrops,
-        ),
-        "conservative_depth_depth": (
-            input_conservative_depth_depth,
-            {"coords": {"Z": {"inner": "z", "outer": "zc"}}},
-            target_z_bounds,
-            {"method": "conservative"},
-            expected_conservative_depth_depth,
-        ),
-    }
-    return datasets
 
 
 @pytest.fixture(
     scope="module",
-    params=[
-        "linear_depth_depth",
-        "linear_depth_depth_masked_outcrops",
-        "linear_depth_depth_renamed",
-        "conservative_depth_depth",
-    ],
+    params=list(cases.keys()),
 )
-def dataset(request):
-    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets()[
-        request.param
-    ]
-    return input, grid_kwargs, target, transform_kwargs, expected
+def all_cases(request):
+    return constructor(cases[request.param])
+
+
+@pytest.fixture(
+    scope="module",
+    params=[c for c in list(cases.keys()) if "linear" in c],
+)
+def linear_cases(request):
+    return constructor(cases[request.param])
+
+
+@pytest.fixture(
+    scope="module",
+    params=[c for c in list(cases.keys()) if "conservative" in c],
+)
+def conservative_cases(request):
+    return constructor(cases[request.param])
 
 
 """Test suite."""
@@ -158,74 +210,76 @@ def dataset(request):
 
 def test_linear_interpolation_target_value_error():
     """Test that linear_interpolation throws an error when `target` is a np array"""
-    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets()[
-        "linear_depth_depth"
-    ]
+    input, grid_kwargs, target, transform_kwargs, expected = constructor(
+        cases["linear_depth_depth"]
+    )
+
     # method keyword is only for high level tests
     transform_kwargs.pop("method")
+
     with pytest.raises(ValueError):
-        interpolated = linear_interpolation(input.data, input["z"], target, "z", "z")
+        interpolated = linear_interpolation(input.data, input.z, target.data, "z", "z")
     # TODO: test with the other method
 
 
-# Test the linear interpolations only
-@pytest.mark.parametrize(
-    "name",
-    [
-        "linear_depth_depth",
-        "linear_depth_depth_masked_outcrops",
-        "linear_depth_depth_renamed",
-    ],
-)
-def test_low_level_linear(name):
-    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets()[name]
-    dim = grid_kwargs["coords"]["Z"]["center"]
-    da_target = xr.DataArray(target, dims=[dim], coords={dim: target})
+def _parse_dim(da):
+    # utility that check that the input array has only one dim and return that
+    assert len(da.dims) == 1
+    return list(da.dims)[0]
+
+
+def test_low_level_linear(linear_cases):
+    """Test the linear interpolations on the xarray wrapper level"""
+    input, grid_kwargs, target, transform_kwargs, expected = linear_cases
 
     # method keyword is only for high level tests
     transform_kwargs.pop("method")
+
+    input_dim = _parse_dim(input.data)
+    target_dim = _parse_dim(target)
 
     interpolated = linear_interpolation(
-        input.data, input[dim], da_target, dim, dim, dim, **transform_kwargs
-    )
-    xr.testing.assert_allclose(interpolated, expected)
-
-
-# Test the conservative interpolations only
-@pytest.mark.parametrize(
-    "name",
-    [
-        "conservative_depth_depth",
-    ],
-)
-def test_low_level_conservative(name):
-    input, grid_kwargs, target, transform_kwargs, expected = raw_datasets()[name]
-    dim = grid_kwargs["coords"]["Z"]["inner"]
-    target_dim = grid_kwargs["coords"]["Z"]["outer"]
-    da_target = xr.DataArray(target, dims=[target_dim], coords={target_dim: target})
-
-    # method keyword is only for high level tests
-    transform_kwargs.pop("method")
-
-    interpolated = conservative_interpolation(
         input.data,
-        input[target_dim],
-        da_target,
-        dim,
-        target_dim,
+        input[input_dim],
+        target,
+        input_dim,
+        input_dim,
         target_dim,
         **transform_kwargs
     )
-    xr.testing.assert_allclose(interpolated, expected)
+    xr.testing.assert_allclose(interpolated, expected.data)
 
 
-def test_grid_transform(dataset):
-    input, grid_kwargs, target, transform_kwargs, expected = dataset
+def test_low_level_conservative(conservative_cases):
+    """Test the conservative interpolations on the xarray wrapper level"""
+    input, grid_kwargs, target, transform_kwargs, expected = conservative_cases
 
-    axis = list(grid_kwargs["coords"].keys())[0]
-    dim = grid_kwargs["coords"][axis]["center"]
-    da_target = xr.DataArray(target, dims=[dim], coords={dim: target})
+    # method keyword is only for high level tests
+    transform_kwargs.pop("method")
 
-    grid = Grid(input, **grid_kwargs)
-    transformed = grid.transform(input.data, axis, da_target, **transform_kwargs)
-    xr.testing.assert_allclose(transformed, expected)
+    input_dim = grid_kwargs["coords"]["Z"]["center"]
+    bounds_dim = grid_kwargs["coords"]["Z"]["outer"]
+    target_dim = _parse_dim(target)
+
+    interpolated = conservative_interpolation(
+        input.data,
+        input[bounds_dim],
+        target,
+        input_dim,
+        bounds_dim,
+        target_dim,
+        **transform_kwargs
+    )
+    xr.testing.assert_allclose(interpolated, expected.data)
+
+
+# def test_grid_transform(all_cases):
+#     input, grid_kwargs, target, transform_kwargs, expected = dataset
+
+#     axis = list(grid_kwargs["coords"].keys())[0]
+#     dim = grid_kwargs["coords"][axis]["center"]
+#     da_target = xr.DataArray(target, dims=[dim], coords={dim: target})
+
+#     grid = Grid(input, **grid_kwargs)
+#     transformed = grid.transform(input.data, axis, da_target, **transform_kwargs)
+#     xr.testing.assert_allclose(transformed, expected)
