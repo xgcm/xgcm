@@ -64,69 +64,87 @@ This part of the module is organized as follows:
 3. Test functions
 
 """
-cases = {
-    "linear_depth_depth": {
-        "input_coord": ("z", [5, 25, 60]),
-        "input_data": ("data", [0.23246861, 0.45175654, 0.58320681]),  # random numbers
-        "target_coord": ("z", [0, 7, 30, 60, 70]),
-        "target_data": ("z", [0, 7, 30, 60, 70]),
-        "expected_coord": ("z", [0, 7, 30, 60, 70]),
-        "expected_data": (
-            "data",
-            np.interp(
-                [0, 7, 30, 60, 70], [5, 25, 60], [0.23246861, 0.45175654, 0.58320681]
-            ),
-        ),  # same input as in `input_data`
-        "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
-        "transform_kwargs": {"mask_edges": False, "method": "linear"},
-    },
-    "linear_depth_depth_masked_outcrops": {
-        "input_coord": ("z", [5, 25, 60]),
-        "input_data": ("data", [0.23246861, 0.45175654, 0.58320681]),  # random numbers
-        "target_coord": ("z", [0, 7, 30, 60, 70]),
-        "target_data": ("z", [0, 7, 30, 60, 70]),
-        "expected_coord": ("z", [0, 7, 30, 60, 70]),
-        "expected_data": (
-            "data",
-            np.interp(
-                [0, 7, 30, 60, 70], [5, 25, 60], [0.23246861, 0.45175654, 0.58320681]
-            ),
-        ),  # same input as in `input_data`
-        "expected_data_mask_index": [0, -1],
-        "expected_data_mask_value": np.nan,
-        "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
-        "transform_kwargs": {"mask_edges": True, "method": "linear"},
-    },
-    "linear_depth_depth_renamed": {
-        "input_coord": ("test", [5, 25, 60]),
-        "input_data": ("data", [0.23246861, 0.45175654, 0.58320681]),  # random numbers
-        "target_coord": ("something", [0, 7, 30, 60, 70]),
-        "target_data": ("something", [0, 7, 30, 60, 70]),
-        "expected_coord": ("something", [0, 7, 30, 60, 70]),
-        "expected_data": (
-            "data",
-            np.interp(
-                [0, 7, 30, 60, 70], [5, 25, 60], [0.23246861, 0.45175654, 0.58320681]
-            ),
-        ),  # same input as in `input_data`
-        "grid_kwargs": {"coords": {"Z": {"center": "test"}}},
-        "transform_kwargs": {"mask_edges": False, "method": "linear"},
-    },
-    "conservative_depth_depth": {
-        "input_coord": ("z", [5, 25, 60]),
-        "input_bounds_coord": ("zc", [0, 10, 50, 75]),
-        "input_data": ("data", [1, 4, 0]),
-        "target_coord": ("z", [0, 1, 10, 50, 80]),
-        "target_data": ("z", [0, 1, 10, 50, 80]),
-        "expected_coord": ("z", [0.5, 5.5, 30, 65]),
-        "expected_data": (
-            "data",
-            [0.1, 0.9, 4.0, 0.0],
-        ),  # same input as in `input_data`
-        "grid_kwargs": {"coords": {"Z": {"center": "z", "outer": "zc"}}},
-        "transform_kwargs": {"method": "conservative"},
-    },
-}
+
+
+def cases():
+    return {
+        "linear_depth_depth": {
+            "input_coord": ("z", [5, 25, 60]),
+            "input_data": (
+                "data",
+                [0.23246861, 0.45175654, 0.58320681],
+            ),  # random numbers
+            "target_coord": ("z", [0, 7, 30, 60, 70]),
+            "target_data": ("z", [0, 7, 30, 60, 70]),
+            "expected_coord": ("z", [0, 7, 30, 60, 70]),
+            "expected_data": (
+                "data",
+                np.interp(
+                    [0, 7, 30, 60, 70],
+                    [5, 25, 60],
+                    [0.23246861, 0.45175654, 0.58320681],
+                ),
+            ),  # same input as in `input_data`
+            "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
+            "transform_kwargs": {"mask_edges": False, "method": "linear"},
+        },
+        "linear_depth_depth_masked_outcrops": {
+            "input_coord": ("z", [5, 25, 60]),
+            "input_data": (
+                "data",
+                [0.23246861, 0.45175654, 0.58320681],
+            ),  # random numbers
+            "target_coord": ("z", [0, 7, 30, 60, 70]),
+            "target_data": ("z", [0, 7, 30, 60, 70]),
+            "expected_coord": ("z", [0, 7, 30, 60, 70]),
+            "expected_data": (
+                "data",
+                np.interp(
+                    [0, 7, 30, 60, 70],
+                    [5, 25, 60],
+                    [0.23246861, 0.45175654, 0.58320681],
+                ),
+            ),  # same input as in `input_data`
+            "expected_data_mask_index": [0, -1],
+            "expected_data_mask_value": np.nan,
+            "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
+            "transform_kwargs": {"mask_edges": True, "method": "linear"},
+        },
+        "linear_depth_depth_renamed": {
+            "input_coord": ("test", [5, 25, 60]),
+            "input_data": (
+                "data",
+                [0.23246861, 0.45175654, 0.58320681],
+            ),  # random numbers
+            "target_coord": ("something", [0, 7, 30, 60, 70]),
+            "target_data": ("something", [0, 7, 30, 60, 70]),
+            "expected_coord": ("something", [0, 7, 30, 60, 70]),
+            "expected_data": (
+                "data",
+                np.interp(
+                    [0, 7, 30, 60, 70],
+                    [5, 25, 60],
+                    [0.23246861, 0.45175654, 0.58320681],
+                ),
+            ),  # same input as in `input_data`
+            "grid_kwargs": {"coords": {"Z": {"center": "test"}}},
+            "transform_kwargs": {"mask_edges": False, "method": "linear"},
+        },
+        "conservative_depth_depth": {
+            "input_coord": ("z", [5, 25, 60]),
+            "input_bounds_coord": ("zc", [0, 10, 50, 75]),
+            "input_data": ("data", [1, 4, 0]),
+            "target_coord": ("z", [0, 1, 10, 50, 80]),
+            "target_data": ("z", [0, 1, 10, 50, 80]),
+            "expected_coord": ("z", [0.5, 5.5, 30, 65]),
+            "expected_data": (
+                "data",
+                [0.1, 0.9, 4.0, 0.0],
+            ),  # same input as in `input_data`
+            "grid_kwargs": {"coords": {"Z": {"center": "z", "outer": "zc"}}},
+            "transform_kwargs": {"method": "conservative"},
+        },
+    }
 
 
 def constructor(case_param_dict):
@@ -171,9 +189,9 @@ def constructor(case_param_dict):
 
     return (
         input,
-        case_param_dict["grid_kwargs"],
+        {k: v for k, v in case_param_dict["grid_kwargs"].items()},
         target,
-        case_param_dict["transform_kwargs"],
+        {k: v for k, v in case_param_dict["transform_kwargs"].items()},
         expected,
     )
 
@@ -183,26 +201,26 @@ def constructor(case_param_dict):
 
 @pytest.fixture(
     scope="module",
-    params=list(cases.keys()),
+    params=list(cases().keys()),
 )
 def all_cases(request):
-    return constructor(cases[request.param])
+    return constructor(cases()[request.param])
 
 
 @pytest.fixture(
     scope="module",
-    params=[c for c in list(cases.keys()) if "linear" in c],
+    params=[c for c in list(cases().keys()) if "linear" in c],
 )
 def linear_cases(request):
-    return constructor(cases[request.param])
+    return constructor(cases()[request.param])
 
 
 @pytest.fixture(
     scope="module",
-    params=[c for c in list(cases.keys()) if "conservative" in c],
+    params=[c for c in list(cases().keys()) if "conservative" in c],
 )
 def conservative_cases(request):
-    return constructor(cases[request.param])
+    return constructor(cases()[request.param])
 
 
 """Test suite."""
@@ -211,7 +229,7 @@ def conservative_cases(request):
 def test_linear_interpolation_target_value_error():
     """Test that linear_interpolation throws an error when `target` is a np array"""
     input, grid_kwargs, target, transform_kwargs, expected = constructor(
-        cases["linear_depth_depth"]
+        cases()["linear_depth_depth"]
     )
 
     # method keyword is only for high level tests
@@ -231,7 +249,7 @@ def _parse_dim(da):
 def test_low_level_linear(linear_cases):
     """Test the linear interpolations on the xarray wrapper level"""
     input, grid_kwargs, target, transform_kwargs, expected = linear_cases
-
+    print(transform_kwargs)
     # method keyword is only for high level tests
     transform_kwargs.pop("method")
 
