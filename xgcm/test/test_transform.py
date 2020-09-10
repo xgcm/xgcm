@@ -553,16 +553,25 @@ def test_grid_transform(all_cases):
         xr.testing.assert_allclose(transformed, expected.data)
 
 
-# def test_grid_transform_auto_naming(all_cases):
-#     """Check that the naming for the new dimension is adapted for the output if the target is not passed as xr.Dataarray"""
-#     # input, grid_kwargs, target, transform_kwargs, expected = all_cases
+def test_grid_transform_auto_naming(all_cases):
+    """Check that the naming for the new dimension is adapted for the output if the target is not passed as xr.Dataarray"""
+    input, grid_kwargs, target, transform_kwargs, expected, error_flag = all_cases
 
-#     # axis = list(grid_kwargs["coords"].keys())[0]
+    # modify the expected naming and convert target to numpy array
+    target = target.data
+    expected_data_coord = [n for n in input.data_vars if "n" != "data"]
+    assert len(expected_data_coord) == 1
+    expected_data_coord = expected_data_coord[0]
 
-#     # grid = Grid(input, **grid_kwargs)
-#     # transformed = grid.transform(input.data, axis, da_target.data, **transform_kwargs)
-#     # xr.testing.assert_allclose(transformed, expected.data)
-#     assert 1 == 0
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(input, **grid_kwargs)
+    if error_flag:
+        with pytest.xfail():
+            transformed = grid.transform(input.data, axis, target, **transform_kwargs)
+    else:
+        transformed = grid.transform(input.data, axis, target, **transform_kwargs)
+        assert expected_data_coord in list(expected.data.coords)
 
 
 # TODO:
