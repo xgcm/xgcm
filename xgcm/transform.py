@@ -196,7 +196,6 @@ def linear_interpolation(
 def conservative_interpolation(
     phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim, **kwargs
 ):
-    print(phi_dim, theta_dim, target_dim)
 
     out = xr.apply_ufunc(
         interp_1d_conservative,
@@ -209,7 +208,6 @@ def conservative_interpolation(
         dask="parallelized",
         output_dtypes=[phi.dtype],
     )
-    print(target_theta_levels)
 
     # assign the target cell center
     target_centers = (target_theta_levels.data[1:] + target_theta_levels.data[:-1]) / 2

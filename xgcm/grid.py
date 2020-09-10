@@ -818,6 +818,10 @@ class Axis:
             target, target_dim, target_data = _parse_target(
                 target, target_dim, target_data_dim, target_data
             )
+            # # ! Not sure if this should be applied generally
+            # if target_data_dim not in target_data:
+            #     #if
+
             out = conservative_interpolation(
                 da,
                 target_data,

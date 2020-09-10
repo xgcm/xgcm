@@ -130,6 +130,67 @@ def cases():
             "grid_kwargs": {"coords": {"Z": {"center": "test"}}},
             "transform_kwargs": {"mask_edges": False, "method": "linear"},
         },
+        # example of interpolating onto a tracer that increases with depth
+        # but with inverted target
+        "linear_depth_dens": {
+            "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_data": ("data", [1, 4, 6, 2, 0, -3]),
+            "input_additional_data_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_additional_data": ("dens", [1, 5, 10, 20, 24, 35]),
+            "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "target_data": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "expected_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "expected_data": (
+                "data",
+                [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
+            ),
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {"method": "linear", "target_data": "dens"},
+        },
+        # example of interpolating onto a tracer that increases with depth
+        # with masked values
+        "linear_depth_dens_masked": {
+            "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_data": ("data", [1, 4, 6, 2, 0, -3]),
+            "input_additional_data_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_additional_data": ("dens", [1, 5, 10, 20, 24, 35]),
+            "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "target_data": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "expected_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "expected_data": (
+                "data",
+                [np.nan, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
+            ),
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {
+                "method": "linear",
+                "target_data": "dens",
+                "mask_edges": True,
+            },
+        },
+        # example of interpolating onto a tracer that increases with depth
+        # but with inverted target
+        "linear_depth_dens_reverse": {
+            "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_data": ("data", [1, 4, 6, 2, 0, -3]),
+            "input_additional_data_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_additional_data": ("dens", [1, 5, 10, 20, 24, 35]),
+            "target_coord": ("something", [27, 25, 20, 15, 11, 10, 5, 0]),
+            "target_data": ("something", [27, 25, 20, 15, 11, 10, 5, 0]),
+            "expected_coord": ("something", [27, 25, 20, 15, 11, 10, 5, 0]),
+            "expected_data": (
+                "data",
+                [-0.818182, -0.272727, 2.0, 4.0, 5.6, 6.0, 4.0, 1.0],
+            ),
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {"method": "linear", "target_data": "dens"},
+        },
         "conservative_depth_depth": {
             "input_coord": ("z", [5, 25, 60]),
             "input_bounds_coord": ("zc", [0, 10, 50, 75]),
@@ -160,24 +221,79 @@ def cases():
             },
             "transform_kwargs": {"method": "conservative"},
         },
-        # "conservative_depth_temp": {
-        #     "input_coord": ("depth", [5, 25, 60]),
-        #     "input_bounds_coord": ("depth_bnds", [0, 10, 50, 75]),
-        #     "input_data": ("data", [1, 4, 0]),
-        #     "additional_data": ("temp", [35, 20, 10]),
-        #     "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
-        #     "target_data": ("something", [0, 1, 10, 50, 80]),
-        #     "expected_coord": ("temp", [0, 5, 10, 11, 15, 20, 25, 27]),
-        #     "expected_data": (
-        #         "data",
-        #         [0, 5, 10, 11, 15, 20, 25, 27],
-        #     ),  # same input as in `input_data`
-        #     "grid_kwargs": {
-        #         "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
-        #     },
-        #     "transform_kwargs": {"method": "conservative"},
-        # },
-        # target_data=da_temp
+        "conservative_depth_dens_on_bounds": {
+            "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
+            "input_data": ("data", [1, 4, 6, 2, 0, -3]),
+            "input_additional_data_coord": (
+                "depth_bnds",
+                [0, 10, 30, 70, 90, 110, 170],
+            ),
+            "input_additional_data": ("dens", [1, 5, 10, 20, 24, 35, 37]),
+            "target_coord": ("dens", [0, 5, 36]),
+            "target_data": ("dens", [0, 5, 36]),
+            "expected_coord": ("dens", [2.5, 20.5]),
+            "expected_data": (
+                "data",
+                [1, 10.5],
+            ),
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {
+                "method": "conservative",
+                "target_data": "dens",
+            },
+        },
+    }
+
+
+def fail_cases():
+    return {
+        # example of interpolating onto a tracer that descreases with depth
+        # This fails due to the temp not increasing. We should implement a heuristic
+        # to switch the direction...
+        "linear_depth_temp": {
+            "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_data": ("data", [1, 4, 6, 2, 0, -3]),
+            # "input_additional_data": ("temp", [35, 24, 20, 10, 5, 1]),
+            "input_additional_data": ("dens", [1, 5, 10, 20, 24, 35]),
+            "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "target_data": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "expected_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+            "expected_data": (
+                "data",
+                [0, 5, 10, 11, 15, 20, 25, 27],
+            ),  # same input as in `input_data`
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {"method": "linear", "target_data": "temp"},
+        },
+        # This should error out I think. I think we need to interpolate the additional
+        # dens data on the cell faces. Somehow this does compute though and returns 3 values?
+        # seems like a bug.
+        "conservative_depth_dens": {
+            "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
+            "input_data": ("data", [1, 4, 6, 2, 0, -3]),
+            "input_additional_data_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_additional_data": ("dens", [1, 5, 10, 20, 24, 35]),
+            "target_coord": ("dens", [0, 5, 36]),
+            "target_data": ("dens", [0, 5, 36]),
+            "expected_coord": ("dens", [2.5, 7.5]),
+            "expected_data": (
+                "data",
+                [5.0, 5.0],
+            ),
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {
+                "method": "conservative",
+                "target_data": "dens",
+            },
+        },
     }
 
 
@@ -201,6 +317,19 @@ def constructor(case_param_dict):
                 )
             }
         )
+        # Add additional data
+        if (
+            prefix + "_additional_data" in case_param_dict.keys()
+            and prefix + "_additional_data_coord" in case_param_dict.keys()
+        ):
+            add_data = case_param_dict[prefix + "_additional_data"]
+            add_data_coord = case_param_dict[prefix + "_additional_data_coord"]
+            ds[add_data[0]] = xr.DataArray(
+                add_data[1],
+                dims=[add_data_coord[0]],
+                coords={add_data_coord[0]: add_data_coord[1]},
+            )
+
         # add additional coords (bounds)
         if prefix + "_bounds_coord" in case_param_dict.keys():
             bounds = case_param_dict[prefix + "_bounds_coord"]
@@ -221,11 +350,17 @@ def constructor(case_param_dict):
         name=case_param_dict["target_data"][0],
     )
 
+    # parse the 'target_data' from the actual input
+    transform_kwargs = {k: v for k, v in case_param_dict["transform_kwargs"].items()}
+    if "target_data" in transform_kwargs.keys():
+        if transform_kwargs["target_data"] is not None:
+            transform_kwargs["target_data"] = input[transform_kwargs["target_data"]]
+
     return (
         input,
         {k: v for k, v in case_param_dict["grid_kwargs"].items()},
         target,
-        {k: v for k, v in case_param_dict["transform_kwargs"].items()},
+        transform_kwargs,
         expected,
     )
 
@@ -257,7 +392,21 @@ def conservative_cases(request):
     return constructor(cases()[request.param])
 
 
+@pytest.fixture(
+    scope="module",
+    params=[c for c in list(fail_cases().keys()) if "conservative" in c],
+)
+def failing_cases(request):
+    return constructor(fail_cases()[request.param])
+
+
 """Test suite."""
+
+
+def _parse_dim(da):
+    # utility that check that the input array has only one dim and return that
+    assert len(da.dims) == 1
+    return list(da.dims)[0]
 
 
 def test_linear_interpolation_target_value_error():
@@ -274,25 +423,24 @@ def test_linear_interpolation_target_value_error():
     # TODO: test with the other method
 
 
-def _parse_dim(da):
-    # utility that check that the input array has only one dim and return that
-    assert len(da.dims) == 1
-    return list(da.dims)[0]
-
-
 def test_low_level_linear(linear_cases):
     """Test the linear interpolations on the xarray wrapper level"""
     input, grid_kwargs, target, transform_kwargs, expected = linear_cases
-    print(transform_kwargs)
+
     # method keyword is only for high level tests
     transform_kwargs.pop("method")
 
     input_dim = _parse_dim(input.data)
     target_dim = _parse_dim(target)
 
+    # parse the target_data manually
+    target_data = transform_kwargs.pop("target_data", None)
+    if target_data is None:
+        target_data = input[input_dim]
+
     interpolated = linear_interpolation(
         input.data,
-        input[input_dim],
+        target_data,
         target,
         input_dim,
         input_dim,
@@ -313,9 +461,14 @@ def test_low_level_conservative(conservative_cases):
     bounds_dim = grid_kwargs["coords"]["Z"]["outer"]
     target_dim = _parse_dim(target)
 
+    # parse the target_data manually
+    target_data = transform_kwargs.pop("target_data", None)
+    if target_data is None:
+        target_data = input[bounds_dim]
+
     interpolated = conservative_interpolation(
         input.data,
-        input[bounds_dim],
+        target_data,
         target,
         input_dim,
         bounds_dim,
@@ -335,6 +488,18 @@ def test_grid_transform(all_cases):
     xr.testing.assert_allclose(transformed, expected.data)
 
 
+def test_grid_transform_fail(failing_cases):
+    input, grid_kwargs, target, transform_kwargs, expected = failing_cases
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(input, **grid_kwargs)
+    with pytest.xfail():
+        transformed = grid.transform(input.data, axis, target, **transform_kwargs)
+
+        xr.testing.assert_allclose(transformed, expected.data)
+
+
 def test_grid_transform_auto_naming(all_cases):
     """Check that the naming for the new dimension is adapted for the output if the target is not passed as xr.Dataarray"""
     # input, grid_kwargs, target, transform_kwargs, expected = all_cases
@@ -349,3 +514,4 @@ def test_grid_transform_auto_naming(all_cases):
 # TODO:
 # - What happens when target_data and data are on difference coords? Should we interpolate onto the same.
 # - Check that naming is taking from target_data
+# - Test that an error is raised with a non-outer staggering.
