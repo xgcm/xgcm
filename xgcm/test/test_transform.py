@@ -221,6 +221,8 @@ def cases():
             },
             "transform_kwargs": {"method": "conservative"},
         },
+        # This works but is an uncommon case, where the 'tracer' which is the target
+        # is located on the cell bounds
         "conservative_depth_dens_on_bounds": {
             "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
             "input_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
@@ -243,6 +245,31 @@ def cases():
             "transform_kwargs": {
                 "method": "conservative",
                 "target_data": "dens",
+            },
+        },
+        # same as above but with a decreasing tracer (e.g. temp)
+        "conservative_depth_temp_on_bounds": {
+            "input_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+            "input_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
+            "input_data": ("data", [-3, 0, 2, 6, 4, 1]),
+            "input_additional_data_coord": (
+                "depth_bnds",
+                [0, 10, 30, 70, 90, 110, 170],
+            ),
+            "input_additional_data": ("temp", [37, 35, 24, 20, 10, 5, 1]),
+            "target_coord": ("temp", [0, 5, 36]),
+            "target_data": ("temp", [0, 5, 36]),
+            "expected_coord": ("temp", [2.5, 20.5]),
+            "expected_data": (
+                "data",
+                [1, 10.5],
+            ),
+            "grid_kwargs": {
+                "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}
+            },
+            "transform_kwargs": {
+                "method": "conservative",
+                "target_data": "temp",
             },
         },
     }
