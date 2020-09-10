@@ -781,12 +781,12 @@ class Axis:
                 else:
                     if target_dim is None:
                         raise ValueError(
-                            f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. Please specify `target_dim`."
+                            f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. Specify `target_dim`."
                         )
             else:
                 # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
                 target_dim = target_data.name
-                target = xr.Dataarray(
+                target = xr.DataArray(
                     target, dims=[target_dim], coords={target_dim: target}
                 )
             return target, target_dim, target_data

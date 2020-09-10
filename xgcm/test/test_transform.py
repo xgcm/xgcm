@@ -557,21 +557,33 @@ def test_grid_transform_auto_naming(all_cases):
     """Check that the naming for the new dimension is adapted for the output if the target is not passed as xr.Dataarray"""
     input, grid_kwargs, target, transform_kwargs, expected, error_flag = all_cases
 
-    # modify the expected naming and convert target to numpy array
-    target = target.data
-    expected_data_coord = [n for n in input.data_vars if "n" != "data"]
-    assert len(expected_data_coord) == 1
-    expected_data_coord = expected_data_coord[0]
+    # ? Not sure if we need to go through all the cases here...
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
     grid = Grid(input, **grid_kwargs)
+
+    # modify the expected naming and convert target to numpy array
+    target_data = transform_kwargs.setdefault("target_data", None)
+
+    if transform_kwargs["target_data"] is None:
+        # When no target_data is provided default to axis coordinates depending on method
+        if transform_kwargs["method"] == "linear":
+            expected_data_coord = grid.axes[axis].coords["center"]
+        elif transform_kwargs["method"] == "conservative":
+            expected_data_coord = grid.axes[axis].coords["outer"]
+    else:
+        # When target_data is provided check against the name of the dataarray
+        expected_data_coord = target_data.name
+
+    target = target.data
+
     if error_flag:
         with pytest.xfail():
             transformed = grid.transform(input.data, axis, target, **transform_kwargs)
     else:
         transformed = grid.transform(input.data, axis, target, **transform_kwargs)
-        assert expected_data_coord in list(expected.data.coords)
+        assert expected_data_coord in transformed.coords
 
 
 # TODO:
