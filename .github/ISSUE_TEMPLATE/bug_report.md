@@ -32,7 +32,7 @@ Bug reports that follow these guidelines are easier to diagnose, and so are ofte
 **xgcm version and environment**:
 
 <details>
-<!-- To get the version number of xgcm do `import xgcm;xgcm.__version__`-->
+<!-- To get the version number of xgcm do `import xgcm; print(xgcm.__version__)`-->
 
 <!-- Paste the output of `conda list` from your shell here. -->
 
