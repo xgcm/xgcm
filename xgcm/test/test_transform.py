@@ -275,7 +275,7 @@ cases = {
         "input_additional_data": ("dens", [2, 2, 1.9]),
         "target_coord": ("dens", [1.95, 3]),
         "target_data": ("dens", [1.95, 3]),
-        "expected_coord": ("dens", [1.95, 3]),
+        "expected_coord": ("dens", [2.475]),
         "expected_data": (
             "data",
             [100 + 2210 / 2],

@@ -80,6 +80,8 @@ def _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2, out
             if (theta_hat_1[j] > theta_max) or (theta_hat_2[j] < theta_min):
                 # there is no overlap between the cell and the bin
                 pass
+            elif theta_max == theta_min:
+                output[j] += phi[i]
             else:
                 # from here on there is some overlap
                 theta_hat_min = max(theta_min, theta_hat_1[j])
