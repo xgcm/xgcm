@@ -22,12 +22,15 @@ authors:
   - name: Timothy Smith
     orcid: 0000-0003-4463-6126
     affiliation: 5
+  - name: Deepak Cherian
+    orcid: 0000-0002-6861-8734
+    affiliation: 3
 affiliations:
  - name: Lamont Doherty Earth Observatory of Columbia University
    index: 1
  - name: Princeton University
    index: 2
- - name: The US National Center for Atmospheric Research, USA
+ - name: National Center for Atmospheric Research, Boulder, USA
    index: 3
  - name: Tsinghua University
    index: 4
