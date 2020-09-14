@@ -266,6 +266,27 @@ cases = {
             "target_data": "dens",
         },
     },
+    # This should work but does not at the moment (see PR discussion)
+    "conservative_depth_dens_equalvalues": {
+        "input_coord": ("depth", [0, 20]),
+        "input_bounds_coord": ("depth_bnds", [10, 30, 50]),
+        "input_data": ("data", [100, 2210]),
+        "input_additional_data_coord": ("depth_bnds", [10, 30, 50]),
+        "input_additional_data": ("dens", [2, 2, 1.9]),
+        "target_coord": ("dens", [1.95, 3]),
+        "target_data": ("dens", [1.95, 3]),
+        "expected_coord": ("dens", [1.95, 3]),
+        "expected_data": (
+            "data",
+            [100 + 2210 / 2],
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        # "error": True,  # this currently fails but shouldnt
+        "transform_kwargs": {
+            "method": "conservative",
+            "target_data": "dens",
+        },
+    },
 }
 
 
