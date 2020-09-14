@@ -18,3 +18,7 @@ coverage:
 ignore:
   - "setup.py"
   - "versioneer.py"
+  - "xgcm/test/*"
+  - "xgcm/__init__.py"
+  - "xgcm/_version.py"
+  - "xgcm/gridops.py"
