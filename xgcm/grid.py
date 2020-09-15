@@ -776,6 +776,7 @@ class Axis:
             )
 
         def _parse_target(target, target_dim, target_data_dim, target_data):
+            """Parse target values into correct xarray naming and set default naming based on input data"""
             # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
             if target_data is None:
                 target_data = self._ds[target_data_dim]
@@ -814,11 +815,6 @@ class Axis:
                 mask_edges=mask_edges,
             )
         elif method == "conservative":
-
-            #         # # ! Not sure if this should be applied generally
-            # # if target_data_dim not in target_data:
-            # #     #if
-
             # the conservative method requires `target_data` to be on the `outer` coordinate.
             # If that is not the case (a very common use case like transformation on any tracer),
             # we need to infer the boundary values (using the interp logic)

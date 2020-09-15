@@ -6,7 +6,6 @@ high level: API implementations in the grid object (located in grid.py)
 """
 
 # TODO:
-# - What happens when target_data and data are on difference coords? Should we interpolate onto the same.
 # - performance test? It would be nice to have these right after so we can track the performance as this feature evolves
 
 import pytest

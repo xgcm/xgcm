@@ -7,6 +7,9 @@ import xarray as xr
 from numba import jit, guvectorize, float32, float64, boolean
 
 
+"""Low level functions (numba/numpy)"""
+
+
 @guvectorize(
     [
         (float64[:], float64[:], float64[:], boolean, float64[:]),
@@ -132,13 +135,11 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
     return _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2)
 
 
-"""
-Higher level functions (xarray wrappers).
-"""
+"""Mid level functions (xarray)"""
 
 
 def input_handling(func):
-    """Decorator that handles input for interpolations."""
+    """Decorator that handles input naming for interpolations."""
 
     @functools.wraps(func)
     def wrapper_input_handling(*args, **kwargs):
@@ -150,31 +151,21 @@ def input_handling(func):
         if not isinstance(target_theta_levels, xr.DataArray):
             raise ValueError("`target_theta_levels` should be passed as xr.DataArray")
 
-        # Check the input dimensions. If they are the same the target array has to be temporarily renamed,
-        # and will be renamed again at the end
+        # rename all input dims to unique names to avoid conflicts in xr.apply_ufunc
 
-        # rename phi_dim to a unique name. This wont be used afterwards
+        temp_dim = "temp_dim_target"
+        target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
 
-        rename_trigger = False
-        if theta_dim == target_dim:
-            saved_dim = target_dim
-            temp_dim = "temp_dim_target"
-            target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
-            target_dim = temp_dim
-            rename_trigger = True
+        # The phi_dim doesnt matter for the final product, so just rename to
+        # # something unique to avoid conflicts in apply_ufunc
+        phi = phi.rename({phi_dim: "temp_unique"})
 
-        # The phi_dim doesnt matter for the final product, so just rename to something unique to avoid conflicts in apply_ufunc
-        unique_dim = "temp_unique"
-        phi = phi.rename({phi_dim: unique_dim})
-        phi_dim = unique_dim
-
-        args = (phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim)
-
+        # Execute function with temporary names
+        args = (phi, theta, target_theta_levels, phi_dim, theta_dim, temp_dim)
         value = func(*args, **kwargs)
 
-        # rename back to original name if trigger is set
-        if rename_trigger:
-            value = value.rename({temp_dim: saved_dim})
+        # rename back to original name
+        value = value.rename({temp_dim: target_dim})
 
         return value
 
