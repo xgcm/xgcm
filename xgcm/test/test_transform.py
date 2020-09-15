@@ -5,6 +5,10 @@ mid level: function wrappers that operate on xarray objects (located in transfor
 high level: API implementations in the grid object (located in grid.py)
 """
 
+# TODO:
+# - What happens when target_data and data are on difference coords? Should we interpolate onto the same.
+# - performance test? It would be nice to have these right after so we can track the performance as this feature evolves
+
 import pytest
 import dask
 import numpy as np
@@ -717,8 +721,3 @@ def test_grid_transform_multidim(request, client, multidim_cases):
         for aa in range(na):
             transformed_column = transformed.isel({"a": aa})
             xr.testing.assert_allclose(transformed_column, expected.data)
-
-
-# TODO:
-# - What happens when target_data and data are on difference coords? Should we interpolate onto the same.
-# - performance test? It would be nice to have these right after so we can track the performance as this feature evolves
