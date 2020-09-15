@@ -12,5 +12,6 @@ dependencies:
     - pytest-cov
     - git+https://github.com/pydata/xarray.git
     - git+https://github.com/dask/dask.git
+    - git+https://github.com/dask/distributed.git
     - toolz
     - git+https://github.com/numba/numba.git
