@@ -99,9 +99,9 @@ cases = {
     # example of interpolating onto a tracer that increases with depth
     # but with inverted target
     "linear_depth_dens": {
-        "source_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+        "source_coord": ("depth", [20, 40, 60, 80, 100, 120]),
         "source_data": ("data", [1, 4, 6, 2, 0, -3]),
-        "source_additional_data_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+        "source_additional_data_coord": ("depth", [20, 40, 60, 80, 100, 120]),
         "source_additional_data": ("dens", [1, 5, 10, 20, 24, 35]),
         "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
         "target_data": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
@@ -112,6 +112,25 @@ cases = {
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
         "transform_kwargs": {"method": "linear", "target_data": "dens"},
+    },
+    # example of interpolating onto a tracer that descreases with depth
+    # This fails due to the temp not increasing. We should implement a heuristic
+    # to switch the direction...
+    "linear_depth_temp": {
+        "source_coord": ("depth", [20, 40, 60, 80, 100, 120]),
+        "source_data": ("data", [-3, 0, 2, 6, 4, 1]),
+        "source_additional_data_coord": ("depth", [20, 40, 60, 80, 100, 120]),
+        "source_additional_data": ("temp", [35, 24, 20, 10, 5, 1]),
+        "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+        "target_data": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+        "expected_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
+        "expected_data": (
+            "data",
+            [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        # "error": True,  # this currently fails but shouldnt
+        "transform_kwargs": {"method": "linear", "target_data": "temp"},
     },
     "linear_depth_negative_dens": {
         "source_coord": ("depth", [-5, -25, -60, -80, -100, -120]),
@@ -240,25 +259,6 @@ cases = {
             "method": "conservative",
             "target_data": "temp",
         },
-    },
-    # example of interpolating onto a tracer that descreases with depth
-    # This fails due to the temp not increasing. We should implement a heuristic
-    # to switch the direction...
-    "linear_depth_temp": {
-        "source_coord": ("depth", [5, 25, 60, 80, 100, 120]),
-        "source_data": ("data", [1, 4, 6, 2, 0, -3]),
-        "source_additional_data_coord": ("depth", [5, 25, 60, 80, 100, 120]),
-        "source_additional_data": ("temp", [35, 24, 20, 10, 5, 1]),
-        "target_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
-        "target_data": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
-        "expected_coord": ("something", [0, 5, 10, 11, 15, 20, 25, 27]),
-        "expected_data": (
-            "data",
-            [0, 5, 10, 11, 15, 20, 25, 27],
-        ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
-        "error": True,  # this currently fails but shouldnt
-        "transform_kwargs": {"method": "linear", "target_data": "temp"},
     },
     # This should error out I think. I think we need to interpolate the additional
     # dens data on the cell faces. Somehow this does compute though and returns 3 values?
