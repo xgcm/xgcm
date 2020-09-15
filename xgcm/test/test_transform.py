@@ -721,3 +721,22 @@ def test_grid_transform_multidim(request, client, multidim_cases):
         for aa in range(na):
             transformed_column = transformed.isel({"a": aa})
             xr.testing.assert_allclose(transformed_column, expected.data)
+
+
+@pytest.mark.xfail(strict=True, raises=ValueError)
+def test_chunking_dim_error():
+    """Assure that error is raised when we chunk along the 'vertical' dimension"""
+
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        error_flag,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    source = source.chunk({"depth": 1})
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, **grid_kwargs)
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
