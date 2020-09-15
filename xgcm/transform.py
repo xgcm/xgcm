@@ -158,10 +158,11 @@ def input_handling(func):
 
         # The phi_dim doesnt matter for the final product, so just rename to
         # # something unique to avoid conflicts in apply_ufunc
-        phi = phi.rename({phi_dim: "temp_unique"})
+        temp_dim2 = "temp_unique"
+        phi = phi.rename({phi_dim: temp_dim2})
 
         # Execute function with temporary names
-        args = (phi, theta, target_theta_levels, phi_dim, theta_dim, temp_dim)
+        args = (phi, theta, target_theta_levels, temp_dim2, theta_dim, temp_dim)
         value = func(*args, **kwargs)
 
         # rename back to original name
