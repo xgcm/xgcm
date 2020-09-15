@@ -188,6 +188,7 @@ def linear_interpolation(
         kwargs=kwargs,
         input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
         output_core_dims=[[target_dim]],
+        exclude_dims=set((phi_dim,)),
         dask="parallelized",
         output_dtypes=[phi.dtype],
     )
@@ -208,19 +209,14 @@ def conservative_interpolation(
         input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
         output_core_dims=[["remapped"]],
         dask="parallelized",
+        # Since we are introducing a new dimension instead of changing it we need to declare the output size.
+        output_sizes={"remapped": len(target_theta_levels) - 1},
         output_dtypes=[phi.dtype],
-    )
+    ).rename({"remapped": target_dim})
 
     # assign the target cell center
     target_centers = (target_theta_levels.data[1:] + target_theta_levels.data[:-1]) / 2
-    out = out.assign_coords(
-        {
-            "remapped": xr.DataArray(
-                target_centers, dims=["remapped"], coords={"remapped": target_centers}
-            )
-        }
-    )
-    out = out.rename({"remapped": target_dim})
+    out = out.assign_coords({target_dim: target_centers})
 
     # TODO: Somehow preserve the original bounds
 
