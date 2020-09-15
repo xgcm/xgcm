@@ -768,6 +768,13 @@ class Axis:
         method="linear",
         mask_edges=False,
     ):
+
+        # raise error if axis is periodic
+        if self._periodic:
+            raise ValueError(
+                "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
+            )
+
         def _parse_target(target, target_dim, target_data_dim, target_data):
             # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
             if target_data is None:
@@ -808,6 +815,13 @@ class Axis:
             )
         elif method == "conservative":
 
+            #         # # ! Not sure if this should be applied generally
+            # # if target_data_dim not in target_data:
+            # #     #if
+
+            # the conservative method requires `target_data` to be on the `outer` coordinate.
+            # If that is not the case (a very common use case like transformation on any tracer),
+            # we need to infer the boundary values (using the interp logic)
             # for this method we need the `outer` position. Error out if its not there.
             try:
                 target_data_dim = self.coords["outer"]
@@ -815,12 +829,14 @@ class Axis:
                 raise RuntimeError(
                     "In order to use the method `conservative` the grid object needs to have `outer` coordinates."
                 )
+
             target, target_dim, target_data = _parse_target(
                 target, target_dim, target_data_dim, target_data
             )
-            # # ! Not sure if this should be applied generally
-            # if target_data_dim not in target_data:
-            #     #if
+
+            # check on which coordinate `target_data` is, and interpolate if needed
+            if target_data_dim not in target_data.dims:
+                target_data = self.interp(target_data, boundary="extend")
 
             out = conservative_interpolation(
                 da,

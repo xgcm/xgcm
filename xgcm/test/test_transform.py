@@ -224,12 +224,12 @@ cases = {
             [0, 10, 30, 70, 90, 110, 170],
         ),
         "source_additional_data": ("dens", [1, 5, 10, 20, 24, 35, 37]),
-        "target_coord": ("dens", [0, 5, 36]),
-        "target_data": ("dens", [0, 5, 36]),
-        "expected_coord": ("dens", [2.5, 20.5]),
+        "target_coord": ("dens", [0, 5, 38]),
+        "target_data": ("dens", [0, 5, 38]),
+        "expected_coord": ("dens", [2.5, 21.5]),
         "expected_data": (
             "data",
-            [1, 10.5],
+            [1, 9],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
         "transform_kwargs": {
@@ -246,13 +246,13 @@ cases = {
             "depth_bnds",
             [0, 10, 30, 70, 90, 110, 170],
         ),
-        "source_additional_data": ("temp", [37, 35, 24, 20, 10, 5, 1]),
+        "source_additional_data": ("temp", [30, 25, 20, 15, 10, 5, 0]),
         "target_coord": ("temp", [0, 5, 36]),
         "target_data": ("temp", [0, 5, 36]),
         "expected_coord": ("temp", [2.5, 20.5]),
         "expected_data": (
             "data",
-            [1, 10.5],
+            [1, 9],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
         "transform_kwargs": {
@@ -260,27 +260,25 @@ cases = {
             "target_data": "temp",
         },
     },
-    # This should error out I think. I think we need to interpolate the additional
-    # dens data on the cell faces. Somehow this does compute though and returns 3 values?
-    # seems like a bug.
-    "conservative_depth_dens": {
+    # Trying to make sure that these results are the same as `conservative_depth_temp_on_bounds`
+    "conservative_depth_temp": {
         "source_coord": ("depth", [5, 25, 60, 80, 100, 120]),
         "source_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
-        "source_data": ("data", [1, 4, 6, 2, 0, -3]),
+        "source_data": ("data", [-3, 0, 2, 6, 4, 1]),
         "source_additional_data_coord": ("depth", [5, 25, 60, 80, 100, 120]),
-        "source_additional_data": ("dens", [1, 5, 10, 20, 24, 35]),
-        "target_coord": ("dens", [0, 5, 36]),
-        "target_data": ("dens", [0, 5, 36]),
-        "expected_coord": ("dens", [2.5, 7.5]),
+        "source_additional_data": ("temp", [27.5, 22.5, 17.5, 12.5, 7.5, 2.5]),
+        "target_coord": ("temp", [0, 5, 36]),
+        "target_data": ("temp", [0, 5, 36]),
+        "expected_coord": ("temp", [2.5, 20.5]),
         "expected_data": (
             "data",
-            [5.0, 5.0],
+            [1, 9],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
-        "error": True,  # this currently fails but shouldnt
+        "error": True,  # this will still fail in the mid level tests but should succeed in the high level version (due to implementing interp on the high level method)
         "transform_kwargs": {
             "method": "conservative",
-            "target_data": "dens",
+            "target_data": "temp",
         },
     },
     # Check for bugfix. Tranform onto column with two or more equal values.
@@ -290,12 +288,12 @@ cases = {
         "source_data": ("data", [100, 2210]),
         "source_additional_data_coord": ("depth_bnds", [10, 30, 50]),
         "source_additional_data": ("dens", [2, 2, 1.9]),
-        "target_coord": ("dens", [1.95, 3]),
-        "target_data": ("dens", [1.95, 3]),
-        "expected_coord": ("dens", [2.475]),
+        "target_coord": ("dens", [1.9, 1.95, 3]),
+        "target_data": ("dens", [1.9, 1.95, 3]),
+        "expected_coord": ("dens", [1.925, 2.475]),
         "expected_data": (
             "data",
-            [100 + 2210 / 2],
+            [2210 / 2, 100 + 2210 / 2],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
         "transform_kwargs": {
@@ -430,7 +428,8 @@ def conservative_cases(request):
     params=[
         "conservative_depth_dens_nonmono_edge",
         "linear_depth_dens",
-        "conservative_depth_dens",
+        "linear_depth_depth",
+        "conservative_depth_temp",
     ],  # just pick a few to test the broadcasting and dask
 )
 def multidim_cases(request):
@@ -604,6 +603,8 @@ def test_mid_level_conservative(conservative_cases):
             **transform_kwargs
         )
         xr.testing.assert_allclose(interpolated, expected.data)
+        # make sure that the extensive quantitiy is actually conserved
+        xr.testing.assert_allclose(interpolated.sum(), source.data.sum())
 
 
 """High level tests"""
@@ -611,28 +612,35 @@ def test_mid_level_conservative(conservative_cases):
 
 def test_grid_transform(all_cases):
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = all_cases
-    print(error_flag)
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    xr.testing.assert_allclose(transformed, expected.data)
+
+
+@pytest.mark.xfail(strict=True, raises=ValueError)
+def test_transform_error_periodic(multidim_cases):
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
     grid = Grid(source, **grid_kwargs)
-    if error_flag:
-        with pytest.xfail():
-            transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-    else:
-        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-        xr.testing.assert_allclose(transformed, expected.data)
+
+    # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    xr.testing.assert_allclose(transformed, expected.data)
 
 
-def test_grid_transform_auto_naming(all_cases):
+def test_grid_transform_auto_naming(multidim_cases):  # only test a few cases
     """Check that the naming for the new dimension is adapted for the output if the target is not passed as xr.Dataarray"""
-    source, grid_kwargs, target, transform_kwargs, expected, error_flag = all_cases
-
-    # ? Not sure if we need to go through all the cases here...
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
     axis = list(grid_kwargs["coords"].keys())[0]
-
-    grid = Grid(source, **grid_kwargs)
+    grid = Grid(source, periodic=False, **grid_kwargs)
 
     # modify the expected naming and convert target to numpy array
     target_data = transform_kwargs.setdefault("target_data", None)
@@ -649,12 +657,8 @@ def test_grid_transform_auto_naming(all_cases):
 
     target = target.data
 
-    if error_flag:
-        with pytest.xfail():
-            transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-    else:
-        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-        assert expected_data_coord in transformed.coords
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    assert expected_data_coord in transformed.coords
 
 
 """ Multidimensional tests with dask scheduler """
@@ -707,17 +711,19 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
     # calculate the multidimensional result
     axis = list(grid_kwargs["coords"].keys())[0]
-    grid = Grid(source, **grid_kwargs)
+    grid = Grid(source, periodic=False, **grid_kwargs)
 
     # compare for each depth column
-    if error_flag:
-        with pytest.xfail():
-            transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-    else:
-        client = request.getfixturevalue(client)
-        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-        _, expected_broadcasted = xr.broadcast(transformed, expected)
-        xr.testing.assert_allclose(transformed, expected_broadcasted.data)
+    # if error_flag:
+    #     with pytest.xfail():
+    #         transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    # else:
+
+    # the high level tests should deal with all error cases
+    client = request.getfixturevalue(client)
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    _, expected_broadcasted = xr.broadcast(transformed, expected)
+    xr.testing.assert_allclose(transformed, expected_broadcasted.data)
 
 
 @pytest.mark.xfail(strict=True, raises=ValueError)
@@ -735,5 +741,5 @@ def test_chunking_dim_error():
 
     source = source.chunk({"depth": 1})
     axis = list(grid_kwargs["coords"].keys())[0]
-    grid = Grid(source, **grid_kwargs)
+    grid = Grid(source, periodic=False, **grid_kwargs)
     transformed = grid.transform(source.data, axis, target, **transform_kwargs)
