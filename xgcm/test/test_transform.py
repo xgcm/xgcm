@@ -715,12 +715,9 @@ def test_grid_transform_multidim(request, client, multidim_cases):
             transformed = grid.transform(source.data, axis, target, **transform_kwargs)
     else:
         client = request.getfixturevalue(client)
-        transformed = grid.transform(
-            source.data, axis, target, **transform_kwargs
-        ).compute(scheduler=client)
-        for aa in range(na):
-            transformed_column = transformed.isel({"a": aa})
-            xr.testing.assert_allclose(transformed_column, expected.data)
+        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+        _, expected_broadcasted = xr.broadcast(transformed, expected)
+        xr.testing.assert_allclose(transformed, expected_broadcasted.data)
 
 
 @pytest.mark.xfail(strict=True, raises=ValueError)
