@@ -6,7 +6,6 @@ import numpy as np
 import xarray as xr
 from numba import jit, guvectorize, float32, float64, boolean
 
-
 """Low level functions (numba/numpy)"""
 
 

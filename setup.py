@@ -10,7 +10,6 @@ install_requires = [
     "xarray>=0.14.1",
     "dask",
     "numpy",
-    "numba>=0.49",
     "future",
     "docrep<=0.2.7",
 ]

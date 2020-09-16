@@ -12,14 +12,18 @@ import pytest
 import dask
 import numpy as np
 import xarray as xr
-from ..transform import (
-    interp_1d_linear,
-    interp_1d_conservative,
-    linear_interpolation,
-    conservative_interpolation,
-)
-
 from xgcm.grid import Grid, Axis
+
+try:
+    import numba
+    from ..transform import (
+        interp_1d_linear,
+        interp_1d_conservative,
+        linear_interpolation,
+        conservative_interpolation,
+    )
+except ImportError:
+    numba = None
 
 
 """1D Test datasets for various transformations.
@@ -447,6 +451,7 @@ def _parse_dim(da):
 """Low level tests"""
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_interp_1d_linear():
     nz, nx = 100, 1000
     z_vertex = np.linspace(0, 1, nz + 1)
@@ -464,6 +469,7 @@ def test_interp_1d_linear():
     np.testing.assert_allclose(phi_at_theta, phi_at_theta_expected, rtol=1e-4)
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_interp_1d_conservative():
     nz = 30
     k = np.arange(nz)
@@ -489,6 +495,7 @@ def test_interp_1d_conservative():
 """Mid level tests"""
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_linear_interpolation_target_value_error():
     """Test that linear_interpolation/conservative_interpolation throws an error when `target` is a np array"""
     (
@@ -519,6 +526,7 @@ def test_linear_interpolation_target_value_error():
         )
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_mid_level_linear(linear_cases):
     """Test the linear interpolations on the xarray wrapper level"""
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = linear_cases
@@ -558,6 +566,7 @@ def test_mid_level_linear(linear_cases):
         xr.testing.assert_allclose(interpolated, expected.data)
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_mid_level_conservative(conservative_cases):
     """Test the conservative interpolations on the xarray wrapper level"""
     (
@@ -609,6 +618,7 @@ def test_mid_level_conservative(conservative_cases):
 """High level tests"""
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform(all_cases):
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = all_cases
 
@@ -621,7 +631,7 @@ def test_grid_transform(all_cases):
     xr.testing.assert_allclose(transformed, expected.data)
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError)
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_transform_error_periodic(multidim_cases):
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
@@ -629,11 +639,11 @@ def test_transform_error_periodic(multidim_cases):
 
     grid = Grid(source, **grid_kwargs)
 
-    # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
-    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-    xr.testing.assert_allclose(transformed, expected.data)
+    with pytest.raises(ValueError):
+        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_auto_naming(multidim_cases):  # only test a few cases
     """Check that the naming for the new dimension is adapted for the output if the target is not passed as xr.Dataarray"""
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
@@ -697,6 +707,7 @@ def distributed_client():
 all_clients = ["no_client", "threaded_client", "processes_client", "distributed_client"]
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 @pytest.mark.parametrize("client", all_clients)
 def test_grid_transform_multidim(request, client, multidim_cases):
     # broadcast the 1d column agains some other dims and make sure that the 1d results are still valid
@@ -712,12 +723,6 @@ def test_grid_transform_multidim(request, client, multidim_cases):
     axis = list(grid_kwargs["coords"].keys())[0]
     grid = Grid(source, periodic=False, **grid_kwargs)
 
-    # compare for each depth column
-    # if error_flag:
-    #     with pytest.xfail():
-    #         transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-    # else:
-
     # the high level tests should deal with all error cases
     client = request.getfixturevalue(client)
     transformed = grid.transform(source.data, axis, target, **transform_kwargs)
@@ -725,7 +730,7 @@ def test_grid_transform_multidim(request, client, multidim_cases):
     xr.testing.assert_allclose(transformed, expected_broadcasted.data)
 
 
-@pytest.mark.xfail(strict=True, raises=ValueError)
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_chunking_dim_error():
     """Assure that error is raised when we chunk along the 'vertical' dimension"""
 
@@ -741,4 +746,5 @@ def test_chunking_dim_error():
     source = source.chunk({"depth": 1})
     axis = list(grid_kwargs["coords"].keys())[0]
     grid = Grid(source, periodic=False, **grid_kwargs)
-    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    with pytest.raises(ValueError):
+        transformed = grid.transform(source.data, axis, target, **transform_kwargs)

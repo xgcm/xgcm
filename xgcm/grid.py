@@ -12,7 +12,13 @@ import numpy as np
 
 from . import comodo
 from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
-from .transform import linear_interpolation, conservative_interpolation
+
+try:
+    import numba
+    from .transform import linear_interpolation, conservative_interpolation
+except ImportError:
+    numba = None
+
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -768,6 +774,11 @@ class Axis:
         method="linear",
         mask_edges=False,
     ):
+        # check optional numba dependency
+        if numba is None:
+            raise ValueError(
+                "The transform functionality of xgcm requires numba>=0.49. Intall using `conda install numba`"
+            )
 
         # raise error if axis is periodic
         if self._periodic:
