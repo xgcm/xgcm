@@ -774,9 +774,34 @@ class Axis:
         method="linear",
         mask_edges=False,
     ):
+        """Transform data along a 1D axis
+
+        Parameters
+        ----------
+        da : xr.Dataarray
+            Input data
+        target : {np.array, xr.Dataarray}
+            Target data for transformation. Dependin on the method is interpreted as cell center (method='linear') or cell bounds (method='conservative).
+            When passed as numpy array the resulting dimension is named according to `target_data`, if provided as xr.Dataarray naming is inferred from dimensions.
+        target_data : xr.Datarray, optional
+            Optional data to transform onto (e.g. a tracer like density or temperature). Defaults to None, which infers the appropriate coordinate along `axis` (e.g. the depth).
+        target_dim : str, optional
+            Dimension of `target` which should be used for transformation, by default None. Only required for multidimensional `target`.
+        method : str, optional
+            Method used to transform, by default "linear"
+        mask_edges : bool, optional
+            Option for 'linear' method. If activated, values outside the range of `target_data` are masked with nan, by default False
+
+        Returns
+        -------
+        xr.Dataarray
+            The transformed data along the axis.
+
+
+        """
         # check optional numba dependency
         if numba is None:
-            raise ValueError(
+            raise ImportError(
                 "The transform functionality of xgcm requires numba>=0.49. Intall using `conda install numba`"
             )
 
@@ -1634,6 +1659,31 @@ class Grid:
         return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
 
     def transform(self, da, axis, target, **kwargs):
+        """Transform data along a 1D axis
+
+        Parameters
+        ----------
+        da : xr.Dataarray
+            Input data
+        axis : str
+            Name of the axis on which to act
+        target : {np.array, xr.Dataarray}
+            Target data for transformation. Dependin on the method is interpreted as cell center (method='linear') or cell bounds (method='conservative).
+            When passed as numpy array the resulting dimension is named according to `target_data`, if provided as xr.Dataarray naming is inferred from dimensions.
+        target_data : xr.Datarray, optional
+            Optional data to transform onto (e.g. a tracer like density or temperature). Defaults to None, which infers the appropriate coordinate along `axis` (e.g. the depth).
+        target_dim : str, optional
+            Dimension of `target` which should be used for transformation, by default None. Only required for multidimensional `target`.
+        method : str, optional
+            Method used to transform, by default "linear"
+        mask_edges : bool, optional
+            Option for 'linear' method. If activated, values outside the range of `target_data` are masked with nan, by default False
+
+        Returns
+        -------
+        xr.Dataarray
+            The transformed data along the axis.
+        """
         ax = self.axes[axis]
         return ax.transform(da, target, **kwargs)
 
