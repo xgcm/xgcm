@@ -532,6 +532,7 @@ def test_interp_1d_conservative():
     np.testing.assert_allclose(dz_theta.sum(axis=-1), dz.sum(axis=-1))
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_conservative_nonmonotonic_target_error():
     nz = 30
     k = np.arange(nz)
