@@ -772,7 +772,7 @@ class Axis:
         target_data=None,
         target_dim=None,
         method="linear",
-        mask_edges=False,
+        mask_edges=True,
     ):
         """Transform data along a 1D axis
 
@@ -790,7 +790,7 @@ class Axis:
         method : str, optional
             Method used to transform, by default "linear"
         mask_edges : bool, optional
-            Option for 'linear' method. If activated, values outside the range of `target_data` are masked with nan, by default False
+            Option for 'linear' method. If activated, values outside the range of `target_data` are masked with nan, by default True
 
         Returns
         -------
