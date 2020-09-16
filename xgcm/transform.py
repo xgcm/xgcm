@@ -124,14 +124,25 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
 
     assert phi.shape[-1] == (theta.shape[-1] - 1)
     assert target_theta_bins.ndim == 1
-    assert all(np.diff(target_theta_bins) > 0)
+    # flip theta if needed
+    target_diff = np.diff(target_theta_bins)
+    if all(target_diff < 0):
+        flip_switch = True
+        target_theta_bins = np.flip(target_theta_bins)
+    elif all(target_diff > 0):
+        flip_switch = False
+    else:
+        raise ValueError("Target values are not monotonic")
 
     theta_1 = theta[..., :-1]
     theta_2 = theta[..., 1:]
     theta_hat_1 = target_theta_bins[:-1]
     theta_hat_2 = target_theta_bins[1:]
 
-    return _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2)
+    out = _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2)
+    if flip_switch:
+        out = np.flip(out)
+    return out
 
 
 """Mid level functions (xarray)"""

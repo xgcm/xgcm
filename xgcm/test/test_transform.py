@@ -324,6 +324,46 @@ cases = {
             "target_data": "dens",
         },
     },
+    # tests for failcase with non-ordered target values.
+    "linear_reversed_target": {
+        "source_coord": ("depth", [1, 2, 3]),
+        "source_bounds_coord": ("depth_bnds", [0.5, 1.5, 2.5, 3.5]),
+        "source_data": ("data", [10, 20, 30]),
+        "source_additional_data_coord": ("depth", [1, 2, 3]),
+        "source_additional_data": ("dens", [2, 4, 6]),
+        "target_coord": ("dens", [6, 4, 2]),
+        "target_data": ("dens", [6, 4, 2]),
+        "expected_coord": ("dens", [6, 4, 2]),
+        "expected_data": (
+            "data",
+            [30, 20, 10],
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "transform_kwargs": {
+            "method": "linear",
+            "target_data": "dens",
+        },
+    },
+    "conservative_reversed_target": {
+        "source_coord": ("depth", [1, 2, 3]),
+        "source_bounds_coord": ("depth_bnds", [0.5, 1.5, 2.5, 3.5]),
+        "source_data": ("data", [10, 20, 30]),
+        "source_additional_data_coord": ("depth_bnds", [0.5, 1.5, 2.5, 3.5]),
+        "source_additional_data": ("dens", [1, 3, 5, 7]),
+        "target_coord": ("dens", [7, 5, 3, 1]),
+        "target_data": ("dens", [7, 5, 3, 1]),
+        "expected_coord": ("dens", [6, 4, 2]),
+        "expected_data": (
+            "data",
+            [30, 20, 10],
+        ),
+        "error": True,  # this will still fail in the mid level tests but should succeed in the high level version (due to implementing interp on the high level method)
+        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "transform_kwargs": {
+            "method": "conservative",
+            "target_data": "dens",
+        },
+    },
 }
 
 
@@ -490,6 +530,26 @@ def test_interp_1d_conservative():
     dz_theta = interp_1d_conservative(dz_2d, theta_2d, theta_bins)
 
     np.testing.assert_allclose(dz_theta.sum(axis=-1), dz.sum(axis=-1))
+
+
+def test_conservative_nonmonotonic_target_error():
+    nz = 30
+    k = np.arange(nz)
+    dz = 10 + np.linspace(0, 90, nz - 1)
+    z = np.concatenate([[0], np.cumsum(dz)])
+    H = z.max()
+    theta = z / H + 0.2 * np.cos(np.pi * z / H)
+    # phi = np.sin(5 * np.pi * z/H)
+
+    nbins = 100
+    theta_bins = np.array([0, -2, 4])
+
+    # lazy way to check that it vectorizes: just copy the 1d array
+    nx = 5
+    dz_2d = np.tile(dz, (nx, 1))
+    theta_2d = np.tile(theta, (nx, 1))
+    with pytest.raises(ValueError):
+        dz_theta = interp_1d_conservative(dz_2d, theta_2d, theta_bins)
 
 
 """Mid level tests"""
