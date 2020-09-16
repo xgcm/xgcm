@@ -54,10 +54,12 @@ cases = {
                 [0.23246861, 0.45175654, 0.58320681],
             ),
         ),  # same source as in `source_data`
+        "expected_data_mask_index": [0, -1],
+        "expected_data_mask_value": np.nan,
         "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
-        "transform_kwargs": {"mask_edges": False, "method": "linear"},
+        "transform_kwargs": {"mask_edges": True, "method": "linear"},
     },
-    "linear_depth_depth_masked_outcrops": {
+    "linear_depth_depth_nomask": {
         "source_coord": ("z", [5, 25, 60]),
         "source_data": (
             "data",
@@ -74,10 +76,8 @@ cases = {
                 [0.23246861, 0.45175654, 0.58320681],
             ),
         ),  # same source as in `source_data`
-        "expected_data_mask_index": [0, -1],
-        "expected_data_mask_value": np.nan,
         "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
-        "transform_kwargs": {"mask_edges": True, "method": "linear"},
+        "transform_kwargs": {"mask_edges": False, "method": "linear"},
     },
     "linear_depth_depth_renamed": {
         "source_coord": ("test", [5, 25, 60]),
@@ -114,7 +114,11 @@ cases = {
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
-        "transform_kwargs": {"method": "linear", "target_data": "dens"},
+        "transform_kwargs": {
+            "method": "linear",
+            "target_data": "dens",
+            "mask_edges": False,
+        },
     },
     # example of interpolating onto a tracer that descreases with depth
     # This fails due to the temp not increasing. We should implement a heuristic
@@ -133,7 +137,11 @@ cases = {
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
         # "error": True,  # this currently fails but shouldnt
-        "transform_kwargs": {"method": "linear", "target_data": "temp"},
+        "transform_kwargs": {
+            "method": "linear",
+            "target_data": "temp",
+            "mask_edges": False,
+        },
     },
     "linear_depth_negative_dens": {
         "source_coord": ("depth", [-5, -25, -60, -80, -100, -120]),
@@ -148,7 +156,11 @@ cases = {
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
-        "transform_kwargs": {"method": "linear", "target_data": "dens"},
+        "transform_kwargs": {
+            "method": "linear",
+            "target_data": "dens",
+            "mask_edges": False,
+        },
     },
     # example of interpolating onto a tracer that increases with depth
     # with masked values
@@ -186,7 +198,11 @@ cases = {
             [-0.818182, -0.272727, 2.0, 4.0, 5.6, 6.0, 4.0, 1.0],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
-        "transform_kwargs": {"method": "linear", "target_data": "dens"},
+        "transform_kwargs": {
+            "method": "linear",
+            "target_data": "dens",
+            "mask_edges": False,
+        },
     },
     "conservative_depth_depth": {
         "source_coord": ("z", [5, 25, 60]),
