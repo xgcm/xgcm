@@ -193,7 +193,8 @@ def input_handling(func):
         value = value.rename({temp_dim: target_dim})
 
         # name the output according to input name and user customizable suffix
-        value.name = phi.name + suffix
+        if phi.name:
+            value.name = phi.name + suffix
 
         return value
 

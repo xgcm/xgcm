@@ -775,6 +775,22 @@ def test_grid_transform(all_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
+def test_grid_transform_noname(multidim_cases):
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    source_da = source.data
+    source_da.name = None
+
+    # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
+    transformed = grid.transform(source_da, axis, target, **transform_kwargs)
+    assert transformed.name is None
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_transform_error_periodic(multidim_cases):
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
