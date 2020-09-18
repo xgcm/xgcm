@@ -9,7 +9,7 @@ v0.5.0 (unrelased)
 
 New Features
 ~~~~~~~~~~~~
-- :py:meth:`~xgcm.grid.Grid` and :py:meth:`~xgcm.grid.Axis` now support 1-dimensional coordinate transformation (:pull:`205`)(:issue:`222`).
+- :py:meth:`~xgcm.grid.Grid.transform` and :py:meth:`~xgcm.grid.Axis.transform` now enable 1-dimensional coordinate transformation (:pull:`205`, :issue:`222`).
   By `Ryan Abernathey <https://github.com/rabernat>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
 
 
