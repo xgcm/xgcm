@@ -89,7 +89,7 @@ cases = {
         "target_data": ("something", [0, 7, 30, 60, 70]),
         "expected_coord": ("something", [0, 7, 30, 60, 70]),
         "expected_data": (
-            "data",
+            "data_test_suffix",
             np.interp(
                 [0, 7, 30, 60, 70],
                 [5, 25, 60],
@@ -97,7 +97,11 @@ cases = {
             ),
         ),  # same source as in `source_data`
         "grid_kwargs": {"coords": {"Z": {"center": "test"}}},
-        "transform_kwargs": {"mask_edges": False, "method": "linear"},
+        "transform_kwargs": {
+            "mask_edges": False,
+            "method": "linear",
+            "suffix": "_test_suffix",
+        },
     },
     # example of interpolating onto a tracer that increases with depth
     # but with inverted target
@@ -226,11 +230,14 @@ cases = {
         "target_data": ("something", [0, 1, 10, 50, 80]),
         "expected_coord": ("something", [0.5, 5.5, 30, 65]),
         "expected_data": (
-            "data",
+            "data_test_suffix",
             [0.1, 0.9, 4.0, 0.0],
         ),  # same source as in `source_data`
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
-        "transform_kwargs": {"method": "conservative"},
+        "transform_kwargs": {
+            "method": "conservative",
+            "suffix": "_test_suffix",
+        },
     },
     # This works but is an uncommon case, where the 'tracer' which is the target
     # is located on the cell bounds
@@ -608,6 +615,10 @@ def test_mid_level_linear(linear_cases):
     """Test the linear interpolations on the xarray wrapper level"""
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = linear_cases
 
+    # construct output name
+    transform_kwargs.setdefault("suffix", "")
+    output_name = "data" + transform_kwargs["suffix"]
+
     # method keyword is only for high level tests
     transform_kwargs.pop("method")
 
@@ -640,7 +651,8 @@ def test_mid_level_linear(linear_cases):
             target_dim,
             **transform_kwargs
         )
-        xr.testing.assert_allclose(interpolated, expected.data)
+        xr.testing.assert_allclose(interpolated, expected[output_name])
+        assert interpolated.name == output_name
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
@@ -655,6 +667,10 @@ def test_mid_level_conservative(conservative_cases):
         error_flag,
     ) = conservative_cases
 
+    # construct output name
+    transform_kwargs.setdefault("suffix", "")
+    output_name = "data" + transform_kwargs["suffix"]
+
     # method keyword is only for high level tests
     transform_kwargs.pop("method")
 
@@ -668,7 +684,7 @@ def test_mid_level_conservative(conservative_cases):
         target_data = source[bounds_dim]
     if error_flag:
         with pytest.xfail():
-            interpolated = conservative_interpolation(
+            transformed = conservative_interpolation(
                 source.data,
                 target_data,
                 target,
@@ -678,7 +694,7 @@ def test_mid_level_conservative(conservative_cases):
                 **transform_kwargs
             )
     else:
-        interpolated = conservative_interpolation(
+        transformed = conservative_interpolation(
             source.data,
             target_data,
             target,
@@ -687,9 +703,10 @@ def test_mid_level_conservative(conservative_cases):
             target_dim,
             **transform_kwargs
         )
-        xr.testing.assert_allclose(interpolated, expected.data)
+        xr.testing.assert_allclose(transformed, expected[output_name])
         # make sure that the extensive quantitiy is actually conserved
-        xr.testing.assert_allclose(interpolated.sum(), source.data.sum())
+        xr.testing.assert_allclose(transformed.sum(), source.data.sum())
+        assert transformed.name == output_name
 
 
 """High level tests"""
@@ -703,9 +720,13 @@ def test_grid_transform(all_cases):
 
     grid = Grid(source, periodic=False, **grid_kwargs)
 
+    # construct output name
+    transform_kwargs.setdefault("suffix", "")
+    output_name = "data" + transform_kwargs["suffix"]
+
     # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
     transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-    xr.testing.assert_allclose(transformed, expected.data)
+    xr.testing.assert_allclose(transformed, expected[output_name])
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")

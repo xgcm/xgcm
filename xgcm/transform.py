@@ -157,6 +157,9 @@ def input_handling(func):
         # unpack args
         phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim = args
 
+        # pop kwargs used for naming
+        suffix = kwargs.pop("suffix", "")
+
         # complain if the target values are not provided as xr.dataarray
         if not isinstance(target_theta_levels, xr.DataArray):
             raise ValueError("`target_theta_levels` should be passed as xr.DataArray")
@@ -177,6 +180,9 @@ def input_handling(func):
 
         # rename back to original name
         value = value.rename({temp_dim: target_dim})
+
+        # name the output according to input name and user customizable suffix
+        value.name = phi.name + suffix
 
         return value
 

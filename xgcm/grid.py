@@ -772,6 +772,7 @@ class Axis:
         target_data=None,
         method="linear",
         mask_edges=True,
+        suffix="_transformed",
     ):
         """Convert an array of data to new 1D-coordinates.
         The method takes a multidimensional array of data `da` and transforms it onto another data_array `target_data` in the direction of the axis (for each 1-dimensional 'column').
@@ -806,6 +807,8 @@ class Axis:
             Method used to transform, by default "linear"
         mask_edges : bool, optional
             If activated, `target` values outside the range of `target_data` are masked with nan, by default True. Only applies to 'linear' method.
+        suffix : str, optional
+            Customizable suffix to the name of the output array. This will be added to the original name of `da`. Defaults to `_transformed`.
 
         Returns
         -------
@@ -1713,6 +1716,9 @@ class Grid:
             Method used to transform, by default "linear"
         mask_edges : bool, optional
             If activated, `target` values outside the range of `target_data` are masked with nan, by default True. Only applies to 'linear' method.
+        suffix : str, optional
+            Customizable suffix to the name of the output array. This will be added to the original name of `da`. Defaults to `_transformed`.
+
 
         Returns
         -------
