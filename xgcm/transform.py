@@ -75,6 +75,14 @@ def _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2, out
     m = len(theta_hat_1)
 
     for i in range(n):
+
+        # handle missing values
+        if np.isnan(theta_1[i]) and np.isnan(theta_2[i]):
+            break
+        elif np.isnan(theta_1[i]):
+            theta_min = theta_max = theta_2[i]
+        elif np.isnan(theta_2[i]):
+            theta_min = theta_max = theta_1[i]
         # handle non-monotonic stratification
         if theta_1[i] < theta_2[i]:
             theta_min = theta_1[i]
