@@ -858,12 +858,23 @@ class Axis:
                 )
             return target, target_dim, target_data
 
-        _, dim = self._get_axis_coord(da)
+        def _check_target_alignment(da, target_da):
+            # check alignment for all other axes, to avoid broadcasting enourmous arrays
+            # to do this on the axis level we will simply check if target_data has some coordinates
+            # that are not found in da (excluding all coordinates that belong to the current axis)
+            da_other_dims = set(da.dims) - set(self.coords.values())
+            target_data_other_dims = set(target_data.dims) - set(self.coords.values())
+            if not target_data_other_dims.issubset(da_other_dims):
+                raise ValueError(
+                    f"Found additional dimensions [{target_data_other_dims-da_other_dims}] in `target_data` not found in `da`. This could mean that the target array is not on the same position along other axes. Use grid.interp() to align the arrays."
+                )
 
+        _, dim = self._get_axis_coord(da)
         if method == "linear":
             target, target_dim, target_data = _parse_target(
                 target, target_dim, dim, target_data
             )
+            _check_target_alignment(da, target_data)
             out = linear_interpolation(
                 da,
                 target_data,
@@ -888,6 +899,8 @@ class Axis:
             target, target_dim, target_data = _parse_target(
                 target, target_dim, target_data_dim, target_data
             )
+
+            _check_target_alignment(da, target_data)
 
             # check on which coordinate `target_data` is, and interpolate if needed
             if target_data_dim not in target_data.dims:
@@ -1732,6 +1745,7 @@ class Grid:
 
 
         """
+
         ax = self.axes[axis]
         return ax.transform(da, target, **kwargs)
 

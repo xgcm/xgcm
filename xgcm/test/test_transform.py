@@ -501,7 +501,7 @@ def construct_test_source_data(case_param_dict):
         source,
         {k: v for k, v in case_param_dict["grid_kwargs"].items()},
         target,
-        transform_kwargs,
+        {k: v for k, v in transform_kwargs.items()},
         expected,
         error_flag,
     )
@@ -892,6 +892,15 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
     na = 3
     source = source * xr.DataArray(np.ones([na]), dims=["a"])
+    # broadcast the target_data manually
+    print(transform_kwargs)
+    target_data = transform_kwargs.pop("target_data", None)
+    print(target_data)
+    if not target_data is None:
+        target_data = target_data * xr.DataArray(np.ones([na]), dims=["a"])
+        if client != "no_client":
+            target_data = target_data.chunk({"a": 1})
+    print(target_data)
 
     if client != "no_client":
         source = source.chunk({"a": 1})
@@ -902,9 +911,45 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
     # the high level tests should deal with all error cases
     client = request.getfixturevalue(client)
-    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    transformed = grid.transform(
+        source.data, axis, target, target_data=target_data, **transform_kwargs
+    ).load()
     _, expected_broadcasted = xr.broadcast(transformed, expected)
+    print(expected_broadcasted)
+    print(transformed)
+
     xr.testing.assert_allclose(transformed, expected_broadcasted.data)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_grid_transform_multidim_alignment_error(request, multidim_cases):
+    # broadcast the 1d column agains some other dims and make sure that the 1d results are still valid
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
+
+    na = 3
+    source = source * xr.DataArray(np.ones([na]), dims=["a"])
+    # broadcast the target, but in this case
+    # rename one of the dimensions of the target array, which is not along the
+    # axis of transformation (this could be the case if e.g. temperature is on a different
+    # x grid than velocity)
+    target_data = transform_kwargs.pop("target_data", None)
+    print(target_data)
+    if not target_data is None:
+        target_data = target_data * xr.DataArray(np.ones([na]), dims=["a_other"])
+
+        # calculate the multidimensional result
+        axis = list(grid_kwargs["coords"].keys())[0]
+
+        grid = Grid(source, periodic=False, **grid_kwargs)
+        print(target_data)
+        with pytest.raises(ValueError):
+            transformed = grid.transform(
+                source.data, axis, target, target_data=target_data, **transform_kwargs
+            )
+
+    else:
+        # When target_data is none its taken as a 1D-coordinate, no checking needed
+        pytest.skip()
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
