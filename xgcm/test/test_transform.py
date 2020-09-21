@@ -263,7 +263,52 @@ cases = {
             "target_data": "dens",
         },
     },
-    # same as above but with a decreasing tracer (e.g. temp)
+    # missing values in the target
+    "conservative_depth_dens_missing_values_bottom": {
+        "source_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+        "source_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
+        "source_data": ("data", [1, 4, 6, 2, 0, np.nan]),
+        "source_additional_data_coord": (
+            "depth_bnds",
+            [0, 10, 30, 70, 90, 110, 170],
+        ),
+        "source_additional_data": ("dens", [1, 5, 10, 20, 24, np.nan, np.nan]),
+        "target_coord": ("dens", [0, 5, 38]),
+        "target_data": ("dens", [0, 5, 38]),
+        "expected_coord": ("dens", [2.5, 21.5]),
+        "expected_data": (
+            "data",
+            [1, 12],
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "transform_kwargs": {
+            "method": "conservative",
+            "target_data": "dens",
+        },
+    },
+    "conservative_depth_dens_missing_values_top": {
+        "source_coord": ("depth", [5, 25, 60, 80, 100, 120]),
+        "source_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
+        "source_data": ("data", [np.nan, 4, 6, 2, 0, -3]),
+        "source_additional_data_coord": (
+            "depth_bnds",
+            [0, 10, 30, 70, 90, 110, 170],
+        ),
+        "source_additional_data": ("dens", [np.nan, np.nan, 10, 20, 24, 35, 37]),
+        "target_coord": ("dens", [0, 5, 38]),
+        "target_data": ("dens", [0, 5, 38]),
+        "expected_coord": ("dens", [2.5, 21.5]),
+        "expected_data": (
+            "data",
+            [0, 9],
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "transform_kwargs": {
+            "method": "conservative",
+            "target_data": "dens",
+        },
+    },
+    # decreasing tracer (e.g. temp)
     "conservative_depth_temp_on_bounds": {
         "source_coord": ("depth", [5, 25, 60, 80, 100, 120]),
         "source_bounds_coord": ("depth_bnds", [0, 10, 30, 70, 90, 110, 170]),
