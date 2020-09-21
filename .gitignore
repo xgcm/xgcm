@@ -59,3 +59,5 @@ target/
 # notebook
 */.ipynb_checkpoints/*
 .vscode/settings.json
+dask-worker-space/dask-worker-space/global.lock
+dask-worker-space/dask-worker-space/purge.lock
