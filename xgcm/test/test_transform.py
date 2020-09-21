@@ -730,6 +730,24 @@ def test_grid_transform(all_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_interp_warn():
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        error_flag,
+    ) = construct_test_source_data(cases["conservative_depth_temp"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+    with pytest.warns(UserWarning):
+        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_noname(multidim_cases):
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 

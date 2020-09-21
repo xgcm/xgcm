@@ -5,6 +5,7 @@ from collections import OrderedDict
 import functools
 import itertools
 import operator
+import warnings
 
 import docrep
 import xarray as xr
@@ -890,6 +891,10 @@ class Axis:
 
             # check on which coordinate `target_data` is, and interpolate if needed
             if target_data_dim not in target_data.dims:
+                warnings.warn(
+                    "The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values. For most accurate results provide values on cell bounds.",
+                    UserWarning,
+                )
                 target_data = self.interp(target_data, boundary="extend")
 
             out = conservative_interpolation(
