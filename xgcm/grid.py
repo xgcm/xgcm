@@ -863,8 +863,8 @@ class Axis:
             # to do this on the axis level we will simply check if target_data has some coordinates
             # that are not found in da (excluding all coordinates that belong to the current axis)
             da_other_dims = set(da.dims) - set(self.coords.values())
-            target_data_other_dims = set(target_data.dims) - set(self.coords.values())
-            if not target_data_other_dims.issubset(da_other_dims):
+            target_da_other_dims = set(target_da.dims) - set(self.coords.values())
+            if not target_da_other_dims.issubset(da_other_dims):
                 raise ValueError(
                     f"Found additional dimensions [{target_data_other_dims-da_other_dims}] in `target_data` not found in `da`. This could mean that the target array is not on the same position along other axes. Use grid.interp() to align the arrays."
                 )

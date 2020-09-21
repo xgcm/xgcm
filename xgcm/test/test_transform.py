@@ -890,10 +890,9 @@ def test_grid_transform_multidim(request, client, multidim_cases):
     # broadcast the 1d column agains some other dims and make sure that the 1d results are still valid
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
-    na = 3
+    na = 8
     source = source * xr.DataArray(np.ones([na]), dims=["a"])
     # broadcast the target_data manually
-    print(transform_kwargs)
     target_data = transform_kwargs.pop("target_data", None)
     print(target_data)
     if not target_data is None:
@@ -911,11 +910,12 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
     # the high level tests should deal with all error cases
     client = request.getfixturevalue(client)
+    _, target_data = xr.align(source.data, target_data)
     transformed = grid.transform(
         source.data, axis, target, target_data=target_data, **transform_kwargs
     ).load()
     _, expected_broadcasted = xr.broadcast(transformed, expected)
-    print(expected_broadcasted)
+    print(expected_broadcasted.data)
     print(transformed)
 
     xr.testing.assert_allclose(transformed, expected_broadcasted.data)
