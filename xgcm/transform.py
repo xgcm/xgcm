@@ -212,7 +212,7 @@ def linear_interpolation(
         kwargs=kwargs,
         input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
         output_core_dims=[[target_dim]],
-        exclude_dims=set((phi_dim,)),
+        exclude_dims=set((phi_dim, theta_dim)),
         dask="parallelized",
         output_dtypes=[phi.dtype],
     )

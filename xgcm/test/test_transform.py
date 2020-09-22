@@ -493,7 +493,9 @@ def construct_test_source_data(case_param_dict):
     transform_kwargs = {k: v for k, v in case_param_dict["transform_kwargs"].items()}
     if "target_data" in transform_kwargs.keys():
         if transform_kwargs["target_data"] is not None:
-            transform_kwargs["target_data"] = source[transform_kwargs["target_data"]]
+            transform_kwargs["target_data"] = source[
+                transform_kwargs["target_data"]
+            ].copy(deep=True)
 
     error_flag = case_param_dict.pop("error", None)
 
@@ -511,7 +513,7 @@ def construct_test_source_data(case_param_dict):
 
 
 @pytest.fixture(
-    scope="module",
+    # scope="module",
     params=list(cases.keys()),
 )
 def all_cases(request):
@@ -519,7 +521,7 @@ def all_cases(request):
 
 
 @pytest.fixture(
-    scope="module",
+    # scope="module",
     params=[c for c in list(cases.keys()) if "linear" in c],
 )
 def linear_cases(request):
@@ -527,7 +529,7 @@ def linear_cases(request):
 
 
 @pytest.fixture(
-    scope="module",
+    # scope="module",
     params=[c for c in list(cases.keys()) if "conservative" in c],
 )
 def conservative_cases(request):
@@ -535,7 +537,7 @@ def conservative_cases(request):
 
 
 @pytest.fixture(
-    scope="module",
+    # scope="module",
     params=[
         "conservative_depth_dens_nonmono_edge",
         "linear_depth_dens",
@@ -881,7 +883,8 @@ def distributed_client():
     del cluster
 
 
-all_clients = ["no_client", "threaded_client", "processes_client", "distributed_client"]
+# all_clients = ["no_client", "threaded_client", "processes_client", "distributed_client"]
+all_clients = ["threaded_client", "processes_client", "distributed_client", "no_client"]
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
@@ -891,15 +894,14 @@ def test_grid_transform_multidim(request, client, multidim_cases):
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
     na = 8
-    source = source * xr.DataArray(np.ones([na]), dims=["a"])
+    source = source.expand_dims(a=na).copy(deep=True)
+
     # broadcast the target_data manually
     target_data = transform_kwargs.pop("target_data", None)
-    print(target_data)
     if not target_data is None:
-        target_data = target_data * xr.DataArray(np.ones([na]), dims=["a"])
+        target_data = target_data.expand_dims(a=na).copy(deep=True)
         if client != "no_client":
             target_data = target_data.chunk({"a": 1})
-    print(target_data)
 
     if client != "no_client":
         source = source.chunk({"a": 1})
@@ -910,13 +912,11 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
     # the high level tests should deal with all error cases
     client = request.getfixturevalue(client)
-    _, target_data = xr.align(source.data, target_data)
+
     transformed = grid.transform(
         source.data, axis, target, target_data=target_data, **transform_kwargs
     ).load()
     _, expected_broadcasted = xr.broadcast(transformed, expected)
-    print(expected_broadcasted.data)
-    print(transformed)
 
     xr.testing.assert_allclose(transformed, expected_broadcasted.data)
 
@@ -933,7 +933,6 @@ def test_grid_transform_multidim_alignment_error(request, multidim_cases):
     # axis of transformation (this could be the case if e.g. temperature is on a different
     # x grid than velocity)
     target_data = transform_kwargs.pop("target_data", None)
-    print(target_data)
     if not target_data is None:
         target_data = target_data * xr.DataArray(np.ones([na]), dims=["a_other"])
 
@@ -941,7 +940,6 @@ def test_grid_transform_multidim_alignment_error(request, multidim_cases):
         axis = list(grid_kwargs["coords"].keys())[0]
 
         grid = Grid(source, periodic=False, **grid_kwargs)
-        print(target_data)
         with pytest.raises(ValueError):
             transformed = grid.transform(
                 source.data, axis, target, target_data=target_data, **transform_kwargs

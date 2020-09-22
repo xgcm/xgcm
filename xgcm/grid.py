@@ -866,7 +866,7 @@ class Axis:
             target_da_other_dims = set(target_da.dims) - set(self.coords.values())
             if not target_da_other_dims.issubset(da_other_dims):
                 raise ValueError(
-                    f"Found additional dimensions [{target_data_other_dims-da_other_dims}] in `target_data` not found in `da`. This could mean that the target array is not on the same position along other axes. Use grid.interp() to align the arrays."
+                    f"Found additional dimensions [{target_da_other_dims-da_other_dims}] in `target_data` not found in `da`. This could mean that the target array is not on the same position along other axes. Use grid.interp() to align the arrays."
                 )
 
         _, dim = self._get_axis_coord(da)
@@ -909,6 +909,12 @@ class Axis:
                     UserWarning,
                 )
                 target_data = self.interp(target_data, boundary="extend")
+                # This seems to end up with chunks along the axis dimension.
+                # Rechunk to keep xr.apply_func from complaining.
+                # TODO: This should be made obsolete, when the internals are refactored using numba
+                target_data = target_data.chunk(
+                    {self._get_axis_coord(target_data)[1]: -1}
+                )
 
             out = conservative_interpolation(
                 da,
