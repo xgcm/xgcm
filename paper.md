@@ -40,6 +40,7 @@ affiliations:
  - name: The Oden Institute for Computational Engineering and Sciences, The University of Texas at Austin
    index: 5
  - name: Univ. Brest, CNRS, IRD, Ifremer, Laboratoire d’Océanographie Physique et Spatiale (LOPS), IUEM, Brest, France
+   index: 6
 date: 15 February 2020
 bibliography: paper.bib
 ---
