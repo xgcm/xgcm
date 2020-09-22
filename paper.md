@@ -25,6 +25,9 @@ authors:
   - name: Deepak Cherian
     orcid: 0000-0002-6861-8734
     affiliation: 3
+  - name: Aurélien Ponte
+    orcid: 0000-0002-0252-6028
+    affiliation: 6
 affiliations:
  - name: Lamont Doherty Earth Observatory of Columbia University
    index: 1
@@ -36,6 +39,7 @@ affiliations:
    index: 4
  - name: The Oden Institute for Computational Engineering and Sciences, The University of Texas at Austin
    index: 5
+ - name: Univ. Brest, CNRS, IRD, Ifremer, Laboratoire d’Océanographie Physique et Spatiale (LOPS), IUEM, Brest, France
 date: 15 February 2020
 bibliography: paper.bib
 ---
