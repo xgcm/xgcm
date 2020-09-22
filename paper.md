@@ -22,17 +22,25 @@ authors:
   - name: Timothy Smith
     orcid: 0000-0003-4463-6126
     affiliation: 5
+  - name: Deepak Cherian
+    orcid: 0000-0002-6861-8734
+    affiliation: 3
+  - name: Aurélien Ponte
+    orcid: 0000-0002-0252-6028
+    affiliation: 6
 affiliations:
  - name: Lamont Doherty Earth Observatory of Columbia University
    index: 1
  - name: Princeton University
    index: 2
- - name: The US National Center for Atmospheric Research, USA
+ - name: National Center for Atmospheric Research, Boulder, USA
    index: 3
  - name: Tsinghua University
    index: 4
  - name: The Oden Institute for Computational Engineering and Sciences, The University of Texas at Austin
    index: 5
+ - name: Univ. Brest, CNRS, IRD, Ifremer, Laboratoire d’Océanographie Physique et Spatiale (LOPS), IUEM, Brest, France
+   index: 6
 date: 15 February 2020
 bibliography: paper.bib
 ---
