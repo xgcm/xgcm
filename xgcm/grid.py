@@ -813,7 +813,7 @@ class Axis:
 
         Parameters
         ----------
-        da : xr.Dataarray
+        da : xr.xr.DataArray
             Input data
         target : {np.array, xr.DataArray}
             Target points for transformation. Dependin on the method is
@@ -825,7 +825,7 @@ class Axis:
             When passed as numpy array the resulting dimension is named
             according to `target_data`, if provided as xr.Dataarray
             naming is inferred from the `target` input.
-        target_data : xr.Datarray, optional
+        target_data : xr.DataArray, optional
             Data to transform onto (e.g. a tracer like density or temperature).
             Defaults to None, which infers the appropriate coordinate along
             `axis` (e.g. the depth).
@@ -840,7 +840,7 @@ class Axis:
 
         Returns
         -------
-        xr.Dataarray
+        xr.DataArray
             The transformed data
 
 
@@ -1770,11 +1770,11 @@ class Grid:
 
         Parameters
         ----------
-        da : xr.Dataarray
+        da : xr.DataArray
             Input data
         axis : str
             Name of the axis on which to act
-        target : {np.array, xr.Dataarray}
+        target : {np.array, xr.DataArray}
             Target points for transformation. Dependin on the method is
             interpreted as cell center (method='linear') or cell bounds
             (method='conservative).
@@ -1784,7 +1784,7 @@ class Grid:
             When passed as numpy array the resulting dimension is named
             according to `target_data`, if provided as xr.Dataarray
             naming is inferred from the `target` input.
-        target_data : xr.Datarray, optional
+        target_data : xr.DataArray, optional
             Data to transform onto (e.g. a tracer like density or temperature).
             Defaults to None, which infers the appropriate coordinate along
             `axis` (e.g. the depth).
@@ -1799,8 +1799,8 @@ class Grid:
 
         Returns
         -------
-        xr.Dataarray
-            The transformed data along the axis.
+        xr.DataArray
+            The transformed data
 
 
         """
