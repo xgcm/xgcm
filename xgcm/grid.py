@@ -793,27 +793,23 @@ class Axis:
         transformation:
 
         - 'linear': Values are linear interpolated between 1D columns
-                    along `axis` of `da` and `target_data`. This method
-                    requires `target_data` to increase/decrease
-                    monotonically. `target` values are interpreted as
-                    new cell centers in this case. By default this
-                    method will return nan for values in `target` that
-                    are outside of the range of `target_data`, setting
-                    `mask_edges=False` results in the default np.interp
-                    behavior of repeated values.
+        along `axis` of `da` and `target_data`. This methodrequires 
+        `target_data` to increase/decrease monotonically. `target` 
+        values are interpreted as new cell centers in this case. By 
+        default this method will return nan for values in `target` that
+        are outside of the range of `target_data`, setting 
+        `mask_edges=False` results in the default np.interp behavior of 
+        repeated values.
 
         - 'conservative': Values are transformed while conserving the
-                          integral of `da` along each 1D column. This
-                          method can be used with non-monotonic values
-                          of `target_data`. Currently this will only work
-                          with extensive quantities (like heat, mass,
-                          transport) but not with intensive quantities
-                          (like temperature, density, velocity). N given
-                          `target` values are interpreted as cell-bounds
-                          and the returned array will have N-1 elements
-                          along the newly created coordinate, with
-                          coordinate values that are interpolated between
-                          `target` values.
+        integral of `da` along each 1D column. This method can be used
+        with non-monotonic values of `target_data`. Currently this will
+        only work with extensive quantities (like heat, mass, transport)
+        but not with intensive quantities (like temperature, density,
+        velocity). N given `target` values are interpreted as cell-bounds
+        and the returned array will have N-1 elements along the newly 
+        created coordinate, with coordinate values that are interpolated
+        between `target` values.
 
         Parameters
         ----------
@@ -1754,27 +1750,23 @@ class Grid:
         transformation:
 
         - 'linear': Values are linear interpolated between 1D columns
-                    along `axis` of `da` and `target_data`. This method
-                    requires `target_data` to increase/decrease
-                    monotonically. `target` values are interpreted as
-                    new cell centers in this case. By default this
-                    method will return nan for values in `target` that
-                    are outside of the range of `target_data`, setting
-                    `mask_edges=False` results in the default np.interp
-                    behavior of repeated values.
+        along `axis` of `da` and `target_data`. This methodrequires 
+        `target_data` to increase/decrease monotonically. `target` 
+        values are interpreted as new cell centers in this case. By 
+        default this method will return nan for values in `target` that
+        are outside of the range of `target_data`, setting 
+        `mask_edges=False` results in the default np.interp behavior of 
+        repeated values.
 
         - 'conservative': Values are transformed while conserving the
-                          integral of `da` along each 1D column. This
-                          method can be used with non-monotonic values
-                          of `target_data`. Currently this will only work
-                          with extensive quantities (like heat, mass,
-                          transport) but not with intensive quantities
-                          (like temperature, density, velocity). N given
-                          `target` values are interpreted as cell-bounds
-                          and the returned array will have N-1 elements
-                          along the newly created coordinate, with
-                          coordinate values that are interpolated between
-                          `target` values.
+        integral of `da` along each 1D column. This method can be used
+        with non-monotonic values of `target_data`. Currently this will
+        only work with extensive quantities (like heat, mass, transport)
+        but not with intensive quantities (like temperature, density,
+        velocity). N given `target` values are interpreted as cell-bounds
+        and the returned array will have N-1 elements along the newly 
+        created coordinate, with coordinate values that are interpolated
+        between `target` values.
 
         Parameters
         ----------
