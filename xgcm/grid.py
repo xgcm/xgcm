@@ -841,7 +841,7 @@ class Axis:
         Returns
         -------
         xr.Dataarray
-            The transformed data along the axis.
+            The transformed data
 
 
         """
