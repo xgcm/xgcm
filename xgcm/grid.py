@@ -792,7 +792,8 @@ class Axis:
         Currently two methods are supported to carry out the
         transformation:
 
-        - 'linear': Values are linear interpolated between 1D columns
+        - 'linear'
+          Values are linear interpolated between 1D columns
           along `axis` of `da` and `target_data`. This methodrequires
           `target_data` to increase/decrease monotonically. `target`
           values are interpreted as new cell centers in this case. By
@@ -801,7 +802,8 @@ class Axis:
           `mask_edges=False` results in the default np.interp behavior of
           repeated values.
 
-        - 'conservative': Values are transformed while conserving the
+        - 'conservative'
+          Values are transformed while conserving the
           integral of `da` along each 1D column. This method can be used
           with non-monotonic values of `target_data`. Currently this will
           only work with extensive quantities (like heat, mass, transport)
@@ -1749,7 +1751,8 @@ class Grid:
         Currently two methods are supported to carry out the
         transformation:
 
-        - 'linear': Values are linear interpolated between 1D columns
+        - 'linear'
+          Values are linear interpolated between 1D columns
           along `axis` of `da` and `target_data`. This method requires
           `target_data` to increase/decrease monotonically. `target`
           values are interpreted as new cell centers in this case. By
@@ -1758,7 +1761,8 @@ class Grid:
           `mask_edges=False` results in the default np.interp behavior of
           repeated values.
 
-        - 'conservative': Values are transformed while conserving the
+        - 'conservative'
+          Values are transformed while conserving the
           integral of `da` along each 1D column. This method can be used
           with non-monotonic values of `target_data`. Currently this will
           only work with extensive quantities (like heat, mass, transport)
