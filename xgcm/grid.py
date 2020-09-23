@@ -815,7 +815,7 @@ class Axis:
         ----------
         da : xr.Dataarray
             Input data
-        target : {np.array, xr.Dataarray}
+        target : {np.array, xr.DataArray}
             Target points for transformation. Dependin on the method is
             interpreted as cell center (method='linear') or cell bounds
             (method='conservative).
