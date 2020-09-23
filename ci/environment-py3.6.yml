@@ -4,7 +4,7 @@ dependencies:
   - xarray
   - dask
   - numpy
-  # no numba to test optional dependency
+  - numba
   - pytest
   - future
   - pip
