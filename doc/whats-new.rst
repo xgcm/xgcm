@@ -3,7 +3,7 @@
 What's New
 ===========
 
-v0.5.0 (unrelased)
+v0.5.0 (unreleased)
 -------------------------
 
 
