@@ -776,43 +776,43 @@ class Axis:
         suffix="_transformed",
     ):
         """Convert an array of data to new 1D-coordinates.
-        The method takes a multidimensional array of data `da` and 
-        transforms it onto another data_array `target_data` in the 
+        The method takes a multidimensional array of data `da` and
+        transforms it onto another data_array `target_data` in the
         direction of the axis (for each 1-dimensional 'column').
 
-        `target_data` can be e.g. the existing coordinate along an 
-        axis, like depth. xgcm automatically detects the appropriate 
-        coordinate and then transforms the data from the input 
-        positions to the desired positions defined in `target`. This 
+        `target_data` can be e.g. the existing coordinate along an
+        axis, like depth. xgcm automatically detects the appropriate
+        coordinate and then transforms the data from the input
+        positions to the desired positions defined in `target`. This
         is the default behavior. The method can also be used for more
-        complex cases like transforming a dataarray into new 
-        coordinates that are defined by e.g. a tracer field like 
+        complex cases like transforming a dataarray into new
+        coordinates that are defined by e.g. a tracer field like
         temperature, density, etc.
 
-        Currently two methods are supported to carry out the 
+        Currently two methods are supported to carry out the
         transformation:
-        
-        - 'linear': Values are linear interpolated between 1D columns 
-                    along `axis` of `da` and `target_data`. This method 
-                    requires `target_data` to increase/decrease 
-                    monotonically. `target` values are interpreted as 
-                    new cell centers in this case. By default this 
-                    method will return nan for values in `target` that 
-                    are outside of the range of `target_data`, setting 
-                    `mask_edges=False` results in the default np.interp 
+
+        - 'linear': Values are linear interpolated between 1D columns
+                    along `axis` of `da` and `target_data`. This method
+                    requires `target_data` to increase/decrease
+                    monotonically. `target` values are interpreted as
+                    new cell centers in this case. By default this
+                    method will return nan for values in `target` that
+                    are outside of the range of `target_data`, setting
+                    `mask_edges=False` results in the default np.interp
                     behavior of repeated values.
 
-        - 'conservative': Values are transformed while conserving the 
-                          integral of `da` along each 1D column. This 
-                          method can be used with non-monotonic values 
+        - 'conservative': Values are transformed while conserving the
+                          integral of `da` along each 1D column. This
+                          method can be used with non-monotonic values
                           of `target_data`. Currently this will only work
-                          with extensive quantities (like heat, mass, 
-                          transport) but not with intensive quantities 
-                          (like temperature, density, velocity). N given 
-                          `target` values are interpreted as cell-bounds 
-                          and the returned array will have N-1 elements 
-                          along the newly created coordinate, with 
-                          coordinate values that are interpolated between 
+                          with extensive quantities (like heat, mass,
+                          transport) but not with intensive quantities
+                          (like temperature, density, velocity). N given
+                          `target` values are interpreted as cell-bounds
+                          and the returned array will have N-1 elements
+                          along the newly created coordinate, with
+                          coordinate values that are interpolated between
                           `target` values.
 
         Parameters
@@ -820,26 +820,26 @@ class Axis:
         da : xr.Dataarray
             Input data
         target : {np.array, xr.Dataarray}
-            Target points for transformation. Dependin on the method is 
-            interpreted as cell center (method='linear') or cell bounds 
+            Target points for transformation. Dependin on the method is
+            interpreted as cell center (method='linear') or cell bounds
             (method='conservative).
-            Values correpond to `target_data` or the existing coordinate 
-            along the axis (if `target_data=None`). The name of the 
+            Values correpond to `target_data` or the existing coordinate
+            along the axis (if `target_data=None`). The name of the
             resulting new coordinate is determined by the input type.
-            When passed as numpy array the resulting dimension is named 
-            according to `target_data`, if provided as xr.Dataarray 
+            When passed as numpy array the resulting dimension is named
+            according to `target_data`, if provided as xr.Dataarray
             naming is inferred from the `target` input.
         target_data : xr.Datarray, optional
-            Data to transform onto (e.g. a tracer like density or temperature). 
+            Data to transform onto (e.g. a tracer like density or temperature).
             Defaults to None, which infers the appropriate coordinate along
             `axis` (e.g. the depth).
         method : str, optional
             Method used to transform, by default "linear"
         mask_edges : bool, optional
-            If activated, `target` values outside the range of `target_data` 
+            If activated, `target` values outside the range of `target_data`
             are masked with nan, by default True. Only applies to 'linear' method.
         suffix : str, optional
-            Customizable suffix to the name of the output array. This will 
+            Customizable suffix to the name of the output array. This will
             be added to the original name of `da`. Defaults to `_transformed`.
 
         Returns
@@ -1736,24 +1736,45 @@ class Grid:
         return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
 
     def transform(self, da, axis, target, **kwargs):
-        """Convert an array of data to new 1D-coordinates.
-        The method takes a multidimensional array of data `da` and transforms it onto another data_array `target_data` in the direction of the axis (for each 1-dimensional 'column').
+        """Convert an array of data to new 1D-coordinates along `axis`.
+        The method takes a multidimensional array of data `da` and
+        transforms it onto another data_array `target_data` in the
+        direction of the axis (for each 1-dimensional 'column').
 
-        `target_data` can be e.g. the existing coordinate along an axis, like depth. xgcm automatically detects the appropriate coordinate and then
-        transforms the data from the input positions to the desired positions defined in `target`. This is the default behavior.
-        The method can also be used for more complex cases like transforming a dataarray into new coordinates that are defined by e.g. a tracer field
-        like temperature, density, etc.
+        `target_data` can be e.g. the existing coordinate along an
+        axis, like depth. xgcm automatically detects the appropriate
+        coordinate and then transforms the data from the input
+        positions to the desired positions defined in `target`. This
+        is the default behavior. The method can also be used for more
+        complex cases like transforming a dataarray into new
+        coordinates that are defined by e.g. a tracer field like
+        temperature, density, etc.
 
-        Currently two methods are supported to carry out the transformation:
-            - 'linear': Values are linear interpolated between 1D columns along `axis` of `da` and `target_data`.
-                        This method requires `target_data` to increase/decrease monotonically. `target` values are interpreted as new cell centers in this case.
-                        By default this method will return nan for values in `target` that are outside of the range of `target_data`, setting `mask_edges=False` results in the default
-                        np.interp behavior of repeated values.
+        Currently two methods are supported to carry out the
+        transformation:
 
-            - 'conservative':   Values are transformed while conserving the integral of `da` along each 1D column. This method can be used with non-monotonic values of `target_data`.
-                                Currently this will only work with extensive quantities (like heat, mass, transport) but not with intensive quantities (like temperature, density, velocity).
-                                N given `target` values are interpreted as cell-bounds and the returned array will have N-1 elements along the newly created coordinate,
-                                with coordinate values that are interpolated between `target` values.
+        - 'linear': Values are linear interpolated between 1D columns
+                    along `axis` of `da` and `target_data`. This method
+                    requires `target_data` to increase/decrease
+                    monotonically. `target` values are interpreted as
+                    new cell centers in this case. By default this
+                    method will return nan for values in `target` that
+                    are outside of the range of `target_data`, setting
+                    `mask_edges=False` results in the default np.interp
+                    behavior of repeated values.
+
+        - 'conservative': Values are transformed while conserving the
+                          integral of `da` along each 1D column. This
+                          method can be used with non-monotonic values
+                          of `target_data`. Currently this will only work
+                          with extensive quantities (like heat, mass,
+                          transport) but not with intensive quantities
+                          (like temperature, density, velocity). N given
+                          `target` values are interpreted as cell-bounds
+                          and the returned array will have N-1 elements
+                          along the newly created coordinate, with
+                          coordinate values that are interpolated between
+                          `target` values.
 
         Parameters
         ----------
@@ -1762,18 +1783,27 @@ class Grid:
         axis : str
             Name of the axis on which to act
         target : {np.array, xr.Dataarray}
-            Target points for transformation. Dependin on the method is interpreted as cell center (method='linear') or cell bounds (method='conservative).
-            Values correpond to `target_data` or the existing coordinate along the axis (if `target_data=None`). The name of the resulting new coordinate is determined by the input type.
-            When passed as numpy array the resulting dimension is named according to `target_data`, if provided as xr.Dataarray naming is inferred from the `target` input.
+            Target points for transformation. Dependin on the method is
+            interpreted as cell center (method='linear') or cell bounds
+            (method='conservative).
+            Values correpond to `target_data` or the existing coordinate
+            along the axis (if `target_data=None`). The name of the
+            resulting new coordinate is determined by the input type.
+            When passed as numpy array the resulting dimension is named
+            according to `target_data`, if provided as xr.Dataarray
+            naming is inferred from the `target` input.
         target_data : xr.Datarray, optional
-            Data to transform onto (e.g. a tracer like density or temperature). Defaults to None, which infers the appropriate coordinate along `axis` (e.g. the depth).
+            Data to transform onto (e.g. a tracer like density or temperature).
+            Defaults to None, which infers the appropriate coordinate along
+            `axis` (e.g. the depth).
         method : str, optional
             Method used to transform, by default "linear"
         mask_edges : bool, optional
-            If activated, `target` values outside the range of `target_data` are masked with nan, by default True. Only applies to 'linear' method.
+            If activated, `target` values outside the range of `target_data`
+            are masked with nan, by default True. Only applies to 'linear' method.
         suffix : str, optional
-            Customizable suffix to the name of the output array. This will be added to the original name of `da`. Defaults to `_transformed`.
-
+            Customizable suffix to the name of the output array. This will
+            be added to the original name of `da`. Defaults to `_transformed`.
 
         Returns
         -------
