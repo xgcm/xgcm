@@ -6,6 +6,7 @@ dependencies:
   - cartopy
   - dask
   - numpy
+  - numba
   - future
   - pytest
   - numpydoc

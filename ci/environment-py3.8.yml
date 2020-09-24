@@ -4,6 +4,7 @@ dependencies:
   - xarray
   - dask
   - numpy
+  - numba
   - pytest
   - future
   - pip
@@ -13,4 +14,3 @@ dependencies:
     - codecov
     - pytest-cov
     - pytest-xdist
-

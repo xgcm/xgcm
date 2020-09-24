@@ -4,6 +4,7 @@ dependencies:
   - xarray
   - dask
   - numpy
+  - numba
   - pytest
   - future
   - pip

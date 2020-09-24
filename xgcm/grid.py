@@ -5,6 +5,7 @@ from collections import OrderedDict
 import functools
 import itertools
 import operator
+import warnings
 
 import docrep
 import xarray as xr
@@ -12,6 +13,13 @@ import numpy as np
 
 from . import comodo
 from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
+
+try:
+    import numba
+    from .transform import linear_interpolation, conservative_interpolation
+except ImportError:
+    numba = None
+
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -757,6 +765,194 @@ class Axis:
             vector_partner,
             keep_coords,
         )
+
+    def transform(
+        self,
+        da,
+        target,
+        target_data=None,
+        method="linear",
+        mask_edges=True,
+        suffix="_transformed",
+    ):
+        """Convert an array of data to new 1D-coordinates.
+        The method takes a multidimensional array of data `da` and
+        transforms it onto another data_array `target_data` in the
+        direction of the axis (for each 1-dimensional 'column').
+
+        `target_data` can be e.g. the existing coordinate along an
+        axis, like depth. xgcm automatically detects the appropriate
+        coordinate and then transforms the data from the input
+        positions to the desired positions defined in `target`. This
+        is the default behavior. The method can also be used for more
+        complex cases like transforming a dataarray into new
+        coordinates that are defined by e.g. a tracer field like
+        temperature, density, etc.
+
+        Currently two methods are supported to carry out the
+        transformation:
+
+        - 'linear': Values are linear interpolated between 1D columns
+          along `axis` of `da` and `target_data`. This methodrequires
+          `target_data` to increase/decrease monotonically. `target`
+          values are interpreted as new cell centers in this case. By
+          default this method will return nan for values in `target` that
+          are outside of the range of `target_data`, setting
+          `mask_edges=False` results in the default np.interp behavior of
+          repeated values.
+
+        - 'conservative': Values are transformed while conserving the
+          integral of `da` along each 1D column. This method can be used
+          with non-monotonic values of `target_data`. Currently this will
+          only work with extensive quantities (like heat, mass, transport)
+          but not with intensive quantities (like temperature, density,
+          velocity). N given `target` values are interpreted as cell-bounds
+          and the returned array will have N-1 elements along the newly
+          created coordinate, with coordinate values that are interpolated
+          between `target` values.
+
+        Parameters
+        ----------
+        da : xr.xr.DataArray
+            Input data
+        target : {np.array, xr.DataArray}
+            Target points for transformation. Dependin on the method is
+            interpreted as cell center (method='linear') or cell bounds
+            (method='conservative).
+            Values correpond to `target_data` or the existing coordinate
+            along the axis (if `target_data=None`). The name of the
+            resulting new coordinate is determined by the input type.
+            When passed as numpy array the resulting dimension is named
+            according to `target_data`, if provided as xr.Dataarray
+            naming is inferred from the `target` input.
+        target_data : xr.DataArray, optional
+            Data to transform onto (e.g. a tracer like density or temperature).
+            Defaults to None, which infers the appropriate coordinate along
+            `axis` (e.g. the depth).
+        method : str, optional
+            Method used to transform, by default "linear"
+        mask_edges : bool, optional
+            If activated, `target` values outside the range of `target_data`
+            are masked with nan, by default True. Only applies to 'linear' method.
+        suffix : str, optional
+            Customizable suffix to the name of the output array. This will
+            be added to the original name of `da`. Defaults to `_transformed`.
+
+        Returns
+        -------
+        xr.DataArray
+            The transformed data
+
+
+        """
+        # Theoretically we should be able to use a multidimensional `target`, which would need the additional information provided with `target_dim`.
+        # But the feature is not tested yet, thus setting this to default value internally (resulting in error in `_parse_target`, when a multidim `target` is passed)
+        target_dim = None
+
+        # check optional numba dependency
+        if numba is None or numba.__version__ < "0.49":
+            raise ImportError(
+                "The transform functionality of xgcm requires numba>=0.49. Install/update using `conda install numba` or `conda update numba`"
+            )
+
+        # raise error if axis is periodic
+        if self._periodic:
+            raise ValueError(
+                "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
+            )
+
+        def _parse_target(target, target_dim, target_data_dim, target_data):
+            """Parse target values into correct xarray naming and set default naming based on input data"""
+            # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
+            if target_data is None:
+                target_data = self._ds[target_data_dim]
+
+            # Infer target_dim from target
+            if isinstance(target, xr.DataArray):
+                if len(target.dims) == 1:
+                    if target_dim is None:
+                        target_dim = list(target.dims)[0]
+                else:
+                    if target_dim is None:
+                        raise ValueError(
+                            f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. This is currently not supported. `."
+                        )
+            else:
+                # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
+                target_dim = target_data.name
+                target = xr.DataArray(
+                    target, dims=[target_dim], coords={target_dim: target}
+                )
+            return target, target_dim, target_data
+
+        def _check_target_alignment(da, target_da):
+            # check alignment for all other axes, to avoid broadcasting enourmous arrays
+            # to do this on the axis level we will simply check if target_data has some coordinates
+            # that are not found in da (excluding all coordinates that belong to the current axis)
+            da_other_dims = set(da.dims) - set(self.coords.values())
+            target_da_other_dims = set(target_da.dims) - set(self.coords.values())
+            if not target_da_other_dims.issubset(da_other_dims):
+                raise ValueError(
+                    f"Found additional dimensions [{target_da_other_dims-da_other_dims}] in `target_data` not found in `da`. This could mean that the target array is not on the same position along other axes. Use grid.interp() to align the arrays."
+                )
+
+        _, dim = self._get_axis_coord(da)
+        if method == "linear":
+            target, target_dim, target_data = _parse_target(
+                target, target_dim, dim, target_data
+            )
+            _check_target_alignment(da, target_data)
+            out = linear_interpolation(
+                da,
+                target_data,
+                target,
+                dim,
+                dim,  # in this case the dimension of phi and theta are the same
+                target_dim,
+                mask_edges=mask_edges,
+            )
+        elif method == "conservative":
+            # the conservative method requires `target_data` to be on the `outer` coordinate.
+            # If that is not the case (a very common use case like transformation on any tracer),
+            # we need to infer the boundary values (using the interp logic)
+            # for this method we need the `outer` position. Error out if its not there.
+            try:
+                target_data_dim = self.coords["outer"]
+            except KeyError:
+                raise RuntimeError(
+                    "In order to use the method `conservative` the grid object needs to have `outer` coordinates."
+                )
+
+            target, target_dim, target_data = _parse_target(
+                target, target_dim, target_data_dim, target_data
+            )
+
+            _check_target_alignment(da, target_data)
+
+            # check on which coordinate `target_data` is, and interpolate if needed
+            if target_data_dim not in target_data.dims:
+                warnings.warn(
+                    "The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values. For most accurate results provide values on cell bounds.",
+                    UserWarning,
+                )
+                target_data = self.interp(target_data, boundary="extend")
+                # This seems to end up with chunks along the axis dimension.
+                # Rechunk to keep xr.apply_func from complaining.
+                # TODO: This should be made obsolete, when the internals are refactored using numba
+                target_data = target_data.chunk(
+                    {self._get_axis_coord(target_data)[1]: -1}
+                )
+
+            out = conservative_interpolation(
+                da,
+                target_data,
+                target,
+                dim,
+                target_data_dim,  # in this case the dimension of phi and theta are the same
+                target_dim,
+            )
+
+        return out
 
     def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords=False):
         """
@@ -1534,6 +1730,83 @@ class Grid:
         dim = self._get_dims_from_axis(da, axis)
         # do we need to pass kwargs?
         return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
+
+    def transform(self, da, axis, target, **kwargs):
+        """Convert an array of data to new 1D-coordinates along `axis`.
+        The method takes a multidimensional array of data `da` and
+        transforms it onto another data_array `target_data` in the
+        direction of the axis (for each 1-dimensional 'column').
+
+        `target_data` can be e.g. the existing coordinate along an
+        axis, like depth. xgcm automatically detects the appropriate
+        coordinate and then transforms the data from the input
+        positions to the desired positions defined in `target`. This
+        is the default behavior. The method can also be used for more
+        complex cases like transforming a dataarray into new
+        coordinates that are defined by e.g. a tracer field like
+        temperature, density, etc.
+
+        Currently two methods are supported to carry out the
+        transformation:
+
+        - 'linear': Values are linear interpolated between 1D columns
+          along `axis` of `da` and `target_data`. This method requires
+          `target_data` to increase/decrease monotonically. `target`
+          values are interpreted as new cell centers in this case. By
+          default this method will return nan for values in `target` that
+          are outside of the range of `target_data`, setting
+          `mask_edges=False` results in the default np.interp behavior of
+          repeated values.
+
+        - 'conservative': Values are transformed while conserving the
+          integral of `da` along each 1D column. This method can be used
+          with non-monotonic values of `target_data`. Currently this will
+          only work with extensive quantities (like heat, mass, transport)
+          but not with intensive quantities (like temperature, density,
+          velocity). N given `target` values are interpreted as cell-bounds
+          and the returned array will have N-1 elements along the newly
+          created coordinate, with coordinate values that are interpolated
+          between `target` values.
+
+        Parameters
+        ----------
+        da : xr.DataArray
+            Input data
+        axis : str
+            Name of the axis on which to act
+        target : {np.array, xr.DataArray}
+            Target points for transformation. Dependin on the method is
+            interpreted as cell center (method='linear') or cell bounds
+            (method='conservative).
+            Values correpond to `target_data` or the existing coordinate
+            along the axis (if `target_data=None`). The name of the
+            resulting new coordinate is determined by the input type.
+            When passed as numpy array the resulting dimension is named
+            according to `target_data`, if provided as xr.Dataarray
+            naming is inferred from the `target` input.
+        target_data : xr.DataArray, optional
+            Data to transform onto (e.g. a tracer like density or temperature).
+            Defaults to None, which infers the appropriate coordinate along
+            `axis` (e.g. the depth).
+        method : str, optional
+            Method used to transform, by default "linear"
+        mask_edges : bool, optional
+            If activated, `target` values outside the range of `target_data`
+            are masked with nan, by default True. Only applies to 'linear' method.
+        suffix : str, optional
+            Customizable suffix to the name of the output array. This will
+            be added to the original name of `da`. Defaults to `_transformed`.
+
+        Returns
+        -------
+        xr.DataArray
+            The transformed data
+
+
+        """
+
+        ax = self.axes[axis]
+        return ax.transform(da, target, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
