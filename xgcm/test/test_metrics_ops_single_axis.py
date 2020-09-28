@@ -71,6 +71,48 @@ class TestParametrized:
             assert new.equals(expected)
 
 
+@pytest.mark.parametrize(
+    "funcname",
+    ["interp", "diff", "min", "max", "cumsum", "derivative", "cumint"],
+)
+@pytest.mark.parametrize("boundary", ["fill", "extend"])
+@pytest.mark.parametrize("fill_value", [0, 10])
+def test_boundary_global_input(funcname, boundary, fill_value):
+    """Test that globally defined boundary values result in
+    the same output as when the parameters are defined on either
+    the grid or axis methods
+    """
+    ds, coords, metrics = datasets_grid_metric("C")
+    axis = "X"
+
+    # Test results by globally specifying boundary on grid object
+    grid_global = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary=boundary,
+        fill_value=fill_value,
+    )
+    func_global = getattr(grid_global, funcname)
+    global_result = func_global(ds.tracer, axis)
+
+    # Test results by manually specifying boundary on grid method
+    grid_manual = Grid(
+        ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
+    )
+    func_manual = getattr(grid_manual, funcname)
+    manual_result = func_manual(
+        ds.tracer, axis, boundary=boundary, fill_value=fill_value
+    )
+    xr.testing.assert_allclose(global_result, manual_result)
+
+    # # Test results by manually specifying boundary on axis method
+    # func_manual_axis = getattr(grid_manual.axes[axis], funcname)
+    # manual_axis_result = func_manual_axis(ds.tracer, boundary=boundary, fill_value=fill_value)
+    # xr.testing.assert_allclose(global_result, manual_axis_result)
+
+
 def test_derivative_uniform_grid():
     # this is a uniform grid
     # a non-uniform grid would provide a more rigorous test
