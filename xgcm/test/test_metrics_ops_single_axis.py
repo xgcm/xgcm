@@ -97,7 +97,7 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     func_global = getattr(grid_global, funcname)
     global_result = func_global(ds.tracer, axis)
 
-    # Test results by manually specifying boundary on grid method
+    # Test results by manually specifying fill value/boundary on grid method
     grid_manual = Grid(
         ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
     )
