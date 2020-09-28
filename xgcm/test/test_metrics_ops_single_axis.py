@@ -107,11 +107,6 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     )
     xr.testing.assert_allclose(global_result, manual_result)
 
-    # # Test results by manually specifying boundary on axis method
-    # func_manual_axis = getattr(grid_manual.axes[axis], funcname)
-    # manual_axis_result = func_manual_axis(ds.tracer, boundary=boundary, fill_value=fill_value)
-    # xr.testing.assert_allclose(global_result, manual_axis_result)
-
 
 def test_derivative_uniform_grid():
     # this is a uniform grid
