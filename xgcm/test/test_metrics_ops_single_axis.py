@@ -85,7 +85,7 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     ds, coords, metrics = datasets_grid_metric("C")
     axis = "X"
 
-    # Test results by globally specifying boundary on grid object
+    # Test results by globally specifying fill value/boundary on grid object
     grid_global = Grid(
         ds,
         coords=coords,
