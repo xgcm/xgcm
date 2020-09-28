@@ -14,7 +14,7 @@ New Features
   
 Bug fixes
 ~~~~~~~~~
-- Remove outdated `example_notebooks` folder. By `Nikolay Koldunov <https://github.com/koldunovn>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
+- Remove outdated `example_notebooks` folder (:pull:`244`, :issue:`243`). By `Nikolay Koldunov <https://github.com/koldunovn>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
 
 
 v0.4.0 (2020/9/2)
