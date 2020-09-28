@@ -76,7 +76,7 @@ class TestParametrized:
     ["interp", "diff", "min", "max", "cumsum", "derivative", "cumint"],
 )
 @pytest.mark.parametrize("boundary", ["fill", "extend"])
-@pytest.mark.parametrize("fill_value", [0, 10])
+@pytest.mark.parametrize("fill_value", [0, 10, None])
 def test_boundary_global_input(funcname, boundary, fill_value):
     """Test that globally defined boundary values result in
     the same output as when the parameters are defined on either
