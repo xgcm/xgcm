@@ -3,9 +3,8 @@
 What's New
 ===========
 
-v0.5.0 (unreleased)
+v0.5.0 (2020/9/28)
 -------------------------
-
 
 New Features
 ~~~~~~~~~~~~
@@ -15,6 +14,7 @@ New Features
 Bug fixes
 ~~~~~~~~~
 - Remove outdated `example_notebooks` folder (:pull:`244`, :issue:`243`). By `Nikolay Koldunov <https://github.com/koldunovn>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
+.. _whats-new.0.5.0:
 
 
 v0.4.0 (2020/9/2)
