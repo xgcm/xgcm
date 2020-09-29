@@ -11,6 +11,9 @@ New Features
 - :py:meth:`~xgcm.grid.Grid.transform` and :py:meth:`~xgcm.grid.Axis.transform` now enable 1-dimensional coordinate transformation (:pull:`205`, :issue:`222`).
   By `Ryan Abernathey <https://github.com/rabernat>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
   
+Bug fixes
+~~~~~~~~~
+- Remove outdated `example_notebooks` folder (:pull:`244`, :issue:`243`). By `Nikolay Koldunov <https://github.com/koldunovn>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
 .. _whats-new.0.5.0:
 
 
