@@ -336,6 +336,21 @@ def test_axis_cumsum(nonperiodic_1d, boundary):
 
 
 @pytest.mark.parametrize(
+    "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
+)
+@pytest.mark.parametrize("variable", ["data_g", "data_c"])
+def test_axis_cumsum_reverse(nonperiodic_1d, boundary, variable):
+    ds, periodic, expected = nonperiodic_1d
+    axis = Axis(ds, "X", periodic=periodic)
+    da = ds[variable]
+
+    _, dim = axis._get_axis_coord(da)
+    reverse_expected = da.sum(dim).data - axis.cumsum(da, boundary=boundary)
+    reverse = axis.cumsum(da, reverse=True, boundary=boundary)
+    xr.testing.assert_allclose(reverse_expected, reverse)
+
+
+@pytest.mark.parametrize(
     "varname, axis_name, to, roll, roll_axis, swap_order",
     [
         ("data_c", "X", "left", 1, 1, False),

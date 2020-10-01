@@ -649,7 +649,15 @@ class Axis:
         )
 
     @docstrings.dedent
-    def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
+    def cumsum(
+        self,
+        da,
+        to=None,
+        boundary=None,
+        fill_value=0.0,
+        keep_coords=False,
+        reverse=False,
+    ):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
         position.
@@ -658,6 +666,10 @@ class Axis:
         ----------
         %(neighbor_binary_func.parameters.no_f)s
 
+        reverse: bool, optional
+            Switch to revert the direction of the cumulative sum. Defaults to (False),
+            summing from lower to higher axis indicies.
+
         Returns
         -------
         da_cum : xarray.DataArray
@@ -665,36 +677,68 @@ class Axis:
         """
 
         pos, dim = self._get_axis_coord(da)
+        da = da.copy(deep=True)
+        if reverse:
+            # Flip the data array before and after the operation
+            da_rev = da
+            da_rev.data = da.isel({dim: slice(None, None, -1)}).data
 
-        if to is None:
-            to = self._default_shifts[pos]
-
-        # first use xarray's cumsum method
-        da_cum = da.cumsum(dim=dim)
-
-        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value)
-
-        # now pad / trim the data as necessary
-        # here we enumerate all the valid possible shifts
-        if (pos == "center" and to == "right") or (pos == "left" and to == "center"):
-            # do nothing, this is the default for how cumsum works
-            data = da_cum.data
-        elif (pos == "center" and to == "left") or (pos == "right" and to == "center"):
-            data = _pad_array(
-                da_cum.isel(**{dim: slice(0, -1)}), dim, left=True, **boundary_kwargs
+            # apply the cumsum
+            da_cum_newcoord_rev = self.cumsum(
+                da_rev,
+                to=to,
+                boundary=boundary,
+                fill_value=fill_value,
+                keep_coords=keep_coords,
             )
-        elif (pos == "center" and to == "inner") or (pos == "outer" and to == "center"):
-            data = da_cum.isel(**{dim: slice(0, -1)}).data
-        elif (pos == "center" and to == "outer") or (pos == "inner" and to == "center"):
-            data = _pad_array(da_cum, dim, left=True, **boundary_kwargs)
+            # Flip back
+            _, reverse_dim = self._get_axis_coord(da_cum_newcoord_rev)
+            da_cum_newcoord_rev.data = da_cum_newcoord_rev.isel(
+                {reverse_dim: slice(None, None, -1)}
+            ).data
+            return da_cum_newcoord_rev
+
         else:
-            raise ValueError(
-                "From `%s` to `%s` is not a valid position "
-                "shift for cumsum operation." % (pos, to)
-            )
 
-        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to, keep_coords)
-        return da_cum_newcoord
+            if to is None:
+                to = self._default_shifts[pos]
+
+            da_cum = da.cumsum(dim=dim)
+
+            boundary_kwargs = dict(boundary=boundary, fill_value=fill_value)
+
+            # now pad / trim the data as necessary
+            # here we enumerate all the valid possible shifts
+            if (pos == "center" and to == "right") or (
+                pos == "left" and to == "center"
+            ):
+                # do nothing, this is the default for how cumsum works
+                data = da_cum.data
+            elif (pos == "center" and to == "left") or (
+                pos == "right" and to == "center"
+            ):
+                data = _pad_array(
+                    da_cum.isel(**{dim: slice(0, -1)}),
+                    dim,
+                    left=True,
+                    **boundary_kwargs,
+                )
+            elif (pos == "center" and to == "inner") or (
+                pos == "outer" and to == "center"
+            ):
+                data = da_cum.isel(**{dim: slice(0, -1)}).data
+            elif (pos == "center" and to == "outer") or (
+                pos == "inner" and to == "center"
+            ):
+                data = _pad_array(da_cum, dim, left=True, **boundary_kwargs)
+            else:
+                raise ValueError(
+                    "From `%s` to `%s` is not a valid position "
+                    "shift for cumsum operation." % (pos, to)
+                )
+
+            da_cum_newcoord = self._wrap_and_replace_coords(da, data, to, keep_coords)
+            return da_cum_newcoord
 
     @docstrings.dedent
     def min(
