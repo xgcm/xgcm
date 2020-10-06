@@ -1,5 +1,6 @@
 from __future__ import print_function
 import pytest
+import xarray as xr
 
 from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
