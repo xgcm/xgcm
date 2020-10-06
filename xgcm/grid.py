@@ -1669,7 +1669,6 @@ class Grid:
 
         weight = self.get_metric(da, axis)
         weighted = da * weight
-        # TODO: We should integrate xarray.weighted once available.
 
         # get dimension(s) corresponding
         # to `da` and `axis` input
@@ -1697,7 +1696,6 @@ class Grid:
 
         weight = self.get_metric(da, axis)
         weighted = da * weight
-        # TODO: We should integrate xarray.weighted once available.
 
         return self.cumsum(weighted, axis, **kwargs)
 
@@ -1723,6 +1721,7 @@ class Grid:
         da = da.copy()
         weight = self.get_metric(da, axis)
         weighted = da.weighted(weight)
+
         # get dimension(s) corresponding
         # to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)

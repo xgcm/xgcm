@@ -108,6 +108,27 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     xr.testing.assert_allclose(global_result, manual_result)
 
 
+def test_average_unmatched_missing():
+    # Tests the behavior of grid.average on an array which has missing values, not present in the metric
+    x = np.arange(10)
+    data = xr.DataArray(np.ones(10), dims="x", coords={"x": x})
+    weights = data * 30
+    ds = xr.Dataset({"data": data})
+    ds = ds.assign_coords(weights=weights)
+    # create an xgcm grid
+    grid = Grid(ds, coords={"X": {"center": "x"}}, metrics={"X": ["weights"]})
+
+    # average the unmasked array
+    expected = grid.average(ds.data, "X")
+
+    # now lets introduce a missing value in the data
+    ds.data[6:8] = np.nan
+
+    # assert that the result for both the full and the masked array is equal,
+    # since both only have ones in them.
+    xr.testing.assert_allclose(expected, grid.average(ds.data, "X"))
+
+
 def test_derivative_uniform_grid():
     # this is a uniform grid
     # a non-uniform grid would provide a more rigorous test
