@@ -50,12 +50,12 @@ class TestParametrized:
             expected = _expected_result(
                 ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
-            assert new.equals(expected)
+            xr.testing.assert_allclose(new, expected)
 
             # test with tuple input if list is provided
             if isinstance(axis, list):
                 new = func(ds.tracer, tuple(axis), **kwargs)
-                assert new.equals(expected)
+                xr.testing.assert_allclose(new, expected)
 
         # test u position
         for axis, metric_name, dim in zip(
@@ -67,7 +67,7 @@ class TestParametrized:
             expected = _expected_result(
                 ds.u, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
-            assert new.equals(expected)
+            xr.testing.assert_allclose(new, expected)
 
         # test v position
         for axis, metric_name, dim in zip(
@@ -79,7 +79,7 @@ class TestParametrized:
             expected = _expected_result(
                 ds.v, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
-            assert new.equals(expected)
+            xr.testing.assert_allclose(new, expected)
 
     def test_cgrid(self, funcname, boundary, periodic):
         ds, coords, metrics = datasets_grid_metric("C")
@@ -104,11 +104,11 @@ class TestParametrized:
             expected = _expected_result(
                 ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
-            assert new.equals(expected)
+            xr.testing.assert_allclose(new, expected)
             # test with tuple input if list is provided
             if isinstance(axis, list):
                 new = func(ds.tracer, tuple(axis), **kwargs)
-                assert new.equals(expected)
+                xr.testing.assert_allclose(new, expected)
 
         # test u positon
         for axis, metric_name, dim in zip(
@@ -120,7 +120,7 @@ class TestParametrized:
             expected = _expected_result(
                 ds.u, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
-            assert new.equals(expected)
+            xr.testing.assert_allclose(new, expected)
 
         # test v positon
         for axis, metric_name, dim in zip(
@@ -132,7 +132,7 @@ class TestParametrized:
             expected = _expected_result(
                 ds.v, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
-            assert new.equals(expected)
+            xr.testing.assert_allclose(new, expected)
 
     @pytest.mark.parametrize("axis", ["X", "Y", "Z"])
     def test_missingaxis(self, axis, funcname, periodic, boundary):
