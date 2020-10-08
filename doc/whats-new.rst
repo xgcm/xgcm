@@ -3,6 +3,15 @@
 What's New
 ===========
 
+v0.6.0 (...)
+-------------------------
+
+Bug fixes
+~~~~~~~~~
+- Fix numba related bug replacing `np.flip` with `indexing [::-1]` (:pull:`263`, :issue:`262`). By `Navid Constantinou <https://github.com/navidcy>`_.
+.. _whats-new.0.6.0:
+
+
 v0.5.0 (2020/9/28)
 -------------------------
 
