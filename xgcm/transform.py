@@ -20,8 +20,8 @@ from numba import jit, guvectorize, float32, float64, boolean
 def _interp_1d_linear(phi, theta, target_theta_levels, mask_edges, output):
     # if last theta value is smaller than first, assume the profile is monotonically decreasing and flip
     if theta[-1] < theta[0]:
-        theta = np.flip(theta)
-        phi = np.flip(phi)
+        theta = theta[::-1]
+        phi = phi[::-1]
 
     output[:] = np.interp(target_theta_levels, theta, phi)
 
@@ -138,7 +138,7 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
     target_diff = np.diff(target_theta_bins)
     if all(target_diff < 0):
         flip_switch = True
-        target_theta_bins = np.flip(target_theta_bins)
+        target_theta_bins = target_theta_bins[::-1]
     elif all(target_diff > 0):
         flip_switch = False
     else:
@@ -151,7 +151,7 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
 
     out = _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2)
     if flip_switch:
-        out = np.flip(out)
+        out = out[::-1]
     return out
 
 
