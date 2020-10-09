@@ -850,7 +850,7 @@ class Axis:
         target_dim = None
 
         # check optional numba dependency
-        if numba is None":
+        if numba is None:
             raise ImportError(
                 "The transform functionality of xgcm requires numba. Install using `conda install numba`."
             )
