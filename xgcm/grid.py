@@ -869,10 +869,10 @@ class Axis:
                 )
                 da.name = "_UNNAMED_"
 
-        def _check_target_alignment(target_da):
-            # check alignment for all other axes, to avoid broadcasting enourmous arrays
-            # to do this on the axis level we will simply check if target_data has some coordinates
-            # that are not found in da (excluding all coordinates that belong to the current axis)
+        def _check_other_dims(target_da):
+            # check if other dimensions (excluding ones associated with the transform axis) are the 
+            # same between `da` and `target_data`. If not provide instructions how to work around.
+           
             da_other_dims = set(da.dims) - set(self.coords.values())
             target_da_other_dims = set(target_da.dims) - set(self.coords.values())
             if not target_da_other_dims.issubset(da_other_dims):
@@ -880,7 +880,10 @@ class Axis:
                     f"Found additional dimensions [{target_da_other_dims-da_other_dims}]"
                     "in `target_data` not found in `da`. This could mean that the target "
                     "array is not on the same position along other axes."
-                    " Use grid.interp() to align the arrays."
+                    " If the additional dimensions are associated witha staggered axis, "
+                    "use grid.interp() to move values to other grid position. "
+                    "If additional dimensions are not related to the grid (e.g. climate "
+                    "model members or similar, use xr.broadcast() before using transform.
                 )
 
         def _parse_target(da, target, target_dim, target_data_dim, target_data):
@@ -907,7 +910,7 @@ class Axis:
                 )
 
             _target_data_name_handling(target_data)
-            _check_target_alignment(da, target_data)
+            _check_other_dims(da, target_data)
             return target, target_dim, target_data
 
         _, dim = self._get_axis_coord(da)
