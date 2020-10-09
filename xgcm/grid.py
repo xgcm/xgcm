@@ -869,7 +869,7 @@ class Axis:
                 )
                 da.name = "_UNNAMED_"
 
-        def _check_target_alignment(da, target_da):
+        def _check_target_alignment(target_da):
             # check alignment for all other axes, to avoid broadcasting enourmous arrays
             # to do this on the axis level we will simply check if target_data has some coordinates
             # that are not found in da (excluding all coordinates that belong to the current axis)
