@@ -8,7 +8,7 @@ v0.6.0 (unreleased)
 
 Bug fixes
 ~~~~~~~~~
-- Fix numba related bug replacing :py:meth:`np.flip` with indexing :py:meth:`[::-1]` (:pull:`263`, :issue:`262`). By `Navid Constantinou <https://github.com/navidcy>`_.
+- Add support for older numba versions (<0.49) (:pull:`263`, :issue:`262`). By `Navid Constantinou <https://github.com/navidcy>`_.
 .. _whats-new.0.6.0:
 
 
