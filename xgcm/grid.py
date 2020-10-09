@@ -1719,7 +1719,6 @@ class Grid:
         da_i : xarray.DataArray
             The averaged data
         """
-        da = da.copy()
         weight = self.get_metric(da, axis)
         weighted = da.weighted(weight)
 
