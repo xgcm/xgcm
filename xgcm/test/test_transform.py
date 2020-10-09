@@ -827,13 +827,15 @@ def test_grid_transform_noname_targetdata():
     source_da = source.data
     target_data = transform_kwargs.pop("target_data")
     target_data.name = None
+    # the name of target_data is only used if `target` is provided as numpy array
+    target = target.data
 
     # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
     with pytest.warns(UserWarning):
         transformed = grid.transform(
             source_da, axis, target, target_data=target_data, **transform_kwargs
         )
-    assert transformed.name is "_UNNAMED_"
+    "_UNNAMED_" in transformed.dims
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
@@ -948,7 +950,7 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_grid_transform_multidim_alignment_error(request, multidim_cases):
+def test_grid_transform_multidim_other_dims_error(request, multidim_cases):
     # broadcast the 1d column agains some other dims and make sure that the 1d results are still valid
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
