@@ -861,13 +861,6 @@ class Axis:
                 "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
             )
 
-        # Handle target_data input without a name
-        if target_data.name is None:
-            warnings.warn(
-                "The input dataarray `target_data` has no name. Will default to `_UNNAMED_`."
-            )
-            da.name = "_UNNAMED_"
-
         def _parse_target(target, target_dim, target_data_dim, target_data):
             """Parse target values into correct xarray naming and set default naming based on input data"""
             # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
@@ -892,6 +885,14 @@ class Axis:
                 )
             return target, target_dim, target_data
 
+        def _target_data_name_handling(target_data):
+            """Handle target_data input without a name"""
+            if target_data.name is None:
+                warnings.warn(
+                    "The input dataarray `target_data` has no name. Will default to `_UNNAMED_`."
+                )
+                da.name = "_UNNAMED_"
+
         def _check_target_alignment(da, target_da):
             # check alignment for all other axes, to avoid broadcasting enourmous arrays
             # to do this on the axis level we will simply check if target_data has some coordinates
@@ -909,6 +910,7 @@ class Axis:
                 target, target_dim, dim, target_data
             )
             _check_target_alignment(da, target_data)
+            _target_data_name_handling(target_data)
             out = linear_interpolation(
                 da,
                 target_data,
@@ -935,6 +937,7 @@ class Axis:
             )
 
             _check_target_alignment(da, target_data)
+            _target_data_name_handling(target_data)
 
             # check on which coordinate `target_data` is, and interpolate if needed
             if target_data_dim not in target_data.dims:
