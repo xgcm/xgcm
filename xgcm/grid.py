@@ -937,7 +937,7 @@ class Axis:
                 )
 
             target, target_dim, target_data = _parse_target(
-                da, target, target_dim, target_data_dim, target_data
+                target, target_dim, target_data_dim, target_data
             )
 
             # check on which coordinate `target_data` is, and interpolate if needed
