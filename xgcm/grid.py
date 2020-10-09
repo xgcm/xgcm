@@ -861,6 +861,13 @@ class Axis:
                 "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
             )
 
+        # Handle target_data input without a name
+        if target_data.name is None:
+            warnings.warn(
+                "The input dataarray `target_data` has no name. Will default to `_UNNAMED_`."
+            )
+            da.name = "_UNNAMED_"
+
         def _parse_target(target, target_dim, target_data_dim, target_data):
             """Parse target values into correct xarray naming and set default naming based on input data"""
             # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.

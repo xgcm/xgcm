@@ -830,7 +830,9 @@ def test_grid_transform_noname_targetdata():
 
     # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
     with pytest.warns(UserWarning):
-        transformed = grid.transform(source_da, axis, target, **transform_kwargs)
+        transformed = grid.transform(
+            source_da, axis, target, target_data=target_data, **transform_kwargs
+        )
     assert transformed.name is "_UNNAMED_"
 
 
