@@ -850,9 +850,9 @@ class Axis:
         target_dim = None
 
         # check optional numba dependency
-        if numba is None or numba.__version__ < "0.49":
+        if numba is None:
             raise ImportError(
-                "The transform functionality of xgcm requires numba>=0.49. Install/update using `conda install numba` or `conda update numba`"
+                "The transform functionality of xgcm requires numba. Install using `conda install numba`."
             )
 
         # raise error if axis is periodic
