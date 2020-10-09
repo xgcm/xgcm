@@ -136,7 +136,8 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
     assert phi.shape[-1] == (theta.shape[-1] - 1)
     assert target_theta_bins.ndim == 1
 
-    # flip target_theta_bins if needed
+    # flip target_theta_bins if needed (only needed for the conservative method,
+    # np.interp handles this by itself)
     target_diff = np.diff(target_theta_bins)
     if all(target_diff < 0):
         flip_switch = True
