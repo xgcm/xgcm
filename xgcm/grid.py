@@ -861,6 +861,31 @@ class Axis:
                 "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
             )
 
+        def _target_data_name_handling(target_data):
+            """Handle target_data input without a name"""
+            if target_data.name is None:
+                warnings.warn(
+                    "Input`target_data` has no name, but we need a name for the transformed dimension. The name `TRANSFORMED_DIMENSION` will be used. To avoid this warning, call `.rename` on `target_data` before calling `transform`."
+                )
+                target_data.name = "TRANSFORMED_DIMENSION"
+
+        def _check_other_dims(target_da):
+            # check if other dimensions (excluding ones associated with the transform axis) are the
+            # same between `da` and `target_data`. If not provide instructions how to work around.
+
+            da_other_dims = set(da.dims) - set(self.coords.values())
+            target_da_other_dims = set(target_da.dims) - set(self.coords.values())
+            if not target_da_other_dims.issubset(da_other_dims):
+                raise ValueError(
+                    f"Found additional dimensions [{target_da_other_dims-da_other_dims}]"
+                    "in `target_data` not found in `da`. This could mean that the target "
+                    "array is not on the same position along other axes."
+                    " If the additional dimensions are associated witha staggered axis, "
+                    "use grid.interp() to move values to other grid position. "
+                    "If additional dimensions are not related to the grid (e.g. climate "
+                    "model ensemble members or similar), use xr.broadcast() before using transform."
+                )
+
         def _parse_target(target, target_dim, target_data_dim, target_data):
             """Parse target values into correct xarray naming and set default naming based on input data"""
             # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
@@ -879,29 +904,20 @@ class Axis:
                         )
             else:
                 # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
+                _target_data_name_handling(target_data)
                 target_dim = target_data.name
                 target = xr.DataArray(
                     target, dims=[target_dim], coords={target_dim: target}
                 )
-            return target, target_dim, target_data
 
-        def _check_target_alignment(da, target_da):
-            # check alignment for all other axes, to avoid broadcasting enourmous arrays
-            # to do this on the axis level we will simply check if target_data has some coordinates
-            # that are not found in da (excluding all coordinates that belong to the current axis)
-            da_other_dims = set(da.dims) - set(self.coords.values())
-            target_da_other_dims = set(target_da.dims) - set(self.coords.values())
-            if not target_da_other_dims.issubset(da_other_dims):
-                raise ValueError(
-                    f"Found additional dimensions [{target_da_other_dims-da_other_dims}] in `target_data` not found in `da`. This could mean that the target array is not on the same position along other axes. Use grid.interp() to align the arrays."
-                )
+            _check_other_dims(target_data)
+            return target, target_dim, target_data
 
         _, dim = self._get_axis_coord(da)
         if method == "linear":
             target, target_dim, target_data = _parse_target(
                 target, target_dim, dim, target_data
             )
-            _check_target_alignment(da, target_data)
             out = linear_interpolation(
                 da,
                 target_data,
@@ -926,8 +942,6 @@ class Axis:
             target, target_dim, target_data = _parse_target(
                 target, target_dim, target_data_dim, target_data
             )
-
-            _check_target_alignment(da, target_data)
 
             # check on which coordinate `target_data` is, and interpolate if needed
             if target_data_dim not in target_data.dims:
