@@ -867,7 +867,7 @@ class Axis:
                 warnings.warn(
                     "Input`target_data` has no name, but we need a name for the transformed dimension. The name `TRANSFORMED_DIMENSION` will be used. To avoid this warning, call `.rename` on `target_data` before calling `transform`."
                 )
-                target_data.name = "_UNNAMED_"
+                target_data.name = "TRANSFORMED_DIMENSION"
 
         def _check_other_dims(target_da):
             # check if other dimensions (excluding ones associated with the transform axis) are the
