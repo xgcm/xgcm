@@ -44,7 +44,7 @@ climate science. xgcm is part of the Pangeo_ initiative.
 Getting Started
 ---------------
 
-To learn how to install and use xgcm for your dataset, please visit the `xgcm documentation`_.
+To learn how to install and use xgcm for your dataset, visit the `xgcm documentation`_.
 
 
 .. _Pangeo: http://pangeo-data.github.io
