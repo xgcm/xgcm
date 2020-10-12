@@ -883,7 +883,7 @@ class Axis:
                     " If the additional dimensions are associated witha staggered axis, "
                     "use grid.interp() to move values to other grid position. "
                     "If additional dimensions are not related to the grid (e.g. climate "
-                    "model members or similar, use xr.broadcast() before using transform."
+                    "model ensemble members or similar), use xr.broadcast() before using transform."
                 )
 
         def _parse_target(target, target_dim, target_data_dim, target_data):
