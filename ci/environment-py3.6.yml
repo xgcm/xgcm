@@ -1,13 +1,17 @@
 name: test_env_xgcm
 dependencies:
-  - python=3.7
+  - python=3.6
   - xarray
   - dask
   - numpy
+  - numba<=0.48
   - pytest
   - future
+  - pip
+  - black
   - pip:
-    - docrep
+    - docrep<=0.2.7
     - codecov
     - pytest-cov
-    - black
+    - pytest-xdist
+

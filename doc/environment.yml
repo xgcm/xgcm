@@ -6,6 +6,7 @@ dependencies:
   - cartopy
   - dask
   - numpy
+  - numba
   - future
   - pytest
   - numpydoc
@@ -15,7 +16,7 @@ dependencies:
   - sphinx_rtd_theme
   - ipykernel
   - pip:
-    - docrep
+    - docrep<=0.2.7
     - nbsphinx
     - jupyter_client
     - sphinx_pangeo_theme

@@ -71,6 +71,64 @@ class TestParametrized:
             assert new.equals(expected)
 
 
+@pytest.mark.parametrize(
+    "funcname",
+    ["interp", "diff", "min", "max", "cumsum", "derivative", "cumint"],
+)
+@pytest.mark.parametrize("boundary", ["fill", "extend"])
+@pytest.mark.parametrize("fill_value", [0, 10, None])
+def test_boundary_global_input(funcname, boundary, fill_value):
+    """Test that globally defined boundary values result in
+    the same output as when the parameters are defined on either
+    the grid or axis methods
+    """
+    ds, coords, metrics = datasets_grid_metric("C")
+    axis = "X"
+
+    # Test results by globally specifying fill value/boundary on grid object
+    grid_global = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary=boundary,
+        fill_value=fill_value,
+    )
+    func_global = getattr(grid_global, funcname)
+    global_result = func_global(ds.tracer, axis)
+
+    # Test results by manually specifying fill value/boundary on grid method
+    grid_manual = Grid(
+        ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
+    )
+    func_manual = getattr(grid_manual, funcname)
+    manual_result = func_manual(
+        ds.tracer, axis, boundary=boundary, fill_value=fill_value
+    )
+    xr.testing.assert_allclose(global_result, manual_result)
+
+
+def test_average_unmatched_missing():
+    # Tests the behavior of grid.average on an array which has missing values, not present in the metric
+    x = np.arange(10)
+    data = xr.DataArray(np.ones(10), dims="x", coords={"x": x})
+    weights = data * 30
+    ds = xr.Dataset({"data": data})
+    ds = ds.assign_coords(weights=weights)
+    # create an xgcm grid
+    grid = Grid(ds, coords={"X": {"center": "x"}}, metrics={"X": ["weights"]})
+
+    # average the unmasked array
+    expected = grid.average(ds.data, "X")
+
+    # now lets introduce a missing value in the data
+    ds.data[6:8] = np.nan
+
+    # assert that the result for both the full and the masked array is equal,
+    # since both only have ones in them.
+    xr.testing.assert_allclose(expected, grid.average(ds.data, "X"))
+
+
 def test_derivative_uniform_grid():
     # this is a uniform grid
     # a non-uniform grid would provide a more rigorous test

@@ -3,7 +3,53 @@
 What's New
 ===========
 
-.. _whats-new.0.3.0:
+v0.6.0 (unreleased)
+-------------------------
+
+Bug fixes
+~~~~~~~~~
+- Add support for older numba versions (<0.49) (:pull:`263`, :issue:`262`). By `Navid Constantinou <https://github.com/navidcy>`_.
+.. _whats-new.0.6.0:
+
+
+v0.5.0 (2020/9/28)
+-------------------------
+
+New Features
+~~~~~~~~~~~~
+- :py:meth:`~xgcm.grid.Grid.transform` and :py:meth:`~xgcm.grid.Axis.transform` now enable 1-dimensional coordinate transformation (:pull:`205`, :issue:`222`).
+  By `Ryan Abernathey <https://github.com/rabernat>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
+  
+Bug fixes
+~~~~~~~~~
+- More reliable handling of missing values in :py:meth:`Grid.average`. Missing values between data and metrics do not have to be aligned by the user anymore. (:pull:`259`). By `Julius Busecke <https://github.com/jbusecke>`_.
+
+- Remove outdated `example_notebooks` folder (:pull:`244`, :issue:`243`). By `Nikolay Koldunov <https://github.com/koldunovn>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
+.. _whats-new.0.5.0:
+
+
+v0.4.0 (2020/9/2)
+-------------------------
+New Features
+~~~~~~~~~~~~
+- Support for keeping compatible coordinates in most Grid operations (:issue:`186`).
+  By `Aurélien Ponte <https://github.com/apatlpo>`_.
+
+- Support for specifying default ``boundary`` and ``fill_value`` in the :py:class:`Grid` constructor.
+  Default values can be overridden in individual method calls (e.g. :py:meth:`Grid.interp`) as usual.
+  By `Deepak Cherian <https://github.com/dcherian>`_.
+  
+  Bug fixes
+~~~~~~~~~
+- Fix for parsing fill_values as dictionary (:issue:`218`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+  
+Internal Changes
+~~~~~~~~~~~~~~~~
+- Complete refactor of the CI to github actions (:issue:`214`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+.. _whats-new.0.4.0:
 
 v0.3.0 (31 January 2020)
 -------------------------

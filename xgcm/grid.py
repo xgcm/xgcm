@@ -5,6 +5,7 @@ from collections import OrderedDict
 import functools
 import itertools
 import operator
+import warnings
 
 import docrep
 import xarray as xr
@@ -12,6 +13,13 @@ import numpy as np
 
 from . import comodo
 from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
+
+try:
+    import numba
+    from .transform import linear_interpolation, conservative_interpolation
+except ImportError:
+    numba = None
+
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -24,9 +32,12 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
+_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
+
+
 class Axis:
     """
-    An object that represents a group of coodinates that all lie along the same
+    An object that represents a group of coordinates that all lie along the same
     physical dimension but at different positions with respect to a grid cell.
     There are four possible positions::
 
@@ -56,7 +67,16 @@ class Axis:
     differentiated by their length.
     """
 
-    def __init__(self, ds, axis_name, periodic=True, default_shifts={}, coords=None):
+    def __init__(
+        self,
+        ds,
+        axis_name,
+        periodic=True,
+        default_shifts={},
+        coords=None,
+        boundary=None,
+        fill_value=None,
+    ):
         """
         Create a new Axis object from an input dataset.
 
@@ -75,6 +95,21 @@ class Axis:
         coords : dict, optional
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
+        boundary : str or dict, optional,
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            This sets the default value. It can be overriden by specifying the
+            boundary kwarg when calling specific methods.
+        fill_value : {float}, optional
+            The value to use in the boundary condition when `boundary='fill'`.
 
         REFERENCES
         ----------
@@ -84,6 +119,14 @@ class Axis:
         self._ds = ds
         self.name = axis_name
         self._periodic = periodic
+        if boundary not in _VALID_BOUNDARY:
+            raise ValueError(
+                f"Expected 'boundary' to be one of {_VALID_BOUNDARY}. Received {boundary!r} instead."
+            )
+        self.boundary = boundary
+        if fill_value is not None and not isinstance(fill_value, (int, float)):
+            raise ValueError(f"Expected 'fill_value' to be a number.")
+        self.fill_value = fill_value if fill_value is not None else 0.0
 
         if coords:
             # use specified coords
@@ -168,8 +211,11 @@ class Axis:
 
     def __repr__(self):
         is_periodic = "periodic" if self._periodic else "not periodic"
-        summary = ["<xgcm.Axis '%s' %s>" % (self.name, is_periodic)]
-        summary.append("Axis Coodinates:")
+        summary = [
+            "<xgcm.Axis '%s' (%s, boundary=%r)>"
+            % (self.name, is_periodic, self.boundary)
+        ]
+        summary.append("Axis Coordinates:")
         summary += self._coord_desc()
         return "\n".join(summary)
 
@@ -190,9 +236,10 @@ class Axis:
         f,
         to,
         boundary=None,
-        fill_value=0.0,
+        fill_value=None,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Apply a function to neighboring points.
@@ -219,6 +266,8 @@ class Axis:
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -229,6 +278,10 @@ class Axis:
         if to is None:
             to = self._default_shifts[position_from]
 
+        if boundary is None:
+            boundary = self.boundary
+        if fill_value is None:
+            fill_value = self.fill_value
         data_new = self._neighbor_binary_func_raw(
             da,
             f,
@@ -239,7 +292,7 @@ class Axis:
             vector_partner=vector_partner,
         )
         # wrap in a new xarray wrapper
-        da_new = self._wrap_and_replace_coords(da, data_new, to)
+        da_new = self._wrap_and_replace_coords(da, data_new, to, keep_coords)
 
         return da_new
 
@@ -528,9 +581,10 @@ class Axis:
         da,
         to=None,
         boundary=None,
-        fill_value=0.0,
+        fill_value=None,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Interpolate neighboring points to the intermediate grid point along
@@ -556,6 +610,7 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords=keep_coords,
         )
 
     @docstrings.dedent
@@ -564,9 +619,10 @@ class Axis:
         da,
         to=None,
         boundary=None,
-        fill_value=0.0,
+        fill_value=None,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Difference neighboring points to the intermediate grid point.
@@ -589,10 +645,11 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords=keep_coords,
         )
 
     @docstrings.dedent
-    def cumsum(self, da, to=None, boundary=None, fill_value=0.0):
+    def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
         position.
@@ -636,7 +693,7 @@ class Axis:
                 "shift for cumsum operation." % (pos, to)
             )
 
-        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to)
+        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to, keep_coords)
         return da_cum_newcoord
 
     @docstrings.dedent
@@ -645,9 +702,10 @@ class Axis:
         da,
         to=None,
         boundary=None,
-        fill_value=0.0,
+        fill_value=None,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Minimum of neighboring points on intermediate grid point.
@@ -670,16 +728,19 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords,
         )
 
+    @docstrings.dedent
     def max(
         self,
         da,
         to=None,
         boundary=None,
-        fill_value=0.0,
+        fill_value=None,
         boundary_discontinuity=None,
         vector_partner=None,
+        keep_coords=False,
     ):
         """
         Maximum of neighboring points on intermediate grid point.
@@ -702,9 +763,212 @@ class Axis:
             fill_value,
             boundary_discontinuity,
             vector_partner,
+            keep_coords,
         )
 
-    def _wrap_and_replace_coords(self, da, data_new, position_to):
+    def transform(
+        self,
+        da,
+        target,
+        target_data=None,
+        method="linear",
+        mask_edges=True,
+        suffix="_transformed",
+    ):
+        """Convert an array of data to new 1D-coordinates.
+        The method takes a multidimensional array of data `da` and
+        transforms it onto another data_array `target_data` in the
+        direction of the axis (for each 1-dimensional 'column').
+
+        `target_data` can be e.g. the existing coordinate along an
+        axis, like depth. xgcm automatically detects the appropriate
+        coordinate and then transforms the data from the input
+        positions to the desired positions defined in `target`. This
+        is the default behavior. The method can also be used for more
+        complex cases like transforming a dataarray into new
+        coordinates that are defined by e.g. a tracer field like
+        temperature, density, etc.
+
+        Currently two methods are supported to carry out the
+        transformation:
+
+        - 'linear': Values are linear interpolated between 1D columns
+          along `axis` of `da` and `target_data`. This methodrequires
+          `target_data` to increase/decrease monotonically. `target`
+          values are interpreted as new cell centers in this case. By
+          default this method will return nan for values in `target` that
+          are outside of the range of `target_data`, setting
+          `mask_edges=False` results in the default np.interp behavior of
+          repeated values.
+
+        - 'conservative': Values are transformed while conserving the
+          integral of `da` along each 1D column. This method can be used
+          with non-monotonic values of `target_data`. Currently this will
+          only work with extensive quantities (like heat, mass, transport)
+          but not with intensive quantities (like temperature, density,
+          velocity). N given `target` values are interpreted as cell-bounds
+          and the returned array will have N-1 elements along the newly
+          created coordinate, with coordinate values that are interpolated
+          between `target` values.
+
+        Parameters
+        ----------
+        da : xr.xr.DataArray
+            Input data
+        target : {np.array, xr.DataArray}
+            Target points for transformation. Dependin on the method is
+            interpreted as cell center (method='linear') or cell bounds
+            (method='conservative).
+            Values correpond to `target_data` or the existing coordinate
+            along the axis (if `target_data=None`). The name of the
+            resulting new coordinate is determined by the input type.
+            When passed as numpy array the resulting dimension is named
+            according to `target_data`, if provided as xr.Dataarray
+            naming is inferred from the `target` input.
+        target_data : xr.DataArray, optional
+            Data to transform onto (e.g. a tracer like density or temperature).
+            Defaults to None, which infers the appropriate coordinate along
+            `axis` (e.g. the depth).
+        method : str, optional
+            Method used to transform, by default "linear"
+        mask_edges : bool, optional
+            If activated, `target` values outside the range of `target_data`
+            are masked with nan, by default True. Only applies to 'linear' method.
+        suffix : str, optional
+            Customizable suffix to the name of the output array. This will
+            be added to the original name of `da`. Defaults to `_transformed`.
+
+        Returns
+        -------
+        xr.DataArray
+            The transformed data
+
+
+        """
+        # Theoretically we should be able to use a multidimensional `target`, which would need the additional information provided with `target_dim`.
+        # But the feature is not tested yet, thus setting this to default value internally (resulting in error in `_parse_target`, when a multidim `target` is passed)
+        target_dim = None
+
+        # check optional numba dependency
+        if numba is None:
+            raise ImportError(
+                "The transform functionality of xgcm requires numba. Install using `conda install numba`."
+            )
+
+        # raise error if axis is periodic
+        if self._periodic:
+            raise ValueError(
+                "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
+            )
+
+        def _target_data_name_handling(target_data):
+            """Handle target_data input without a name"""
+            if target_data.name is None:
+                warnings.warn(
+                    "Input`target_data` has no name, but we need a name for the transformed dimension. The name `TRANSFORMED_DIMENSION` will be used. To avoid this warning, call `.rename` on `target_data` before calling `transform`."
+                )
+                target_data.name = "TRANSFORMED_DIMENSION"
+
+        def _check_other_dims(target_da):
+            # check if other dimensions (excluding ones associated with the transform axis) are the
+            # same between `da` and `target_data`. If not provide instructions how to work around.
+
+            da_other_dims = set(da.dims) - set(self.coords.values())
+            target_da_other_dims = set(target_da.dims) - set(self.coords.values())
+            if not target_da_other_dims.issubset(da_other_dims):
+                raise ValueError(
+                    f"Found additional dimensions [{target_da_other_dims-da_other_dims}]"
+                    "in `target_data` not found in `da`. This could mean that the target "
+                    "array is not on the same position along other axes."
+                    " If the additional dimensions are associated witha staggered axis, "
+                    "use grid.interp() to move values to other grid position. "
+                    "If additional dimensions are not related to the grid (e.g. climate "
+                    "model ensemble members or similar), use xr.broadcast() before using transform."
+                )
+
+        def _parse_target(target, target_dim, target_data_dim, target_data):
+            """Parse target values into correct xarray naming and set default naming based on input data"""
+            # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
+            if target_data is None:
+                target_data = self._ds[target_data_dim]
+
+            # Infer target_dim from target
+            if isinstance(target, xr.DataArray):
+                if len(target.dims) == 1:
+                    if target_dim is None:
+                        target_dim = list(target.dims)[0]
+                else:
+                    if target_dim is None:
+                        raise ValueError(
+                            f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. This is currently not supported. `."
+                        )
+            else:
+                # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
+                _target_data_name_handling(target_data)
+                target_dim = target_data.name
+                target = xr.DataArray(
+                    target, dims=[target_dim], coords={target_dim: target}
+                )
+
+            _check_other_dims(target_data)
+            return target, target_dim, target_data
+
+        _, dim = self._get_axis_coord(da)
+        if method == "linear":
+            target, target_dim, target_data = _parse_target(
+                target, target_dim, dim, target_data
+            )
+            out = linear_interpolation(
+                da,
+                target_data,
+                target,
+                dim,
+                dim,  # in this case the dimension of phi and theta are the same
+                target_dim,
+                mask_edges=mask_edges,
+            )
+        elif method == "conservative":
+            # the conservative method requires `target_data` to be on the `outer` coordinate.
+            # If that is not the case (a very common use case like transformation on any tracer),
+            # we need to infer the boundary values (using the interp logic)
+            # for this method we need the `outer` position. Error out if its not there.
+            try:
+                target_data_dim = self.coords["outer"]
+            except KeyError:
+                raise RuntimeError(
+                    "In order to use the method `conservative` the grid object needs to have `outer` coordinates."
+                )
+
+            target, target_dim, target_data = _parse_target(
+                target, target_dim, target_data_dim, target_data
+            )
+
+            # check on which coordinate `target_data` is, and interpolate if needed
+            if target_data_dim not in target_data.dims:
+                warnings.warn(
+                    "The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values. For most accurate results provide values on cell bounds.",
+                    UserWarning,
+                )
+                target_data = self.interp(target_data, boundary="extend")
+                # This seems to end up with chunks along the axis dimension.
+                # Rechunk to keep xr.apply_func from complaining.
+                # TODO: This should be made obsolete, when the internals are refactored using numba
+                target_data = target_data.chunk(
+                    {self._get_axis_coord(target_data)[1]: -1}
+                )
+
+            out = conservative_interpolation(
+                da,
+                target_data,
+                target,
+                dim,
+                target_data_dim,  # in this case the dimension of phi and theta are the same
+                target_dim,
+            )
+
+        return out
+
+    def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords=False):
         """
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
@@ -733,11 +997,16 @@ class Axis:
                 if d in da.coords:
                     coords[d] = da.coords[d]
 
+        # add compatible coords
+        if keep_coords:
+            for c in da.coords:
+                if c not in coords and set(da[c].dims).issubset(dims):
+                    coords[c] = da[c]
+
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
     def _get_axis_coord(self, da):
-        """Return the position and name of the axis coordiante in a DataArray.
-        """
+        """Return the position and name of the axis coordiante in a DataArray."""
         for position, coord_name in iteritems(self.coords):
             # TODO: should we have more careful checking of alignment here?
             if coord_name in da.dims:
@@ -749,8 +1018,7 @@ class Axis:
         )
 
     def _get_axis_dim_num(self, da):
-        """Return the dimension number of the axis coordinate in a DataArray.
-        """
+        """Return the dimension number of the axis coordinate in a DataArray."""
         _, coord_name = self._get_axis_coord(da)
         return da.get_axis_num(coord_name)
 
@@ -770,6 +1038,8 @@ class Grid:
         face_connections=None,
         coords=None,
         metrics=None,
+        boundary=None,
+        fill_value=None,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -799,6 +1069,25 @@ class Grid:
             coordinates in ``ds``.
         metrics : dict, optional
             Specification of grid metrics
+        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Neumann boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Dirichlet boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         REFERENCES
         ----------
@@ -823,12 +1112,35 @@ class Grid:
                 axis_default_shifts = default_shifts[axis_name]
             else:
                 axis_default_shifts = {}
+
+            if isinstance(boundary, dict):
+                axis_boundary = boundary.get(axis_name, None)
+            elif isinstance(boundary, str) or boundary is None:
+                axis_boundary = boundary
+            else:
+                raise ValueError(
+                    f"boundary={boundary} is invalid. Please specify a dictionary "
+                    "mapping axis name to a boundary option; a string or None."
+                )
+
+            if isinstance(fill_value, dict):
+                axis_fillvalue = fill_value.get(axis_name, None)
+            elif isinstance(fill_value, (int, float)) or fill_value is None:
+                axis_fillvalue = fill_value
+            else:
+                raise ValueError(
+                    f"fill_value={fill_value} is invalid. Please specify a dictionary "
+                    "mapping axis name to a boundary option; a number or None."
+                )
+
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
                 is_periodic,
                 default_shifts=axis_default_shifts,
                 coords=coords.get(axis_name),
+                boundary=axis_boundary,
+                fill_value=axis_fillvalue,
             )
 
         if face_connections is not None:
@@ -1038,7 +1350,9 @@ class Grid:
         summary = ["<xgcm.Grid>"]
         for name, axis in iteritems(self.axes):
             is_periodic = "periodic" if axis._periodic else "not periodic"
-            summary.append("%s Axis (%s):" % (name, is_periodic))
+            summary.append(
+                "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
+            )
             summary += axis._coord_desc()
         return "\n".join(summary)
 
@@ -1093,6 +1407,7 @@ class Grid:
         for axx in axis:
             kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
             ax = self.axes[axx]
+            kwargs.setdefault("boundary", ax.boundary)
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
 
@@ -1290,14 +1605,14 @@ class Grid:
             x_axis,
             vector[x_axis_name],
             vector_partner={y_axis_name: vector[y_axis_name]},
-            **kwargs
+            **kwargs,
         )
 
         y_component = function(
             y_axis,
             vector[y_axis_name],
             vector_partner={x_axis_name: vector[x_axis_name]},
-            **kwargs
+            **kwargs,
         )
 
         return {x_axis_name: x_component, y_axis_name: y_component}
@@ -1334,7 +1649,7 @@ class Grid:
         ----------
         axis : str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        %(grid_func.parameters)s
 
         Returns
         -------
@@ -1386,7 +1701,7 @@ class Grid:
         ----------
         axis : str, list of str
             Name of the axis on which to act
-        %(neighbor_binary_func.parameters.no_f)s
+        %(grid_func.parameters)s
 
         Returns
         -------
@@ -1411,24 +1726,97 @@ class Grid:
         axis : str, list of str
             Name of the axis on which to act
         **kwargs: dict
-            Additional arguments passed to `xarray.DataArray.sum`
-
+            Additional arguments passed to `xarray.DataArray.weighted.mean`
 
         Returns
         -------
         da_i : xarray.DataArray
             The averaged data
         """
-
         weight = self.get_metric(da, axis)
-        weighted = da * weight
-        # TODO: We should integrate xarray.weighted once available.
+        weighted = da.weighted(weight)
 
         # get dimension(s) corresponding
         # to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
-        # do we need to pass kwargs?
-        return weighted.sum(dim, **kwargs) / weight.sum(dim, **kwargs)
+        return weighted.mean(dim, **kwargs)
+
+    def transform(self, da, axis, target, **kwargs):
+        """Convert an array of data to new 1D-coordinates along `axis`.
+        The method takes a multidimensional array of data `da` and
+        transforms it onto another data_array `target_data` in the
+        direction of the axis (for each 1-dimensional 'column').
+
+        `target_data` can be e.g. the existing coordinate along an
+        axis, like depth. xgcm automatically detects the appropriate
+        coordinate and then transforms the data from the input
+        positions to the desired positions defined in `target`. This
+        is the default behavior. The method can also be used for more
+        complex cases like transforming a dataarray into new
+        coordinates that are defined by e.g. a tracer field like
+        temperature, density, etc.
+
+        Currently two methods are supported to carry out the
+        transformation:
+
+        - 'linear': Values are linear interpolated between 1D columns
+          along `axis` of `da` and `target_data`. This method requires
+          `target_data` to increase/decrease monotonically. `target`
+          values are interpreted as new cell centers in this case. By
+          default this method will return nan for values in `target` that
+          are outside of the range of `target_data`, setting
+          `mask_edges=False` results in the default np.interp behavior of
+          repeated values.
+
+        - 'conservative': Values are transformed while conserving the
+          integral of `da` along each 1D column. This method can be used
+          with non-monotonic values of `target_data`. Currently this will
+          only work with extensive quantities (like heat, mass, transport)
+          but not with intensive quantities (like temperature, density,
+          velocity). N given `target` values are interpreted as cell-bounds
+          and the returned array will have N-1 elements along the newly
+          created coordinate, with coordinate values that are interpolated
+          between `target` values.
+
+        Parameters
+        ----------
+        da : xr.DataArray
+            Input data
+        axis : str
+            Name of the axis on which to act
+        target : {np.array, xr.DataArray}
+            Target points for transformation. Dependin on the method is
+            interpreted as cell center (method='linear') or cell bounds
+            (method='conservative).
+            Values correpond to `target_data` or the existing coordinate
+            along the axis (if `target_data=None`). The name of the
+            resulting new coordinate is determined by the input type.
+            When passed as numpy array the resulting dimension is named
+            according to `target_data`, if provided as xr.Dataarray
+            naming is inferred from the `target` input.
+        target_data : xr.DataArray, optional
+            Data to transform onto (e.g. a tracer like density or temperature).
+            Defaults to None, which infers the appropriate coordinate along
+            `axis` (e.g. the depth).
+        method : str, optional
+            Method used to transform, by default "linear"
+        mask_edges : bool, optional
+            If activated, `target` values outside the range of `target_data`
+            are masked with nan, by default True. Only applies to 'linear' method.
+        suffix : str, optional
+            Customizable suffix to the name of the output array. This will
+            be added to the original name of `da`. Defaults to `_transformed`.
+
+        Returns
+        -------
+        xr.DataArray
+            The transformed data
+
+
+        """
+
+        ax = self.axes[axis]
+        return ax.transform(da, target, **kwargs)
 
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
@@ -1465,11 +1853,11 @@ def raw_diff_function(data_left, data_right):
 
 
 def raw_min_function(data_left, data_right):
-    return xr.ufuncs.minimum(data_right, data_left)
+    return np.minimum(data_right, data_left)
 
 
 def raw_max_function(data_left, data_right):
-    return xr.ufuncs.maximum(data_right, data_left)
+    return np.maximum(data_right, data_left)
 
 
 _other_docstring_options = """

@@ -1,0 +1,24 @@
+codecov:
+  require_ci_to_pass: no
+  max_report_age: off
+
+comment: false
+
+coverage:
+  precision: 2
+  round: down
+  status:
+    project:
+      default:
+        target: 95
+        informational: true
+    patch: off
+    changes: off
+    
+ignore:
+  - "setup.py"
+  - "versioneer.py"
+  - "xgcm/test/*"
+  - "xgcm/__init__.py"
+  - "xgcm/_version.py"
+  - "xgcm/gridops.py"

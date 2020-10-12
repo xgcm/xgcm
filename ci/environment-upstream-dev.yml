@@ -1,0 +1,18 @@
+name: test_env_xgcm
+dependencies:
+  - python
+  - numpy
+  - pytest
+  - future
+  - pip
+  - black # we should perhaps move this one back to pip in the future to catch issues related to new black versions
+  - pip:
+    - docrep<=0.2.7
+    - codecov
+    - pytest-cov
+    - pytest-xdist
+    - git+https://github.com/pydata/xarray.git
+    - git+https://github.com/dask/dask.git
+    - git+https://github.com/dask/distributed.git
+    - toolz
+    - git+https://github.com/numba/numba.git

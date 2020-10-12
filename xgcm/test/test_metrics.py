@@ -122,7 +122,7 @@ def test_get_metric(axes, data_var, drop_vars, metric_expected_list, expected_er
     # drop metrics according to drop_vars input, and remove from metrics input
     if drop_vars:
         print(drop_vars)
-        ds = ds.drop(drop_vars)
+        ds = ds.drop_vars(drop_vars)
         metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
     grid = Grid(ds, coords=coords, metrics=metrics)

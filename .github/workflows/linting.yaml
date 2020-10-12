@@ -1,0 +1,19 @@
+name: code-style
+on:
+    push:
+        branches: "*"
+    pull_request:
+        branches: master
+jobs:
+    pre-commit:
+        name: pre-commit
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v2
+            - name: set up python
+              uses: actions/setup-python@v2
+              with:
+                  python-version: 3.8
+            - name: Run pre-commit
+              uses: pre-commit/action@v2.0.0
