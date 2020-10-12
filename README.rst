@@ -41,8 +41,11 @@ evolving, open-source, python-based framework for GCM analysis will enhance
 the productivity of the field as a whole, accelerating the rate of discovery in
 climate science. xgcm is part of the Pangeo_ initiative.
 
-For more information, including installation instructions, read the full
-`xgcm documentation`_.
+Getting Started
+---------------
+
+To learn how to install and use xgcm for your dataset, please visit the `xgcm documentation`_.
+
 
 .. _Pangeo: http://pangeo-data.github.io
 .. _dask: http://dask.pydata.org
