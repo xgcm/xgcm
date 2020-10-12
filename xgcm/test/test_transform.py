@@ -835,7 +835,7 @@ def test_grid_transform_noname_targetdata():
         transformed = grid.transform(
             source_da, axis, target, target_data=target_data, **transform_kwargs
         )
-    "_UNNAMED_" in transformed.dims
+    "TRANSFORMED_DIMENSION" in transformed.dims
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
