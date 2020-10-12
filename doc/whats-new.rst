@@ -22,6 +22,8 @@ New Features
   
 Bug fixes
 ~~~~~~~~~
+- More reliable handling of missing values in :py:meth:`Grid.average`. Missing values between data and metrics do not have to be aligned by the user anymore. (:pull:`259`). By `Julius Busecke <https://github.com/jbusecke>`_.
+
 - Remove outdated `example_notebooks` folder (:pull:`244`, :issue:`243`). By `Nikolay Koldunov <https://github.com/koldunovn>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
 .. _whats-new.0.5.0:
 
