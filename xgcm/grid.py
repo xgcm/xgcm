@@ -865,7 +865,7 @@ class Axis:
             """Handle target_data input without a name"""
             if target_data.name is None:
                 warnings.warn(
-                    "The input dataarray `target_data` has no name. Will default to `_UNNAMED_`."
+                    "Input`target_data` has no name, but we need a name for the transformed dimension. The name `TRANSFORMED_DIMENSION` will be used. To avoid this warning, call `.rename` on `target_data` before calling `transform`."
                 )
                 target_data.name = "_UNNAMED_"
 
