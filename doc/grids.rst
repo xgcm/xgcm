@@ -61,6 +61,8 @@ The inverse of differentiation is integration. For finite volume grids, the
 inverse of the difference operator is a discrete cumulative sum. xgcm also
 provides a grid-aware version of the ``cumsum`` operator.
 
+.. _axis_position:
+
 Axes and Positions
 ~~~~~~~~~~~~~~~~~~
 
@@ -177,6 +179,8 @@ is periodic along all axes.
 The arrows after each coordinate indicate the default shift positions for
 interpolation and difference operations: operating on the center coordinate
 (``x_c``) shifts to the left coordinate (``x_g``), and vice versa.
+
+.. _axis_detection:
 
 Detecting Axes from Dataset Attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
