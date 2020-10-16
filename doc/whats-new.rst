@@ -6,10 +6,16 @@ What's New
 v0.6.0 (unreleased)
 -------------------------
 
+.. _whats-new.0.6.0:
+
+
+v0.5.1 (2020/10/16)
+-------------------------
+
 Bug fixes
 ~~~~~~~~~
 - Add support for older numba versions (<0.49) (:pull:`263`, :issue:`262`). By `Navid Constantinou <https://github.com/navidcy>`_.
-.. _whats-new.0.6.0:
+.. _whats-new.0.5.1:
 
 
 v0.5.0 (2020/9/28)
