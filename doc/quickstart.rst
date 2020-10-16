@@ -56,7 +56,7 @@ This becomes especially handy when you try to compute things on multiple dataset
         :alt: CESM Example workflow
 
     a. For many earth science datasets the convention is to call the position of tracers (temperature, salinity, etc.) `center`. 
-    Find a tracer data variable (we take `SST`; the sea surface temperature). Note the dimensions: `(time, yh, xh)`. 
+    Find a tracer data variable (we take `SSH`; the sea surface height). Note the dimensions: `(time, yh, xh)`. 
     Lets focus on one of them for now: `xh`.
     We have to choose an axis name. `X` seems like a good choice. We can start building our dictionary: `{'center':'xh'}`.
 
