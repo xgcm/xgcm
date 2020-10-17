@@ -20,7 +20,7 @@ What ingredients do I need to start with xgcm?
 How to get started - Step by step
 ---------------------------------
 The `Grid` object is essential to the way xgcm works. It stores information about the grid setup for you. 
-`Grid` knows about the logical [axes], which dimensions and metrics (represented by xarray [coordinates]) belong to each axis.
+`Grid` knows about the logical [axes], which dimensions and metrics (represented by xarray [coordinates](http://xarray.pydata.org/en/stable/data-structures.html#coordinates)) belong to each axis.
 All this information will only have to be set once and then you can focus on whatever task is at hand without needing to remember the details.
 This becomes especially handy when you try to compute things on multiple datasets with different grid setups. 
 
