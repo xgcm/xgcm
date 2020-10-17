@@ -13,7 +13,7 @@ What ingredients do I need to start with xgcm?
 ----------------------------------------------
 1. An :ref:`installed <installation>` version of xgcm
 2. Your xarray dataset of choice `ds`.
-3. Information on how the grid of `ds` is layed out. This is often encoded in metadata or you need to infer it from the dataset (see more below).
+3. Information on how the grid of `ds` is layed out. This is often encoded in metadata, or else you need to infer it from the dataset (see more below).
 4. (Optional) All 'metrics' you have available in the dataset (think: distances, areas, volumes). You need these if you want to use the more awesome features.
 
 
