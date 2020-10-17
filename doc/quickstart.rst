@@ -76,7 +76,8 @@ This becomes especially handy when you try to compute things on multiple dataset
     two grid positions. You can find instructions on how to reconstruct additional dimensions `here <autogenerate_examples.ipynb>`_.
 3. Determine if your axes are periodic or define a boundary condition.
     You can specify this either for all axes ``Grid(ds, periodic=False, boundary='fill')``
-    or per axis, by passing a list/dictionary with seperate axis names ``Grid(ds, periodic=['X'], boundary={'Y':'fill'}``. 
+    or per axis, by passing a list/dictionary with separate axis names ``Grid(ds, periodic=['X'], boundary={'Y':'fill'}``.
+    The boundary condition is used for operations at the boundary points, when an extra point needs to be added.
 4. Parse the `metrics <grid_metrics.ipynb>`_.
     For this you should find out all the variables in your dataset that represent a metric (distance, area, volume),
     and sort them according to the axis or axes they represent. You can then pass a dictionary with a tuple of the representative axis/axes as key
