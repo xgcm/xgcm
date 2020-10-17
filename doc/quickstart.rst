@@ -83,7 +83,7 @@ This becomes especially handy when you try to compute things on multiple dataset
     and sort them according to the axis or axes they represent. You can then pass a dictionary with a tuple of the representative axis/axes as key
     and the names of the corresponding fields in `ds` as a list of strings. xgcm will automatically figure out to which grid position they belong. 
     An example for two distances along the `X` axis and two areas in the `X`/`Y` plane: ``{('X'):['distance_a', 'distance_b'], ..., ('X', 'Y'):['area_i', 'area_j'],}``. 
-    This dictionary can contain any combination of axes as keys. The less metrics you are missing, the more accurate the results will be. 
+    This dictionary can contain any combination of axes as keys. The more metrics you have, the more accurate the results will be. 
 
 Finally put all those steps together:
 
