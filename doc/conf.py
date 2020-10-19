@@ -68,7 +68,7 @@ def setup(app):
 # link to github issues
 extlinks = {
     "issue": ("https://github.com/xgcm/xgcm/issues/%s", "GH#"),
-    "pr": ("https://github.com/xgcm/xgcm/issues/%s", "GH#"),
+    "pull": ("https://github.com/xgcm/xgcm/issues/%s", "GH#"),
 }
 
 
