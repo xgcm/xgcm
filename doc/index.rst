@@ -53,5 +53,5 @@ Contents
    autogenerate_examples
    whats-new
    contributor_guide
-   how-to-release
+   how-to-release.md
    api
