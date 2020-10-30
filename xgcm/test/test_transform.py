@@ -868,6 +868,36 @@ def test_grid_transform_auto_naming(multidim_cases):  # only test a few cases
     assert expected_data_coord in transformed.coords
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
+@pytest.mark.parametrize("bypass_checks", [True, False])
+def test_grid_transform_bypass_checks(bypass_checks):
+    """Check that the bypass checks option still delivers the right results for monotonically increasing data"""
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        error_flag,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    target_data = transform_kwargs.pop("target_data", None)
+
+    transformed = grid.transform(
+        source.data,
+        axis,
+        target,
+        target_data=target_data,
+        bypass_checks=bypass_checks,
+        **transform_kwargs
+    )
+
+    xr.testing.assert_allclose(transformed, expected.data)
+
+
 """ Multidimensional tests with dask scheduler """
 
 

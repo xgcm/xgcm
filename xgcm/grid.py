@@ -773,6 +773,7 @@ class Axis:
         target_data=None,
         method="linear",
         mask_edges=True,
+        bypass_checks=False,
         suffix="_transformed",
     ):
         """Convert an array of data to new 1D-coordinates.
@@ -834,6 +835,11 @@ class Axis:
         mask_edges : bool, optional
             If activated, `target` values outside the range of `target_data`
             are masked with nan, by default True. Only applies to 'linear' method.
+        bypass_checks : bool, optional
+            Only applies for `method='linear'`.
+            Option to bypass logic to flip data if monotonically decreasing along the axis.
+            This will improve performance if True, but the user needs to ensure that values
+            are increasing alon the axis.
         suffix : str, optional
             Customizable suffix to the name of the output array. This will
             be added to the original name of `da`. Defaults to `_transformed`.
@@ -910,6 +916,7 @@ class Axis:
                 dim,  # in this case the dimension of phi and theta are the same
                 target_dim,
                 mask_edges=mask_edges,
+                bypass_checks=bypass_checks,
             )
         elif method == "conservative":
             # the conservative method requires `target_data` to be on the `outer` coordinate.
@@ -1793,6 +1800,11 @@ class Grid:
         mask_edges : bool, optional
             If activated, `target` values outside the range of `target_data`
             are masked with nan, by default True. Only applies to 'linear' method.
+        bypass_checks : bool, optional
+            Only applies for `method='linear'`.
+            Option to bypass logic to flip data if monotonically decreasing along the axis.
+            This will improve performance if True, but the user needs to ensure that values
+            are increasing alon the axis.
         suffix : str, optional
             Customizable suffix to the name of the output array. This will
             be added to the original name of `da`. Defaults to `_transformed`.
