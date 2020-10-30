@@ -66,7 +66,11 @@ def setup(app):
 
 
 # link to github issues
-extlinks = {"issue": ("https://github.com/xgcm/xgcm/issues/%s", "GH")}
+extlinks = {
+    "issue": ("https://github.com/xgcm/xgcm/issues/%s", "GH#"),
+    "pull": ("https://github.com/xgcm/xgcm/issues/%s", "GH#"),
+}
+
 
 autosummary_generate = True
 numpydoc_class_members_toctree = True
