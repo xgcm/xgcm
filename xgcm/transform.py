@@ -21,7 +21,7 @@ def _interp_1d_linear(
     phi, theta, target_theta_levels, mask_edges, bypass_checks, output
 ):
     # rough check if the data is decreasing with depth. If that is the case, flip.
-    if bypass_checks:
+    if not bypass_checks:
         theta_sign_test = theta[~np.isnan(theta)]
         if theta_sign_test[-1] < theta_sign_test[0]:
             theta = theta[::-1]
