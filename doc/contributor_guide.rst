@@ -20,7 +20,7 @@ Environments
 The easiest way to start developing xgcm pull requests,
 is to install one of the conda environments provided in the `ci folder <https://github.com/xgcm/xgcm/tree/master/ci>`_::
 
-    conda env create -f ci/environment-py36.yml
+    conda env create -f ci/environment-py3.8.yml
 
 We use `black <https://github.com/python/black>`_ as code formatter and pull request will
 fail in the CI if not properly formatted.
