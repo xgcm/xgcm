@@ -11,17 +11,21 @@ from numba import jit, guvectorize, float32, float64, boolean
 
 @guvectorize(
     [
-        (float64[:], float64[:], float64[:], boolean, float64[:]),
-        (float32[:], float32[:], float32[:], boolean, float32[:]),
+        (float64[:], float64[:], float64[:], boolean, boolean, float64[:]),
+        (float32[:], float32[:], float32[:], boolean, boolean, float32[:]),
     ],
-    "(n),(n),(m),()->(m)",
+    "(n),(n),(m),(),()->(m)",
     nopython=True,
 )
-def _interp_1d_linear(phi, theta, target_theta_levels, mask_edges, output):
-    # if last theta value is smaller than first, assume the profile is monotonically decreasing and flip
-    if theta[-1] < theta[0]:
-        theta = theta[::-1]
-        phi = phi[::-1]
+def _interp_1d_linear(
+    phi, theta, target_theta_levels, mask_edges, bypass_checks, output
+):
+    # rough check if the data is decreasing with depth. If that is the case, flip.
+    if not bypass_checks:
+        theta_sign_test = theta[~np.isnan(theta)]
+        if theta_sign_test[-1] < theta_sign_test[0]:
+            theta = theta[::-1]
+            phi = phi[::-1]
 
     output[:] = np.interp(target_theta_levels, theta, phi)
 
@@ -34,7 +38,9 @@ def _interp_1d_linear(phi, theta, target_theta_levels, mask_edges, output):
                 output[i] = np.nan
 
 
-def interp_1d_linear(phi, theta, target_theta_levels, mask_edges=False):
+def interp_1d_linear(
+    phi, theta, target_theta_levels, mask_edges=False, bypass_checks=False
+):
     """
     Vectorized interpolation of scalar phi to isosurfaces of scalar theta
     along the final axis.
@@ -51,13 +57,17 @@ def interp_1d_linear(phi, theta, target_theta_levels, mask_edges=False):
         Determines how to handle theta values that exceed the bounds of
         target_theta_levels. If False, fill with nearest valid values. If
         True, fill with NaNs.
+    bypass_checks : bool, optional
+        Option to bypass logic to flip data if monotonically decreasing along the axis.
+        This will improve performance if True, but the user needs to ensure that values
+        are increasing alon the axis.
 
     Returns
     -------
     phi_interp : array
         Array of shape (..., m) of phi interpolated to theta isosurfaces.
     """
-    return _interp_1d_linear(phi, theta, target_theta_levels, mask_edges)
+    return _interp_1d_linear(phi, theta, target_theta_levels, mask_edges, bypass_checks)
 
 
 @guvectorize(
@@ -134,7 +144,9 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
 
     assert phi.shape[-1] == (theta.shape[-1] - 1)
     assert target_theta_bins.ndim == 1
-    # flip theta if needed
+
+    # flip target_theta_bins if needed (only needed for the conservative method,
+    # np.interp handles this by itself)
     target_diff = np.diff(target_theta_bins)
     if all(target_diff < 0):
         flip_switch = True

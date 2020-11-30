@@ -125,8 +125,6 @@ cases = {
         },
     },
     # example of interpolating onto a tracer that descreases with depth
-    # This fails due to the temp not increasing. We should implement a heuristic
-    # to switch the direction...
     "linear_depth_temp": {
         "source_coord": ("depth", [20, 40, 60, 80, 100, 120]),
         "source_data": ("data", [-3, 0, 2, 6, 4, 1]),
@@ -138,6 +136,27 @@ cases = {
         "expected_data": (
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        # "error": True,  # this currently fails but shouldnt
+        "transform_kwargs": {
+            "method": "linear",
+            "target_data": "temp",
+            "mask_edges": False,
+        },
+    },
+    # example of interpolating onto a tracer that descreases with depth
+    "linear_depth_temp_missing_values": {
+        "source_coord": ("depth", [20, 40, 60, 80, 100, 120]),
+        "source_data": ("data", [-3, 0, 2, 6, 4, 1]),
+        "source_additional_data_coord": ("depth", [20, 40, 60, 80, 100, 120]),
+        "source_additional_data": ("temp", [np.nan, 24, 20, 10, 5, 1]),
+        "target_coord": ("something", [0, 5, 10, 11, 15, 20]),
+        "target_data": ("something", [0, 5, 10, 11, 15, 20]),
+        "expected_coord": ("something", [0, 5, 10, 11, 15, 20]),
+        "expected_data": (
+            "data",
+            [1.0, 4.0, 6.0, 5.6, 4.0, 2.0],
         ),
         "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
         # "error": True,  # this currently fails but shouldnt
@@ -875,6 +894,36 @@ def test_grid_transform_auto_naming(multidim_cases):  # only test a few cases
 
     transformed = grid.transform(source.data, axis, target, **transform_kwargs)
     assert expected_data_coord in transformed.coords
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+@pytest.mark.parametrize("bypass_checks", [True, False])
+def test_grid_transform_bypass_checks(bypass_checks):
+    """Check that the bypass checks option still delivers the right results for monotonically increasing data"""
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        error_flag,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    target_data = transform_kwargs.pop("target_data", None)
+
+    transformed = grid.transform(
+        source.data,
+        axis,
+        target,
+        target_data=target_data,
+        bypass_checks=bypass_checks,
+        **transform_kwargs
+    )
+
+    xr.testing.assert_allclose(transformed, expected.data)
 
 
 """ Multidimensional tests with dask scheduler """
