@@ -58,7 +58,7 @@ setup(
     long_description_content_type="text/x-rst",
     setup_requires="setuptools_scm",
     use_scm_version={
-        "write_to": "rechunker/_version.py",
+        "write_to": "xgcm/_version.py",
         "write_to_template": '__version__ = "{version}"',
         "tag_regex": r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$",
     },
