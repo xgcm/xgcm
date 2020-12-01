@@ -9,7 +9,6 @@ dependencies:
   - future
   - pip
   - black
-  - setuptools_scm
   - pip:
     - docrep<=0.2.7
     - codecov
