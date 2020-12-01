@@ -38,7 +38,7 @@ jobs:
       - name: Set up conda environment
         shell: bash -l {0}
         run: |
-          python -m pip install -e .
+          python -m pip install -e . --no-deps --force-reinstall
           conda list
       - name: Run Tests
         shell: bash -l {0}
@@ -76,7 +76,7 @@ jobs:
     - name: Set up conda environment
       shell: bash -l {0}
       run: |
-        python -m pip install -e .
+        python -m pip install -e . --no-deps --force-reinstall
         conda list
     - name: Run Tests
       shell: bash -l {0}
@@ -106,7 +106,7 @@ jobs:
     - name: Set up conda environment
       shell: bash -l {0}
       run: |
-        python -m pip install -e .
+        python -m pip install -e . --no-deps --force-reinstall
         conda list
     - name: Run Tests
       shell: bash -l {0}
