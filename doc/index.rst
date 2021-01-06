@@ -50,7 +50,8 @@ Contents
    xgcm-examples/example_eccov4
    example_MOM6
    xgcm-examples/example_nemo_idealized
-   autogenerate_examples
+   ..
+       autogenerate_examples
    whats-new
    contributor_guide
    api
