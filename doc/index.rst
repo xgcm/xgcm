@@ -46,11 +46,10 @@ Contents
    grid_topology
    grid_metrics
    transform
-   example_mitgcm
-   example_eccov4
-   example_MOM6
-   example_nemo_idealized
-   autogenerate_examples
+   xgcm-examples/02_mitgcm
+   xgcm-examples/01_eccov4
+   xgcm-examples/04_nemo_idealized
+   xgcm-examples/05_autogenerate
    whats-new
    contributor_guide
    api

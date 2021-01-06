@@ -1,0 +1,3 @@
+[submodule "doc/xgcm-examples"]
+	path = doc/xgcm-examples
+	url = https://github.com/xgcm/xgcm-examples.git
