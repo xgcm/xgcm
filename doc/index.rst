@@ -46,7 +46,7 @@ Contents
    grid_topology
    grid_metrics
    transform
-   example_mitgcm
+   xgcm-examples/example_mitgcm
    example_eccov4
    example_MOM6
    example_nemo_idealized
