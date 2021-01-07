@@ -48,6 +48,7 @@ Contents
    transform
    xgcm-examples/02_mitgcm
    xgcm-examples/01_eccov4
+   xgcm-examples/03_MOM6
    xgcm-examples/04_nemo_idealized
    xgcm-examples/05_autogenerate
    whats-new
