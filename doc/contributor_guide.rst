@@ -57,3 +57,20 @@ From here the github actions take over and package things for `Pypi <https://pyp
 The conda-forge package will be triggered by the Pypi release and you will have to approve a PR in `xgcm-feedstock <https://github.com/conda-forge/xgcm-feedstock>`_. This takes a while, usually a few hours to a day.
 
 Thats it!
+
+How to synchronize examples from xgcm-examples
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Most of the example notebooks in this documentation are located in the seperate repo `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_, which is automatically linked to `pangeo gallery <https://gallery.pangeo.io>`_. These examples are synced into this documentation using git submodules.
+Currently updates in the example repo need to be manually synced to this repo with the following steps: 
+
+From the xgcm root directory do::
+    cd doc/xgcm-examples
+    
+You are now in a seperate git repository and can pull all updates::
+    git pull
+    
+Now navigate back to the xgcm repo::
+    cd -
+    
+And commit, push like usual to create a pull request.
+
