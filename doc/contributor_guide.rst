@@ -64,13 +64,16 @@ Most of the example notebooks in this documentation are located in the seperate 
 Currently updates in the example repo need to be manually synced to this repo with the following steps: 
 
 From the xgcm root directory do::
+
     cd doc/xgcm-examples
     
 You are now in a seperate git repository and can pull all updates::
+
     git pull
     
 Now navigate back to the xgcm repo::
+
     cd -
     
-And commit, push like usual to create a pull request.
+And commit, push like usual to create a pull request.::
 
