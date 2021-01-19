@@ -6,7 +6,6 @@ dependencies:
   - numpy
   - pytest
   - future
-  - llvmlite
   - pip
   - pip:
     - docrep<=0.2.7
