@@ -1,7 +1,10 @@
 name: test_env_xgcm
+channels:
+  - numba
 dependencies:
   - python
   - numpy
+  - llvmlite
   - pytest
   - pip
   - pip:
