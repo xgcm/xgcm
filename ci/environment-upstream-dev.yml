@@ -1,9 +1,12 @@
 name: test_env_xgcm
+channels:
+  - numba
 dependencies:
   - python
   - numpy
   - pytest
   - future
+  - llvmlite
   - pip
   - pip:
     - docrep<=0.2.7
@@ -15,4 +18,3 @@ dependencies:
     - git+https://github.com/dask/distributed.git
     - toolz
     - git+https://github.com/numba/numba.git
-    - git+https://github.com/numba/llvmlite.git
