@@ -1,6 +1,3 @@
-# python 3 compatiblity
-from __future__ import print_function, division
-
 # make some functions for taking divergence
 from dask import array as da
 import xray
