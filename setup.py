@@ -9,7 +9,6 @@ install_requires = [
     "xarray>=0.14.1",
     "dask",
     "numpy",
-    "future",
     "docrep<=0.2.7",
 ]
 doc_requires = [
