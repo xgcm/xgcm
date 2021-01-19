@@ -15,4 +15,4 @@ dependencies:
     - git+https://github.com/dask/distributed.git
     - toolz
     - git+https://github.com/numba/numba.git
-    - llvmlite
+    - git+https://github.com/numba/llvmlite.git
