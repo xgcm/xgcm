@@ -30,6 +30,8 @@ jobs:
           key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment-py${{ matrix.python-version }}.yml') }}
       - uses: conda-incubator/setup-miniconda@v2
         with:
+          channels: conda-forge
+          channel-priority: strict
           activate-environment: test_env_xgcm # Defined in ci/environment*.yml
           auto-update-conda: false
           python-version: ${{ matrix.python-version }}
@@ -68,6 +70,8 @@ jobs:
         key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment-core-deps.yml') }}
     - uses: conda-incubator/setup-miniconda@v2
       with:
+        channels: conda-forge
+        channel-priority: strict
         activate-environment: test_env_xgcm # Defined in ci/environment-core-deps.yml
         auto-update-conda: false
         python-version: 3.8
@@ -98,6 +102,8 @@ jobs:
         key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment-upstream-dev.yml') }}
     - uses: conda-incubator/setup-miniconda@v2
       with:
+        channels: conda-forge
+        channel-priority: strict
         activate-environment: test_env_xgcm # Defined in ci/environment-upstream-dev.yml
         auto-update-conda: false
         python-version: 3.8
