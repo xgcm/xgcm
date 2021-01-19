@@ -5,7 +5,6 @@ dependencies:
   - pytest
   - future
   - pip
-  - black # we should perhaps move this one back to pip in the future to catch issues related to new black versions
   - pip:
     - docrep<=0.2.7
     - codecov
@@ -16,3 +15,4 @@ dependencies:
     - git+https://github.com/dask/distributed.git
     - toolz
     - git+https://github.com/numba/numba.git
+    - llvmlite
