@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python
   - numpy
+  - llvmlite
   - pytest
   - future
   - pip
