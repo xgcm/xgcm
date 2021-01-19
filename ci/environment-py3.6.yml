@@ -6,9 +6,7 @@ dependencies:
   - numpy
   - numba<=0.48
   - pytest
-  - future
   - pip
-  - black
   - pip:
     - docrep<=0.2.7
     - codecov
