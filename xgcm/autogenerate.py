@@ -1,5 +1,3 @@
-from __future__ import print_function
-from future.utils import iteritems
 from xgcm.grid import Axis, raw_interp_function
 import xarray as xr
 
