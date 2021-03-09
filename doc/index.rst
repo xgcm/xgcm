@@ -30,7 +30,7 @@ evolving, open-source, python-based framework for GCM analysis will enhance
 the productivity of the field as a whole, accelerating the rate of discovery in
 climate science. xgcm is part of the Pangeo_ initiative.
 
-.. _Pangeo: http://pangeo-data.github.io
+.. _Pangeo: http://pangeo.io
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
@@ -46,11 +46,11 @@ Contents
    grid_topology
    grid_metrics
    transform
-   example_mitgcm
-   example_eccov4
-   example_MOM6
-   example_nemo_idealized
-   autogenerate_examples
+   xgcm-examples/02_mitgcm
+   xgcm-examples/01_eccov4
+   xgcm-examples/03_MOM6
+   xgcm-examples/04_nemo_idealized
+   xgcm-examples/05_autogenerate
    whats-new
    contributor_guide
    api

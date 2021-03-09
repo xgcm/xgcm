@@ -8,6 +8,11 @@ v0.6.0 (unreleased)
 
 .. _whats-new.0.6.0:
 
+Documentation
+~~~~~~~~~~~~~
+- Migrated model example notebooks to `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_ which integrates with `pangeo gallery <https://gallery.pangeo.io/repos/xgcm/xgcm-examples/>`_ (:pull:`294`)
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
 
 v0.5.1 (2020/10/16)
 -------------------------

@@ -47,7 +47,7 @@ Getting Started
 To learn how to install and use xgcm for your dataset, visit the `xgcm documentation`_.
 
 
-.. _Pangeo: http://pangeo-data.github.io
+.. _Pangeo: http://pangeo.io
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org
 .. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grid
