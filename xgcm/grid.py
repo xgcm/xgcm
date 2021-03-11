@@ -101,9 +101,10 @@ class Axis:
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Neumann boundary condition.)
+              (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Dirichlet boundary condition.)
+              value. (i.e. a limited form of Neumann boundary condition where
+              the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
             This sets the default value. It can be overriden by specifying the
@@ -259,9 +260,9 @@ class Axis:
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Neumann boundary condition.)
+              (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Dirichlet boundary condition.)
+              value. (i.e. a limited form of Neumann boundary condition.)
         fill_value : float, optional
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
@@ -1082,9 +1083,9 @@ class Grid:
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Neumann boundary condition.)
+              (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Dirichlet boundary condition.)
+              value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
             Optionally a dict mapping axis name to seperate values for each axis
@@ -1385,9 +1386,9 @@ class Grid:
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Neumann boundary condition.)
+              (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Dirichlet boundary condition.)
+              value. (i.e. a limited form of Neumann boundary condition.)
 
             Optionally a dict with seperate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
