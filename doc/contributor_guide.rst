@@ -9,7 +9,7 @@ contributions.
 Did you notice a bug? Are you missing a feature? A good first starting place is to
 open an issue in the `github issues page <https://github.com/xgcm/xgcm/issues>`_.
 
-Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](). Notebooks from there will be rendered in [pangeo-gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/).
+Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples). Notebooks from there will be rendered in [pangeo-gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/).
 
 
 In order to contribute to xgcm, please fork the repository and submit a pull request.
