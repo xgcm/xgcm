@@ -25,6 +25,19 @@ is to install one of the conda environments provided in the `ci folder <https://
 Activate the environment with::
 
     conda activate test_env_xgcm
+    
+Finally install xgcm itself in the now activated environment::
+    
+    pip install -e .
+    
+A good first step is to check if all the tests pass locally::
+    
+    pytest -v 
+
+And now you can develop away...
+
+Code Formatting
+^^^^^^^^^^^^^^^
 
 We use `black <https://github.com/python/black>`_ as code formatter and pull request will
 fail in the CI if not properly formatted.
