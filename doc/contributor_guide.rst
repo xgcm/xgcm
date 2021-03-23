@@ -9,6 +9,8 @@ contributions.
 Did you notice a bug? Are you missing a feature? A good first starting place is to
 open an issue in the `github issues page <https://github.com/xgcm/xgcm/issues>`_.
 
+Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples). Notebooks from there will be rendered in [pangeo-gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/).
+
 
 In order to contribute to xgcm, please fork the repository and submit a pull request.
 A good step by step tutorial for this can be found in the
@@ -25,6 +27,19 @@ is to install one of the conda environments provided in the `ci folder <https://
 Activate the environment with::
 
     conda activate test_env_xgcm
+    
+Finally install xgcm itself in the now activated environment::
+    
+    pip install -e .
+    
+A good first step is to check if all the tests pass locally::
+    
+    pytest -v 
+
+And now you can develop away...
+
+Code Formatting
+^^^^^^^^^^^^^^^
 
 We use `black <https://github.com/python/black>`_ as code formatter and pull request will
 fail in the CI if not properly formatted.
