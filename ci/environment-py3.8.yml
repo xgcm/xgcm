@@ -10,7 +10,7 @@ dependencies:
   - pip
   - black
   - pip:
-    - docrep<=0.2.7
+    - docrep
     - codecov
     - pytest-cov
     - pytest-xdist
