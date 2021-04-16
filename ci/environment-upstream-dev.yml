@@ -1,10 +1,12 @@
 name: test_env_xgcm
 channels:
-  - numba
+  # Get the latest numba from numba/label/dev
+  - numba/label/dev
+  - conda-forge
 dependencies:
   - python
   - numpy
-  - llvmlite
+  - numba
   - pytest
   - future
   - pip
@@ -18,4 +20,3 @@ dependencies:
     - git+https://github.com/dask/dask.git
     - git+https://github.com/dask/distributed.git
     - toolz
-    - git+https://github.com/numba/numba.git
