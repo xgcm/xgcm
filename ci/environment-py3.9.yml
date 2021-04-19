@@ -2,7 +2,7 @@ name: test_env_xgcm
 channels:
   - conda-forge
 dependencies:
-  - python=3.7
+  - python=3.9
   - xarray
   - dask
   - numpy
@@ -16,4 +16,3 @@ dependencies:
     - codecov
     - pytest-cov
     - pytest-xdist
-
