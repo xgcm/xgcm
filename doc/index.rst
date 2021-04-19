@@ -42,6 +42,7 @@ Contents
    :maxdepth: 1
 
    installation
+   quickstart
    grids
    grid_topology
    grid_metrics
