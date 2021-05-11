@@ -340,7 +340,7 @@ We can illustrate it by creating some data located at the U point:
 
 .. ipython:: python
 
-    g = xr.ufuncs.sqrt(ds.x_g + 0.5) + xr.ufuncs.sin((ds.x_g - 0.5) * 2 * np.pi / 8)
+    g = np.sqrt(ds.x_g + 0.5) + np.sin((ds.x_g - 0.5) * 2 * np.pi / 8)
     g
 
 We show here the value of the extra added point for 5 cases (extended, extrapolated, filled with 0, filled with 5,
