@@ -350,7 +350,7 @@ as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one perio
 .. ipython:: python
 
     def plot_bc(ds):
-        plt.plot(ds.x_g, g, marker='x', color='C6', label='g')
+        plt.plot(ds.x_g, g, marker='o', color='C6', label='g')
         #
         plt.scatter([ds.x_g[-1]+1], [2*g[-1] - g[-2]], color='C0', label='extrapolate', marker='o')
         plt.plot([ds.x_g[-2], ds.x_g[-1]+1], [g[-2], 2*g[-1] - g[-2]], '--', color='C0', label='_')
