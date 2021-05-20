@@ -1047,6 +1047,7 @@ def test_chunking_dim_error():
         transformed = grid.transform(source.data, axis, target, **transform_kwargs)
 
 
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_input_check():
     (
         source,

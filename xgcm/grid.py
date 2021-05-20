@@ -874,10 +874,7 @@ class Axis:
             ("target", target, [xr.DataArray, np.ndarray]),
             ("target_data", target_data, [xr.DataArray]),
         ]:
-            if not (
-                any([isinstance(variable, ty) for ty in allowed_types])
-                or variable is None
-            ):
+            if not (isinstance(variable, tuple(allowed_types)) or variable is None):
                 raise ValueError(
                     f"`{var_name}` needs to be a {' or '.join([str(a) for a in allowed_types])}. Found {type(variable)}"
                 )
