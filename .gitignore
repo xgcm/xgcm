@@ -59,7 +59,16 @@ target/
 
 # notebook
 */.ipynb_checkpoints/*
+
+# vscode stuff
 .vscode/settings.json
+.vscode/launch.json
+
+# temporary dask stuff
+dask-worker-space/purge.lock
+dask-worker-space/global.lock
 dask-worker-space/dask-worker-space/global.lock
 dask-worker-space/dask-worker-space/purge.lock
-.vscode/launch.json
+
+# CI/Linting
+.mypy_cache

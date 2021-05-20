@@ -1066,7 +1066,7 @@ def test_grid_transform_input_check():
 
     # Make sure that a sensible error is raised if xr.Dataset is provided
     # for either one of `source`, `target` or `target_data` input arguments.
-    match_msg = r"needs to be a xr.DataArray. Found"
+    match_msg = r"needs to be a"
     with pytest.raises(ValueError, match=r"`da` " + match_msg):
         transformed = grid.transform(source, axis, target, **transform_kwargs)
 

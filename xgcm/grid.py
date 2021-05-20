@@ -869,14 +869,17 @@ class Axis:
             )
 
         # complain if the target values are not provided as xr.dataarray
-        for var_name, variable in [
-            ("da", da),
-            ("target", target),
-            ("target_data", target_data),
+        for var_name, variable, allowed_types in [
+            ("da", da, [xr.DataArray]),
+            ("target", target, [xr.DataArray, np.ndarray]),
+            ("target_data", target_data, [xr.DataArray]),
         ]:
-            if not (isinstance(variable, xr.DataArray) or variable is None):
+            if not (
+                any([isinstance(variable, ty) for ty in allowed_types])
+                or variable is None
+            ):
                 raise ValueError(
-                    f"`{var_name}` needs to be a xr.DataArray. Found {type(variable)}"
+                    f"`{var_name}` needs to be a {' or '.join([str(a) for a in allowed_types])}. Found {type(variable)}"
                 )
 
         def _target_data_name_handling(target_data):
