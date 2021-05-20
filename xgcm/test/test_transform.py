@@ -812,7 +812,7 @@ def test_conservative_interp_warn():
 
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_noname_data(multidim_cases):
-    """ Check handling of a `da` input without name"""
+    """Check handling of a `da` input without name"""
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
     axis = list(grid_kwargs["coords"].keys())[0]
@@ -829,7 +829,7 @@ def test_grid_transform_noname_data(multidim_cases):
 
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_noname_targetdata():
-    """ Check handling of a `target_data` input without name"""
+    """Check handling of a `target_data` input without name"""
     (
         source,
         grid_kwargs,
