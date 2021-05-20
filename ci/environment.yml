@@ -1,0 +1,19 @@
+name: test_env_xgcm
+channels:
+  - conda-forge
+dependencies:
+  - codecov
+  - dask
+  - docrep<=0.2.7
+  - future
+  - numba
+  - numpy
+  - pip
+  - pre-commit
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - python
+  - xarray
+
+ 
