@@ -30,7 +30,7 @@ New Features
 ~~~~~~~~~~~~
 - :py:meth:`~xgcm.grid.Grid.transform` and :py:meth:`~xgcm.grid.Axis.transform` now enable 1-dimensional coordinate transformation (:pull:`205`, :issue:`222`).
   By `Ryan Abernathey <https://github.com/rabernat>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
-  
+
 Bug fixes
 ~~~~~~~~~
 - More reliable handling of missing values in :py:meth:`Grid.average`. Missing values between data and metrics do not have to be aligned by the user anymore. (:pull:`259`). By `Julius Busecke <https://github.com/jbusecke>`_.
@@ -49,12 +49,12 @@ New Features
 - Support for specifying default ``boundary`` and ``fill_value`` in the :py:class:`Grid` constructor.
   Default values can be overridden in individual method calls (e.g. :py:meth:`Grid.interp`) as usual.
   By `Deepak Cherian <https://github.com/dcherian>`_.
-  
+
   Bug fixes
 ~~~~~~~~~
 - Fix for parsing fill_values as dictionary (:issue:`218`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
-  
+
 Internal Changes
 ~~~~~~~~~~~~~~~~
 - Complete refactor of the CI to github actions (:issue:`214`).

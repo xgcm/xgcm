@@ -89,7 +89,7 @@ By combining the primitive interpolation / difference
 operators with the metrics, Xgcm can perform finite-volume integrals and
 derivatives in a manner consistent with simulation internals.
 Xgcm therefore can serve as a foundation for advanced GCM analytics, such as
-tracer, momentum, vorticity, and energy budgets.  
+tracer, momentum, vorticity, and energy budgets.
 Xgcm supports orthogonal curvilinear grids, including complex, multiply-connected
 grid topologies such as the cubed-sphere.
 

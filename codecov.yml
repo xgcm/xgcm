@@ -14,7 +14,7 @@ coverage:
         informational: true
     patch: off
     changes: off
-    
+
 ignore:
   - "setup.py"
   - "versioneer.py"
