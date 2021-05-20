@@ -287,7 +287,7 @@ We can reverse the difference operation by taking a cumsum:
 Which is approximately equal to the original ``f``, modulo the numerical errors
 accrued due to the discretization of the data.
 
-By default, these grid operations will drop any coordinate that are not 
+By default, these grid operations will drop any coordinate that are not
 dimensions. The keep_coords argument allow to preserve compatible coordinates.
 For example:
 

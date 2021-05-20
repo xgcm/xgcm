@@ -12,7 +12,12 @@ on:
 jobs:
   build:
     name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
@@ -21,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Cache conda
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         env:
           # Increase this value to reset cache if ci/environment.yml has not changed
           CACHE_NUMBER: 0
@@ -33,15 +38,13 @@ jobs:
           activate-environment: test_env_xgcm # Defined in ci/environment*.yml
           auto-update-conda: false
           python-version: ${{ matrix.python-version }}
-          environment-file: ci/environment-py${{ matrix.python-version }}.yml
+          environment-file: ci/environment.yml
           use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
       - name: Set up conda environment
-        shell: bash -l {0}
         run: |
           python -m pip install -e . --no-deps
           conda list
       - name: Run Tests
-        shell: bash -l {0}
         run: |
           pytest -n auto --cov=./ --cov-report=xml
       - name: Upload code coverage to Codecov
@@ -55,11 +58,16 @@ jobs:
 
   core-deps-dev:
     name: Build (core-dependencies)
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
     - uses: actions/checkout@v2
     - name: Cache conda
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       env:
         # Increase this value to reset cache if ci/environment-core-deps.yml has not changed
         CACHE_NUMBER: 0
@@ -74,22 +82,25 @@ jobs:
         environment-file: ci/environment-core-deps.yml
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
     - name: Set up conda environment
-      shell: bash -l {0}
       run: |
         python -m pip install -e . --no-deps
         conda list
     - name: Run Tests
-      shell: bash -l {0}
       run: |
         pytest -n auto
 
   upstream-dev:
     name: Build (upstream-dev)
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
     - uses: actions/checkout@v2
     - name: Cache conda
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       env:
         # Increase this value to reset cache if ci/environment-upstream-dev.yml has not changed
         CACHE_NUMBER: 0
@@ -104,11 +115,9 @@ jobs:
         environment-file: ci/environment-upstream-dev.yml
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
     - name: Set up conda environment
-      shell: bash -l {0}
       run: |
         python -m pip install -e . --no-deps
         conda list
     - name: Run Tests
-      shell: bash -l {0}
       run: |
         pytest -n auto
