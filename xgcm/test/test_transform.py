@@ -812,7 +812,7 @@ def test_conservative_interp_warn():
 
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_noname_data(multidim_cases):
-    """ Check handling of a `da` input without name"""
+    """Check handling of a `da` input without name"""
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
     axis = list(grid_kwargs["coords"].keys())[0]
@@ -829,7 +829,7 @@ def test_grid_transform_noname_data(multidim_cases):
 
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_grid_transform_noname_targetdata():
-    """ Check handling of a `target_data` input without name"""
+    """Check handling of a `target_data` input without name"""
     (
         source,
         grid_kwargs,
@@ -1045,3 +1045,44 @@ def test_chunking_dim_error():
     grid = Grid(source, periodic=False, **grid_kwargs)
     with pytest.raises(ValueError):
         transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+def test_grid_transform_input_check():
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        error_flag,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    # construct output name
+    transform_kwargs.setdefault("suffix", "")
+
+    # Make sure that a sensible error is raised if xr.Dataset is provided
+    # for either one of `source`, `target` or `target_data` input arguments.
+
+    err_msg = "transform only accepts xr.DataArray as input for `source`, `target` and `target_data`."
+
+    with pytest.raises(ValueError) as e_info:
+        transformed = grid.transform(source, axis, target, **transform_kwargs)
+    assert str(e_info.value) == err_msg
+
+    with pytest.raises(ValueError) as e_info:
+        transformed = grid.transform(
+            source.data, axis, target.to_dataset(name="dummy"), **transform_kwargs
+        )
+    assert str(e_info.value) == err_msg
+
+    transform_kwargs["target_data"] = transform_kwargs["target_data"].to_dataset(
+        name="dummy"
+    )
+
+    with pytest.raises(ValueError) as e_info:
+        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+    assert str(e_info.value) == err_msg
