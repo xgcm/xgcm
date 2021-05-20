@@ -1066,16 +1066,17 @@ def test_grid_transform_input_check():
 
     # Make sure that a sensible error is raised if xr.Dataset is provided
     # for either one of `source`, `target` or `target_data` input arguments.
-
-    with pytest.raises(ValueError, match=r"should be passed as xr.DataArray"):
+    match_msg = r"needs to be a xr.DataArray. Found"
+    with pytest.raises(ValueError, match=r"`da` " + match_msg):
         transformed = grid.transform(source, axis, target, **transform_kwargs)
-    with pytest.raises(ValueError, match=r"should be passed as xr.DataArray"):
+
+    with pytest.raises(ValueError, match=match_msg):
         transformed = grid.transform(
             source.data, axis, target.to_dataset(name="dummy"), **transform_kwargs
         )
+
     transform_kwargs["target_data"] = transform_kwargs["target_data"].to_dataset(
         name="dummy"
     )
-    with pytest.raises(ValueError, match=r"should be passed as xr.DataArray"):
+    with pytest.raises(ValueError, match=match_msg):
         transformed = grid.transform(source.data, axis, target, **transform_kwargs)
-    

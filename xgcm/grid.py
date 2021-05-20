@@ -868,6 +868,17 @@ class Axis:
                 "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
             )
 
+        # complain if the target values are not provided as xr.dataarray
+        for var_name, variable in [
+            ("da", da),
+            ("target", target),
+            ("target_data", target_data),
+        ]:
+            if not (isinstance(variable, xr.DataArray) or variable is None):
+                raise ValueError(
+                    f"`{var_name}` needs to be a xr.DataArray. Found {type(variable)}"
+                )
+
         def _target_data_name_handling(target_data):
             """Handle target_data input without a name"""
             if target_data.name is None:
