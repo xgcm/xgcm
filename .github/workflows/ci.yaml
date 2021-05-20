@@ -12,6 +12,7 @@ on:
 jobs:
   build:
     name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -57,6 +58,7 @@ jobs:
 
   core-deps-dev:
     name: Build (core-dependencies)
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -89,6 +91,7 @@ jobs:
 
   upstream-dev:
     name: Build (upstream-dev)
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
