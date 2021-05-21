@@ -8,6 +8,11 @@ v0.6.0 (unreleased)
 
 .. _whats-new.0.6.0:
 
+v0.5.2 (2021/5/21)
+-------------------
+
+.. _whats-new.0.5.2:
+
 Bug fixes
 ~~~~~~~~~
 - Raise more useful errors when datasets are provided as arguments to grid.transform (:pull:`329`, :issue:`328`). By `Julius Busecke <https://github.com/jbusecke>`_.
