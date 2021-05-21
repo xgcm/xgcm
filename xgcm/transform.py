@@ -182,12 +182,7 @@ def input_handling(func):
         # pop kwargs used for naming
         suffix = kwargs.pop("suffix", "")
 
-        # complain if the target values are not provided as xr.dataarray
-        if not isinstance(target_theta_levels, xr.DataArray):
-            raise ValueError("`target_theta_levels` should be passed as xr.DataArray")
-
         # rename all input dims to unique names to avoid conflicts in xr.apply_ufunc
-
         temp_dim = "temp_dim_target"
         target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
 
