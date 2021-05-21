@@ -4,7 +4,16 @@ import xarray as xr
 
 from xgcm.grid import Axis, Grid
 
-from .datasets import datasets, datasets_grid_metric
+from .datasets import (  # noqa: F401
+    all_2d,
+    all_datasets,
+    datasets,
+    datasets_grid_metric,
+    nonperiodic_1d,
+    nonperiodic_2d,
+    periodic_1d,
+    periodic_2d,
+)
 
 
 # helper function to produce axes from datasets
@@ -464,7 +473,6 @@ def test_axis_diff_and_interp_nonperiodic_2d(
     if this == "center":
         if ax_periodic:
             data_left = np.roll(data, 1, axis=axis_num)
-            data_right = data
         else:
             pad_width = [
                 pad_left if i == axis_num else pad_none for i in range(data.ndim)
@@ -476,7 +484,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(
                 ]
             )
             data_left = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
-            data_right = data
+        data_right = data
     elif this == "left":
         if ax_periodic:
             data_left = data
@@ -631,7 +639,7 @@ def test_grid_no_coords(periodic_1d):
 
 
 def test_grid_repr(all_datasets):
-    ds, periodic, expected = all_datasets
+    ds, periodic, _ = all_datasets
     grid = Grid(ds, periodic=periodic)
     r = repr(grid).split("\n")
     assert r[0] == "<xgcm.Grid>"
@@ -641,7 +649,7 @@ def test_grid_ops(all_datasets):
     """
     Check that we get the same answer using Axis or Grid objects
     """
-    ds, periodic, expected = all_datasets
+    ds, periodic, _ = all_datasets
     grid = Grid(ds, periodic=periodic)
 
     for axis_name in grid.axes.keys():
