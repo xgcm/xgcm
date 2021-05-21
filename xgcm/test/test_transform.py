@@ -1040,3 +1040,39 @@ def test_chunking_dim_error():
     grid = Grid(source, periodic=False, **grid_kwargs)
     with pytest.raises(ValueError):
         _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_grid_transform_input_check():
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        _,
+        _,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    # construct output name
+    transform_kwargs.setdefault("suffix", "")
+
+    # Make sure that a sensible error is raised if xr.Dataset is provided
+    # for either one of `source`, `target` or `target_data` input arguments.
+    match_msg = r"needs to be a"
+    with pytest.raises(ValueError, match=r"`da` " + match_msg):
+        grid.transform(source, axis, target, **transform_kwargs)
+
+    with pytest.raises(ValueError, match=match_msg):
+        grid.transform(
+            source.data, axis, target.to_dataset(name="dummy"), **transform_kwargs
+        )
+
+    transform_kwargs["target_data"] = transform_kwargs["target_data"].to_dataset(
+        name="dummy"
+    )
+    with pytest.raises(ValueError, match=match_msg):
+        grid.transform(source.data, axis, target, **transform_kwargs)
