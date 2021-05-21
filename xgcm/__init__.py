@@ -3,5 +3,5 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from .grid import Grid, Axis
 from .autogenerate import generate_grid_ds
+from .grid import Axis, Grid

@@ -1,22 +1,10 @@
-from __future__ import print_function
-from future.utils import iteritems
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
-from dask.array import from_array
 
-from xgcm.grid import Grid, Axis
+from xgcm.grid import Axis, Grid
 
-from .datasets import (
-    all_datasets,
-    nonperiodic_1d,
-    periodic_1d,
-    periodic_2d,
-    nonperiodic_2d,
-    all_2d,
-    datasets,
-    datasets_grid_metric,
-)
+from .datasets import datasets, datasets_grid_metric
 
 
 # helper function to produce axes from datasets
@@ -327,8 +315,8 @@ def test_axis_cumsum(nonperiodic_1d, boundary):
         fill_value = 0.0 if boundary == "fill" else cumsum_c_raw[0]
         np.testing.assert_allclose(cumsum_c.data, np.hstack([fill_value, cumsum_c_raw]))
 
-    ## not much point doing this...we don't have the right test datasets
-    ## to really test the errors
+    # not much point doing this...we don't have the right test datasets
+    # to really test the errors
     # other_positions = {'left', 'right', 'inner', 'outer'}.difference({to})
     # for pos in other_positions:
     #     with pytest.raises(KeyError):
@@ -347,7 +335,7 @@ def test_axis_cumsum(nonperiodic_1d, boundary):
 def test_axis_neighbor_pairs_2d(
     periodic_2d, varname, axis_name, to, roll, roll_axis, swap_order
 ):
-    ds, periodic, expected = periodic_2d
+    ds, _, _ = periodic_2d
 
     axis = Axis(ds, axis_name)
 
@@ -450,7 +438,7 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 def test_axis_diff_and_interp_nonperiodic_2d(
     all_2d, boundary, axis_name, varname, this, to
 ):
-    ds, periodic, expected = all_2d
+    ds, periodic, _ = all_2d
 
     try:
         ax_periodic = axis_name in periodic
@@ -543,27 +531,27 @@ def test_axis_errors():
     with pytest.raises(
         ValueError, match="Couldn't find a center coordinate for axis X"
     ):
-        x_axis = Axis(ds_noattr, "X", periodic=True)
+        _ = Axis(ds_noattr, "X", periodic=True)
 
     del ds_noattr.XG.attrs["axis"]
     with pytest.raises(ValueError, match="Couldn't find any coordinates for axis X"):
-        x_axis = Axis(ds_noattr, "X", periodic=True)
+        _ = Axis(ds_noattr, "X", periodic=True)
 
     ds_chopped = ds.copy().isel(XG=slice(None, 3))
     del ds_chopped["data_g"]
     with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
-        x_axis = Axis(ds_chopped, "X", periodic=True)
+        _ = Axis(ds_chopped, "X", periodic=True)
 
     ds_chopped.XG.attrs["c_grid_axis_shift"] = -0.5
     with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
-        x_axis = Axis(ds_chopped, "X", periodic=True)
+        _ = Axis(ds_chopped, "X", periodic=True)
 
     del ds_chopped.XG.attrs["c_grid_axis_shift"]
     with pytest.raises(
         ValueError,
         match="Found two coordinates without `c_grid_axis_shift` attribute for axis X",
     ):
-        x_axis = Axis(ds_chopped, "X", periodic=True)
+        _ = Axis(ds_chopped, "X", periodic=True)
 
     ax = Axis(ds, "X", periodic=True)
 
@@ -631,8 +619,6 @@ def test_create_grid_no_comodo(all_datasets):
 def test_grid_no_coords(periodic_1d):
 
     ds, periodic, expected = periodic_1d
-    grid_expected = Grid(ds, periodic=periodic)
-
     ds_nocoords = ds.drop_dims(list(ds.dims.keys()))
 
     coords = expected["axes"]

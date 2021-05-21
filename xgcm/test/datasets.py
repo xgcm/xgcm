@@ -1,8 +1,6 @@
-from __future__ import print_function
-from future.utils import iteritems
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
 
 # example from comodo website
 # https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html

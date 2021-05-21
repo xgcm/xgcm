@@ -1,9 +1,8 @@
-from __future__ import print_function
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
 
-from xgcm.grid import Grid, Axis
+from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
 
