@@ -1,22 +1,20 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from future.utils import iteritems
-from collections import OrderedDict
 import functools
 import itertools
 import operator
 import warnings
+from collections import OrderedDict
 
 import docrep
-import xarray as xr
 import numpy as np
+import xarray as xr
 
 from . import comodo
-from .duck_array_ops import _pad_array, _apply_boundary_condition, concatenate
+from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 
 try:
     import numba
-    from .transform import linear_interpolation, conservative_interpolation
+
+    from .transform import conservative_interpolation, linear_interpolation
 except ImportError:
     numba = None
 
@@ -126,7 +124,7 @@ class Axis:
             )
         self.boundary = boundary
         if fill_value is not None and not isinstance(fill_value, (int, float)):
-            raise ValueError(f"Expected 'fill_value' to be a number.")
+            raise ValueError("Expected 'fill_value' to be a number.")
         self.fill_value = fill_value if fill_value is not None else 0.0
 
         if coords:
@@ -222,7 +220,7 @@ class Axis:
 
     def _coord_desc(self):
         summary = []
-        for name, cname in iteritems(self.coords):
+        for name, cname in self.coords.items():
             coord_info = "  * %-8s %s" % (name, cname)
             if name in self._default_shifts:
                 coord_info += " --> %s" % self._default_shifts[name]
@@ -1026,7 +1024,7 @@ class Axis:
 
     def _get_axis_coord(self, da):
         """Return the position and name of the axis coordiante in a DataArray."""
-        for position, coord_name in iteritems(self.coords):
+        for position, coord_name in self.coords.items():
             # TODO: should we have more careful checking of alignment here?
             if coord_name in da.dims:
                 return position, coord_name
@@ -1367,7 +1365,7 @@ class Grid:
 
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
-        for name, axis in iteritems(self.axes):
+        for name, axis in self.axes.items():
             is_periodic = "periodic" if axis._periodic else "not periodic"
             summary.append(
                 "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
@@ -1471,7 +1469,7 @@ class Grid:
         if a global 2D dataset should be interpolated on both X and Y axis, but it is
         only periodic in the X axis, we can do this:
 
-        >>> grid.interp(da, ['X', 'Y'], periodic={'X':True, 'Y':False})
+        >>> grid.interp(da, ["X", "Y"], periodic={"X": True, "Y": False})
         """
         return self._grid_func("interp", da, axis, **kwargs)
 
@@ -1499,7 +1497,7 @@ class Grid:
         if a global 2D dataset should be differenced on both X and Y axis, but the fill
         value at the boundary should be differenc for each axis, we can do this:
 
-        >>> grid.diff(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        >>> grid.diff(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
         return self._grid_func("diff", da, axis, **kwargs)
 
@@ -1528,7 +1526,7 @@ class Grid:
         in both X and Y axis, but the fill value at the boundary should be different
         for each axis, we can do this:
 
-        >>> grid.min(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        >>> grid.min(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
         return self._grid_func("min", da, axis, **kwargs)
 
@@ -1557,7 +1555,7 @@ class Grid:
         in both X and Y axis, but the fill value at the boundary should be different
         for each axis, we can do this:
 
-        >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
         return self._grid_func("max", da, axis, **kwargs)
 
@@ -1587,7 +1585,7 @@ class Grid:
         in both X and Y axis, but the fill value at the boundary should be different
         for each axis, we can do this:
 
-        >>> grid.max(da, ['X', 'Y'], fill_value={'X':0, 'Y':100})
+        >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
         return self._grid_func("cumsum", da, axis, **kwargs)
 

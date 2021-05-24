@@ -145,8 +145,23 @@ We create it as follows.
 
     import xarray as xr
     import numpy as np
-    ds = xr.Dataset(coords={'x_c': (['x_c',], np.arange(1,10)),
-                            'x_g': (['x_g',], np.arange(0.5,9))})
+
+    ds = xr.Dataset(
+        coords={
+            "x_c": (
+                [
+                    "x_c",
+                ],
+                np.arange(1, 10),
+            ),
+            "x_g": (
+                [
+                    "x_g",
+                ],
+                np.arange(0.5, 9),
+            ),
+        }
+    )
     ds
 
 .. note::
@@ -166,7 +181,8 @@ of the same axis. We do this using the ``coords`` keyword argument, as follows:
 .. ipython:: python
 
     from xgcm import Grid
-    grid = Grid(ds, coords={'X': {'center': 'x_c', 'left': 'x_g'}})
+
+    grid = Grid(ds, coords={"X": {"center": "x_c", "left": "x_g"}})
     grid
 
 The printed information about the grid indicates that xgcm has successfully
@@ -228,9 +244,24 @@ We create an :py:class:`xarray.Dataset` with such attributes as follows:
 
 .. ipython:: python
 
-    ds = xr.Dataset(coords={'x_c': (['x_c',], np.arange(1,10), {'axis': 'X'}),
-                            'x_g': (['x_g',], np.arange(0.5,9),
-                                    {'axis': 'X', 'c_grid_axis_shift': -0.5})})
+    ds = xr.Dataset(
+        coords={
+            "x_c": (
+                [
+                    "x_c",
+                ],
+                np.arange(1, 10),
+                {"axis": "X"},
+            ),
+            "x_g": (
+                [
+                    "x_g",
+                ],
+                np.arange(0.5, 9),
+                {"axis": "X", "c_grid_axis_shift": -0.5},
+            ),
+        }
+    )
     ds
 
 (This is the same as the first example, just with additional attributes.)
@@ -252,7 +283,7 @@ interpolate or take differences along the axis. First we create some test data:
 
 .. ipython:: python
 
-    f = np.sin(ds.x_c * 2*np.pi/9)
+    f = np.sin(ds.x_c * 2 * np.pi / 9)
     print(f)
     f.plot()
 
@@ -260,7 +291,7 @@ We interpolate as follows:
 
 .. ipython:: python
 
-    f_interp = grid.interp(f, axis='X')
+    f_interp = grid.interp(f, axis="X")
     f_interp
 
 We see that the output is on the ``x_g`` points rather than the original ``xc``
@@ -275,14 +306,14 @@ The same position shift happens with a difference operation:
 
 .. ipython:: python
 
-    f_diff = grid.diff(f, axis='X')
+    f_diff = grid.diff(f, axis="X")
     f_diff
 
 We can reverse the difference operation by taking a cumsum:
 
 .. ipython:: python
 
-    grid.cumsum(f_diff, 'X')
+    grid.cumsum(f_diff, "X")
 
 Which is approximately equal to the original ``f``, modulo the numerical errors
 accrued due to the discretization of the data.
@@ -293,10 +324,10 @@ For example:
 
 .. ipython:: python
 
-    f2 = f+xr.Dataset(coords={'y': np.arange(1,3)})['y']
-    f2 = f2.assign_coords(h=f2.y**2)
+    f2 = f + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
+    f2 = f2.assign_coords(h=f2.y ** 2)
     print(f2)
-    grid.interp(f2, 'X', keep_coords=True)
+    grid.interp(f2, "X", keep_coords=True)
 
 So far we have just discussed simple grids (i.e. regular grids with a single
 face).

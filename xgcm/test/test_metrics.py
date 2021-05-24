@@ -1,11 +1,11 @@
-from __future__ import print_function
-import xarray as xr
-import numpy as np
 import functools
 import operator
-import pytest
 
-from xgcm.grid import Grid, Axis
+import numpy as np
+import pytest
+import xarray as xr
+
+from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
 
@@ -92,8 +92,8 @@ def test_metrics_2d_grid():
     ],
 )
 def test_assign_metric(key, metric_vars):
-    ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, metrics={key: metric_vars})
+    ds, coords, _ = datasets_grid_metric("C")
+    _ = Grid(ds, coords=coords, metrics={key: metric_vars})
 
 
 @pytest.mark.parametrize(

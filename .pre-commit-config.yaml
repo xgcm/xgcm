@@ -6,7 +6,20 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
 
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.8.0
+    hooks:
+      - id: isort
+
   - repo: https://github.com/python/black
     rev: 21.5b1
     hooks:
-    - id: black
+      - id: black
+  - repo: https://github.com/keewis/blackdoc
+    rev: v0.3.3
+    hooks:
+      - id: blackdoc
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.9.2
+    hooks:
+      - id: flake8

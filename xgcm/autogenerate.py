@@ -1,7 +1,6 @@
-from __future__ import print_function
-from future.utils import iteritems
-from xgcm.grid import Axis, raw_interp_function
 import xarray as xr
+
+from xgcm.grid import Axis, raw_interp_function
 
 
 def generate_axis(
@@ -143,30 +142,30 @@ def generate_grid_ds(
     Parameters
     ----------
     ds : xarray.Dataset
-     Dataset with gridinformation used to construct c-grid
+        Dataset with gridinformation used to construct c-grid
     axes_dims_dict : dict
-     Dict with information on the dimension in ds corrsponding to the xgcm
-     axis. E.g. {'X':'lon','Y':'lat'}
+        Dict with information on the dimension in ds corrsponding to the xgcm
+        axis. E.g. {'X':'lon','Y':'lat'}
     axes_coords_dict : dict, optional
-     Dict with information on the coordinates in ds corrsponding to the
-     xgcm axis. E.g. {'X':'geolon','Y':'geolat'}
+        Dict with information on the coordinates in ds corrsponding to the
+        xgcm axis. E.g. {'X':'geolon','Y':'geolat'}
     position : {None,tuple, dict}, optional
-     Position of the gridpoints given in 'ds' and the desired position to be
-     generated. Defaults to ('center','left'). Can be a tuple like
-     ('center','left'), or a dict with corresponding axes
-     (e.g. {'X':('center','left'),'Z':('left','center')})
+        Position of the gridpoints given in 'ds' and the desired position to be
+        generated. Defaults to ('center','left'). Can be a tuple like
+        ('center','left'), or a dict with corresponding axes
+        (e.g. {'X':('center','left'),'Z':('left','center')})
     boundary_discontinuity : {None, float, dict}, optional
-     Specifies the discontinuity at the boundary to wrap e.g. longitudes
-     without artifacts. Can be defined globally (for all fields defined in
-     axes_dims_dict and axes_coords_dict) {float, None} or per dataset
-     variable (dict e.g. {'longitude':360,'latitude':180})
+        Specifies the discontinuity at the boundary to wrap e.g. longitudes
+        without artifacts. Can be defined globally (for all fields defined in
+        axes_dims_dict and axes_coords_dict) {float, None} or per dataset
+        variable (dict e.g. {'longitude':360,'latitude':180})
     pad : {'auto', None, float}, optional
-     Specifies the padding at the boundary to extend values past the boundary.
-     Can be defined globally (for all fields defined in
-     axes_dims_dict and axes_coords_dict) {float, None} or per dataset
-     variable ({dict} e.g. {'z':'auto','latitude':0.0})
+        Specifies the padding at the boundary to extend values past the boundary.
+        Can be defined globally (for all fields defined in
+        axes_dims_dict and axes_coords_dict) {float, None} or per dataset
+        variable ({dict} e.g. {'z':'auto','latitude':0.0})
     new_name : str, optional
-     Name of the inferred grid variable. Defaults to name+'_'+position[1]
+        Name of the inferred grid variable. Defaults to name+'_'+position[1]
     """
 
     if axes_coords_dict is not None:

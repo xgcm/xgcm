@@ -2,9 +2,10 @@
 Classes and functions for 1D coordinate transformation.
 """
 import functools
+
 import numpy as np
 import xarray as xr
-from numba import jit, guvectorize, float32, float64, boolean
+from numba import boolean, float32, float64, guvectorize
 
 """Low level functions (numba/numpy)"""
 
