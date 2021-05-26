@@ -8,6 +8,7 @@ v0.6.0 (unreleased)
 
 .. _whats-new.0.6.0:
 
+
 v0.5.2 (2021/5/26)
 -------------------
 
@@ -22,6 +23,10 @@ Documentation
 ~~~~~~~~~~~~~
 - Migrated model example notebooks to `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_ which integrates with `pangeo gallery <https://gallery.pangeo.io/repos/xgcm/xgcm-examples/>`_ (:pull:`294`)
   By `Julius Busecke <https://github.com/jbusecke>`_.
+  
+  
+- Updated Realistic Data examples in `Transforming Vertical Coordinates <https://xgcm.readthedocs.io/en/latest/transform.html>`_ (:pull:`322`)
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.
 
 
 v0.5.1 (2020/10/16)
