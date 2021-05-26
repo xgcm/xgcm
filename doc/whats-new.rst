@@ -31,8 +31,6 @@ Documentation
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
 
-
-
 v0.5.1 (2020/10/16)
 -------------------
 
