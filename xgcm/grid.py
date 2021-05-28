@@ -16,7 +16,7 @@ try:
 
     from .transform import conservative_interpolation, linear_interpolation
 except ImportError:
-    numba = None
+m    numba = None
 
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
@@ -1255,16 +1255,16 @@ class Grid:
             self.axes[axis]._facedim = facedim
             self.axes[axis]._connections = axis_links
 
-    def _assign_metrics(self, metrics):
-        """
-        metrics should look like
-           {('X', 'Y'): ['rAC']}
-        check to make sure everything is a valid dimension
-        """
+    _metrics = {}
+    
+    @property
+    def metrics(self):
+        return self._metrics
 
-        self._metrics = {}
-
-        for key, metric_vars in metrics.items():
+    @metrics.setter
+    def metrics(self, key, value):
+        
+        for key, metric_vars in key, value:
             metric_axes = frozenset(_maybe_promote_str_to_list(key))
             if not all([ma in self.axes for ma in metric_axes]):
                 raise KeyError(
@@ -1283,6 +1283,37 @@ class Grid:
                 # TODO: check for consistency of metric_var dims with axis dims
                 # check for duplicate dimensions among each axis metric
                 self._metrics[metric_axes].append(metric_var)
+        
+        self._metrics[key] = value
+    
+    def _assign_metrics(self, metrics):
+        """
+        metrics should look like
+           {('X', 'Y'): ['rAC']}
+        check to make sure everything is a valid dimension
+        """
+
+        self._metrics = {}
+
+        # for key, metric_vars in metrics.items():
+        #     metric_axes = frozenset(_maybe_promote_str_to_list(key))
+        #     if not all([ma in self.axes for ma in metric_axes]):
+        #         raise KeyError(
+        #             "Metric axes %r not compatible with grid axes %r"
+        #             % (metric_axes, tuple(self.axes))
+        #         )
+        #     # initialize empty list
+        #     self._metrics[metric_axes] = []
+        #     for metric_varname in _maybe_promote_str_to_list(metric_vars):
+        #         if metric_varname not in self._ds:
+        #             raise KeyError(
+        #                 "Metric variable %s not found in dataset." % metric_varname
+        #             )
+        #         # resetting coords avoids potential broadcasting / alignment issues
+        #         metric_var = self._ds[metric_varname].reset_coords(drop=True)
+        #         # TODO: check for consistency of metric_var dims with axis dims
+        #         # check for duplicate dimensions among each axis metric
+        #         self._metrics[metric_axes].append(metric_var)
 
     def _get_dims_from_axis(self, da, axis):
         dim = []
