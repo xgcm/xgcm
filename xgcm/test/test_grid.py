@@ -782,3 +782,7 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
 
     xr.testing.assert_identical(actual1, actual2)
+
+
+def test_grid_metrics():
+    assert 1 == 0
