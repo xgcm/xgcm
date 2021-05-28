@@ -16,7 +16,7 @@ try:
 
     from .transform import conservative_interpolation, linear_interpolation
 except ImportError:
-m    numba = None
+    numba = None
 
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
