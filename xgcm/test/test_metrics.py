@@ -136,3 +136,18 @@ def test_get_metric(axes, data_var, drop_vars, metric_expected_list, expected_er
         ]
         expected = functools.reduce(operator.mul, expected_metrics, 1)
         assert metric.equals(expected)
+
+
+def test_set_metric():
+
+    ds, coords, metrics = datasets_grid_metric("C")
+
+    grid = Grid(ds, coords=coords, metrics=metrics)
+
+    grid_manual = Grid(ds, coords=coords)
+
+    for key, value in metrics.items():
+        grid_manual.metrics[key] = value
+
+    assert len(grid_manual._metrics) > 0
+    assert grid_manual._metrics == grid._metrics
