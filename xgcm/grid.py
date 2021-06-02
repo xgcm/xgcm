@@ -1277,12 +1277,19 @@ class Grid:
         metric_varname = frozenset(_maybe_promote_str_to_list(value))
         if metric_varname not in self._ds:
             raise KeyError(f"Metric variable {metric_varname} not found in dataset.")
-            # resetting coords avoids potential broadcasting / alignment issues
 
+        # resetting coords avoids potential broadcasting / alignment issues
         metric_var = self._ds[metric_varname].reset_coords(drop=True)
+
         # TODO: check for consistency of metric_var dims with axis dims
+        if metric_var.dims == metric_axes.dims:
+            self._metrics[metric_axes].append(metric_var)
+        else:
+            raise KeyError(
+                f"Metric variable {metric_varname} dimensions do not match metric axes {metric_axes!r} dimensions."
+            )
+
         # check for duplicate dimensions among each axis metric
-        self._metrics[metric_axes].append(metric_var)
 
     def _assign_metrics(self, metrics):
         pass
