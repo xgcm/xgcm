@@ -1276,7 +1276,7 @@ class Grid:
 
         metric_varname = frozenset(_maybe_promote_str_to_list(value))
         if metric_varname not in self._ds:
-            raise KeyError("Metric variable %s not found in dataset." % metric_varname)
+            raise KeyError(f"Metric variable {metric_varname} not found in dataset.")
             # resetting coords avoids potential broadcasting / alignment issues
 
         metric_var = self._ds[metric_varname].reset_coords(drop=True)
