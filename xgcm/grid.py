@@ -1268,8 +1268,7 @@ class Grid:
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
         if not all([ma in self.axes for ma in metric_axes]):
             raise KeyError(
-                "Metric axes %r not compatible with grid axes %r"
-                % (metric_axes, tuple(self.axes))
+                f"Metric axes {metric_axes!r} not compatible with grid axes {tuple(self.axes)!r}"
             )
 
         # initialize empty list
