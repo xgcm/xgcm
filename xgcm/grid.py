@@ -118,8 +118,6 @@ class Axis:
               latitude increases with increasing y-index.
             * 'decreasing': coordinate decreases with increasing index, e.g. 
               depth decreases with increasing z-index.
-            Optionally a dict mapping axis name to separate directions for each
-            axis can be passed.
             
 
         REFERENCES
