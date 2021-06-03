@@ -74,7 +74,7 @@ class Axis:
         coords=None,
         boundary=None,
         fill_value=None,
-        axis_direction="increasing",
+        direction=None,
     ):
         """
         Create a new Axis object from an input dataset.
@@ -110,8 +110,17 @@ class Axis:
             boundary kwarg when calling specific methods.
         fill_value : {float}, optional
             The value to use in the boundary condition when `boundary='fill'`.
-        axis_direction : str, optional,
-            Directionality of index for axis.
+        direction : str, optional
+            The direction in which axes are defined:
+            * None: Do not define a specific direction; defaults to same
+              behaviour as 'increasing'
+            * 'increasing': coordinate increases with increasing index, e.g. 
+              latitude increases with increasing y-index.
+            * 'decreasing': coordinate decreases with increasing index, e.g. 
+              depth decreases with increasing z-index.
+            Optionally a dict mapping axis name to separate directions for each
+            axis can be passed.
+            
 
         REFERENCES
         ----------
@@ -137,12 +146,12 @@ class Axis:
             # fall back on comodo conventions
             self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
 
-        if axis_direction=="increasing":
+        if direction=="increasing" or direction is None:
             self.direction_sign=1
-        elif axis_direction=="decreasing":
+        elif direction=="decreasing":
             self.direction_sign=-1
         else:
-            raise ValueError(f"Axis direction not recognized. Expecting `increasing` or `decreasing`, got `{axis_direction}`.")
+            raise ValueError(f"Axis direction not recognized. Expecting `increasing` or `decreasing` or None, got `{direction}`.")
 
         # self.coords is a dictionary with the following structure
         #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
@@ -1067,7 +1076,7 @@ class Grid:
         metrics=None,
         boundary=None,
         fill_value=None,
-        axis_direction=None,
+        direction=None,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -1116,7 +1125,16 @@ class Grid:
             can be passed.
         keep_coords : boolean, optional
             Preserves compatible coordinates. False by default.
-        axis_direction : {str, dict} optional
+        direction : {str, dict} optional
+            The direction in which axes are defined:
+            * None: Do not define a specific direction; defaults to same
+              behaviour as 'increasing'
+            * 'increasing': coordinate increases with increasing index, e.g. 
+              latitude increases with increasing y-index.
+            * 'decreasing': coordinate decreases with increasing index, e.g. 
+              depth decreases with increasing z-index.
+            Optionally a dict mapping axis name to separate directions for each
+            axis can be passed.
 
 
         REFERENCES
@@ -1163,13 +1181,13 @@ class Grid:
                     "mapping axis name to a boundary option; a number or None."
                 )
 
-            if isinstance(axis_direction, dict):
-                axis_axis_direction = axis_direction.get(axis_name, None)
-            elif isinstance(axis_direction, str) or axis_direction is None:
-                axis_axis_direction = axis_direction
+            if isinstance(direction, dict):
+                axis_direction = direction.get(axis_name, None)
+            elif isinstance(direction, str) or direction is None:
+                axis_direction = direction
             else:
                 raise ValueError(
-                    f"axis_direction={axis_direction} is invalid. Please specify a dictionary "
+                    f"direction={direction} is invalid. Please specify a dictionary "
                     "mapping axis name to a direction option; a string or None."
                 )
 
@@ -1181,7 +1199,7 @@ class Grid:
                 coords=coords.get(axis_name),
                 boundary=axis_boundary,
                 fill_value=axis_fillvalue,
-                axis_direction=axis_direction,
+                direction=axis_direction,
             )
 
         if face_connections is not None:
