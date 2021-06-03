@@ -782,3 +782,14 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
 
     xr.testing.assert_identical(actual1, actual2)
+
+def test_axisdirectionality():
+    ds = datasets["2d_left"]
+    grid1 = Grid(ds, axis_direction="increasing")
+    grid2 = Grid(ds, axis_direction="decreasing")
+
+    for axis in grid1.axes:
+        diff1 = grid1.diff(ds.data_g, axis)
+        diff2 = grid2.diff(ds.data_g, axis)
+    
+        xr.testing.assert_identical(diff1, -diff2)

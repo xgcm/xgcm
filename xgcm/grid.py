@@ -74,6 +74,7 @@ class Axis:
         coords=None,
         boundary=None,
         fill_value=None,
+        axis_direction="increasing",
     ):
         """
         Create a new Axis object from an input dataset.
@@ -109,6 +110,8 @@ class Axis:
             boundary kwarg when calling specific methods.
         fill_value : {float}, optional
             The value to use in the boundary condition when `boundary='fill'`.
+        axis_direction : str, optional,
+            Directionality of index for axis.
 
         REFERENCES
         ----------
@@ -133,6 +136,13 @@ class Axis:
         else:
             # fall back on comodo conventions
             self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
+
+        if axis_direction=="increasing":
+            self.direction_sign=1
+        elif axis_direction=="decreasing":
+            self.direction_sign=-1
+        else:
+            raise ValueError(f"Axis direction not recognized. Expecting `increasing` or `decreasing`, got `{axis_direction}`.")
 
         # self.coords is a dictionary with the following structure
         #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
@@ -645,7 +655,7 @@ class Axis:
             boundary_discontinuity,
             vector_partner,
             keep_coords=keep_coords,
-        )
+        )*self.direction_sign
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
@@ -1057,6 +1067,7 @@ class Grid:
         metrics=None,
         boundary=None,
         fill_value=None,
+        axis_direction=None,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -1105,6 +1116,8 @@ class Grid:
             can be passed.
         keep_coords : boolean, optional
             Preserves compatible coordinates. False by default.
+        axis_direction : {str, dict} optional
+
 
         REFERENCES
         ----------
@@ -1150,6 +1163,16 @@ class Grid:
                     "mapping axis name to a boundary option; a number or None."
                 )
 
+            if isinstance(axis_direction, dict):
+                axis_axis_direction = axis_direction.get(axis_name, None)
+            elif isinstance(axis_direction, str) or axis_direction is None:
+                axis_axis_direction = axis_direction
+            else:
+                raise ValueError(
+                    f"axis_direction={axis_direction} is invalid. Please specify a dictionary "
+                    "mapping axis name to a direction option; a string or None."
+                )
+
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
@@ -1158,6 +1181,7 @@ class Grid:
                 coords=coords.get(axis_name),
                 boundary=axis_boundary,
                 fill_value=axis_fillvalue,
+                axis_direction=axis_direction,
             )
 
         if face_connections is not None:
