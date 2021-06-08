@@ -8,6 +8,11 @@ v0.6.0 (unreleased)
 
 .. _whats-new.0.6.0:
 
+New Features
+~~~~~~~~~~~~
+- :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.
+
 
 v0.5.2 (2021/5/27)
 -------------------

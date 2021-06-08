@@ -159,11 +159,7 @@ def test_set_metric():
         assert k in grid_manual._metrics.keys()
 
         for metric_expected, metric in zip(v, grid_manual._metrics[k]):
-            print(metric_expected)
-            print(metric)
             xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
 
         for metric_expected, metric in zip(v, grid._metrics[k]):
-            print(metric_expected)
-            print(metric)
             xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
