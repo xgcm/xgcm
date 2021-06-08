@@ -793,7 +793,7 @@ class Axis:
         transformation:
 
         - 'linear': Values are linear interpolated between 1D columns
-          along `axis` of `da` and `target_data`. This methodrequires
+          along `axis` of `da` and `target_data`. This method requires
           `target_data` to increase/decrease monotonically. `target`
           values are interpreted as new cell centers in this case. By
           default this method will return nan for values in `target` that
@@ -816,7 +816,7 @@ class Axis:
         da : xr.xr.DataArray
             Input data
         target : {np.array, xr.DataArray}
-            Target points for transformation. Dependin on the method is
+            Target points for transformation. Depending on the method is
             interpreted as cell center (method='linear') or cell bounds
             (method='conservative).
             Values correpond to `target_data` or the existing coordinate
@@ -838,7 +838,7 @@ class Axis:
             Only applies for `method='linear'`.
             Option to bypass logic to flip data if monotonically decreasing along the axis.
             This will improve performance if True, but the user needs to ensure that values
-            are increasing alon the axis.
+            are increasing along the axis.
         suffix : str, optional
             Customizable suffix to the name of the output array. This will
             be added to the original name of `da`. Defaults to `_transformed`.
@@ -866,7 +866,7 @@ class Axis:
                 "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
             )
 
-        # complain if the target values are not provided as xr.dataarray
+        # raise error if the target values are not provided as xr.dataarray
         for var_name, variable, allowed_types in [
             ("da", da, [xr.DataArray]),
             ("target", target, [xr.DataArray, np.ndarray]),
@@ -1079,7 +1079,7 @@ class Grid:
         face_connections : dict
             Grid topology
         coords : dict, optional
-            Excplicit specification of axis coordinates, e.g
+            Explicit specification of axis coordinates, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
             Each key should be the name of an axis. The value should be
             a dictionary mapping positions (e.g. ``'left'``) to names of
@@ -1163,12 +1163,15 @@ class Grid:
         if face_connections is not None:
             self._assign_face_connections(face_connections)
 
+        self._metrics = {}
+
         if metrics is not None:
-            self._assign_metrics(metrics)
+            for key, value in metrics.items():
+                self.set_metrics(key, value)
 
     def _parse_axes_kwargs(self, kwargs):
         """Convvert kwarg input into dict for each available axis
-        E.g. for a grid with 2 axes for the keyword argument `periodid`
+        E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
         or if not all axes are provided, the other axes will be parsed as defaults (None)
         periodic = {'X':True} --> periodic={'X': True, 'Y':None}
@@ -1255,34 +1258,27 @@ class Grid:
             self.axes[axis]._facedim = facedim
             self.axes[axis]._connections = axis_links
 
-    def _assign_metrics(self, metrics):
-        """
-        metrics should look like
-           {('X', 'Y'): ['rAC']}
-        check to make sure everything is a valid dimension
-        """
+    def set_metrics(self, key, value):
 
-        self._metrics = {}
+        metric_axes = frozenset(_maybe_promote_str_to_list(key))
+        if not all([ma in self.axes for ma in metric_axes]):
+            raise KeyError(
+                f"Metric axes {metric_axes!r} not compatible with grid axes {tuple(self.axes)!r}"
+            )
 
-        for key, metric_vars in metrics.items():
-            metric_axes = frozenset(_maybe_promote_str_to_list(key))
-            if not all([ma in self.axes for ma in metric_axes]):
+        # initialize empty list
+        self._metrics[metric_axes] = []
+        for metric_varname in _maybe_promote_str_to_list(value):
+            if metric_varname not in self._ds:
                 raise KeyError(
-                    "Metric axes %r not compatible with grid axes %r"
-                    % (metric_axes, tuple(self.axes))
+                    f"Metric variable {metric_varname} not found in dataset."
                 )
-            # initialize empty list
-            self._metrics[metric_axes] = []
-            for metric_varname in _maybe_promote_str_to_list(metric_vars):
-                if metric_varname not in self._ds:
-                    raise KeyError(
-                        "Metric variable %s not found in dataset." % metric_varname
-                    )
-                # resetting coords avoids potential broadcasting / alignment issues
-                metric_var = self._ds[metric_varname].reset_coords(drop=True)
-                # TODO: check for consistency of metric_var dims with axis dims
-                # check for duplicate dimensions among each axis metric
-                self._metrics[metric_axes].append(metric_var)
+            # resetting coords avoids potential broadcasting / alignment issues
+            metric_var = self._ds[metric_varname].reset_coords(drop=True)
+
+            # TODO: check for consistency of metric_var dims with axis dims
+            # check for duplicate dimensions among each axis metric
+            self._metrics[metric_axes].append(metric_var)
 
     def _get_dims_from_axis(self, da, axis):
         dim = []
@@ -1399,7 +1395,7 @@ class Grid:
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Neumann boundary condition.)
 
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with separate values for each axis can be passed (see example)
         fill_value : {float, dict}, optional
             The value to use in the boundary condition with `boundary='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
