@@ -1,0 +1,15 @@
+name: "Close stale issues"
+on:
+  schedule:
+  - cron: "0 12 * * *"
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/stale@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        exempt-issue-labels: 'keepOpen'
+        stale-issue-message: "This issue has been marked 'stale' due to lack of recent activity. If there is no further activity, the issue will be closed in another 30 days. Thank you for your contribution!"
+        close-issue-message: "This issue has been closed due to inactivity. If you feel this is in error, please reopen the issue or file a new issue with the relevant details."
