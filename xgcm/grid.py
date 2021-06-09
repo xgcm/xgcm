@@ -1368,7 +1368,7 @@ class Grid:
                 position_metric, _ = axis._get_axis_coord(metric)
             except KeyError:
                 continue
-            if not position_da == position_metric:
+            if position_da != position_metric:
                 metric = self.interp(metric, axname)
 
         return metric
