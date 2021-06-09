@@ -163,3 +163,16 @@ def test_set_metric():
 
         for metric_expected, metric in zip(v, grid._metrics[k]):
             xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
+
+
+def test_interp_metrics():
+
+    ds, coords, _ = datasets_grid_metric("C")
+
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics("X", "dx_n")
+    interp_metric = grid.interp_metric(ds.u, "X")
+
+    test_metric = grid.interp(ds.dx_t, "X")
+
+    assert interp_metric.dims == test_metric.dims

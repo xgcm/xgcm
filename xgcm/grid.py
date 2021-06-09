@@ -37,7 +37,7 @@ class Axis:
     """
     An object that represents a group of coordinates that all lie along the same
     physical dimension but at different positions with respect to a grid cell.
-    There are four possible positions::
+    There are four possible positions:
 
          Center
          |------o-------|------o-------|------o-------|------o-------|
@@ -1261,7 +1261,9 @@ class Grid:
     def set_metrics(self, key, value):
 
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
-        if not all([ma in self.axes for ma in metric_axes]):
+        axes_not_found = [ma for ma in metric_axes if ma not in self.axes]
+
+        if len(axes_not_found) > 0:
             raise KeyError(
                 f"Metric axes {metric_axes!r} not compatible with grid axes {tuple(self.axes)!r}"
             )
@@ -1358,6 +1360,26 @@ class Grid:
 
         # return the product of the metrics
         return functools.reduce(operator.mul, metric_vars, 1)
+
+    def interp_like(self, da_source, metric):
+        for axname, axis in self.axes.items():
+            try:
+                position_da, _ = axis._get_axis_coord(da_source)
+                position_metric, _ = axis._get_axis_coord(metric)
+            except KeyError:
+                continue
+            if not position_da == position_metric:
+                metric = self.interp(metric, axname)
+
+        return metric
+
+    def interp_metric(self, da, axes):
+        metric_available = self._metrics.get(frozenset(axes), None)
+        if metric_available is not None:
+            m = metric_available[0]
+            metric_interp = self.interp_like(da, m)
+
+        return metric_interp
 
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
