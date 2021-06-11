@@ -74,6 +74,7 @@ class Axis:
         coords=None,
         boundary=None,
         fill_value=None,
+        direction=None,
     ):
         """
         Create a new Axis object from an input dataset.
@@ -109,6 +110,15 @@ class Axis:
             boundary kwarg when calling specific methods.
         fill_value : {float}, optional
             The value to use in the boundary condition when `boundary='fill'`.
+        direction : str, optional
+            The direction in which axes are defined:
+            * None: Do not define a specific direction; defaults to same
+              behaviour as 'increasing'
+            * 'increasing': coordinate increases with increasing index, e.g. 
+              latitude increases with increasing y-index.
+            * 'decreasing': coordinate decreases with increasing index, e.g. 
+              depth decreases with increasing z-index.
+            
 
         REFERENCES
         ----------
@@ -133,6 +143,13 @@ class Axis:
         else:
             # fall back on comodo conventions
             self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
+
+        if direction=="increasing" or direction is None:
+            self.direction_sign=1
+        elif direction=="decreasing":
+            self.direction_sign=-1
+        else:
+            raise ValueError(f"Axis direction not recognized. Expecting `increasing` or `decreasing` or None, got `{direction}`.")
 
         # self.coords is a dictionary with the following structure
         #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
@@ -645,7 +662,7 @@ class Axis:
             boundary_discontinuity,
             vector_partner,
             keep_coords=keep_coords,
-        )
+        )*self.direction_sign
 
     @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
@@ -1057,6 +1074,7 @@ class Grid:
         metrics=None,
         boundary=None,
         fill_value=None,
+        direction=None,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -1105,6 +1123,17 @@ class Grid:
             can be passed.
         keep_coords : boolean, optional
             Preserves compatible coordinates. False by default.
+        direction : {str, dict} optional
+            The direction in which axes are defined:
+            * None: Do not define a specific direction; defaults to same
+              behaviour as 'increasing'
+            * 'increasing': coordinate increases with increasing index, e.g. 
+              latitude increases with increasing y-index.
+            * 'decreasing': coordinate decreases with increasing index, e.g. 
+              depth decreases with increasing z-index.
+            Optionally a dict mapping axis name to separate directions for each
+            axis can be passed.
+
 
         REFERENCES
         ----------
@@ -1150,6 +1179,16 @@ class Grid:
                     "mapping axis name to a boundary option; a number or None."
                 )
 
+            if isinstance(direction, dict):
+                axis_direction = direction.get(axis_name, None)
+            elif isinstance(direction, str) or direction is None:
+                axis_direction = direction
+            else:
+                raise ValueError(
+                    f"direction={direction} is invalid. Please specify a dictionary "
+                    "mapping axis name to a direction option; a string or None."
+                )
+
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
@@ -1158,6 +1197,7 @@ class Grid:
                 coords=coords.get(axis_name),
                 boundary=axis_boundary,
                 fill_value=axis_fillvalue,
+                direction=axis_direction,
             )
 
         if face_connections is not None:
