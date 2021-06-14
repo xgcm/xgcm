@@ -1368,19 +1368,19 @@ class Grid:
         Parameters
         ----------
         da_target : DatArray
-            Original array for comparison with target array
+            Specifies which positions and coordinates should be present in the source array
         da_source : DataArray
-            Specifies which positions and coordinates should be present in the target array
+            Array with initial position and coordinate values for comparison with target array
 
         Returns
         -------
         da_source : DataArray
-            Source data array with updated positions along axes compared with the target array
+            Source data array with updated positions along axes matching with target array
         """
 
         for axname, axis in self.axes.items():
             # This will raise a KeyError since this for-loop goes through all axes contained in self,
-            # but it is possible to apply the method for only 1 axis at a time
+            # but the method is applied for only 1 axis at a time
             try:
                 position_da_target, _ = axis._get_axis_coord(da_target)
                 position_da_source, _ = axis._get_axis_coord(da_source)
