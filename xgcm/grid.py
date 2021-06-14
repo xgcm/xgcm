@@ -1362,7 +1362,7 @@ class Grid:
 
     @docstrings.dedent
     def interp_like(self, array, like):
-        """Compares positions between two data arrays and interpolates da_source to the position of da_target if necessary
+        """Compares positions between two data arrays and interpolates array to the position of like if necessary
 
         Parameters
         ----------
