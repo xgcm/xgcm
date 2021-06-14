@@ -1265,7 +1265,7 @@ class Grid:
 
         if len(axes_not_found) > 0:
             raise KeyError(
-                f"Metric axes {metric_axes!r} not compatible with grid axes {tuple(self.axes)!r}"
+                f"Metric axes {axes_not_found!r} not compatible with grid axes {tuple(self.axes)!r}"
             )
 
         # initialize empty list
@@ -1361,24 +1361,42 @@ class Grid:
         # return the product of the metrics
         return functools.reduce(operator.mul, metric_vars, 1)
 
-    def interp_like(self, da_source, metric):
+    @docstrings.dedent
+    def interp_like(self, da_target, da_source):
+        """Compares positions between two data arrays and interpolates missing values
+
+        Parameters
+        ----------
+        da_target : DatArray
+            Original array for comparison with target array
+        da_source : DataArray
+            Specifies which positions and coordinates should be present in the target array
+
+        Returns
+        -------
+        da_source : DataArray
+            Source data array with updated positions along axes compared with the target array
+        """
+
         for axname, axis in self.axes.items():
+            # This will raise a KeyError since this for-loop goes through all axes contained in self,
+            # but it is possible to apply the method for only 1 axis at a time
             try:
-                position_da, _ = axis._get_axis_coord(da_source)
-                position_metric, _ = axis._get_axis_coord(metric)
+                position_da_target, _ = axis._get_axis_coord(da_target)
+                position_da_source, _ = axis._get_axis_coord(da_source)
             except KeyError:
                 continue
-            if position_da != position_metric:
-                metric = self.interp(metric, axname)
+            if position_da_target != position_da_source:
+                da_source = self.interp(da_source, axname)
 
-        return metric
+        return da_source
 
-    def interp_metric(self, da, axes):
+    def _interp_metric(self, da, axes):
         metric_available = self._metrics.get(frozenset(axes), None)
         if metric_available is not None:
+            # this function works with only one metric at a time
             m = metric_available[0]
             metric_interp = self.interp_like(da, m)
-
         return metric_interp
 
     def __repr__(self):

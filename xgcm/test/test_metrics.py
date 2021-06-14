@@ -165,14 +165,21 @@ def test_set_metric():
             xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
 
 
-def test_interp_metrics():
+@pytest.mark.parametrize(
+    "metric_axes,metric_name",
+    [
+        ("X", "dx_t"),
+        ("Y", "dy_ne"),
+    ],
+)
+def test_interp_metrics(metric_axes, metric_name):
 
     ds, coords, _ = datasets_grid_metric("C")
-
     grid = Grid(ds, coords=coords)
-    grid.set_metrics("X", "dx_n")
-    interp_metric = grid.interp_metric(ds.u, "X")
+    grid.set_metrics(metric_axes, metric_name)
+    interp_metric = grid._interp_metric(ds.u, metric_axes)
 
-    test_metric = grid.interp(ds.dx_t, "X")
+    test_metric = grid.interp(ds[metric_name], metric_axes)
 
-    assert interp_metric.dims == test_metric.dims
+    xr.testing.assert_equal(interp_metric, test_metric)
+    xr.testing.assert_allclose(interp_metric, test_metric)

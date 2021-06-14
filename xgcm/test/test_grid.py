@@ -782,3 +782,26 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
 
     xr.testing.assert_identical(actual1, actual2)
+
+
+@pytest.mark.parametrize(
+    "metric_axes,metric_name",
+    [
+        ("X", "dx_t"),
+        ("Y", "dy_ne"),
+    ],
+)
+def test_interp_like(metric_axes, metric_name):
+
+    ds, coords, _ = datasets_grid_metric("C")
+
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics(metric_axes, metric_name)
+    metric_available = grid._metrics.get(frozenset(metric_axes), None)
+    metric_available = metric_available[0]
+    interp_metric = grid.interp_like(ds.u, metric_available)
+
+    test_metric = grid.interp(ds[metric_name], metric_axes)
+
+    xr.testing.assert_equal(interp_metric, test_metric)
+    xr.testing.assert_allclose(interp_metric, test_metric)
