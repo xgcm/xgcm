@@ -1354,49 +1354,48 @@ class Grid:
                 pass
         if metric_vars is None:
             raise KeyError(
-                "Unable to find any combinations of metrics for "
-                "array dims %r and axes %r" % (array_dims, axes)
+                f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
             )
 
         # return the product of the metrics
         return functools.reduce(operator.mul, metric_vars, 1)
 
     @docstrings.dedent
-    def interp_like(self, da_target, da_source):
-        """Compares positions between two data arrays and interpolates missing values
+    def interp_like(self, array, like):
+        """Compares positions between two data arrays and interpolates da_source to the position of da_target if necessary
 
         Parameters
         ----------
-        da_target : DatArray
-            Specifies which positions and coordinates should be present in the source array
-        da_source : DataArray
-            Array with initial position and coordinate values for comparison with target array
+        array : DataArray
+            DataArray to interpolate to the position of like
+        like : DataArray
+            DataArray with desired grid positions for source array
 
         Returns
         -------
-        da_source : DataArray
+        array : DataArray
             Source data array with updated positions along axes matching with target array
         """
 
         for axname, axis in self.axes.items():
-            # This will raise a KeyError since this for-loop goes through all axes contained in self,
-            # but the method is applied for only 1 axis at a time
             try:
-                position_da_target, _ = axis._get_axis_coord(da_target)
-                position_da_source, _ = axis._get_axis_coord(da_source)
+                position_array, _ = axis._get_axis_coord(array)
+                position_like, _ = axis._get_axis_coord(like)
+            # This will raise a KeyError if you have multiple axes contained in self,
+            # since the for-loop will go through all axes, but the method is applied for only 1 axis at a time
             except KeyError:
                 continue
-            if position_da_target != position_da_source:
-                da_source = self.interp(da_source, axname)
+            if position_like != position_array:
+                array = self.interp(array, axname)
 
-        return da_source
+        return array
 
     def _interp_metric(self, da, axes):
         metric_available = self._metrics.get(frozenset(axes), None)
         if metric_available is not None:
             # this function works with only one metric at a time
-            m = metric_available[0]
-            metric_interp = self.interp_like(da, m)
+            metric = metric_available[0]
+            metric_interp = self.interp_like(metric, da)
         return metric_interp
 
     def __repr__(self):
