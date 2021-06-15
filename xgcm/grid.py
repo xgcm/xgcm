@@ -37,7 +37,7 @@ class Axis:
     """
     An object that represents a group of coordinates that all lie along the same
     physical dimension but at different positions with respect to a grid cell.
-    There are four possible positions::
+    There are four possible positions:
 
          Center
          |------o-------|------o-------|------o-------|------o-------|
@@ -1261,9 +1261,11 @@ class Grid:
     def set_metrics(self, key, value):
 
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
-        if not all([ma in self.axes for ma in metric_axes]):
+        axes_not_found = [ma for ma in metric_axes if ma not in self.axes]
+
+        if len(axes_not_found) > 0:
             raise KeyError(
-                f"Metric axes {metric_axes!r} not compatible with grid axes {tuple(self.axes)!r}"
+                f"Metric axes {axes_not_found!r} not compatible with grid axes {tuple(self.axes)!r}"
             )
 
         # initialize empty list
@@ -1352,12 +1354,49 @@ class Grid:
                 pass
         if metric_vars is None:
             raise KeyError(
-                "Unable to find any combinations of metrics for "
-                "array dims %r and axes %r" % (array_dims, axes)
+                f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
             )
 
         # return the product of the metrics
         return functools.reduce(operator.mul, metric_vars, 1)
+
+    @docstrings.dedent
+    def interp_like(self, array, like):
+        """Compares positions between two data arrays and interpolates array to the position of like if necessary
+
+        Parameters
+        ----------
+        array : DataArray
+            DataArray to interpolate to the position of like
+        like : DataArray
+            DataArray with desired grid positions for source array
+
+        Returns
+        -------
+        array : DataArray
+            Source data array with updated positions along axes matching with target array
+        """
+
+        for axname, axis in self.axes.items():
+            try:
+                position_array, _ = axis._get_axis_coord(array)
+                position_like, _ = axis._get_axis_coord(like)
+            # This will raise a KeyError if you have multiple axes contained in self,
+            # since the for-loop will go through all axes, but the method is applied for only 1 axis at a time
+            except KeyError:
+                continue
+            if position_like != position_array:
+                array = self.interp(array, axname)
+
+        return array
+
+    def _interp_metric(self, da, axes):
+        metric_available = self._metrics.get(frozenset(axes), None)
+        if metric_available is not None:
+            # this function works with only one metric at a time
+            metric = metric_available[0]
+            metric_interp = self.interp_like(metric, da)
+        return metric_interp
 
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
