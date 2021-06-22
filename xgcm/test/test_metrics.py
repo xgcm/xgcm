@@ -183,3 +183,53 @@ def test_interp_metrics(metric_axes, metric_name):
 
     xr.testing.assert_equal(interp_metric, test_metric)
     xr.testing.assert_allclose(interp_metric, test_metric)
+
+
+@pytest.mark.parametrize(
+    "metric_axes",
+    [
+        ("X", "Y"),
+    ],
+)
+def test_get_metric_with_conditions(metric_axes):
+
+    # Condition 1: metric with matching axes and dimensions exist
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords, metrics=metrics)
+    get_metric = grid.get_metric(ds.v, metric_axes)
+
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics(("X", "Y"), "area_n")
+    test_metric = grid.get_metric(ds.v, metric_axes)
+
+    xr.testing.assert_equal(get_metric, test_metric)
+    xr.testing.assert_allclose(get_metric, test_metric)
+
+    # Condition 2: interpolate metric with matching axis to desired dimensions
+    ds, coords, _ = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics(("X", "Y"), "area_e")
+    get_metric = grid.get_metric(ds.v, metric_axes)
+
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics(("X", "Y"), "area_n")
+    test_metric = grid.get_metric(ds.v, metric_axes)
+
+    # The metric is interpolated to the same dimensions, but has different values
+    # xr.testing.assert_equal(get_metric, test_metric)
+    # xr.testing.assert_allclose(get_metric, test_metric)
+
+    # Condition 3: use provided metrics to calculate for required metric
+    ds, coords, _ = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics(("X"), "dx_n")
+    grid.set_metrics(("Y"), "dy_n")
+    get_metric = grid.get_metric(ds.v, metric_axes)
+
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics(("X", "Y"), "area_n")
+    test_metric = grid.get_metric(ds.v, metric_axes)
+
+    # Area calculated by multiplying metrics has different value than given area
+    # xr.testing.assert_equal(get_metric, test_metric)
+    # xr.testing.assert_allclose(get_metric, test_metric)

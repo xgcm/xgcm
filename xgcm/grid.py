@@ -10,6 +10,7 @@ import xarray as xr
 
 from . import comodo
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
+from .iterate_axis_combinations import iterate_axis_combinations
 
 try:
     import numba
@@ -1315,53 +1316,56 @@ class Grid:
             A metric which can broadcast against ``array``
         """
 
-        # a function to find the right combination of metrics
-        def iterate_axis_combinations(items):
-            items_set = frozenset(items)
-            yield (items_set,)
-            N = len(items)
-            for nleft in range(N - 1, 0, -1):
-                nright = N - nleft
-                for sub_loop, sub_items in itertools.product(
-                    range(min(nright, nleft), 0, -1),
-                    itertools.combinations(items_set, nleft),
-                ):
-                    these = frozenset(sub_items)
-                    those = items_set - these
-                    others = [
-                        frozenset(i) for i in itertools.combinations(those, sub_loop)
-                    ]
-                    yield (these,) + tuple(others)
-
         metric_vars = None
         array_dims = set(array.dims)
-        for axis_combinations in iterate_axis_combinations(axes):
-            try:
-                # will raise KeyError if the axis combination is not in metrics
-                possible_metric_vars = [self._metrics[ac] for ac in axis_combinations]
-                for possible_combinations in itertools.product(*possible_metric_vars):
-                    metric_dims = set(
-                        [d for mv in possible_combinations for d in mv.dims]
-                    )
-                    if metric_dims.issubset(array_dims):
-                        # we found a set of metrics with dimensions compatible
-                        # with the array
-                        metric_vars = possible_combinations
-                        break
-                if metric_vars is not None:
-                    break
-            except KeyError:
-                pass
-        if metric_vars is None:
-            raise KeyError(
-                f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
-            )
 
-        # return the product of the metrics
-        return functools.reduce(operator.mul, metric_vars, 1)
+        possible_metric_vars = set(tuple(k) for k in self._metrics.keys())
+        input_axes = tuple(axes)
+        possible_combos = set(itertools.permutations(input_axes))
+        overlap_metrics = possible_metric_vars.intersection(possible_combos)
+
+        if len(overlap_metrics) > 0:
+            # Condition 1: metric with matching axes and dimensions exist
+            overlap_metrics = frozenset(*overlap_metrics)
+            possible_metrics = self._metrics[overlap_metrics]
+            for mv in possible_metrics:
+                metric_dims = set(mv.dims)
+                if metric_dims.issubset(array_dims):
+                    metric_vars = mv
+                    if metric_vars is None:
+                        # Condition 2: interpolate metric with matching axis to desired dimensions
+                        metric_vars = self.interp(mv, array)
+        else:
+            # Condition 3: use provided metrics to calculate for required metric
+            for axis_combinations in iterate_axis_combinations(axes):
+                try:
+                    # will raise KeyError if the axis combination is not in metrics
+                    possible_metric_vars = [
+                        self._metrics[ac] for ac in axis_combinations
+                    ]
+                    for possible_combinations in itertools.product(
+                        *possible_metric_vars
+                    ):
+                        metric_dims = set(
+                            [d for mv in possible_combinations for d in mv.dims]
+                        )
+                        if metric_dims.issubset(array_dims):
+                            # we found a set of metrics with dimensions compatible with the array
+                            metric_vars = possible_combinations
+                            break
+                    if metric_vars is not None:
+                        # return the product of the metrics
+                        metric_vars = functools.reduce(operator.mul, metric_vars, 1)
+                        break
+                except KeyError:
+                    pass
+            if metric_vars is None:
+                raise KeyError(
+                    f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
+                )
+        return metric_vars
 
     @docstrings.dedent
-<<<<<<< HEAD
     def interp_like(self, array, like):
         """Compares positions between two data arrays and interpolates array to the position of like if necessary
 
@@ -1376,29 +1380,12 @@ class Grid:
         -------
         array : DataArray
             Source data array with updated positions along axes matching with target array
-=======
-    def interp_like(self, da_target, da_source):
-        """Compares positions between two data arrays and interpolates missing values
-
-        Parameters
-        ----------
-        da_target : DatArray
-            Original array for comparison with target array
-        da_source : DataArray
-            Specifies which positions and coordinates should be present in the target array
-
-        Returns
-        -------
-        da_source : DataArray
-            Source data array with updated positions along axes compared with the target array
->>>>>>> c5e1023 (updated interp tests)
         """
 
         for axname, axis in self.axes.items():
             # This will raise a KeyError since this for-loop goes through all axes contained in self,
             # but it is possible to apply the method for only 1 axis at a time
             try:
-<<<<<<< HEAD
                 position_array, _ = axis._get_axis_coord(array)
                 position_like, _ = axis._get_axis_coord(like)
             # This will raise a KeyError if you have multiple axes contained in self,
@@ -1409,28 +1396,13 @@ class Grid:
                 array = self.interp(array, axname)
 
         return array
-=======
-                position_da_target, _ = axis._get_axis_coord(da_target)
-                position_da_source, _ = axis._get_axis_coord(da_source)
-            except KeyError:
-                continue
-            if position_da_target != position_da_source:
-                da_source = self.interp(da_source, axname)
-
-        return da_source
->>>>>>> c5e1023 (updated interp tests)
 
     def _interp_metric(self, da, axes):
         metric_available = self._metrics.get(frozenset(axes), None)
         if metric_available is not None:
             # this function works with only one metric at a time
-<<<<<<< HEAD
             metric = metric_available[0]
             metric_interp = self.interp_like(metric, da)
-=======
-            m = metric_available[0]
-            metric_interp = self.interp_like(da, m)
->>>>>>> c5e1023 (updated interp tests)
         return metric_interp
 
     def __repr__(self):
