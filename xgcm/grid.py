@@ -10,7 +10,7 @@ import xarray as xr
 
 from . import comodo
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
-from .iterate_axis_combinations import iterate_axis_combinations
+from .metrics import iterate_axis_combinations
 
 try:
     import numba
@@ -1260,7 +1260,6 @@ class Grid:
             self.axes[axis]._connections = axis_links
 
     def set_metrics(self, key, value):
-
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
         axes_not_found = [ma for ma in metric_axes if ma not in self.axes]
 
@@ -1332,9 +1331,10 @@ class Grid:
                 metric_dims = set(mv.dims)
                 if metric_dims.issubset(array_dims):
                     metric_vars = mv
-                    if metric_vars is None:
-                        # Condition 2: interpolate metric with matching axis to desired dimensions
-                        metric_vars = self.interp(mv, array)
+                    break
+            if metric_vars is None:
+                # Condition 2: interpolate metric with matching axis to desired dimensions
+                metric_vars = self.interp_like(mv, array)
         else:
             # Condition 3: use provided metrics to calculate for required metric
             for axis_combinations in iterate_axis_combinations(axes):
@@ -1353,6 +1353,12 @@ class Grid:
                             # we found a set of metrics with dimensions compatible with the array
                             metric_vars = possible_combinations
                             break
+                        else:
+                            # Condition 4: metrics in the wrong position (must interpolate before multiplying)
+                            metric_vars = tuple(
+                                self.interp_like(pc, array)
+                                for pc in possible_combinations
+                            )
                     if metric_vars is not None:
                         # return the product of the metrics
                         metric_vars = functools.reduce(operator.mul, metric_vars, 1)
