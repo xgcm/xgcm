@@ -4,16 +4,14 @@ import xarray as xr
 
 from xgcm.grid import Axis, Grid
 
-from .datasets import (  # noqa: F401
-    all_2d,
-    all_datasets,
-    datasets,
-    datasets_grid_metric,
-    nonperiodic_1d,
-    nonperiodic_2d,
-    periodic_1d,
-    periodic_2d,
-)
+from .datasets import all_2d  # noqa: F401
+from .datasets import all_datasets  # noqa: F401
+from .datasets import datasets  # noqa: F401
+from .datasets import datasets_grid_metric  # noqa: F401
+from .datasets import nonperiodic_1d  # noqa: F401
+from .datasets import nonperiodic_2d  # noqa: F401
+from .datasets import periodic_1d  # noqa: F401
+from .datasets import periodic_2d  # noqa: F401
 
 
 # helper function to produce axes from datasets

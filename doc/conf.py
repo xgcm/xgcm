@@ -15,7 +15,6 @@
 
 import sys
 
-
 import xgcm
 
 # If extensions (or modules to document with autodoc) are in another directory,
