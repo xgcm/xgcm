@@ -1332,9 +1332,9 @@ class Grid:
                 if metric_dims.issubset(array_dims):
                     metric_vars = mv
                     break
-            if metric_vars is None:
-                # Condition 2: interpolate metric with matching axis to desired dimensions
-                metric_vars = self.interp_like(mv, array)
+            # if metric_vars is None:
+            #     # Condition 2: interpolate metric with matching axis to desired dimensions
+            #     metric_vars = self.interp_like(mv, array)
         else:
             # Condition 3: use provided metrics to calculate for required metric
             for axis_combinations in iterate_axis_combinations(axes):
@@ -1353,22 +1353,22 @@ class Grid:
                             # we found a set of metrics with dimensions compatible with the array
                             metric_vars = possible_combinations
                             break
-                        else:
-                            # Condition 4: metrics in the wrong position (must interpolate before multiplying)
-                            metric_vars = tuple(
-                                self.interp_like(pc, array)
-                                for pc in possible_combinations
-                            )
+                        # else:
+                        #     # Condition 4: metrics in the wrong position (must interpolate before multiplying)
+                        #     metric_vars = tuple(
+                        #         self.interp_like(pc, array)
+                        #         for pc in possible_combinations
+                        #     )
                     if metric_vars is not None:
                         # return the product of the metrics
                         metric_vars = functools.reduce(operator.mul, metric_vars, 1)
                         break
                 except KeyError:
                     pass
-            if metric_vars is None:
-                raise KeyError(
-                    f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
-                )
+        if metric_vars is None:
+            raise KeyError(
+                f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
+            )
         return metric_vars
 
     @docstrings.dedent
@@ -1400,7 +1400,6 @@ class Grid:
                 continue
             if position_like != position_array:
                 array = self.interp(array, axname)
-
         return array
 
     def _interp_metric(self, da, axes):

@@ -196,24 +196,24 @@ class TestParametrized:
             with pytest.raises(KeyError, match=match_message):
                 func(ds, ("X", "Y"), **kwargs)
 
-    # def test_missingdim(self, funcname, periodic, boundary):
-    #     ds, coords, metrics = datasets_grid_metric("C")
-    #     grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+    def test_missingdim(self, funcname, periodic, boundary):
+        ds, coords, metrics = datasets_grid_metric("C")
+        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
 
-    #     func = getattr(grid, funcname)
+        func = getattr(grid, funcname)
 
-    #     if funcname == "cumint":
-    #         # cumint needs a boundary...
-    #         kwargs = dict(boundary=boundary)
-    #     else:
-    #         kwargs = dict()
+        if funcname == "cumint":
+            # cumint needs a boundary...
+            kwargs = dict(boundary=boundary)
+        else:
+            kwargs = dict()
 
-    #     match_message = "Unable to find any combinations of metrics for array dims.*X.*"
-    #     with pytest.raises(KeyError, match=match_message):
-    #         func(ds.tracer.mean("xt"), "X", **kwargs)
+        match_message = "Unable to find any combinations of metrics for array dims.*X.*"
+        with pytest.raises(KeyError, match=match_message):
+            func(ds.tracer.mean("xt"), "X", **kwargs)
 
-    #     match_message = (
-    #         "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
-    #     )
-    #     with pytest.raises(KeyError, match=match_message):
-    #         func(ds.tracer.mean("xt"), ["X", "Y", "Z"], **kwargs)
+        match_message = (
+            "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
+        )
+        with pytest.raises(KeyError, match=match_message):
+            func(ds.tracer.mean("xt"), ["X", "Y", "Z"], **kwargs)
