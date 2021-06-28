@@ -821,10 +821,10 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
         ),
     ],
 )
-# @pytest.mark.parametrize("fill_value", [None, 0.1])
+@pytest.mark.parametrize("fill_value", [None, 0.1])
 def test_interp_like(
-    metric_axes, metric_name, periodic, boundary, boundary_expected
-):  # , fill_value):
+    metric_axes, metric_name, periodic, boundary, boundary_expected, fill_value
+):
 
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, periodic=periodic)
@@ -832,11 +832,11 @@ def test_interp_like(
     metric_available = grid._metrics.get(frozenset(metric_axes), None)
     metric_available = metric_available[0]
     interp_metric = grid.interp_like(
-        metric_available, ds.u, boundary=boundary
-    )  # , fill_value=fill_value)
+        metric_available, ds.u, boundary=boundary, fill_value=fill_value
+    )
     expected_metric = grid.interp(
-        ds[metric_name], metric_axes, boundary=boundary_expected
-    )  # , fill_value=fill_value)
+        ds[metric_name], metric_axes, boundary=boundary_expected, fill_value=fill_value
+    )
 
     if interp_metric.equals(expected_metric) is False:
         xr.testing.assert_allclose(interp_metric, expected_metric)
