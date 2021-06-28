@@ -1319,8 +1319,7 @@ class Grid:
         array_dims = set(array.dims)
 
         possible_metric_vars = set(tuple(k) for k in self._metrics.keys())
-        input_axes = tuple(axes)
-        possible_combos = set(itertools.permutations(input_axes))
+        possible_combos = set(itertools.permutations(tuple(axes)))
         overlap_metrics = possible_metric_vars.intersection(possible_combos)
 
         if len(overlap_metrics) > 0:

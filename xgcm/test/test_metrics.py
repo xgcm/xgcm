@@ -284,7 +284,7 @@ def test_interp_metrics(metric_axes, metric_name):
     grid.set_metrics(metric_axes, metric_name)
     interp_metric = grid._interp_metric(ds.u, metric_axes)
 
-    test_metric = grid.interp(ds[metric_name], metric_axes)
+    expected_metric = grid.interp(ds[metric_name], metric_axes)
 
-    xr.testing.assert_equal(interp_metric, test_metric)
-    xr.testing.assert_allclose(interp_metric, test_metric)
+    if xr.testing.assert_equal(interp_metric, expected_metric) is False:
+        xr.testing.assert_allclose(interp_metric, expected_metric)
