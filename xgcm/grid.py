@@ -1371,7 +1371,7 @@ class Grid:
         return metric_vars
 
     @docstrings.dedent
-    def interp_like(self, array, like):
+    def interp_like(self, array, like, boundary=None, fill_value=None):
         """Compares positions between two data arrays and interpolates array to the position of like if necessary
 
         Parameters
@@ -1387,6 +1387,9 @@ class Grid:
             Source data array with updated positions along axes matching with target array
         """
 
+        boundary = self._parse_axes_kwargs(boundary)
+        fill_value = self._parse_axes_kwargs(fill_value)
+
         for axname, axis in self.axes.items():
             # This will raise a KeyError since this for-loop goes through all axes contained in self,
             # but it is possible to apply the method for only 1 axis at a time
@@ -1398,7 +1401,12 @@ class Grid:
             except KeyError:
                 continue
             if position_like != position_array:
-                array = self.interp(array, axname)
+                array = self.interp(
+                    array,
+                    axname,
+                    fill_value=fill_value.get(axname, None),
+                    boundary=boundary.get(axname),
+                )
         return array
 
     def _interp_metric(self, da, axes):

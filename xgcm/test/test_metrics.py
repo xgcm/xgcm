@@ -144,7 +144,7 @@ def test_get_metric_with_conditions_01():
 
     expected_metric = ds["area_n"].reset_coords(drop=True)
 
-    if xr.testing.assert_equal(get_metric, expected_metric) is False:
+    if get_metric.equals(expected_metric) is False:
         xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -161,7 +161,7 @@ def test_get_metric_with_conditions_02():
     metric_var_2 = ds.dy_n
     expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
 
-    if xr.testing.assert_equal(get_metric, expected_metric) is False:
+    if get_metric.equals(expected_metric) is False:
         xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -178,7 +178,7 @@ def test_get_metric_with_conditions_03():
     metric_var_2 = ds.dz_t
     expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
 
-    if xr.testing.assert_equal(get_metric, expected_metric) is False:
+    if get_metric.equals(expected_metric) is False:
         xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -286,5 +286,5 @@ def test_interp_metrics(metric_axes, metric_name):
 
     expected_metric = grid.interp(ds[metric_name], metric_axes)
 
-    if xr.testing.assert_equal(interp_metric, expected_metric) is False:
+    if interp_metric.equals(expected_metric) is False:
         xr.testing.assert_allclose(interp_metric, expected_metric)

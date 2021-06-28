@@ -784,20 +784,61 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
 
 @pytest.mark.parametrize(
     "metric_axes,metric_name",
-    [("X", "dx_t"), ("Y", "dy_ne"), (["Y", "X"], "dy_n")],
+    [(["Y", "X"], "area_n")],
 )
 @pytest.mark.parametrize("periodic", [True, False])
-def test_interp_like(metric_axes, metric_name, periodic):
+@pytest.mark.parametrize(
+    "boundary, boundary_expected",
+    [
+        ({"X": "fill", "Y": "fill"}, {"X": "fill", "Y": "fill"}),
+        ({"X": "extend", "Y": "extend"}, {"X": "extend", "Y": "extend"}),
+        (
+            {"X": "extrapolate", "Y": "extrapolate"},
+            {"X": "extrapolate", "Y": "extrapolate"},
+        ),
+        ("fill", {"X": "fill", "Y": "fill"}),
+        ("extend", {"X": "extend", "Y": "extend"}),
+        ("extrapolate", {"X": "extrapolate", "Y": "extrapolate"}),
+        ({"X": "extend", "Y": "fill"}, {"X": "extend", "Y": "fill"}),
+        ({"X": "extrapolate", "Y": "fill"}, {"X": "extrapolate", "Y": "fill"}),
+        pytest.param(
+            "fill",
+            {"X": "fill", "Y": "extend"},
+            marks=pytest.mark.xfail,
+            id="boundary not equal to boundary_expected",
+        ),
+        pytest.param(
+            "extend",
+            {"X": "fill", "Y": "extend"},
+            marks=pytest.mark.xfail,
+            id="boundary not equal to boundary_expected",
+        ),
+        pytest.param(
+            "extrapolate",
+            {"X": "fill", "Y": "extend"},
+            marks=pytest.mark.xfail,
+            id="boundary not equal to boundary_expected",
+        ),
+    ],
+)
+# @pytest.mark.parametrize("fill_value", [None, 0.1])
+def test_interp_like(
+    metric_axes, metric_name, periodic, boundary, boundary_expected
+):  # , fill_value):
 
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, periodic=periodic)
     grid.set_metrics(metric_axes, metric_name)
     metric_available = grid._metrics.get(frozenset(metric_axes), None)
     metric_available = metric_available[0]
-    interp_metric = grid.interp_like(metric_available, ds.u)
-    expected_metric = grid.interp(ds[metric_name], metric_axes)
+    interp_metric = grid.interp_like(
+        metric_available, ds.u, boundary=boundary
+    )  # , fill_value=fill_value)
+    expected_metric = grid.interp(
+        ds[metric_name], metric_axes, boundary=boundary_expected
+    )  # , fill_value=fill_value)
 
-    if xr.testing.assert_equal(interp_metric, expected_metric) is False:
+    if interp_metric.equals(expected_metric) is False:
         xr.testing.assert_allclose(interp_metric, expected_metric)
 
 
@@ -812,7 +853,7 @@ def test_interp_like_var(var_name, like_name, var_axes):
     ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, metrics=metrics)
     interp_var = grid.interp_like(ds[var_name], ds[like_name])
-    test_var = grid.interp(ds[var_name], var_axes)
+    expected_metric = grid.interp(ds[var_name], var_axes)
 
-    xr.testing.assert_equal(interp_var, test_var)
-    xr.testing.assert_allclose(interp_var, test_var)
+    if interp_var.equals(expected_metric) is False:
+        xr.testing.assert_allclose(interp_var, expected_metric)
