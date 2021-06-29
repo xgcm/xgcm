@@ -1332,10 +1332,10 @@ class Grid:
                     metric_vars = mv
                     break
             # if metric_vars is None:
-            #     # Condition 2: interpolate metric with matching axis to desired dimensions
+            #     # Condition 4: interpolate metric with matching axis to desired dimensions
             #     metric_vars = self.interp_like(mv, array)
         else:
-            # Condition 3: use provided metrics to calculate for required metric
+            # Condition 2: use provided metrics to calculate for required metric
             for axis_combinations in iterate_axis_combinations(axes):
                 try:
                     # will raise KeyError if the axis combination is not in metrics
@@ -1353,7 +1353,7 @@ class Grid:
                             metric_vars = possible_combinations
                             break
                         # else:
-                        #     # Condition 4: metrics in the wrong position (must interpolate before multiplying)
+                        #     # Condition 5: metrics in the wrong position (must interpolate before multiplying)
                         #     metric_vars = tuple(
                         #         self.interp_like(pc, array)
                         #         for pc in possible_combinations

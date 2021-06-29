@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 
 from xgcm.grid import Grid
+from xgcm.metrics import iterate_axis_combinations
 from xgcm.test.datasets import datasets_grid_metric
 
 
@@ -94,6 +95,29 @@ def test_metrics_2d_grid():
 def test_assign_metric(key, metric_vars):
     ds, coords, _ = datasets_grid_metric("C")
     _ = Grid(ds, coords=coords, metrics={key: metric_vars})
+
+
+def test_iterate_axis_combinations():
+
+    axes = ["X", "Y"]
+    iterate_metric = []
+    for axis_combinations in iterate_axis_combinations(axes):
+        try:
+            append_axis = list(axis_combinations)
+            iterate_metric.append(append_axis)
+        except KeyError:
+            pass
+
+    expected_metric = [
+        [frozenset({"X", "Y"})],
+        [frozenset({"X"}), frozenset({"Y"})],
+        [frozenset({"Y"}), frozenset({"X"})],
+    ]
+
+    iterate_metric.sort()
+    expected_metric.sort()
+
+    assert iterate_metric == expected_metric
 
 
 @pytest.mark.parametrize(
@@ -212,7 +236,7 @@ def test_get_metric_with_conditions_03():
 #     xr.testing.assert_allclose(get_metric, expected_metric)
 
 # def test_get_metric_with_conditions_04a():
-#      # Condition 4, case a: 1 metric on the wrong position (must interpolate before multiplying)
+#      # Condition 5, case a: 1 metric on the wrong position (must interpolate before multiplying)
 #     ds, coords, _ = datasets_grid_metric("C")
 #     grid = Grid(ds, coords=coords)
 #     grid.set_metrics(("X"), "dx_t")
