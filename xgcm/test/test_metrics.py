@@ -97,27 +97,36 @@ def test_assign_metric(key, metric_vars):
     _ = Grid(ds, coords=coords, metrics={key: metric_vars})
 
 
-def test_iterate_axis_combinations():
+@pytest.mark.parametrize(
+    "axes, expected_axes",
+    [
+        (
+            ("X", "Y"),
+            (
+                (frozenset({"X", "Y"}),),
+                (frozenset({"X"}), frozenset({"Y"})),
+                (frozenset({"Y"}), frozenset({"X"})),
+            ),
+        ),
+        (
+            ("X", "Y", "Z"),
+            (
+                (frozenset({"Z"}), frozenset({"Y"}), frozenset({"X"})),
+                (frozenset({"Y", "X"}), frozenset({"Z"})),
+                (frozenset({"X", "Z"}), frozenset({"Y"})),
+                (frozenset({"X"}), frozenset({"Y"}), frozenset({"Z"})),
+                (frozenset({"Y", "X", "Z"}),),
+                (frozenset({"Y"}), frozenset({"X"}), frozenset({"Z"})),
+                (frozenset({"Y", "Z"}), frozenset({"X"})),
+            ),
+        ),
+    ],
+)
+def test_iterate_axis_combinations(axes, expected_axes):
 
-    axes = ["X", "Y"]
-    iterate_metric = []
-    for axis_combinations in iterate_axis_combinations(axes):
-        try:
-            append_axis = list(axis_combinations)
-            iterate_metric.append(append_axis)
-        except KeyError:
-            pass
-
-    expected_metric = [
-        [frozenset({"X", "Y"})],
-        [frozenset({"X"}), frozenset({"Y"})],
-        [frozenset({"Y"}), frozenset({"X"})],
-    ]
-
-    iterate_metric.sort()
-    expected_metric.sort()
-
-    assert iterate_metric == expected_metric
+    iterate_axes = set(iterate_axis_combinations(axes))
+    set_diff = iterate_axes.difference(expected_axes)
+    assert set_diff == set()
 
 
 @pytest.mark.parametrize(
@@ -168,13 +177,12 @@ def test_get_metric_with_conditions_01():
 
     expected_metric = ds["area_n"].reset_coords(drop=True)
 
-    if get_metric.equals(expected_metric) is False:
-        xr.testing.assert_allclose(get_metric, expected_metric)
+    xr.testing.assert_allclose(get_metric, expected_metric)
 
 
 def test_get_metric_with_conditions_02():
     # Condition 2: use provided metrics to calculate for required metric
-    ds, coords, _ = datasets_grid_metric("C")
+    ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
     grid.set_metrics(("X"), "dx_n")
     grid.set_metrics(("Y"), "dy_n")
@@ -185,13 +193,12 @@ def test_get_metric_with_conditions_02():
     metric_var_2 = ds.dy_n
     expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
 
-    if get_metric.equals(expected_metric) is False:
-        xr.testing.assert_allclose(get_metric, expected_metric)
+    xr.testing.assert_allclose(get_metric, expected_metric)
 
 
 def test_get_metric_with_conditions_03():
     # Condition 3: Adapted from original version of test_get_metric
-    ds, coords, _ = datasets_grid_metric("C")
+    ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
     grid.set_metrics(("X", "Y"), "area_t")
     grid.set_metrics(("Z"), "dz_t")
@@ -202,8 +209,7 @@ def test_get_metric_with_conditions_03():
     metric_var_2 = ds.dz_t
     expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
 
-    if get_metric.equals(expected_metric) is False:
-        xr.testing.assert_allclose(get_metric, expected_metric)
+    xr.testing.assert_allclose(get_metric, expected_metric)
 
 
 # def test_get_metric_with_conditions_02a():
@@ -294,21 +300,21 @@ def test_set_metric():
             xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
 
 
-@pytest.mark.parametrize(
-    "metric_axes,metric_name",
-    [
-        ("X", "dx_t"),
-        ("Y", "dy_ne"),
-    ],
-)
-def test_interp_metrics(metric_axes, metric_name):
+# @pytest.mark.parametrize(
+#     "metric_axes,metric_name",
+#     [
+#         ("X", "dx_t"),
+#         ("Y", "dy_ne"),
+#     ],
+# )
+# def test_interp_metrics(metric_axes, metric_name):
+#     # need to test with boundary and fill_value conditions
+#     ds, coords, metrics = datasets_grid_metric("C")
+#     grid = Grid(ds, coords=coords)
+#     grid.set_metrics(metric_axes, metric_name)
+#     interp_metric = grid._interp_metric(ds.u, metric_axes)
 
-    ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
-    grid.set_metrics(metric_axes, metric_name)
-    interp_metric = grid._interp_metric(ds.u, metric_axes)
+#     expected_metric = grid.interp(ds[metric_name], metric_axes)
 
-    expected_metric = grid.interp(ds[metric_name], metric_axes)
-
-    if interp_metric.equals(expected_metric) is False:
-        xr.testing.assert_allclose(interp_metric, expected_metric)
+#     if interp_metric.equals(expected_metric) is False:
+#         xr.testing.assert_allclose(interp_metric, expected_metric)

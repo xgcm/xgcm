@@ -1380,6 +1380,21 @@ class Grid:
             DataArray to interpolate to the position of like
         like : DataArray
             DataArray with desired grid positions for source array
+        boundary : str or dict, optional,
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition where
+              the difference at the boundary will be zero.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            This sets the default value. It can be overriden by specifying the
+            boundary kwarg when calling specific methods.
+        fill_value : {float}, optional
+            The value to use in the boundary condition when `boundary='fill'`.
 
         Returns
         -------
@@ -1387,29 +1402,30 @@ class Grid:
             Source data array with updated positions along axes matching with target array
         """
 
-        boundary = self._parse_axes_kwargs(boundary)
-        fill_value = self._parse_axes_kwargs(fill_value)
-
+        interp_axes = []
         for axname, axis in self.axes.items():
-            # This will raise a KeyError since this for-loop goes through all axes contained in self,
-            # but it is possible to apply the method for only 1 axis at a time
             try:
                 position_array, _ = axis._get_axis_coord(array)
                 position_like, _ = axis._get_axis_coord(like)
             # This will raise a KeyError if you have multiple axes contained in self,
             # since the for-loop will go through all axes, but the method is applied for only 1 axis at a time
+            # This is for cases where an axis is present in self that is not available for either array or like.
+            # For the axis you are interested in interpolating, there should be data for it in grid, array, and like.
             except KeyError:
                 continue
             if position_like != position_array:
-                array = self.interp(
-                    array,
-                    axname,
-                    fill_value=fill_value.get(axname, None),
-                    boundary=boundary.get(axname),
-                )
+                interp_axes.append(axname)
+
+        array = self.interp(
+            array,
+            interp_axes,
+            fill_value=fill_value,
+            boundary=boundary,
+        )
         return array
 
     def _interp_metric(self, da, axes):
+        # include boundary and fill_value as inputs
         metric_available = self._metrics.get(frozenset(axes), None)
         if metric_available is not None:
             # this function works with only one metric at a time

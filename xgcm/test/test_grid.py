@@ -784,7 +784,13 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
 
 @pytest.mark.parametrize(
     "metric_axes,metric_name",
-    [(["Y", "X"], "area_n")],
+    [
+        (["Y", "X"], "area_n"),
+        ("X", "dx_t"),
+        ("Y", "dy_ne"),
+        (["Y", "X"], "dy_n"),
+        (["X"], "tracer"),
+    ],
 )
 @pytest.mark.parametrize("periodic", [True, False])
 @pytest.mark.parametrize(
@@ -803,18 +809,6 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
         ({"X": "extrapolate", "Y": "fill"}, {"X": "extrapolate", "Y": "fill"}),
         pytest.param(
             "fill",
-            {"X": "fill", "Y": "extend"},
-            marks=pytest.mark.xfail,
-            id="boundary not equal to boundary_expected",
-        ),
-        pytest.param(
-            "extend",
-            {"X": "fill", "Y": "extend"},
-            marks=pytest.mark.xfail,
-            id="boundary not equal to boundary_expected",
-        ),
-        pytest.param(
-            "extrapolate",
             {"X": "fill", "Y": "extend"},
             marks=pytest.mark.xfail,
             id="boundary not equal to boundary_expected",
@@ -838,22 +832,4 @@ def test_interp_like(
         ds[metric_name], metric_axes, boundary=boundary_expected, fill_value=fill_value
     )
 
-    if interp_metric.equals(expected_metric) is False:
-        xr.testing.assert_allclose(interp_metric, expected_metric)
-
-
-@pytest.mark.parametrize(
-    "var_name,like_name,var_axes",
-    [
-        ("tracer", "u", "X"),
-    ],
-)
-def test_interp_like_var(var_name, like_name, var_axes):
-
-    ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, metrics=metrics)
-    interp_var = grid.interp_like(ds[var_name], ds[like_name])
-    expected_metric = grid.interp(ds[var_name], var_axes)
-
-    if interp_var.equals(expected_metric) is False:
-        xr.testing.assert_allclose(interp_var, expected_metric)
+    xr.testing.assert_allclose(interp_metric, expected_metric)
