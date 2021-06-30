@@ -112,9 +112,11 @@ def test_assign_metric(key, metric_vars):
             ("X", "Y", "Z"),
             (
                 (frozenset({"Z"}), frozenset({"Y"}), frozenset({"X"})),
+                (frozenset({"Z"}), frozenset({"X"}), frozenset({"Y"})),
                 (frozenset({"Y", "X"}), frozenset({"Z"})),
                 (frozenset({"X", "Z"}), frozenset({"Y"})),
                 (frozenset({"X"}), frozenset({"Y"}), frozenset({"Z"})),
+                (frozenset({"X"}), frozenset({"Z"}), frozenset({"Y"})),
                 (frozenset({"Y", "X", "Z"}),),
                 (frozenset({"Y"}), frozenset({"X"}), frozenset({"Z"})),
                 (frozenset({"Y", "Z"}), frozenset({"X"})),
