@@ -112,12 +112,9 @@ def test_assign_metric(key, metric_vars):
             ("X", "Y", "Z"),
             (
                 (frozenset({"Y", "X", "Z"}),),
-                (frozenset({"Z"}), frozenset({"Y"}), frozenset({"X"})),
                 (frozenset({"Z"}), frozenset({"X"}), frozenset({"Y"})),
                 (frozenset({"X"}), frozenset({"Y"}), frozenset({"Z"})),
-                (frozenset({"X"}), frozenset({"Z"}), frozenset({"Y"})),
                 (frozenset({"Y"}), frozenset({"X"}), frozenset({"Z"})),
-                (frozenset({"Y"}), frozenset({"Z"}), frozenset({"X"})),
                 (frozenset({"Y", "Z"}), frozenset({"X"})),
                 (frozenset({"Y", "X"}), frozenset({"Z"})),
                 (frozenset({"X", "Z"}), frozenset({"Y"})),
@@ -129,8 +126,7 @@ def test_assign_metric(key, metric_vars):
 def test_iterate_axis_combinations(axes, expected_axes):
 
     iterate_axes = set(iterate_axis_combinations(axes))
-    set_diff = iterate_axes.difference(expected_axes)
-    assert set_diff == set()
+    assert iterate_axes == set(expected_axes)
 
 
 @pytest.mark.parametrize(

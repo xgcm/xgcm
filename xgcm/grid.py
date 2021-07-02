@@ -108,7 +108,7 @@ class Axis:
               points nearest to the edge
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
-        fill_value : {float}, optional
+        fill_value : float, optional
             The value to use in the boundary condition when `boundary='fill'`.
 
         REFERENCES
@@ -1393,7 +1393,7 @@ class Grid:
               points nearest to the edge
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
-        fill_value : {float}, optional
+        fill_value : float, optional
             The value to use in the boundary condition when `boundary='fill'`.
 
         Returns
