@@ -98,7 +98,7 @@ def test_assign_metric(key, metric_vars):
 
 
 @pytest.mark.parametrize(
-    "axes, expected_axes",
+    "axes, expected",
     [
         (
             ("X", "Y"),
@@ -118,15 +118,25 @@ def test_assign_metric(key, metric_vars):
                 (frozenset({"Y", "Z"}), frozenset({"X"})),
                 (frozenset({"Y", "X"}), frozenset({"Z"})),
                 (frozenset({"X", "Z"}), frozenset({"Y"})),
-                (frozenset({"X", "Y"}), frozenset({"Z"})),
             ),
         ),
     ],
 )
-def test_iterate_axis_combinations(axes, expected_axes):
+def test_iterate_axis_combinations(axes, expected):
 
-    iterate_axes = set(iterate_axis_combinations(axes))
-    assert iterate_axes == set(expected_axes)
+    actual = list(iterate_axis_combinations(axes))
+
+    expected = [set(e) for e in expected]
+    actual = [set(a) for a in actual]
+
+    # comparing these is a pain since output order is not guaranteed.
+    # instead we ensure actual and expected have the same number of elements
+    # and that every element in actual is present in expected and vice-versa
+    assert len(actual) == len(expected)
+    for a in actual:
+        assert set(a) in expected
+    for e in expected:
+        assert set(e) in actual
 
 
 @pytest.mark.parametrize(
