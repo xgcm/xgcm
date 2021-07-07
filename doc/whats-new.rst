@@ -10,6 +10,8 @@ v0.6.0 (unreleased)
 
 New Features
 ~~~~~~~~~~~~
+- :py:meth:`~xgcm.grid.Grid.interp_like` enables users to interpolate arrays onto the grid positions of another array (:issue:`234` , :issue:`343`, :pull:`350`). By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
+
 - :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
   By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
 
