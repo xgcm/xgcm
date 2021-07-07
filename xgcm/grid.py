@@ -1286,7 +1286,9 @@ class Grid:
                         for idx, ve in enumerate(value_exist):
                             # double check if dimensions match
                             if set(value_new.dims) == set(ve.dims):
-                                warnings.warn(f"Replacing metric value {metric_varname} that is already assigned.")
+                                warnings.warn(
+                                    f"Replacing metric value {metric_varname} that is already assigned."
+                                )
                                 if overwrite:
                                     # replace existing data array with new data array input
                                     self._metrics[metric_axes][idx] = value_new

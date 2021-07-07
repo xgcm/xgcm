@@ -312,27 +312,28 @@ def test_set_metric():
         for metric_expected, metric in zip(v, grid._metrics[k]):
             xr.testing.assert_allclose(metric_expected.reset_coords(drop=True), metric)
 
+
 @pytest.mark.parametrize(
     "metric_axes, metric_varname, overwrite_",
     [
-        ("X", ["dx_n","dx_t","dx_ne","dx_t"], True),
-        ("Y", ["dy_n","dy_t","dy_ne","dy_t"], True),
-        (("X","Y"), ["area_n","area_t","area_ne","area_t"], True),
+        ("X", ["dx_n", "dx_t", "dx_ne", "dx_t"], True),
+        ("Y", ["dy_n", "dy_t", "dy_ne", "dy_t"], True),
+        (("X", "Y"), ["area_n", "area_t", "area_ne", "area_t"], True),
         pytest.param(
             "X",
-            ["dx_n","dx_t","dx_ne","dx_t"],
+            ["dx_n", "dx_t", "dx_ne", "dx_t"],
             False,
             marks=pytest.mark.xfail,
             id="failed to overwrite same metric_varname",
-        )
+        ),
     ],
 )
 def test_set_metric_overwrite(metric_axes, metric_varname, overwrite_):
     ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
 
-    for mv in metric_varname: 
-        grid.set_metrics(metric_axes,mv,overwrite=overwrite_)
+    for mv in metric_varname:
+        grid.set_metrics(metric_axes, mv, overwrite=overwrite_)
 
     set_metric = grid._metrics
 
@@ -347,12 +348,6 @@ def test_set_metric_overwrite(metric_axes, metric_varname, overwrite_):
     expected_test = list(expected_metric.values())[0]
 
     assert len(set_test) == len(expected_test)
-    
+
     for i in range(len(set_test)):
         assert set_test[i].equals(expected_test[i])
-
-
-    
-    
-
-
