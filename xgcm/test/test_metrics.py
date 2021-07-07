@@ -233,7 +233,6 @@ def test_get_metric_with_conditions_02a():
 
     expected_metric = grid.interp(ds["area_e"], ("X", "Y"))
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -251,7 +250,6 @@ def test_get_metric_with_conditions_02b():
 
     expected_metric = grid.interp(ds["area_e"], ("X", "Y"))
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -268,7 +266,6 @@ def test_get_metric_with_conditions_04a():
     interp_metric = grid.interp(ds.dx_t, "Y")
     expected_metric = (interp_metric * ds.dy_n).reset_coords(drop=True)
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -286,7 +283,6 @@ def test_get_metric_with_conditions_04b():
     interp_metric_2 = grid.interp(ds.dy_t, "Y")
     expected_metric = (interp_metric_1 * interp_metric_2).reset_coords(drop=True)
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -311,28 +307,52 @@ def test_set_metric():
         assert k in grid_manual._metrics.keys()
 
         for metric_expected, metric in zip(v, grid_manual._metrics[k]):
-            xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
+            xr.testing.assert_allclose(metric_expected.reset_coords(drop=True), metric)
 
         for metric_expected, metric in zip(v, grid._metrics[k]):
-            xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
+            xr.testing.assert_allclose(metric_expected.reset_coords(drop=True), metric)
 
-
-@pytest.mark.skip(reason="For the next PR")
 @pytest.mark.parametrize(
-    "metric_axes,metric_name",
+    "metric_axes, metric_varname, overwrite_",
     [
-        ("X", "dx_t"),
-        ("Y", "dy_ne"),
+        ("X", ["dx_n","dx_t","dx_ne","dx_t"], True),
+        ("Y", ["dy_n","dy_t","dy_ne","dy_t"], True),
+        (("X","Y"), ["area_n","area_t","area_ne","area_t"], True),
+        pytest.param(
+            "X",
+            ["dx_n","dx_t","dx_ne","dx_t"],
+            False,
+            marks=pytest.mark.xfail,
+            id="failed to overwrite same metric_varname",
+        )
     ],
 )
-def test_interp_metrics(metric_axes, metric_name):
-    # need to test with boundary and fill_value conditions
+def test_set_metric_overwrite(metric_axes, metric_varname, overwrite_):
     ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
-    grid.set_metrics(metric_axes, metric_name)
-    interp_metric = grid._interp_metric(ds.u, metric_axes)
 
-    expected_metric = grid.interp(ds[metric_name], metric_axes)
+    for mv in metric_varname: 
+        grid.set_metrics(metric_axes,mv,overwrite=overwrite_)
 
-    if interp_metric.equals(expected_metric) is False:
-        xr.testing.assert_allclose(interp_metric, expected_metric)
+    set_metric = grid._metrics
+
+    expected_metric = {}
+    key = frozenset({metric_axes})
+    expected_metric[key] = []
+    for mv in metric_varname[:-1]:
+        metric_var = ds[mv].reset_coords(drop=True)
+        expected_metric[key].append(metric_var)
+
+    set_test = list(set_metric.values())[0]
+    expected_test = list(expected_metric.values())[0]
+
+    assert len(set_test) == len(expected_test)
+    
+    for i in range(len(set_test)):
+        assert set_test[i].equals(expected_test[i])
+
+
+    
+    
+
+
