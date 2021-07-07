@@ -319,6 +319,7 @@ def test_set_metric():
         ("X", ["dx_n", "dx_t", "dx_ne", "dx_t"], True),
         ("Y", ["dy_n", "dy_t", "dy_ne", "dy_t"], True),
         (("X", "Y"), ["area_n", "area_t", "area_ne", "area_t"], True),
+        # ("X", [("dx_n", "dx_t"),("dx_t", "dx_ne")], True),
         pytest.param(
             "X",
             ["dx_n", "dx_t", "dx_ne", "dx_t"],
@@ -341,6 +342,52 @@ def test_set_metric_overwrite(metric_axes, metric_varname, overwrite_):
     key = frozenset({metric_axes})
     expected_metric[key] = []
     for mv in metric_varname[:-1]:
+        metric_var = ds[mv].reset_coords(drop=True)
+        expected_metric[key].append(metric_var)
+
+    set_test = list(set_metric.values())[0]
+    expected_test = list(expected_metric.values())[0]
+
+    assert len(set_test) == len(expected_test)
+
+    for i in range(len(set_test)):
+        assert set_test[i].equals(expected_test[i])
+
+
+@pytest.mark.parametrize(
+    "metric_axes, metric_varname, expected_varname, overwrite_",
+    [
+        ("X", [("dx_n", "dx_t"), ("dx_t", "dx_ne")], ["dx_n", "dx_t", "dx_ne"], True),
+        ("Y", [("dy_n", "dy_e"), ("dy_e", "dy_ne")], ["dy_n", "dy_e", "dy_ne"], True),
+        (
+            ("X", "Y"),
+            [("area_n", "area_t"), ("area_t", "area_e")],
+            ["area_n", "area_t", "area_e"],
+            True,
+        ),
+        pytest.param(
+            "X",
+            [("dx_n", "dx_t"), ("dx_t", "dx_ne")],
+            ["dx_n", "dx_t", "dx_ne"],
+            False,
+            marks=pytest.mark.xfail,
+            id="failed to overwrite same metric_varname",
+        ),
+    ],
+)
+def test_set_metric_replace(metric_axes, metric_varname, expected_varname, overwrite_):
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords)
+
+    for mv in metric_varname:
+        grid.set_metrics(metric_axes, mv, overwrite=overwrite_)
+
+    set_metric = grid._metrics
+
+    expected_metric = {}
+    key = frozenset({metric_axes})
+    expected_metric[key] = []
+    for mv in expected_varname:
         metric_var = ds[mv].reset_coords(drop=True)
         expected_metric[key].append(metric_var)
 
