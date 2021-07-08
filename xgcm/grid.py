@@ -1280,26 +1280,23 @@ class Grid:
                     )
                 else:
                     value_new = self._ds[metric_varname].reset_coords(drop=True)
-                    # check for duplicate values
-                    if any(value_new.equals(ve) for ve in value_exist):
-                        # go through each existing value until data array with matching dimensions is selected
-                        for idx, ve in enumerate(value_exist):
-                            # double check if dimensions match
-                            if set(value_new.dims) == set(ve.dims):
-                                warnings.warn(
-                                    f"Replacing metric value {metric_varname} that is already assigned."
+                    did_overwrite = False
+                    # go through each existing value until data array with matching dimensions is selected
+                    for idx, ve in enumerate(value_exist):
+                        # double check if dimensions match
+                        if set(value_new.dims) == set(ve.dims):
+                            if overwrite:
+                                # replace existing data array with new data array input
+                                self._metrics[metric_axes][idx] = value_new
+                                did_overwrite = True
+                            else:
+                                raise ValueError(
+                                    f"Metric variable {metric_varname} with dimensions {ve.dims} already assigned in metrics."
+                                    f" Overwrite {metric_varname} by setting overwrite=True."
                                 )
-                                if overwrite:
-                                    # replace existing data array with new data array input
-                                    self._metrics[metric_axes][idx] = value_new
-                                else:
-                                    raise ValueError(
-                                        f"Metric variable {metric_varname} with dimensions {ve.dims} already assigned in metrics."
-                                        f" Overwrite {metric_varname} by setting overwrite=True."
-                                    )
-                    else:
+                    # if no existing value matches new value dimension-wise, just append new value
+                    if not did_overwrite:
                         self._metrics[metric_axes].append(value_new)
-                        break
         else:
             # initialize empty list
             self._metrics[metric_axes] = []
