@@ -373,6 +373,7 @@ def test_set_metric_replace():
     for mv in metric_varname:
         grid.set_metrics("X", mv)
 
+    # overwrite 1 existing metric, append 1 new metric
     metric_append = ["dx_t_overwrite", "dx_ne"]
     for mv in metric_append:
         grid.set_metrics("X", mv, overwrite=True)
