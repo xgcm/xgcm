@@ -16,9 +16,9 @@ jobs:
         exempt-issue-labels: 'keepOpen,In Progress'
         exempt-pr-labels: 'keepOpen,In Progress'
         stale-issue-message: |
-          This issue has been marked 'stale' due to lack of recent activity. 
-          If there is no further activity, the issue will be closed in another 30 days. 
-          
+          This issue has been marked 'stale' due to lack of recent activity.
+          If there is no further activity, the issue will be closed in another 30 days.
+
           Thank you for your contribution!
         close-issue-message: |
           It's been 60 days since any activity on this issue. so our helper bot (github-actions-bot) is going to close it.
@@ -26,4 +26,3 @@ jobs:
           please reopen the issue or file a new issue with the relevant details.
 
           Thanks again for your contribution!
-      
