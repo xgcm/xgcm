@@ -314,32 +314,45 @@ def test_set_metric():
 
 
 @pytest.mark.parametrize(
-    "metric_axes, metric_varname, expected_varname",
+    "metric_axes, exist_metric_varname, add_metric_varname, expected_varname",
     [
-        ("X", "dx_n", ["dx_t", "dx_n_overwrite", "dx_e", "dx_ne"]),
+        (
+            "X",
+            ["dx_t", "dx_n", "dx_e", "dx_ne"],
+            ["dx_n_overwrite"],
+            ["dx_t", "dx_n_overwrite", "dx_e", "dx_ne"],
+        ),
         (
             ("Y", "X"),
-            "area_n",
+            ["area_t", "area_n", "area_e", "area_ne"],
+            ["area_n_overwrite"],
             ["area_t", "area_n_overwrite", "area_e", "area_ne"],
+        ),
+        # overwrite 1 existing metric, append 1 new metric
+        (
+            "X",
+            ["dx_t", "dx_n", "dx_e"],
+            ["dx_n_overwrite", "dx_ne"],
+            ["dx_t", "dx_n_overwrite", "dx_e", "dx_ne"],
         ),
     ],
 )
-def test_set_metric_overwrite_true(metric_axes, metric_varname, expected_varname):
+def test_set_metric_overwrite_true(
+    metric_axes, exist_metric_varname, add_metric_varname, expected_varname
+):
     ds, coords, metrics = datasets_grid_metric("C")
 
-    mv_modified = f"{metric_varname}_overwrite"
-    ds = ds.assign_coords({mv_modified: ds[metric_varname] * 10})
+    ds = ds.assign_coords({add_metric_varname[0]: ds[exist_metric_varname[1]] * 10})
 
+    metrics = {
+        k: [m for m in v if m in exist_metric_varname] for k, v in metrics.items()
+    }
     grid = Grid(ds, coords=coords, metrics=metrics)
 
-    grid.set_metrics(metric_axes, mv_modified, overwrite=True)
+    for av in add_metric_varname:
+        grid.set_metrics(metric_axes, av, overwrite=True)
 
-    if len(metric_axes) > 1:
-        a, b = metric_axes
-        key = frozenset({a, b})
-    else:
-        key = frozenset({metric_axes})
-
+    key = frozenset(list(metric_axes))
     set_metric = grid._metrics.get(key)
 
     expected_metric = []
@@ -362,31 +375,3 @@ def test_set_metric_overwrite_false():
 
     with pytest.raises(ValueError, match="setting overwrite=True."):
         grid.set_metrics("X", "dx_t_overwrite", overwrite=False)
-
-
-def test_set_metric_replace():
-    ds, coords, metrics = datasets_grid_metric("C")
-    ds = ds.assign_coords({"dx_t_overwrite": ds["dx_t"] * 10})
-    grid = Grid(ds, coords=coords)
-
-    metric_varname = ["dx_n", "dx_t"]
-    for mv in metric_varname:
-        grid.set_metrics("X", mv)
-
-    # overwrite 1 existing metric, append 1 new metric
-    metric_append = ["dx_t_overwrite", "dx_ne"]
-    for mv in metric_append:
-        grid.set_metrics("X", mv, overwrite=True)
-
-    set_metric = grid._metrics.get(frozenset({"X"}))
-
-    expected_metric = []
-    expected_varname = ["dx_n", "dx_t_overwrite", "dx_ne"]
-    for ev in expected_varname:
-        metric_var = ds[ev].reset_coords(drop=True)
-        expected_metric.append(metric_var)
-
-    assert len(set_metric) == len(expected_metric)
-
-    for i in range(len(set_metric)):
-        assert set_metric[i].equals(expected_metric[i])
