@@ -366,12 +366,34 @@ def test_set_metric_overwrite_true(
         assert set_metric[i].equals(expected_metric[i])
 
 
-def test_set_metric_overwrite_false():
+@pytest.mark.parametrize(
+    "metric_axes,overwrite_metric,add_metric",
+    [("X", "dx_t_overwrite", "dx_t"), ("X", "dx_e", None)],
+)
+def test_set_metric_value_errors(metric_axes, overwrite_metric, add_metric):
     ds, coords, metrics = datasets_grid_metric("C")
 
-    ds = ds.assign_coords({"dx_t_overwrite": ds["dx_t"] * 10})
+    if add_metric is not None:
+        ds = ds.assign_coords({overwrite_metric: ds[add_metric] * 10})
 
     grid = Grid(ds, coords=coords, metrics=metrics)
 
     with pytest.raises(ValueError, match="setting overwrite=True."):
-        grid.set_metrics("X", "dx_t_overwrite", overwrite=False)
+        grid.set_metrics(metric_axes, overwrite_metric)
+
+
+@pytest.mark.parametrize(
+    "metric_axes,add_metric",
+    [("X", "foo"), (("U", "V"), "area_n")],
+)
+def test_set_metric_key_errors(metric_axes, add_metric):
+    ds, coords, metrics = datasets_grid_metric("C")
+    metric = {"X": "dx_t"}
+    grid = Grid(ds, coords=coords, metrics=metric)
+
+    if len(metric_axes) == 1:
+        with pytest.raises(KeyError, match="not found in dataset."):
+            grid.set_metrics(metric_axes, add_metric)
+    else:
+        with pytest.raises(KeyError, match="not compatible with grid axes"):
+            grid.set_metrics(metric_axes, add_metric)
