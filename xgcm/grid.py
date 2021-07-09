@@ -1269,9 +1269,7 @@ class Grid:
 
         metric_value = _maybe_promote_str_to_list(value)
         for metric_varname in metric_value:
-            if (metric_varname not in self._ds.variables) and (
-                metric_varname not in self._ds.coords
-            ):
+            if metric_varname not in self._ds.variables:
                 raise KeyError(
                     f"Metric variable {metric_varname} not found in dataset."
                 )
