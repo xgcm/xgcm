@@ -388,8 +388,7 @@ def test_set_metric_value_errors(metric_axes, overwrite_metric, add_metric):
 )
 def test_set_metric_key_errors(metric_axes, add_metric):
     ds, coords, metrics = datasets_grid_metric("C")
-    metric = {"X": "dx_t"}
-    grid = Grid(ds, coords=coords, metrics=metric)
+    grid = Grid(ds, coords=coords, metrics=metrics)
 
     if len(metric_axes) == 1:
         with pytest.raises(KeyError, match="not found in dataset."):
