@@ -233,7 +233,6 @@ def test_get_metric_with_conditions_02a():
 
     expected_metric = grid.interp(ds["area_e"], ("X", "Y"))
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -251,7 +250,6 @@ def test_get_metric_with_conditions_02b():
 
     expected_metric = grid.interp(ds["area_e"], ("X", "Y"))
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -268,7 +266,6 @@ def test_get_metric_with_conditions_04a():
     interp_metric = grid.interp(ds.dx_t, "Y")
     expected_metric = (interp_metric * ds.dy_n).reset_coords(drop=True)
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -286,7 +283,6 @@ def test_get_metric_with_conditions_04b():
     interp_metric_2 = grid.interp(ds.dy_t, "Y")
     expected_metric = (interp_metric_1 * interp_metric_2).reset_coords(drop=True)
 
-    xr.testing.assert_equal(get_metric, expected_metric)
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
@@ -311,28 +307,92 @@ def test_set_metric():
         assert k in grid_manual._metrics.keys()
 
         for metric_expected, metric in zip(v, grid_manual._metrics[k]):
-            xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
+            xr.testing.assert_allclose(metric_expected.reset_coords(drop=True), metric)
 
         for metric_expected, metric in zip(v, grid._metrics[k]):
-            xr.testing.assert_equal(metric_expected.reset_coords(drop=True), metric)
+            xr.testing.assert_allclose(metric_expected.reset_coords(drop=True), metric)
 
 
-@pytest.mark.skip(reason="For the next PR")
 @pytest.mark.parametrize(
-    "metric_axes,metric_name",
+    "metric_axes, exist_metric_varname, add_metric_varname, expected_varname",
     [
-        ("X", "dx_t"),
-        ("Y", "dy_ne"),
+        (
+            "X",
+            ["dx_t", "dx_n", "dx_e", "dx_ne"],
+            ["dx_n_overwrite"],
+            ["dx_t", "dx_n_overwrite", "dx_e", "dx_ne"],
+        ),
+        (
+            ("Y", "X"),
+            ["area_t", "area_n", "area_e", "area_ne"],
+            ["area_n_overwrite"],
+            ["area_t", "area_n_overwrite", "area_e", "area_ne"],
+        ),
+        # overwrite 1 existing metric, append 1 new metric
+        (
+            "X",
+            ["dx_t", "dx_n", "dx_e"],
+            ["dx_n_overwrite", "dx_ne"],
+            ["dx_t", "dx_n_overwrite", "dx_e", "dx_ne"],
+        ),
     ],
 )
-def test_interp_metrics(metric_axes, metric_name):
-    # need to test with boundary and fill_value conditions
+def test_set_metric_overwrite_true(
+    metric_axes, exist_metric_varname, add_metric_varname, expected_varname
+):
     ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
-    grid.set_metrics(metric_axes, metric_name)
-    interp_metric = grid._interp_metric(ds.u, metric_axes)
 
-    expected_metric = grid.interp(ds[metric_name], metric_axes)
+    ds = ds.assign_coords({add_metric_varname[0]: ds[exist_metric_varname[1]] * 10})
 
-    if interp_metric.equals(expected_metric) is False:
-        xr.testing.assert_allclose(interp_metric, expected_metric)
+    metrics = {
+        k: [m for m in v if m in exist_metric_varname] for k, v in metrics.items()
+    }
+    grid = Grid(ds, coords=coords, metrics=metrics)
+
+    for av in add_metric_varname:
+        grid.set_metrics(metric_axes, av, overwrite=True)
+
+    key = frozenset(list(metric_axes))
+    set_metric = grid._metrics.get(key)
+
+    expected_metric = []
+    for ev in expected_varname:
+        metric_var = ds[ev].reset_coords(drop=True)
+        expected_metric.append(metric_var)
+
+    assert len(set_metric) == len(expected_metric)
+
+    for i in range(len(set_metric)):
+        assert set_metric[i].equals(expected_metric[i])
+
+
+@pytest.mark.parametrize(
+    "metric_axes,overwrite_metric,add_metric",
+    [("X", "dx_t_overwrite", "dx_t"), ("X", "dx_e", None)],
+)
+def test_set_metric_value_errors(metric_axes, overwrite_metric, add_metric):
+    ds, coords, metrics = datasets_grid_metric("C")
+
+    if add_metric is not None:
+        ds = ds.assign_coords({overwrite_metric: ds[add_metric] * 10})
+
+    grid = Grid(ds, coords=coords, metrics=metrics)
+
+    with pytest.raises(ValueError, match="setting overwrite=True."):
+        grid.set_metrics(metric_axes, overwrite_metric)
+
+
+@pytest.mark.parametrize(
+    "metric_axes,add_metric",
+    [("X", "foo"), (("U", "V"), "area_n")],
+)
+def test_set_metric_key_errors(metric_axes, add_metric):
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords, metrics=metrics)
+
+    if len(metric_axes) == 1:
+        with pytest.raises(KeyError, match="not found in dataset."):
+            grid.set_metrics(metric_axes, add_metric)
+    else:
+        with pytest.raises(KeyError, match="not compatible with grid axes"):
+            grid.set_metrics(metric_axes, add_metric)

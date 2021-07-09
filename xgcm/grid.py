@@ -1259,28 +1259,49 @@ class Grid:
             self.axes[axis]._facedim = facedim
             self.axes[axis]._connections = axis_links
 
-    def set_metrics(self, key, value):
+    def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
         axes_not_found = [ma for ma in metric_axes if ma not in self.axes]
-
         if len(axes_not_found) > 0:
             raise KeyError(
                 f"Metric axes {axes_not_found!r} not compatible with grid axes {tuple(self.axes)!r}"
             )
 
-        # initialize empty list
-        self._metrics[metric_axes] = []
-        for metric_varname in _maybe_promote_str_to_list(value):
-            if metric_varname not in self._ds:
+        metric_value = _maybe_promote_str_to_list(value)
+        for metric_varname in metric_value:
+            if metric_varname not in self._ds.variables:
                 raise KeyError(
                     f"Metric variable {metric_varname} not found in dataset."
                 )
-            # resetting coords avoids potential broadcasting / alignment issues
-            metric_var = self._ds[metric_varname].reset_coords(drop=True)
 
-            # TODO: check for consistency of metric_var dims with axis dims
-            # check for duplicate dimensions among each axis metric
-            self._metrics[metric_axes].append(metric_var)
+        existing_metric_axes = set(self._metrics.keys())
+        if metric_axes in existing_metric_axes:
+            value_exist = self._metrics.get(metric_axes)
+            # resetting coords avoids potential broadcasting / alignment issues
+            value_new = self._ds[metric_varname].reset_coords(drop=True)
+            did_overwrite = False
+            # go through each existing value until data array with matching dimensions is selected
+            for idx, ve in enumerate(value_exist):
+                # double check if dimensions match
+                if set(value_new.dims) == set(ve.dims):
+                    if overwrite:
+                        # replace existing data array with new data array input
+                        self._metrics[metric_axes][idx] = value_new
+                        did_overwrite = True
+                    else:
+                        raise ValueError(
+                            f"Metric variable {ve.name} with dimensions {ve.dims} already assigned in metrics."
+                            f" Overwrite {ve.name} with {metric_varname} by setting overwrite=True."
+                        )
+            # if no existing value matches new value dimension-wise, just append new value
+            if not did_overwrite:
+                self._metrics[metric_axes].append(value_new)
+        else:
+            # no existing metrics for metric_axes yet; initialize empty list
+            self._metrics[metric_axes] = []
+            for metric_varname in metric_value:
+                metric_var = self._ds[metric_varname].reset_coords(drop=True)
+                self._metrics[metric_axes].append(metric_var)
 
     def _get_dims_from_axis(self, da, axis):
         dim = []
@@ -1423,15 +1444,6 @@ class Grid:
             boundary=boundary,
         )
         return array
-
-    def _interp_metric(self, da, axes):
-        # include boundary and fill_value as inputs
-        metric_available = self._metrics.get(frozenset(axes), None)
-        if metric_available is not None:
-            # this function works with only one metric at a time
-            metric = metric_available[0]
-            metric_interp = self.interp_like(metric, da)
-        return metric_interp
 
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
