@@ -1291,8 +1291,8 @@ class Grid:
                                 did_overwrite = True
                             else:
                                 raise ValueError(
-                                    f"Metric variable {metric_varname} with dimensions {ve.dims} already assigned in metrics."
-                                    f" Overwrite {metric_varname} by setting overwrite=True."
+                                    f"Metric variable {ve.name} with dimensions {ve.dims} already assigned in metrics."
+                                    f" Overwrite {ve.name} with {metric_varname} by setting overwrite=True."
                                 )
                     # if no existing value matches new value dimension-wise, just append new value
                     if not did_overwrite:
