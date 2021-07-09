@@ -1269,7 +1269,7 @@ class Grid:
             )
 
         metric_value = _maybe_promote_str_to_list(value)
-        existing_metric_axes = set(k for k in self._metrics.keys())
+        existing_metric_axes = set(self._metrics.keys())
 
         if metric_axes in existing_metric_axes:
             value_exist = self._metrics.get(metric_axes)
