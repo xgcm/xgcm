@@ -1317,7 +1317,7 @@ class Grid:
                 )
         return dim
 
-    def get_metric(self, array, axes):
+    def get_metric(self, array, axes, boundary=None, fill_value=None):
         """
         Find the metric variable associated with a set of axes for a particular
         array.
@@ -1329,6 +1329,21 @@ class Grid:
             dimensions are considered.
         axes : iterable
             A list of axes for which to find the metric.
+        boundary : str or dict, optional,
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition where
+              the difference at the boundary will be zero.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            This sets the default value. It can be overriden by specifying the
+            boundary kwarg when calling specific methods.
+        fill_value : float, optional
+            The value to use in the boundary condition when `boundary='fill'`.
 
         Returns
         -------
@@ -1352,11 +1367,11 @@ class Grid:
                 if metric_dims.issubset(array_dims):
                     metric_vars = mv
                     break
-            # if metric_vars is None:
-            #     # Condition 4: interpolate metric with matching axis to desired dimensions
-            #     metric_vars = self.interp_like(mv, array)
+            if metric_vars is None:
+                # Condition 2: interpolate metric with matching axis to desired dimensions
+                metric_vars = self.interp_like(mv, array, boundary, fill_value)
         else:
-            # Condition 2: use provided metrics to calculate for required metric
+            # Condition 3: use provided metrics to calculate for required metric
             for axis_combinations in iterate_axis_combinations(axes):
                 try:
                     # will raise KeyError if the axis combination is not in metrics
@@ -1373,12 +1388,12 @@ class Grid:
                             # we found a set of metrics with dimensions compatible with the array
                             metric_vars = possible_combinations
                             break
-                        # else:
-                        #     # Condition 5: metrics in the wrong position (must interpolate before multiplying)
-                        #     metric_vars = tuple(
-                        #         self.interp_like(pc, array)
-                        #         for pc in possible_combinations
-                        #     )
+                        else:
+                            # Condition 4: metrics in the wrong position (must interpolate before multiplying)
+                            metric_vars = tuple(
+                                self.interp_like(pc, array, boundary, fill_value)
+                                for pc in possible_combinations
+                            )
                     if metric_vars is not None:
                         # return the product of the metrics
                         metric_vars = functools.reduce(operator.mul, metric_vars, 1)
