@@ -164,14 +164,14 @@ def test_axis_repr(all_datasets):
     # TODO: make this more complete
 
 
-def test_get_axis_coord(all_datasets):
+def test_get_position_name(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
     for ax_name, axis in axis_objs.items():
         # create a dataarray with each axis coordinate
         for position, coord in axis.coords.items():
             da = 1 * ds[coord]
-            assert axis._get_axis_coord(da) == (position, coord)
+            assert axis._get_position_name(da) == (position, coord)
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
