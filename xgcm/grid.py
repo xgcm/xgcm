@@ -274,7 +274,7 @@ class Axis:
         da_i : xarray.DataArray
             The differenced data
         """
-        position_from, dim = self._get_axis_coord(da)
+        position_from, dim = self._get_position_name(da)
         if to is None:
             to = self._default_shifts[position_from]
 
@@ -340,7 +340,7 @@ class Axis:
         boundary conditions.
         """
 
-        position, this_dim = self._get_axis_coord(da)
+        position, this_dim = self._get_position_name(da)
         this_axis_num = da.get_axis_num(this_dim)
 
         def face_edge_data(fnum, face_axis, count=1):
@@ -508,7 +508,7 @@ class Axis:
         position_check=True,
     ):
 
-        position_from, dim = self._get_axis_coord(da)
+        position_from, dim = self._get_position_name(da)
         axis_num = da.get_axis_num(dim)
 
         boundary_kwargs = dict(
@@ -664,7 +664,7 @@ class Axis:
             The cumsummed data
         """
 
-        pos, dim = self._get_axis_coord(da)
+        pos, dim = self._get_position_name(da)
 
         if to is None:
             to = self._default_shifts[pos]
@@ -930,7 +930,7 @@ class Axis:
             _check_other_dims(target_data)
             return target, target_dim, target_data
 
-        _, dim = self._get_axis_coord(da)
+        _, dim = self._get_position_name(da)
         if method == "linear":
             target, target_dim, target_data = _parse_target(
                 target, target_dim, dim, target_data
@@ -972,7 +972,7 @@ class Axis:
                 # Rechunk to keep xr.apply_func from complaining.
                 # TODO: This should be made obsolete, when the internals are refactored using numba
                 target_data = target_data.chunk(
-                    {self._get_axis_coord(target_data)[1]: -1}
+                    {self._get_position_name(target_data)[1]: -1}
                 )
 
             out = conservative_interpolation(
@@ -991,7 +991,7 @@ class Axis:
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
         """
-        position_from, old_dim = self._get_axis_coord(da)
+        position_from, old_dim = self._get_position_name(da)
         try:
             new_dim = self.coords[position_to]
         except KeyError:
@@ -1023,8 +1023,8 @@ class Axis:
 
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
-    def _get_axis_coord(self, da):
-        """Return the position and name of the axis coordiante in a DataArray."""
+    def _get_position_name(self, da):
+        """Return the position and name of the axis coordinate in a DataArray."""
         for position, coord_name in self.coords.items():
             # TODO: should we have more careful checking of alignment here?
             if coord_name in da.dims:
@@ -1037,7 +1037,7 @@ class Axis:
 
     def _get_axis_dim_num(self, da):
         """Return the dimension number of the axis coordinate in a DataArray."""
-        _, coord_name = self._get_axis_coord(da)
+        _, coord_name = self._get_position_name(da)
         return da.get_axis_num(coord_name)
 
 
@@ -1448,8 +1448,8 @@ class Grid:
         interp_axes = []
         for axname, axis in self.axes.items():
             try:
-                position_array, _ = axis._get_axis_coord(array)
-                position_like, _ = axis._get_axis_coord(like)
+                position_array, _ = axis._get_position_name(array)
+                position_like, _ = axis._get_position_name(like)
             # This will raise a KeyError if you have multiple axes contained in self,
             # since the for-loop will go through all axes, but the method is applied for only 1 axis at a time
             # This is for cases where an axis is present in self that is not available for either array or like.
@@ -1709,7 +1709,7 @@ class Grid:
             )
         for axis_name, component in vector.items():
             axis = self.axes[axis_name]
-            position, coord = axis._get_axis_coord(component)
+            position, coord = axis._get_position_name(component)
             if position == "center":
                 raise NotImplementedError(
                     "Only vector interpolation to cell "
