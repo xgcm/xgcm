@@ -1400,11 +1400,18 @@ class Grid:
                         break
                 except KeyError:
                     pass
-        if metric_vars is None:
+        if metric_vars is not None:
+            # final check for metric_vars, where dimensions should match with input array
+            if set(metric_vars.dims).issubset(array_dims):
+                return metric_vars
+            else:
+                raise KeyError(
+                    f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
+                )
+        else:
             raise KeyError(
                 f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
             )
-        return metric_vars
 
     @docstrings.dedent
     def interp_like(self, array, like, boundary=None, fill_value=None):
@@ -1777,7 +1784,7 @@ class Grid:
         return diff / dx
 
     @docstrings.dedent
-    def integrate(self, da, axis, **kwargs):
+    def integrate(self, da, axis, boundary=None, fill_value=None, **kwargs):
         """
         Perform finite volume integration along specified axis or axes,
         accounting for grid metrics. (e.g. cell length, area, volume)
@@ -1795,7 +1802,7 @@ class Grid:
             The integrated data
         """
 
-        weight = self.get_metric(da, axis)
+        weight = self.get_metric(da, axis, boundary=boundary, fill_value=fill_value)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
@@ -1822,15 +1829,17 @@ class Grid:
         da_i : xarray.DataArray
             The cumulatively integrated data
         """
+        boundary = kwargs.get("boundary")
+        fill_value = kwargs.get("fill_value")
 
-        weight = self.get_metric(da, axis)
+        weight = self.get_metric(da, axis, boundary=boundary, fill_value=fill_value)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
         return self.cumsum(weighted, axis, **kwargs)
 
     @docstrings.dedent
-    def average(self, da, axis, **kwargs):
+    def average(self, da, axis, boundary=None, fill_value=None, **kwargs):
         """
         Perform weighted mean reduction along specified axis or axes,
         accounting for grid metrics. (e.g. cell length, area, volume)
@@ -1847,7 +1856,7 @@ class Grid:
         da_i : xarray.DataArray
             The averaged data
         """
-        weight = self.get_metric(da, axis)
+        weight = self.get_metric(da, axis, boundary=boundary, fill_value=fill_value)
         weighted = da.weighted(weight)
 
         # get dimension(s) corresponding
