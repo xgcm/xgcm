@@ -1370,7 +1370,7 @@ class Grid:
             if metric_vars is None:
                 # Condition 2: interpolate metric with matching axis to desired dimensions
                 warnings.warn(
-                    "Metric outputs are interpolated from initial metrics input"
+                    f"Metric at {array.dims} being interpolated from metrics at {mv.dims}"
                 )
                 metric_vars = self.interp_like(mv, array, "extend", None)
         else:
