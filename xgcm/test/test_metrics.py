@@ -190,69 +190,67 @@ def test_get_metric_with_conditions_01():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.parametrize("periodic", [True, False])
-@pytest.mark.parametrize(
-    "boundary",
-    [
-        ({"X": "fill", "Y": "fill"}),
-        ({"X": "extend", "Y": "extend"}),
-        ({"X": "extrapolate", "Y": "extrapolate"}),
-        ({"X": "extend", "Y": "fill"}),
-        ({"X": "extrapolate", "Y": "fill"}),
-    ],
-)
-@pytest.mark.parametrize("fill_value", [None, 0.1])
-def test_get_metric_with_conditions_02a(periodic, boundary, fill_value):
+# @pytest.mark.parametrize("periodic", [True, False])
+# @pytest.mark.parametrize(
+#     "boundary",
+#     [
+#         ({"X": "fill", "Y": "fill"}),
+#         ({"X": "extend", "Y": "extend"}),
+#         ({"X": "extrapolate", "Y": "extrapolate"}),
+#         ({"X": "extend", "Y": "fill"}),
+#         ({"X": "extrapolate", "Y": "fill"}),
+#     ],
+# )
+# @pytest.mark.parametrize("fill_value", [None, 0.1])
+def test_get_metric_with_conditions_02a():
     # Condition 2, case a: interpolate metric with matching axis to desired dimensions
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic)
+    grid = Grid(ds, coords=coords)
     grid.set_metrics(("X", "Y"), "area_e")
 
-    get_metric = grid.get_metric(
-        ds.v, ("X", "Y"), boundary=boundary, fill_value=fill_value
-    )
+    get_metric = grid.get_metric(ds.v, ("X", "Y"))
 
-    expected_metric = grid.interp(
-        ds["area_e"], ("X", "Y"), boundary=boundary, fill_value=fill_value
-    )
+    expected_metric = grid.interp(ds["area_e"], ("X", "Y"))
 
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.parametrize("periodic", [True, False])
-@pytest.mark.parametrize(
-    "boundary",
-    [
-        ({"X": "fill", "Y": "fill"}),
-        ({"X": "extend", "Y": "extend"}),
-        ({"X": "extrapolate", "Y": "extrapolate"}),
-        ({"X": "extend", "Y": "fill"}),
-        ({"X": "extrapolate", "Y": "fill"}),
-    ],
-)
-@pytest.mark.parametrize("fill_value", [None, 0.1])
-def test_get_metric_with_conditions_02b(periodic, boundary, fill_value):
+# @pytest.mark.parametrize("periodic", [True, False])
+# @pytest.mark.parametrize(
+#     "boundary",
+#     [
+#         ({"X": "fill", "Y": "fill"}),
+#         ({"X": "extend", "Y": "extend"}),
+#         ({"X": "extrapolate", "Y": "extrapolate"}),
+#         ({"X": "extend", "Y": "fill"}),
+#         ({"X": "extrapolate", "Y": "fill"}),
+#     ],
+# )
+# @pytest.mark.parametrize("fill_value", [None, 0.1])
+def test_get_metric_with_conditions_02b():
     # Condition 2, case b: get_metric should select for the metric with matching axes and interpolate from there,
     # even if other metrics in the desired positions are available
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic)
+    grid = Grid(ds, coords=coords)
     grid.set_metrics(("X", "Y"), "area_e")
     grid.set_metrics(("X"), "dx_n")
     grid.set_metrics(("Y"), "dx_n")
 
     get_metric = grid.get_metric(
-        ds.v, ("X", "Y"), boundary=boundary, fill_value=fill_value
+        ds.v,
+        ("X", "Y"),
     )
 
     expected_metric = grid.interp(
-        ds["area_e"], ("X", "Y"), boundary=boundary, fill_value=fill_value
+        ds["area_e"],
+        ("X", "Y"),
     )
 
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
 def test_get_metric_with_conditions_03a():
-    # Condition 3: use provided metrics to calculate for required metric
+    # Condition 3: use provided metrics with matching dimensions to calculate for required metric
     ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
 
@@ -269,7 +267,7 @@ def test_get_metric_with_conditions_03a():
 
 
 def test_get_metric_with_conditions_03b():
-    # Condition 3: use provided metrics to calculate for required metric
+    # Condition 3: use provided metrics with matching dimensions to calculate for required metric
     ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
     grid.set_metrics(("X", "Y"), "area_t")
@@ -284,63 +282,67 @@ def test_get_metric_with_conditions_03b():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.parametrize("periodic", [True, False])
-@pytest.mark.parametrize(
-    "boundary",
-    [
-        ({"X": "fill", "Y": "fill"}),
-        ({"X": "extend", "Y": "extend"}),
-        ({"X": "extrapolate", "Y": "extrapolate"}),
-        ({"X": "extend", "Y": "fill"}),
-        ({"X": "extrapolate", "Y": "fill"}),
-    ],
-)
-@pytest.mark.parametrize("fill_value", [None, 0.1])
-def test_get_metric_with_conditions_04a(periodic, boundary, fill_value):
+# @pytest.mark.parametrize("periodic", [True, False])
+# @pytest.mark.parametrize(
+#     "boundary",
+#     [
+#         ({"X": "fill", "Y": "fill"}),
+#         ({"X": "extend", "Y": "extend"}),
+#         ({"X": "extrapolate", "Y": "extrapolate"}),
+#         ({"X": "extend", "Y": "fill"}),
+#         ({"X": "extrapolate", "Y": "fill"}),
+#     ],
+# )
+# @pytest.mark.parametrize("fill_value", [None, 0.1])
+def test_get_metric_with_conditions_04a():
     # Condition 4, case a: 1 metric on the wrong position (must interpolate before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic)
+    grid = Grid(ds, coords=coords)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_n")
 
     get_metric = grid.get_metric(
-        ds.v, ("X", "Y"), boundary=boundary, fill_value=fill_value
+        ds.v,
+        ("X", "Y"),
     )
 
-    interp_metric = grid.interp(ds.dx_t, "Y", boundary=boundary, fill_value=fill_value)
+    interp_metric = grid.interp(ds.dx_t, "Y")
     expected_metric = (interp_metric * ds.dy_n).reset_coords(drop=True)
 
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.parametrize("periodic", [True, False])
-@pytest.mark.parametrize(
-    "boundary",
-    [
-        ({"X": "fill", "Y": "fill"}),
-        ({"X": "extend", "Y": "extend"}),
-        ({"X": "extrapolate", "Y": "extrapolate"}),
-        ({"X": "extend", "Y": "fill"}),
-        ({"X": "extrapolate", "Y": "fill"}),
-    ],
-)
-@pytest.mark.parametrize("fill_value", [None, 0.1])
-def test_get_metric_with_conditions_04b(periodic, boundary, fill_value):
+# @pytest.mark.parametrize("periodic", [True, False])
+# @pytest.mark.parametrize(
+#     "boundary",
+#     [
+#         ({"X": "fill", "Y": "fill"}),
+#         ({"X": "extend", "Y": "extend"}),
+#         ({"X": "extrapolate", "Y": "extrapolate"}),
+#         ({"X": "extend", "Y": "fill"}),
+#         ({"X": "extrapolate", "Y": "fill"}),
+#     ],
+# )
+# @pytest.mark.parametrize("fill_value", [None, 0.1])
+def test_get_metric_with_conditions_04b():
     # Condition 4, case b: 2 metrics in the wrong position (must interpolate both before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic)
+    grid = Grid(ds, coords=coords)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_t")
 
     get_metric = grid.get_metric(
-        ds.v, ("X", "Y"), boundary=boundary, fill_value=fill_value
+        ds.v,
+        ("X", "Y"),
     )
 
     interp_metric_1 = grid.interp(
-        ds.dx_t, "Y", boundary=boundary, fill_value=fill_value
+        ds.dx_t,
+        "Y",
     )
     interp_metric_2 = grid.interp(
-        ds.dy_t, "Y", boundary=boundary, fill_value=fill_value
+        ds.dy_t,
+        "Y",
     )
     expected_metric = (interp_metric_1 * interp_metric_2).reset_coords(drop=True)
 

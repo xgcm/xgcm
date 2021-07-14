@@ -1317,7 +1317,7 @@ class Grid:
                 )
         return dim
 
-    def get_metric(self, array, axes, boundary=None, fill_value=None):
+    def get_metric(self, array, axes):
         """
         Find the metric variable associated with a set of axes for a particular
         array.
@@ -1369,9 +1369,8 @@ class Grid:
                     break
             if metric_vars is None:
                 # Condition 2: interpolate metric with matching axis to desired dimensions
-                metric_vars = self.interp_like(mv, array, boundary, fill_value)
+                metric_vars = self.interp_like(mv, array, "extend", None)
         else:
-            # Condition 3: use provided metrics to calculate for required metric
             for axis_combinations in iterate_axis_combinations(axes):
                 try:
                     # will raise KeyError if the axis combination is not in metrics
@@ -1385,13 +1384,13 @@ class Grid:
                             [d for mv in possible_combinations for d in mv.dims]
                         )
                         if metric_dims.issubset(array_dims):
-                            # we found a set of metrics with dimensions compatible with the array
+                            # Condition 3: use provided metrics with matching dimensions to calculate for required metric
                             metric_vars = possible_combinations
                             break
                         else:
                             # Condition 4: metrics in the wrong position (must interpolate before multiplying)
                             metric_vars = tuple(
-                                self.interp_like(pc, array, boundary, fill_value)
+                                self.interp_like(pc, array, "extend", None)
                                 for pc in possible_combinations
                             )
                     if metric_vars is not None:
@@ -1401,7 +1400,7 @@ class Grid:
                 except KeyError:
                     pass
         if metric_vars is not None:
-            # final check for metric_vars, where dimensions should match with input array
+            # final check for metric_vars, where dimensions should match with input array.dims
             if set(metric_vars.dims).issubset(array_dims):
                 return metric_vars
             else:
@@ -1784,7 +1783,7 @@ class Grid:
         return diff / dx
 
     @docstrings.dedent
-    def integrate(self, da, axis, boundary=None, fill_value=None, **kwargs):
+    def integrate(self, da, axis, **kwargs):
         """
         Perform finite volume integration along specified axis or axes,
         accounting for grid metrics. (e.g. cell length, area, volume)
@@ -1802,7 +1801,7 @@ class Grid:
             The integrated data
         """
 
-        weight = self.get_metric(da, axis, boundary=boundary, fill_value=fill_value)
+        weight = self.get_metric(da, axis)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
@@ -1829,17 +1828,15 @@ class Grid:
         da_i : xarray.DataArray
             The cumulatively integrated data
         """
-        boundary = kwargs.get("boundary")
-        fill_value = kwargs.get("fill_value")
 
-        weight = self.get_metric(da, axis, boundary=boundary, fill_value=fill_value)
+        weight = self.get_metric(da, axis)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
         return self.cumsum(weighted, axis, **kwargs)
 
     @docstrings.dedent
-    def average(self, da, axis, boundary=None, fill_value=None, **kwargs):
+    def average(self, da, axis, **kwargs):
         """
         Perform weighted mean reduction along specified axis or axes,
         accounting for grid metrics. (e.g. cell length, area, volume)
@@ -1856,7 +1853,8 @@ class Grid:
         da_i : xarray.DataArray
             The averaged data
         """
-        weight = self.get_metric(da, axis, boundary=boundary, fill_value=fill_value)
+
+        weight = self.get_metric(da, axis)
         weighted = da.weighted(weight)
 
         # get dimension(s) corresponding

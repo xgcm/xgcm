@@ -6,7 +6,13 @@ from xgcm.test.datasets import datasets_grid_metric
 
 
 def _expected_result(
-    da, metric, grid, dim, axes, funcname, boundary=None, fill_value=None
+    da,
+    metric,
+    grid,
+    dim,
+    axes,
+    funcname,
+    boundary=None,
 ):
     """this is factoring out the expected output of metric aware operations"""
     if funcname == "integrate":
@@ -15,7 +21,9 @@ def _expected_result(
         expected = (da * metric).sum(dim) / metric.sum(dim)
     elif funcname == "cumint":
         expected = grid.cumsum(
-            da * metric, axes, boundary=boundary, fill_value=fill_value
+            da * metric,
+            axes,
+            boundary=boundary,
         )
     else:
         raise ValueError("funcname (`%s`) not recognized" % funcname)
@@ -31,10 +39,16 @@ def _expected_result(
     [None, "True", "False", {"X": True, "Y": False}, {"X": False, "Y": True}],
 )
 class TestParametrized:
-    @pytest.mark.parametrize("fill_value", [None, 0.1])
-    def test_bgrid(self, funcname, boundary, periodic, fill_value):
+    def test_bgrid(self, funcname, boundary, periodic):
         ds, coords, metrics = datasets_grid_metric("B")
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+
+        if funcname == "cumint":
+            # cumint needs a boundary
+            kwargs = dict(boundary=boundary)
+        else:
+            # integrate and average do use the boundary input
+            kwargs = dict()
 
         func = getattr(grid, funcname)
 
@@ -44,30 +58,15 @@ class TestParametrized:
             ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
             ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
         ):
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                new = func(ds.tracer, axis, **kwargs)
-            else:
-                new = func(ds.tracer, axis, boundary, fill_value)
+            new = func(ds.tracer, axis, **kwargs)
             expected = _expected_result(
-                ds.tracer,
-                ds[metric_name],
-                grid,
-                dim,
-                axis,
-                funcname,
-                boundary,
-                fill_value,
+                ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
             assert_allclose(new, expected)
 
             # test with tuple input if list is provided
             if isinstance(axis, list):
-                if funcname == "cumint":
-                    kwargs = dict(boundary=boundary, fill_value=fill_value)
-                    new = func(ds.tracer, tuple(axis), **kwargs)
-                else:
-                    new = func(ds.tracer, tuple(axis), boundary, fill_value)
+                new = func(ds.tracer, tuple(axis), **kwargs)
                 assert_allclose(new, expected)
 
         # test u position
@@ -76,13 +75,9 @@ class TestParametrized:
             ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
             ["xu", "yu", ["xu", "yu"]],
         ):
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                new = func(ds.u, axis, **kwargs)
-            else:
-                new = func(ds.u, axis, boundary, fill_value)
+            new = func(ds.u, axis, **kwargs)
             expected = _expected_result(
-                ds.u, ds[metric_name], grid, dim, axis, funcname, boundary, fill_value
+                ds.u, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
             assert_allclose(new, expected)
 
@@ -92,20 +87,22 @@ class TestParametrized:
             ["dx_ne", "dy_ne", "area_ne"],  # need more metrics?
             ["xu", "yu", ["xu", "yu"]],
         ):
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                new = func(ds.v, axis, **kwargs)
-            else:
-                new = func(ds.v, axis, boundary, fill_value)
+            new = func(ds.v, axis, **kwargs)
             expected = _expected_result(
-                ds.v, ds[metric_name], grid, dim, axis, funcname, boundary, fill_value
+                ds.v, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
             assert_allclose(new, expected)
 
-    @pytest.mark.parametrize("fill_value", [None, 0.1])
-    def test_cgrid(self, funcname, boundary, periodic, fill_value):
+    def test_cgrid(self, funcname, boundary, periodic):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+
+        if funcname == "cumint":
+            # cumint needs a boundary
+            kwargs = dict(boundary=boundary)
+        else:
+            # integrate and average do use the boundary input
+            kwargs = dict()
 
         func = getattr(grid, funcname)
 
@@ -116,29 +113,14 @@ class TestParametrized:
             ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
         ):
 
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                new = func(ds.tracer, axis, **kwargs)
-            else:
-                new = func(ds.tracer, axis, boundary, fill_value)
+            new = func(ds.tracer, axis, **kwargs)
             expected = _expected_result(
-                ds.tracer,
-                ds[metric_name],
-                grid,
-                dim,
-                axis,
-                funcname,
-                boundary,
-                fill_value,
+                ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
             assert_allclose(new, expected)
             # test with tuple input if list is provided
             if isinstance(axis, list):
-                if funcname == "cumint":
-                    kwargs = dict(boundary=boundary, fill_value=fill_value)
-                    new = func(ds.tracer, tuple(axis), **kwargs)
-                else:
-                    new = func(ds.tracer, tuple(axis), boundary, fill_value)
+                new = func(ds.tracer, tuple(axis), **kwargs)
                 assert_allclose(new, expected)
 
         # test u positon
@@ -147,13 +129,9 @@ class TestParametrized:
             ["dx_e", "dy_e", "area_e"],  # need more metrics?
             ["xu", "yt", ["xu", "yt"]],
         ):
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                new = func(ds.u, axis, **kwargs)
-            else:
-                new = func(ds.u, axis, boundary, fill_value)
+            new = func(ds.u, axis, **kwargs)
             expected = _expected_result(
-                ds.u, ds[metric_name], grid, dim, axis, funcname, boundary, fill_value
+                ds.u, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
             assert_allclose(new, expected)
 
@@ -163,13 +141,9 @@ class TestParametrized:
             ["dx_n", "dy_n", "area_n"],  # need more metrics?
             ["xt", "yu", ["xt", "yu"]],
         ):
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                new = func(ds.v, axis, **kwargs)
-            else:
-                new = func(ds.v, axis, boundary, fill_value)
+            new = func(ds.v, axis, **kwargs)
             expected = _expected_result(
-                ds.v, ds[metric_name], grid, dim, axis, funcname, boundary, fill_value
+                ds.v, ds[metric_name], grid, dim, axis, funcname, **kwargs
             )
             assert_allclose(new, expected)
 
@@ -191,9 +165,9 @@ class TestParametrized:
         func = getattr(grid, funcname)
 
         if funcname == "cumint":
+            # cumint needs a boundary
             kwargs = dict(boundary=boundary)
         else:
-            # integrate and average can use default boundary and fill_value values
             kwargs = dict()
 
         match_message = (
@@ -218,9 +192,9 @@ class TestParametrized:
             func = getattr(grid, funcname)
 
             if funcname == "cumint":
+                # cumint needs a boundary
                 kwargs = dict(boundary="fill")
             else:
-                # integrate and average can use default boundary and fill_value values
                 kwargs = dict()
 
             match_message = (
@@ -235,27 +209,24 @@ class TestParametrized:
             with pytest.raises(KeyError, match=match_message):
                 func(ds, ("X", "Y"), **kwargs)
 
-    @pytest.mark.parametrize("fill_value", [None, 0.1])
-    def test_missingdim(self, funcname, periodic, boundary, fill_value):
+    def test_missingdim(self, funcname, periodic, boundary):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+
+        if funcname == "cumint":
+            # cumint needs a boundary
+            kwargs = dict(boundary="fill")
+        else:
+            kwargs = dict()
 
         func = getattr(grid, funcname)
 
         match_message = "Unable to find any combinations of metrics for array dims.*X.*"
         with pytest.raises(KeyError, match=match_message):
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                func(ds.tracer.mean("xt"), "X", **kwargs)
-            else:
-                func(ds.tracer.mean("xt"), "X", boundary, fill_value)
+            func(ds.tracer.mean("xt"), "X", **kwargs)
 
         match_message = (
             "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
         )
         with pytest.raises(KeyError, match=match_message):
-            if funcname == "cumint":
-                kwargs = dict(boundary=boundary, fill_value=fill_value)
-                func(ds.tracer.mean("xt"), ["X", "Y", "Z"], **kwargs)
-            else:
-                func(ds.tracer.mean("xt"), ["X", "Y", "Z"], boundary, fill_value)
+            func(ds.tracer.mean("xt"), ["X", "Y", "Z"], **kwargs)
