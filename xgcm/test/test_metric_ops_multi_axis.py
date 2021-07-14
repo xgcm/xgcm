@@ -5,26 +5,14 @@ from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
 
-def _expected_result(
-    da,
-    metric,
-    grid,
-    dim,
-    axes,
-    funcname,
-    boundary=None,
-):
+def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     """this is factoring out the expected output of metric aware operations"""
     if funcname == "integrate":
         expected = (da * metric).sum(dim)
     elif funcname == "average":
         expected = (da * metric).sum(dim) / metric.sum(dim)
     elif funcname == "cumint":
-        expected = grid.cumsum(
-            da * metric,
-            axes,
-            boundary=boundary,
-        )
+        expected = grid.cumsum(da * metric, axes, boundary=boundary)
     else:
         raise ValueError("funcname (`%s`) not recognized" % funcname)
     return expected

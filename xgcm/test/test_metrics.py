@@ -236,15 +236,9 @@ def test_get_metric_with_conditions_02b():
     grid.set_metrics(("X"), "dx_n")
     grid.set_metrics(("Y"), "dx_n")
 
-    get_metric = grid.get_metric(
-        ds.v,
-        ("X", "Y"),
-    )
+    get_metric = grid.get_metric(ds.v, ("X", "Y"))
 
-    expected_metric = grid.interp(
-        ds["area_e"],
-        ("X", "Y"),
-    )
+    expected_metric = grid.interp(ds["area_e"], ("X", "Y"))
 
     xr.testing.assert_allclose(get_metric, expected_metric)
 
@@ -301,10 +295,7 @@ def test_get_metric_with_conditions_04a():
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_n")
 
-    get_metric = grid.get_metric(
-        ds.v,
-        ("X", "Y"),
-    )
+    get_metric = grid.get_metric(ds.v, ("X", "Y"))
 
     interp_metric = grid.interp(ds.dx_t, "Y")
     expected_metric = (interp_metric * ds.dy_n).reset_coords(drop=True)
@@ -331,19 +322,10 @@ def test_get_metric_with_conditions_04b():
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_t")
 
-    get_metric = grid.get_metric(
-        ds.v,
-        ("X", "Y"),
-    )
+    get_metric = grid.get_metric(ds.v, ("X", "Y"))
 
-    interp_metric_1 = grid.interp(
-        ds.dx_t,
-        "Y",
-    )
-    interp_metric_2 = grid.interp(
-        ds.dy_t,
-        "Y",
-    )
+    interp_metric_1 = grid.interp(ds.dx_t, "Y")
+    interp_metric_2 = grid.interp(ds.dy_t, "Y")
     expected_metric = (interp_metric_1 * interp_metric_2).reset_coords(drop=True)
 
     xr.testing.assert_allclose(get_metric, expected_metric)
