@@ -1369,6 +1369,9 @@ class Grid:
                     break
             if metric_vars is None:
                 # Condition 2: interpolate metric with matching axis to desired dimensions
+                warnings.warn(
+                    "Metric outputs are interpolated from initial metrics input"
+                )
                 metric_vars = self.interp_like(mv, array, "extend", None)
         else:
             for axis_combinations in iterate_axis_combinations(axes):
@@ -1389,6 +1392,9 @@ class Grid:
                             break
                         else:
                             # Condition 4: metrics in the wrong position (must interpolate before multiplying)
+                            warnings.warn(
+                                "Metric outputs are interpolated from initial metrics input"
+                            )
                             metric_vars = tuple(
                                 self.interp_like(pc, array, "extend", None)
                                 for pc in possible_combinations
