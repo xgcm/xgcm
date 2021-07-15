@@ -137,8 +137,7 @@ class TestParametrized:
 
     @pytest.mark.parametrize("axis", ["X", "Y", "Z"])
     def test_missingaxis(self, axis, funcname, periodic, boundary):
-        # Error should be raised if application axes
-        # include dimension not in datasets
+        # Error should be raised if application axes include dimension not in datasets
 
         ds, coords, metrics = datasets_grid_metric("C")
 
@@ -158,15 +157,9 @@ class TestParametrized:
         else:
             kwargs = dict()
 
-        match_message = (
-            "Unable to find any combinations of metrics for array dims.*%s.*" % axis
-        )
-
+        match_message = "Did not find axis"
         with pytest.raises(KeyError, match=match_message):
             func(ds.tracer, ["X", "Y", "Z"], **kwargs)
-
-        with pytest.raises(KeyError, match=match_message):
-            func(ds, axis, **kwargs)
 
         if axis == "Y":
             # test two missing axes at the same time
@@ -185,19 +178,15 @@ class TestParametrized:
             else:
                 kwargs = dict()
 
-            match_message = (
-                "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
-            )
+            match_message = "Did not find axis"
             with pytest.raises(KeyError, match=match_message):
-                func(ds, ["X", "Y", "Z"], **kwargs)
+                func(ds.tracer, ["X", "Y", "Z"], **kwargs)
 
-            match_message = (
-                "Unable to find any combinations of metrics for array dims.*X.*Y.*"
-            )
+            match_message = "Did not find axis"
             with pytest.raises(KeyError, match=match_message):
-                func(ds, ("X", "Y"), **kwargs)
+                func(ds.tracer, ("X", "Y"), **kwargs)
 
-    def test_missingdim(self, funcname, periodic, boundary):
+    def test_metric_axes_missing_from_array(self, funcname, periodic, boundary):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
 
@@ -209,12 +198,10 @@ class TestParametrized:
 
         func = getattr(grid, funcname)
 
-        match_message = "Unable to find any combinations of metrics for array dims.*X.*"
-        with pytest.raises(KeyError, match=match_message):
+        match_message = "Did not find single matching dimension"
+        with pytest.raises(ValueError, match=match_message):
             func(ds.tracer.mean("xt"), "X", **kwargs)
 
-        match_message = (
-            "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
-        )
-        with pytest.raises(KeyError, match=match_message):
+        match_message = "Did not find single matching dimension"
+        with pytest.raises(ValueError, match=match_message):
             func(ds.tracer.mean("xt"), ["X", "Y", "Z"], **kwargs)

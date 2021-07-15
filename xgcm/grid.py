@@ -1306,14 +1306,20 @@ class Grid:
     def _get_dims_from_axis(self, da, axis):
         dim = []
         for ax in axis:
-            all_dim = self.axes[ax].coords.values()
-            matching_dim = [di for di in all_dim if di in da.dims]
-            if len(matching_dim) == 1:
-                dim.append(matching_dim[0])
+            set_ax = frozenset(_maybe_promote_str_to_list(ax))
+            if set_ax.issubset(set(self.axes.keys())):
+                all_dim = self.axes[ax].coords.values()
+                matching_dim = [di for di in all_dim if di in da.dims]
+                if len(matching_dim) == 1:
+                    dim.append(matching_dim[0])
+                else:
+                    raise ValueError(
+                        "Did not find single matching dimension %s from %s corresponding to axis %s. Got (%s)"
+                        % (da.dims, da.name, ax, matching_dim)
+                    )
             else:
-                raise ValueError(
-                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
-                    % (ax, matching_dim)
+                raise KeyError(
+                    "Did not find axis %s from data array %s" % (ax, da.name)
                 )
         return dim
 
@@ -1329,21 +1335,6 @@ class Grid:
             dimensions are considered.
         axes : iterable
             A list of axes for which to find the metric.
-        boundary : str or dict, optional,
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition where
-              the difference at the boundary will be zero.)
-            * 'extrapolate': Set values by extrapolating linearly from the two
-              points nearest to the edge
-            This sets the default value. It can be overriden by specifying the
-            boundary kwarg when calling specific methods.
-        fill_value : float, optional
-            The value to use in the boundary condition when `boundary='fill'`.
 
         Returns
         -------
@@ -1353,6 +1344,10 @@ class Grid:
 
         metric_vars = None
         array_dims = set(array.dims)
+
+        # Will raise a Value Error if array doesn't have a dimension corresponding to metric axes specified
+        # See _get_dims_from_axis
+        self._get_dims_from_axis(array, frozenset(axes))
 
         possible_metric_vars = set(tuple(k) for k in self._metrics.keys())
         possible_combos = set(itertools.permutations(tuple(axes)))
@@ -1370,7 +1365,7 @@ class Grid:
             if metric_vars is None:
                 # Condition 2: interpolate metric with matching axis to desired dimensions
                 warnings.warn(
-                    "Metric outputs are interpolated from initial metrics input"
+                    f"Metric at {array.dims} being interpolated from metrics at dimensions {mv.dims}. Boundary value set to 'extend'."
                 )
                 metric_vars = self.interp_like(mv, array, "extend", None)
         else:
@@ -1392,8 +1387,11 @@ class Grid:
                             break
                         else:
                             # Condition 4: metrics in the wrong position (must interpolate before multiplying)
+                            possible_combinations_dims = [
+                                pc.dims for pc in possible_combinations
+                            ]
                             warnings.warn(
-                                "Metric outputs are interpolated from initial metrics input"
+                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_combinations_dims}. Boundary value set to 'extend'."
                             )
                             metric_vars = tuple(
                                 self.interp_like(pc, array, "extend", None)
@@ -1405,18 +1403,11 @@ class Grid:
                         break
                 except KeyError:
                     pass
-        if metric_vars is not None:
-            # final check for metric_vars, where dimensions should match with input array.dims
-            if set(metric_vars.dims).issubset(array_dims):
-                return metric_vars
-            else:
-                raise KeyError(
-                    f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
-                )
-        else:
+        if metric_vars is None:
             raise KeyError(
                 f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"
             )
+        return metric_vars
 
     @docstrings.dedent
     def interp_like(self, array, like, boundary=None, fill_value=None):
@@ -1811,8 +1802,7 @@ class Grid:
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
-        # get dimension(s) corresponding
-        # to `da` and `axis` input
+        # get dimension(s) corresponding to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
 
         return weighted.sum(dim, **kwargs)
@@ -1834,7 +1824,7 @@ class Grid:
         da_i : xarray.DataArray
             The cumulatively integrated data
         """
-
+        # first check if axis is present in da
         weight = self.get_metric(da, axis)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
@@ -1863,8 +1853,7 @@ class Grid:
         weight = self.get_metric(da, axis)
         weighted = da.weighted(weight)
 
-        # get dimension(s) corresponding
-        # to `da` and `axis` input
+        # get dimension(s) corresponding to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
         return weighted.mean(dim, **kwargs)
 
