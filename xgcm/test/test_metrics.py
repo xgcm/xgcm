@@ -140,25 +140,23 @@ def test_iterate_axis_combinations(axes, expected):
 
 
 @pytest.mark.parametrize(
-    "axes, data_var, drop_vars, metric_expected_list, expected_error",
+    "axes, data_var, drop_vars, metric_expected_list",
     [
-        ("X", "tracer", None, ["dx_t"], None),
-        (["X", "Y"], "tracer", None, ["area_t"], None),
+        ("X", "tracer", None, ["dx_t"]),
+        (["X", "Y"], "tracer", None, ["area_t"]),
         (
             ("X", "Y"),
             "tracer",
             None,
             ["area_t"],
-            None,
-        ),  # should we be able to pass a tuple as well as a list?
-        (["X", "Y", "Z"], "tracer", None, ["volume_t"], None),
-        (["X"], "u", None, ["dx_e"], None),
-        (["X", "Y"], "u", None, ["area_e"], None),
+        ),
+        # should we be able to pass a tuple as well as a list?
+        (["X", "Y", "Z"], "tracer", None, ["volume_t"]),
+        (["X"], "u", None, ["dx_e"]),
+        (["X", "Y"], "u", None, ["area_e"]),
     ],
 )
-def test_get_metric_orig(
-    axes, data_var, drop_vars, metric_expected_list, expected_error
-):
+def test_get_metric_orig(axes, data_var, drop_vars, metric_expected_list):
     ds, coords, metrics = datasets_grid_metric("C")
     # drop metrics according to drop_vars input, and remove from metrics input
     if drop_vars:
@@ -167,26 +165,10 @@ def test_get_metric_orig(
         metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
     grid = Grid(ds, coords=coords, metrics=metrics)
-    if expected_error:
-        with pytest.raises(expected_error):
-            metric = grid.get_metric(ds[data_var], axes)
-    else:
-        metric = grid.get_metric(ds[data_var], axes)
-        expected_metrics = [
-            ds[me].reset_coords(drop=True) for me in metric_expected_list
-        ]
-        expected = functools.reduce(operator.mul, expected_metrics, 1)
-        assert metric.equals(expected)
-
-
-def test_get_metric_with_no_matching_axis():
-    # the metric axis should be present in array
-    ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, metrics=metrics)
-
-    match_message = "Did not find single matching dimension"
-    with pytest.raises(ValueError, match=match_message):
-        grid.get_metric(ds.tracer.mean("xt"), "X")
+    metric = grid.get_metric(ds[data_var], axes)
+    expected_metrics = [ds[me].reset_coords(drop=True) for me in metric_expected_list]
+    expected = functools.reduce(operator.mul, expected_metrics, 1)
+    assert metric.equals(expected)
 
 
 def test_get_metric_with_conditions_01():
@@ -200,10 +182,11 @@ def test_get_metric_with_conditions_01():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-def test_get_metric_with_conditions_02a():
+@pytest.mark.parametrize("periodic", [True, False])
+def test_get_metric_with_conditions_02a(periodic):
     # Condition 2, case a: interpolate metric with matching axis to desired dimensions
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, periodic=periodic, boundary="extend")
     grid.set_metrics(("X", "Y"), "area_e")
 
     get_metric = grid.get_metric(ds.v, ("X", "Y"))

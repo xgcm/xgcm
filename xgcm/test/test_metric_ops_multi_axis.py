@@ -14,7 +14,7 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     elif funcname == "cumint":
         expected = grid.cumsum(da * metric, axes, boundary=boundary)
     else:
-        raise ValueError("funcname (`%s`) not recognized" % funcname)
+        raise ValueError(f"funcname {funcname} not recognized")
     return expected
 
 
@@ -35,7 +35,7 @@ class TestParametrized:
             # cumint needs a boundary
             kwargs = dict(boundary=boundary)
         else:
-            # integrate and average do use the boundary input
+            # integrate and average don't use the boundary input
             kwargs = dict()
 
         func = getattr(grid, funcname)
@@ -89,7 +89,7 @@ class TestParametrized:
             # cumint needs a boundary
             kwargs = dict(boundary=boundary)
         else:
-            # integrate and average do use the boundary input
+            # integrate and average don't use the boundary input
             kwargs = dict()
 
         func = getattr(grid, funcname)
@@ -157,8 +157,7 @@ class TestParametrized:
         else:
             kwargs = dict()
 
-        match_message = "Did not find axis"
-        with pytest.raises(KeyError, match=match_message):
+        with pytest.raises(KeyError, match="Did not find axis"):
             func(ds.tracer, ["X", "Y", "Z"], **kwargs)
 
         if axis == "Y":
@@ -178,12 +177,10 @@ class TestParametrized:
             else:
                 kwargs = dict()
 
-            match_message = "Did not find axis"
-            with pytest.raises(KeyError, match=match_message):
+            with pytest.raises(KeyError, match="Did not find axis"):
                 func(ds.tracer, ["X", "Y", "Z"], **kwargs)
 
-            match_message = "Did not find axis"
-            with pytest.raises(KeyError, match=match_message):
+            with pytest.raises(KeyError, match="Did not find axis"):
                 func(ds.tracer, ("X", "Y"), **kwargs)
 
     def test_metric_axes_missing_from_array(self, funcname, periodic, boundary):
@@ -198,10 +195,8 @@ class TestParametrized:
 
         func = getattr(grid, funcname)
 
-        match_message = "Did not find single matching dimension"
-        with pytest.raises(ValueError, match=match_message):
+        with pytest.raises(ValueError, match="Did not find single matching dimension"):
             func(ds.tracer.mean("xt"), "X", **kwargs)
 
-        match_message = "Did not find single matching dimension"
-        with pytest.raises(ValueError, match=match_message):
+        with pytest.raises(ValueError, match="Did not find single matching dimension"):
             func(ds.tracer.mean("xt"), ["X", "Y", "Z"], **kwargs)

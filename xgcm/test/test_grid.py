@@ -762,11 +762,11 @@ def test_keep_coords(funcname, gridtype):
             assert set(result.coords) == set(base_coords + augmented_coords)
         else:
             assert set(result.coords) == set(base_coords)
-        #
+
         if funcname not in ["integrate", "average"]:
             result = func(ds.tracer, axis_name, keep_coords=False)
             assert set(result.coords) == set(base_coords)
-            #
+
             result = func(ds.tracer, axis_name, keep_coords=True)
             assert set(result.coords) == set(base_coords + augmented_coords)
 

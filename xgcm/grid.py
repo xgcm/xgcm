@@ -1305,22 +1305,19 @@ class Grid:
 
     def _get_dims_from_axis(self, da, axis):
         dim = []
+        axis = _maybe_promote_str_to_list(axis)
         for ax in axis:
-            set_ax = frozenset(_maybe_promote_str_to_list(ax))
-            if set_ax.issubset(set(self.axes.keys())):
+            if ax in self.axes:
                 all_dim = self.axes[ax].coords.values()
                 matching_dim = [di for di in all_dim if di in da.dims]
                 if len(matching_dim) == 1:
                     dim.append(matching_dim[0])
                 else:
                     raise ValueError(
-                        "Did not find single matching dimension %s from %s corresponding to axis %s. Got (%s)"
-                        % (da.dims, da.name, ax, matching_dim)
+                        f"Did not find single matching dimension {da.dims} from {da.name} corresponding to axis {ax}, got {matching_dim}."
                     )
             else:
-                raise KeyError(
-                    "Did not find axis %s from data array %s" % (ax, da.name)
-                )
+                raise KeyError(f"Did not find axis {ax} from data array {da.name}")
         return dim
 
     def get_metric(self, array, axes):
@@ -1331,8 +1328,7 @@ class Grid:
         Parameters
         ----------
         array : xarray.DataArray
-            The array for which we are looking for a metric. Only its
-            dimensions are considered.
+            The array for which we are looking for a metric. Only its dimensions are considered.
         axes : iterable
             A list of axes for which to find the metric.
 
@@ -1387,11 +1383,9 @@ class Grid:
                             break
                         else:
                             # Condition 4: metrics in the wrong position (must interpolate before multiplying)
-                            possible_combinations_dims = [
-                                pc.dims for pc in possible_combinations
-                            ]
+                            possible_dims = [pc.dims for pc in possible_combinations]
                             warnings.warn(
-                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_combinations_dims}. Boundary value set to 'extend'."
+                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Boundary value set to 'extend'."
                             )
                             metric_vars = tuple(
                                 self.interp_like(pc, array, "extend", None)
@@ -1824,7 +1818,7 @@ class Grid:
         da_i : xarray.DataArray
             The cumulatively integrated data
         """
-        # first check if axis is present in da
+
         weight = self.get_metric(da, axis)
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
