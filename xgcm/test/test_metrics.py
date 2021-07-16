@@ -140,25 +140,23 @@ def test_iterate_axis_combinations(axes, expected):
 
 
 @pytest.mark.parametrize(
-    "axes, data_var, drop_vars, metric_expected_list, expected_error",
+    "axes, data_var, drop_vars, metric_expected_list",
     [
-        ("X", "tracer", None, ["dx_t"], None),
-        (["X", "Y"], "tracer", None, ["area_t"], None),
+        ("X", "tracer", None, ["dx_t"]),
+        (["X", "Y"], "tracer", None, ["area_t"]),
         (
             ("X", "Y"),
             "tracer",
             None,
             ["area_t"],
-            None,
-        ),  # should we be able to pass a tuple as well as a list?
-        (["X", "Y", "Z"], "tracer", None, ["volume_t"], None),
-        (["X"], "u", None, ["dx_e"], None),
-        (["X", "Y"], "u", None, ["area_e"], None),
+        ),
+        # should we be able to pass a tuple as well as a list?
+        (["X", "Y", "Z"], "tracer", None, ["volume_t"]),
+        (["X"], "u", None, ["dx_e"]),
+        (["X", "Y"], "u", None, ["area_e"]),
     ],
 )
-def test_get_metric_orig(
-    axes, data_var, drop_vars, metric_expected_list, expected_error
-):
+def test_get_metric_orig(axes, data_var, drop_vars, metric_expected_list):
     ds, coords, metrics = datasets_grid_metric("C")
     # drop metrics according to drop_vars input, and remove from metrics input
     if drop_vars:
@@ -167,16 +165,10 @@ def test_get_metric_orig(
         metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
     grid = Grid(ds, coords=coords, metrics=metrics)
-    if expected_error:
-        with pytest.raises(expected_error):
-            metric = grid.get_metric(ds[data_var], axes)
-    else:
-        metric = grid.get_metric(ds[data_var], axes)
-        expected_metrics = [
-            ds[me].reset_coords(drop=True) for me in metric_expected_list
-        ]
-        expected = functools.reduce(operator.mul, expected_metrics, 1)
-        assert metric.equals(expected)
+    metric = grid.get_metric(ds[data_var], axes)
+    expected_metrics = [ds[me].reset_coords(drop=True) for me in metric_expected_list]
+    expected = functools.reduce(operator.mul, expected_metrics, 1)
+    assert metric.equals(expected)
 
 
 def test_get_metric_with_conditions_01():
@@ -190,43 +182,11 @@ def test_get_metric_with_conditions_01():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-def test_get_metric_with_conditions_02():
-    # Condition 2: use provided metrics to calculate for required metric
-    ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
-    grid.set_metrics(("X"), "dx_n")
-    grid.set_metrics(("Y"), "dy_n")
-
-    get_metric = grid.get_metric(ds.v, ("X", "Y"))
-
-    metric_var_1 = ds.dx_n
-    metric_var_2 = ds.dy_n
-    expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
-
-    xr.testing.assert_allclose(get_metric, expected_metric)
-
-
-def test_get_metric_with_conditions_03():
-    # Condition 3: Adapted from original version of test_get_metric
-    ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
-    grid.set_metrics(("X", "Y"), "area_t")
-    grid.set_metrics(("Z"), "dz_t")
-
-    get_metric = grid.get_metric(ds.tracer, ("X", "Y", "Z"))
-
-    metric_var_1 = ds.area_t
-    metric_var_2 = ds.dz_t
-    expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
-
-    xr.testing.assert_allclose(get_metric, expected_metric)
-
-
-@pytest.mark.skip(reason="For the next PR")
-def test_get_metric_with_conditions_02a():
-    # Condition 4, case a: interpolate metric with matching axis to desired dimensions
+@pytest.mark.parametrize("periodic", [True, False])
+def test_get_metric_with_conditions_02a(periodic):
+    # Condition 2, case a: interpolate metric with matching axis to desired dimensions
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, periodic=periodic, boundary="extend")
     grid.set_metrics(("X", "Y"), "area_e")
 
     get_metric = grid.get_metric(ds.v, ("X", "Y"))
@@ -236,9 +196,8 @@ def test_get_metric_with_conditions_02a():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.skip(reason="For the next PR")
 def test_get_metric_with_conditions_02b():
-    # Condition 4, case b: get_metric should select for the metric with matching axes and interpolate from there,
+    # Condition 2, case b: get_metric should select for the metric with matching axes and interpolate from there,
     # even if other metrics in the desired positions are available
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
@@ -253,9 +212,41 @@ def test_get_metric_with_conditions_02b():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.skip(reason="For the next PR")
+def test_get_metric_with_conditions_03a():
+    # Condition 3: use provided metrics with matching dimensions to calculate for required metric
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords)
+
+    grid.set_metrics(("X"), "dx_n")
+    grid.set_metrics(("Y"), "dy_n")
+
+    get_metric = grid.get_metric(ds.v, ("X", "Y"))
+
+    metric_var_1 = ds.dx_n
+    metric_var_2 = ds.dy_n
+    expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
+
+    xr.testing.assert_allclose(get_metric, expected_metric)
+
+
+def test_get_metric_with_conditions_03b():
+    # Condition 3: use provided metrics with matching dimensions to calculate for required metric
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords)
+    grid.set_metrics(("X", "Y"), "area_t")
+    grid.set_metrics(("Z"), "dz_t")
+
+    get_metric = grid.get_metric(ds.tracer, ("X", "Y", "Z"))
+
+    metric_var_1 = ds.area_t
+    metric_var_2 = ds.dz_t
+    expected_metric = (metric_var_1 * metric_var_2).reset_coords(drop=True)
+
+    xr.testing.assert_allclose(get_metric, expected_metric)
+
+
 def test_get_metric_with_conditions_04a():
-    # Condition 5, case a: 1 metric on the wrong position (must interpolate before multiplying)
+    # Condition 4, case a: 1 metric on the wrong position (must interpolate before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
     grid.set_metrics(("X"), "dx_t")
@@ -269,9 +260,8 @@ def test_get_metric_with_conditions_04a():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.skip(reason="For the next PR")
 def test_get_metric_with_conditions_04b():
-    # Condition 5, case b: 2 metrics in the wrong position (must interpolate before multiplying)
+    # Condition 4, case b: 2 metrics in the wrong position (must interpolate both before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
     grid.set_metrics(("X"), "dx_t")

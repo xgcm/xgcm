@@ -164,14 +164,14 @@ def test_axis_repr(all_datasets):
     # TODO: make this more complete
 
 
-def test_get_axis_coord(all_datasets):
+def test_get_position_name(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
     for ax_name, axis in axis_objs.items():
         # create a dataarray with each axis coordinate
         for position, coord in axis.coords.items():
             da = 1 * ds[coord]
-            assert axis._get_axis_coord(da) == (position, coord)
+            assert axis._get_position_name(da) == (position, coord)
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
@@ -762,11 +762,11 @@ def test_keep_coords(funcname, gridtype):
             assert set(result.coords) == set(base_coords + augmented_coords)
         else:
             assert set(result.coords) == set(base_coords)
-        #
+
         if funcname not in ["integrate", "average"]:
             result = func(ds.tracer, axis_name, keep_coords=False)
             assert set(result.coords) == set(base_coords)
-            #
+
             result = func(ds.tracer, axis_name, keep_coords=True)
             assert set(result.coords) == set(base_coords + augmented_coords)
 
