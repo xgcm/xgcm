@@ -74,5 +74,6 @@ dask-worker-space/dask-worker-space/purge.lock
 .mypy_cache
 xgcm/.vscode/settings.json
 02_Testing xgcm metrics.ipynb
+Testing xgcm.ipynb
 .ipynb_checkpoints/02_Testing xgcm metrics-checkpoint.ipynb
 xgcm/test/sample.py

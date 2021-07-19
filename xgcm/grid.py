@@ -274,7 +274,7 @@ class Axis:
         da_i : xarray.DataArray
             The differenced data
         """
-        position_from, dim = self._get_axis_coord(da)
+        position_from, dim = self._get_position_name(da)
         if to is None:
             to = self._default_shifts[position_from]
 
@@ -340,7 +340,7 @@ class Axis:
         boundary conditions.
         """
 
-        position, this_dim = self._get_axis_coord(da)
+        position, this_dim = self._get_position_name(da)
         this_axis_num = da.get_axis_num(this_dim)
 
         def face_edge_data(fnum, face_axis, count=1):
@@ -508,7 +508,7 @@ class Axis:
         position_check=True,
     ):
 
-        position_from, dim = self._get_axis_coord(da)
+        position_from, dim = self._get_position_name(da)
         axis_num = da.get_axis_num(dim)
 
         boundary_kwargs = dict(
@@ -664,7 +664,7 @@ class Axis:
             The cumsummed data
         """
 
-        pos, dim = self._get_axis_coord(da)
+        pos, dim = self._get_position_name(da)
 
         if to is None:
             to = self._default_shifts[pos]
@@ -930,7 +930,7 @@ class Axis:
             _check_other_dims(target_data)
             return target, target_dim, target_data
 
-        _, dim = self._get_axis_coord(da)
+        _, dim = self._get_position_name(da)
         if method == "linear":
             target, target_dim, target_data = _parse_target(
                 target, target_dim, dim, target_data
@@ -972,7 +972,7 @@ class Axis:
                 # Rechunk to keep xr.apply_func from complaining.
                 # TODO: This should be made obsolete, when the internals are refactored using numba
                 target_data = target_data.chunk(
-                    {self._get_axis_coord(target_data)[1]: -1}
+                    {self._get_position_name(target_data)[1]: -1}
                 )
 
             out = conservative_interpolation(
@@ -991,7 +991,7 @@ class Axis:
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
         """
-        position_from, old_dim = self._get_axis_coord(da)
+        position_from, old_dim = self._get_position_name(da)
         try:
             new_dim = self.coords[position_to]
         except KeyError:
@@ -1023,8 +1023,8 @@ class Axis:
 
         return xr.DataArray(data_new, dims=dims, coords=coords)
 
-    def _get_axis_coord(self, da):
-        """Return the position and name of the axis coordiante in a DataArray."""
+    def _get_position_name(self, da):
+        """Return the position and name of the axis coordinate in a DataArray."""
         for position, coord_name in self.coords.items():
             # TODO: should we have more careful checking of alignment here?
             if coord_name in da.dims:
@@ -1037,7 +1037,7 @@ class Axis:
 
     def _get_axis_dim_num(self, da):
         """Return the dimension number of the axis coordinate in a DataArray."""
-        _, coord_name = self._get_axis_coord(da)
+        _, coord_name = self._get_position_name(da)
         return da.get_axis_num(coord_name)
 
 
@@ -1259,41 +1259,65 @@ class Grid:
             self.axes[axis]._facedim = facedim
             self.axes[axis]._connections = axis_links
 
-    def set_metrics(self, key, value):
+    def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
         axes_not_found = [ma for ma in metric_axes if ma not in self.axes]
-
         if len(axes_not_found) > 0:
             raise KeyError(
                 f"Metric axes {axes_not_found!r} not compatible with grid axes {tuple(self.axes)!r}"
             )
 
-        # initialize empty list
-        self._metrics[metric_axes] = []
-        for metric_varname in _maybe_promote_str_to_list(value):
-            if metric_varname not in self._ds:
+        metric_value = _maybe_promote_str_to_list(value)
+        for metric_varname in metric_value:
+            if metric_varname not in self._ds.variables:
                 raise KeyError(
                     f"Metric variable {metric_varname} not found in dataset."
                 )
-            # resetting coords avoids potential broadcasting / alignment issues
-            metric_var = self._ds[metric_varname].reset_coords(drop=True)
 
-            # TODO: check for consistency of metric_var dims with axis dims
-            # check for duplicate dimensions among each axis metric
-            self._metrics[metric_axes].append(metric_var)
+        existing_metric_axes = set(self._metrics.keys())
+        if metric_axes in existing_metric_axes:
+            value_exist = self._metrics.get(metric_axes)
+            # resetting coords avoids potential broadcasting / alignment issues
+            value_new = self._ds[metric_varname].reset_coords(drop=True)
+            did_overwrite = False
+            # go through each existing value until data array with matching dimensions is selected
+            for idx, ve in enumerate(value_exist):
+                # double check if dimensions match
+                if set(value_new.dims) == set(ve.dims):
+                    if overwrite:
+                        # replace existing data array with new data array input
+                        self._metrics[metric_axes][idx] = value_new
+                        did_overwrite = True
+                    else:
+                        raise ValueError(
+                            f"Metric variable {ve.name} with dimensions {ve.dims} already assigned in metrics."
+                            f" Overwrite {ve.name} with {metric_varname} by setting overwrite=True."
+                        )
+            # if no existing value matches new value dimension-wise, just append new value
+            if not did_overwrite:
+                self._metrics[metric_axes].append(value_new)
+        else:
+            # no existing metrics for metric_axes yet; initialize empty list
+            self._metrics[metric_axes] = []
+            for metric_varname in metric_value:
+                metric_var = self._ds[metric_varname].reset_coords(drop=True)
+                self._metrics[metric_axes].append(metric_var)
 
     def _get_dims_from_axis(self, da, axis):
         dim = []
+        axis = _maybe_promote_str_to_list(axis)
         for ax in axis:
-            all_dim = self.axes[ax].coords.values()
-            matching_dim = [di for di in all_dim if di in da.dims]
-            if len(matching_dim) == 1:
-                dim.append(matching_dim[0])
+            if ax in self.axes:
+                all_dim = self.axes[ax].coords.values()
+                matching_dim = [di for di in all_dim if di in da.dims]
+                if len(matching_dim) == 1:
+                    dim.append(matching_dim[0])
+                else:
+                    raise ValueError(
+                        f"Did not find single matching dimension {da.dims} from {da.name} corresponding to axis {ax}, got {matching_dim}."
+                    )
             else:
-                raise ValueError(
-                    "Did not find single matching dimension corresponding to axis %s. Got (%s)"
-                    % (ax, matching_dim)
-                )
+                raise KeyError(f"Did not find axis {ax} from data array {da.name}")
         return dim
 
     def get_metric(self, array, axes):
@@ -1304,8 +1328,7 @@ class Grid:
         Parameters
         ----------
         array : xarray.DataArray
-            The array for which we are looking for a metric. Only its
-            dimensions are considered.
+            The array for which we are looking for a metric. Only its dimensions are considered.
         axes : iterable
             A list of axes for which to find the metric.
 
@@ -1317,6 +1340,10 @@ class Grid:
 
         metric_vars = None
         array_dims = set(array.dims)
+
+        # Will raise a Value Error if array doesn't have a dimension corresponding to metric axes specified
+        # See _get_dims_from_axis
+        self._get_dims_from_axis(array, frozenset(axes))
 
         possible_metric_vars = set(tuple(k) for k in self._metrics.keys())
         possible_combos = set(itertools.permutations(tuple(axes)))
@@ -1331,11 +1358,13 @@ class Grid:
                 if metric_dims.issubset(array_dims):
                     metric_vars = mv
                     break
-            # if metric_vars is None:
-            #     # Condition 4: interpolate metric with matching axis to desired dimensions
-            #     metric_vars = self.interp_like(mv, array)
+            if metric_vars is None:
+                # Condition 2: interpolate metric with matching axis to desired dimensions
+                warnings.warn(
+                    f"Metric at {array.dims} being interpolated from metrics at dimensions {mv.dims}. Boundary value set to 'extend'."
+                )
+                metric_vars = self.interp_like(mv, array, "extend", None)
         else:
-            # Condition 2: use provided metrics to calculate for required metric
             for axis_combinations in iterate_axis_combinations(axes):
                 try:
                     # will raise KeyError if the axis combination is not in metrics
@@ -1349,15 +1378,19 @@ class Grid:
                             [d for mv in possible_combinations for d in mv.dims]
                         )
                         if metric_dims.issubset(array_dims):
-                            # we found a set of metrics with dimensions compatible with the array
+                            # Condition 3: use provided metrics with matching dimensions to calculate for required metric
                             metric_vars = possible_combinations
                             break
-                        # else:
-                        #     # Condition 5: metrics in the wrong position (must interpolate before multiplying)
-                        #     metric_vars = tuple(
-                        #         self.interp_like(pc, array)
-                        #         for pc in possible_combinations
-                        #     )
+                        else:
+                            # Condition 4: metrics in the wrong position (must interpolate before multiplying)
+                            possible_dims = [pc.dims for pc in possible_combinations]
+                            warnings.warn(
+                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Boundary value set to 'extend'."
+                            )
+                            metric_vars = tuple(
+                                self.interp_like(pc, array, "extend", None)
+                                for pc in possible_combinations
+                            )
                     if metric_vars is not None:
                         # return the product of the metrics
                         metric_vars = functools.reduce(operator.mul, metric_vars, 1)
@@ -1405,8 +1438,8 @@ class Grid:
         interp_axes = []
         for axname, axis in self.axes.items():
             try:
-                position_array, _ = axis._get_axis_coord(array)
-                position_like, _ = axis._get_axis_coord(like)
+                position_array, _ = axis._get_position_name(array)
+                position_like, _ = axis._get_position_name(like)
             # This will raise a KeyError if you have multiple axes contained in self,
             # since the for-loop will go through all axes, but the method is applied for only 1 axis at a time
             # This is for cases where an axis is present in self that is not available for either array or like.
@@ -1423,15 +1456,6 @@ class Grid:
             boundary=boundary,
         )
         return array
-
-    def _interp_metric(self, da, axes):
-        # include boundary and fill_value as inputs
-        metric_available = self._metrics.get(frozenset(axes), None)
-        if metric_available is not None:
-            # this function works with only one metric at a time
-            metric = metric_available[0]
-            metric_interp = self.interp_like(metric, da)
-        return metric_interp
 
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
@@ -1675,7 +1699,7 @@ class Grid:
             )
         for axis_name, component in vector.items():
             axis = self.axes[axis_name]
-            position, coord = axis._get_axis_coord(component)
+            position, coord = axis._get_position_name(component)
             if position == "center":
                 raise NotImplementedError(
                     "Only vector interpolation to cell "
@@ -1772,8 +1796,7 @@ class Grid:
         weighted = da * weight
         # TODO: We should integrate xarray.weighted once available.
 
-        # get dimension(s) corresponding
-        # to `da` and `axis` input
+        # get dimension(s) corresponding to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
 
         return weighted.sum(dim, **kwargs)
@@ -1820,11 +1843,11 @@ class Grid:
         da_i : xarray.DataArray
             The averaged data
         """
+
         weight = self.get_metric(da, axis)
         weighted = da.weighted(weight)
 
-        # get dimension(s) corresponding
-        # to `da` and `axis` input
+        # get dimension(s) corresponding to `da` and `axis` input
         dim = self._get_dims_from_axis(da, axis)
         return weighted.mean(dim, **kwargs)
 
