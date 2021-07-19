@@ -10,9 +10,19 @@ jobs:
     - uses: actions/stale@v4
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        exempt-issue-labels: 'keepOpen,In Progress,bug'
+        days-before-stale: 60
+        days-before-close: 30
+        days-before-pr-stale: -1 # Don't mark PRs as stale
+        exempt-issue-labels: 'keepOpen,In Progress'
         exempt-pr-labels: 'keepOpen,In Progress'
-        stale-issue-message: "This issue has been marked 'stale' due to lack of recent activity. If there is no further activity, the issue will be closed in another 30 days. Thank you for your contribution!"
-        close-issue-message: "This issue has been closed due to inactivity. If you feel this is in error, please reopen the issue or file a new issue with the relevant details."
-        stale-pr-message: "This pull request has been marked 'stale' due to lack of recent activity. If there is no further activity, the pull request will be closed in another 30 days. Thank you for your contribution!"
-        close-pr-message: "This pull request has been closed due to inactivity. If you feel this is in error, please reopen the pull request."
+        stale-issue-message: |
+          This issue has been marked 'stale' due to lack of recent activity.
+          If there is no further activity, the issue will be closed in another 30 days.
+
+          Thank you for your contribution!
+        close-issue-message: |
+          It's been 60 days since any activity on this issue. so our helper bot (github-actions-bot) is going to close it.
+          Please keep in mind that I’m only a robot 🤖. So if you feel I’ve closed this issue in error 😞,
+          please reopen the issue or file a new issue with the relevant details.
+
+          Thanks again for your contribution!
