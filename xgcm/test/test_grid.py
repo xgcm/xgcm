@@ -833,3 +833,13 @@ def test_interp_like(
     )
 
     xr.testing.assert_allclose(interp_metric, expected_metric)
+
+
+def test_input_not_dims():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    with pytest.raises(ValueError):
+        Grid(ds, coords={"X": {"center": "c"}})
