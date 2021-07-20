@@ -119,7 +119,7 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -139,7 +139,7 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         # "error": True,  # this currently fails but shouldnt
         "transform_kwargs": {
             "method": "linear",
@@ -160,7 +160,7 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         # "error": True,  # this currently fails but shouldnt
         "transform_kwargs": {
             "method": "linear",
@@ -180,7 +180,7 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -201,7 +201,7 @@ cases = {
             "data",
             [np.nan, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -222,7 +222,7 @@ cases = {
             "data",
             [-0.818182, -0.272727, 2.0, 4.0, 5.6, 6.0, 4.0, 1.0],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
