@@ -841,5 +841,17 @@ def test_input_not_dims():
     ds = xr.DataArray(
         data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
     ).to_dataset(name="data")
-    with pytest.raises(ValueError):
+    msg = r"Input `c` \(for the `center` position on axis `X`\) is not a dimension in input dataset."
+    with pytest.raises(ValueError, match=msg):
         Grid(ds, coords={"X": {"center": "c"}})
+
+
+def test_input_dim_notfound():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    msg = r"Could not find dimension `other` \(for the `center` position on axis `X`\) in input dataset."
+    with pytest.raises(ValueError, match=msg):
+        Grid(ds, coords={"X": {"center": "other"}})

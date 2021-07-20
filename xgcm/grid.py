@@ -1080,11 +1080,12 @@ class Grid:
         face_connections : dict
             Grid topology
         coords : dict, optional
-            Explicit specification of axis coordinates, e.g
+            Explicit specification of axis dimensions, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
             Each key should be the name of an axis. The value should be
             a dictionary mapping positions (e.g. ``'left'``) to names of
-            coordinates in ``ds``.
+            axes in ``ds``. If the values are not present in ``ds`` or are not dimensions,
+            an error will be raised.
         metrics : dict, optional
             Specification of grid metrics
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
@@ -1119,6 +1120,18 @@ class Grid:
         else:
             all_axes = comodo.get_all_axes(ds)
             coords = {}
+
+        # check coords input validity
+        for axis, positions in coords.items():
+            for pos, dim in positions.items():
+                if dim not in ds.variables:
+                    raise ValueError(
+                        f"Could not find dimension `{dim}` (for the `{pos}` position on axis `{axis}`) in input dataset."
+                    )
+                if dim not in ds.dims:
+                    raise ValueError(
+                        f"Input `{dim}` (for the `{pos}` position on axis `{axis}`) is not a dimension in the input datasets `ds`."
+                    )
 
         self.axes = OrderedDict()
         for axis_name in all_axes:
