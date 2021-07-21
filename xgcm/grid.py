@@ -1087,7 +1087,12 @@ class Grid:
             axes in ``ds``. If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
         metrics : dict, optional
-            Specification of grid metrics
+            Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
+            metric variable names in the dataset 
+            (e.g. {('X',):['dx_t'], ('X', 'Y'):['area_tracer', 'area_u']}
+            for the cell distance in the x-direction ``dx_t`` and the 
+            horizontal cell areas ``area_tracer`` and ``area_u``, located at 
+            different grid positions).
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
