@@ -1124,7 +1124,7 @@ class Grid:
         # check coords input validity
         for axis, positions in coords.items():
             for pos, dim in positions.items():
-                if dim not in ds.variables:
+                if not (dim in ds.variables or dim in ds.dims):
                     raise ValueError(
                         f"Could not find dimension `{dim}` (for the `{pos}` position on axis `{axis}`) in input dataset."
                     )
