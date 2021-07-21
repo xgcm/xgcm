@@ -1082,9 +1082,10 @@ class Grid:
         coords : dict, optional
             Explicit specification of axis dimensions, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
-            Each key should be the name of an axis. The value should be
-            a dictionary mapping positions (e.g. ``'left'``) to names of
-            axes in ``ds``. If the values are not present in ``ds`` or are not dimensions,
+            Keys should be one of `X`, `Y`, or `Z` and map to a dictionary 
+            mapping positions (`center`, `left`, `right`, `outer`, `inner`) 
+            to dimension names in the dataset (here, `XC` and `XG`).
+            If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
         metrics : dict, optional
             Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
