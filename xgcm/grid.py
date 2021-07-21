@@ -1080,7 +1080,7 @@ class Grid:
         face_connections : dict
             Grid topology
         coords : dict, optional
-            Explicit specification of axis dimensions, e.g
+            Specifies positions of dimension names along axes X, Y, Z, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
             Keys should be one of `X`, `Y`, or `Z` and map to a dictionary 
             mapping positions (`center`, `left`, `right`, `outer`, `inner`) 
