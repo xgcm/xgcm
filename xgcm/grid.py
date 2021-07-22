@@ -1082,17 +1082,17 @@ class Grid:
         coords : dict, optional
             Specifies positions of dimension names along axes X, Y, Z, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
-            Keys should be one of `X`, `Y`, or `Z` and map to a dictionary 
-            mapping positions (`center`, `left`, `right`, `outer`, `inner`) 
+            Keys should be one of `X`, `Y`, or `Z` and map to a dictionary
+            mapping positions (`center`, `left`, `right`, `outer`, `inner`)
             to dimension names in the dataset (here, `XC` and `XG`).
             If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
         metrics : dict, optional
             Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
-            metric variable names in the dataset 
+            metric variable names in the dataset
             (e.g. {('X',):['dx_t'], ('X', 'Y'):['area_tracer', 'area_u']}
-            for the cell distance in the x-direction ``dx_t`` and the 
-            horizontal cell areas ``area_tracer`` and ``area_u``, located at 
+            for the cell distance in the x-direction ``dx_t`` and the
+            horizontal cell areas ``area_tracer`` and ``area_u``, located at
             different grid positions).
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
