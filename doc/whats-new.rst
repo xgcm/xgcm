@@ -15,6 +15,10 @@ New Features
 - :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
   By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
 
+Breaking Changes
+~~~~~~~~~~~~~~~~
+- Drop support for Python 3.6 (:issue:`360`, :pull:`361`). By `Julius Busecke <https://github.com/jbusecke>`_.
+
 
 v0.5.2 (2021/5/27)
 -------------------
