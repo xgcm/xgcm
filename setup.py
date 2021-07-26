@@ -7,7 +7,7 @@ with open(os.path.join(here, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
 install_requires = [
-    "xarray>=0.14.1",
+    "xarray>=0.17.0",
     "dask",
     "numpy",
     "future",
