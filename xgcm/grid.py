@@ -1082,9 +1082,11 @@ class Grid:
         coords : dict, optional
             Specifies positions of dimension names along axes X, Y, Z, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
-            Keys should be one of `X`, `Y`, or `Z` and map to a dictionary
-            mapping positions (`center`, `left`, `right`, `outer`, `inner`)
-            to dimension names in the dataset (here, `XC` and `XG`).
+            Each key should be an axis name (e.g., `X`, `Y`, or `Z`) and map 
+            to a dictionary which maps positions (`center`, `left`, `right`,
+            `outer`, `inner`) to dimension names in the dataset 
+            (in the example above, `XC` is at the `center` position and `XG`
+            at the `left` position along the `X` axis).
             If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
         metrics : dict, optional
