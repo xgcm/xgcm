@@ -54,7 +54,7 @@ setup(
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     install_requires=install_requires,
     extras_require=extras_require,
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     long_description=long_description,
     long_description_content_type="text/x-rst",
     setup_requires="setuptools_scm",
