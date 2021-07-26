@@ -623,9 +623,9 @@ def test_create_grid_no_comodo(all_datasets):
 
 
 def test_grid_no_coords(periodic_1d):
-
+    """Ensure that you can use xgcm with Xarray datasets that don't have dimension coordinates."""
     ds, periodic, expected = periodic_1d
-    ds_nocoords = ds.drop_dims(list(ds.dims.keys()))
+    ds_nocoords = ds.drop_vars(list(ds.dims.keys()))
 
     coords = expected["axes"]
     grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
@@ -833,3 +833,25 @@ def test_interp_like(
     )
 
     xr.testing.assert_allclose(interp_metric, expected_metric)
+
+
+def test_input_not_dims():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    msg = r"is not a dimension in the input dataset"
+    with pytest.raises(ValueError, match=msg):
+        Grid(ds, coords={"X": {"center": "c"}})
+
+
+def test_input_dim_notfound():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    msg = r"Could not find dimension `other` \(for the `center` position on axis `X`\) in input dataset."
+    with pytest.raises(ValueError, match=msg):
+        Grid(ds, coords={"X": {"center": "other"}})

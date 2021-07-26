@@ -1080,13 +1080,22 @@ class Grid:
         face_connections : dict
             Grid topology
         coords : dict, optional
-            Explicit specification of axis coordinates, e.g
+            Specifies positions of dimension names along axes X, Y, Z, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
-            Each key should be the name of an axis. The value should be
-            a dictionary mapping positions (e.g. ``'left'``) to names of
-            coordinates in ``ds``.
+            Each key should be an axis name (e.g., `X`, `Y`, or `Z`) and map
+            to a dictionary which maps positions (`center`, `left`, `right`,
+            `outer`, `inner`) to dimension names in the dataset
+            (in the example above, `XC` is at the `center` position and `XG`
+            at the `left` position along the `X` axis).
+            If the values are not present in ``ds`` or are not dimensions,
+            an error will be raised.
         metrics : dict, optional
-            Specification of grid metrics
+            Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
+            metric variable names in the dataset
+            (e.g. {('X',):['dx_t'], ('X', 'Y'):['area_tracer', 'area_u']}
+            for the cell distance in the x-direction ``dx_t`` and the
+            horizontal cell areas ``area_tracer`` and ``area_u``, located at
+            different grid positions).
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
@@ -1119,6 +1128,18 @@ class Grid:
         else:
             all_axes = comodo.get_all_axes(ds)
             coords = {}
+
+        # check coords input validity
+        for axis, positions in coords.items():
+            for pos, dim in positions.items():
+                if not (dim in ds.variables or dim in ds.dims):
+                    raise ValueError(
+                        f"Could not find dimension `{dim}` (for the `{pos}` position on axis `{axis}`) in input dataset."
+                    )
+                if dim not in ds.dims:
+                    raise ValueError(
+                        f"Input `{dim}` (for the `{pos}` position on axis `{axis}`) is not a dimension in the input datasets `ds`."
+                    )
 
         self.axes = OrderedDict()
         for axis_name in all_axes:
