@@ -18,6 +18,10 @@ New Features
 - Better input checking when creating a grid object avoids creating grid positions on dataset coordinates which are not 1D (:issue:`208`, :pull:`358`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
+Breaking Changes
+~~~~~~~~~~~~~~~~
+- Drop support for Python 3.6 (:issue:`360`, :pull:`361`). By `Julius Busecke <https://github.com/jbusecke>`_.
+
 v0.5.2 (2021/5/27)
 -------------------
 
