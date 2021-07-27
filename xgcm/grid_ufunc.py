@@ -9,11 +9,11 @@ import xarray as xr
 #   - Specify xgcm.Axis and "axis positions" instead of numpy axes as (dim:ax_pos)
 _DIMENSION_NAME = r"\w+"
 _AXIS_POSITION = "(?:center|left|right|inner|outer)"
-_DIMENSION_AXIS_PAIR = "{0:}:{1:}".format(_DIMENSION_NAME, _AXIS_POSITION)
-_DIMENSION_AXIS_PAIR_LIST = "(?:{0:}(?:,{0:})*,?)*".format(_DIMENSION_AXIS_PAIR)
-_ARGUMENT = r"\({0:}\)".format(_DIMENSION_AXIS_PAIR_LIST)
-_ARGUMENT_LIST = "{0:}(?:,{0:})*".format(_ARGUMENT)
-_SIGNATURE = "^{0:}->{0:}$".format(_ARGUMENT_LIST)
+_DIMENSION_AXIS_PAIR = f"{_DIMENSION_NAME}:{_AXIS_POSITION}"
+_DIMENSION_AXIS_PAIR_LIST = f"(?:{_DIMENSION_AXIS_PAIR}(?:,{_DIMENSION_AXIS_PAIR})*,?)*"
+_ARGUMENT = rf"\({_DIMENSION_AXIS_PAIR_LIST}\)"
+_ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
+_SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
 
 def _parse_grid_ufunc_signature(signature):
