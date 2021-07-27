@@ -13,11 +13,7 @@ _AXIS_POSITION = '(?:center|left|right|inner|outer)'
 _DIMENSION_AXIS_PAIR = '{0:}:{1:}'.format(_DIMENSION_NAME, _AXIS_POSITION)
 _DIMENSION_AXIS_PAIR_LIST = '(?:{0:}(?:,{0:})*,?)*'.format(_DIMENSION_AXIS_PAIR)
 _ARGUMENT = r'\({0:}\)'.format(_DIMENSION_AXIS_PAIR_LIST)
-
 _ARGUMENT_LIST = '{0:}(?:,{0:})*'.format(_ARGUMENT)
-
-#_INPUT_ARGUMENTS = f"(?:{_ARGUMENT}(?:,{_ARGUMENT})*,?)?"
-#_OUTPUT_ARGUMENTS = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = '^{0:}->{0:}$'.format(_ARGUMENT_LIST)
 
 
