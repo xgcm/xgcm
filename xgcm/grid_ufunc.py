@@ -11,7 +11,7 @@ import xarray as xr
 _DIMENSION_NAME = r'\w+'
 _AXIS_POSITION = '(?:center|left|right|inner|outer)'
 _DIMENSION_AXIS_PAIR = '{0:}:{1:}'.format(_DIMENSION_NAME, _AXIS_POSITION)
-_DIMENSION_AXIS_PAIR_LIST = '(?:{0:}(?:,{0:})*,?)+'.format(_DIMENSION_AXIS_PAIR)
+_DIMENSION_AXIS_PAIR_LIST = '(?:{0:}(?:,{0:})*,?)*'.format(_DIMENSION_AXIS_PAIR)
 _ARGUMENT = r'\({0:}\)'.format(_DIMENSION_AXIS_PAIR_LIST)
 
 _ARGUMENT_LIST = '{0:}(?:,{0:})*'.format(_ARGUMENT)
@@ -42,8 +42,8 @@ def _parse_grid_ufunc_signature(signature):
 
     signature = signature.replace(" ", "")
 
-    #if not re.match(_SIGNATURE, signature):
-    #    raise ValueError(f"Not a valid grid ufunc signature: {signature}")
+    if not re.match(_SIGNATURE, signature):
+        raise ValueError(f"Not a valid grid ufunc signature: {signature}")
 
     in_txt, out_txt = signature.split("->")
 
