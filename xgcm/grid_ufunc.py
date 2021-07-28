@@ -2,16 +2,16 @@ import re
 
 import xarray as xr
 
-# TODO Handle output dimensions of fixed size?
-
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
-#   - Specify xgcm.Axis and "axis positions" instead of numpy axes as (dim:ax_pos)
-_DIMENSION_NAME = r"\w+"
+#   - Specify xgcm.Axis name and "axis positions" instead of numpy axes as (ax_name:ax_pos)
+_AXIS_NAME = r"\w+"
 _AXIS_POSITION = "(?:center|left|right|inner|outer)"
-_DIMENSION_AXIS_PAIR = f"{_DIMENSION_NAME}:{_AXIS_POSITION}"
-_DIMENSION_AXIS_PAIR_LIST = f"(?:{_DIMENSION_AXIS_PAIR}(?:,{_DIMENSION_AXIS_PAIR})*,?)*"
-_ARGUMENT = rf"\({_DIMENSION_AXIS_PAIR_LIST}\)"
+_AXIS_NAME_POSITION_PAIR = f"{_AXIS_NAME}:{_AXIS_POSITION}"
+_AXIS_NAME_POSITION_PAIR_LIST = (
+    f"(?:{_AXIS_NAME_POSITION_PAIR}(?:,{_AXIS_NAME_POSITION_PAIR})*,?)*"
+)
+_ARGUMENT = rf"\({_AXIS_NAME_POSITION_PAIR_LIST}\)"
 _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
@@ -26,13 +26,21 @@ def _parse_grid_ufunc_signature(signature):
     Arguments
     ---------
     signature : string
-        Generalized universal function signature, e.g., ``"(X:center)->(X:left)"``
-        for ``diff_center_to_left(a)`.
+        Grid universal function signature. Specifies the xgcm.Axis names and
+        positions for each input and output variable, e.g.,
+
+        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
 
     Returns
     -------
-    Tuple of input and output core dimensions parsed from the signature, each
-    of the form List[Tuple[str, ...]].
+    input_axes_names : List[Tuple[str, ...]]
+        Input Axes names parsed from the signature
+    output_axes_names : List[Tuple[str, ...]]
+        Output Axes names parsed from the signature
+    input_axes_positions : List[Tuple[str, ...]]
+        Input Axes positions parsed from the signature
+    output_axes_positions : List[Tuple[str, ...]]
+        Output Axes positions parsed from the signature
     """
 
     signature = signature.replace(" ", "")
@@ -42,16 +50,16 @@ def _parse_grid_ufunc_signature(signature):
 
     in_txt, out_txt = signature.split("->")
 
-    in_core_dims = []
+    in_ax_names = []
     for arg in re.findall(_ARGUMENT, in_txt):
-        # Delete the axis positions so they aren't matched as dimension names
-        only_dims = re.sub(_AXIS_POSITION, "", arg)
-        in_core_dims.append(tuple(re.findall(_DIMENSION_NAME, only_dims)))
+        # Delete the axis positions so they aren't matched as axis names
+        only_names = re.sub(_AXIS_POSITION, "", arg)
+        in_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
 
-    out_core_dims = []
+    out_ax_names = []
     for arg in re.findall(_ARGUMENT, out_txt):
-        only_dims = re.sub(_AXIS_POSITION, "", arg)
-        out_core_dims.append(tuple(re.findall(_DIMENSION_NAME, only_dims)))
+        only_names = re.sub(_AXIS_POSITION, "", arg)
+        out_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
 
     in_ax_pos = [
         tuple(re.findall(_AXIS_POSITION, arg)) for arg in re.findall(_ARGUMENT, in_txt)
@@ -60,67 +68,89 @@ def _parse_grid_ufunc_signature(signature):
         tuple(re.findall(_AXIS_POSITION, arg)) for arg in re.findall(_ARGUMENT, out_txt)
     ]
 
-    return in_core_dims, out_core_dims, in_ax_pos, out_ax_pos
+    return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
 
 
-def as_grid_ufunc(signature):
+def as_grid_ufunc(grid, signature):
     """
-    Decorator version of `grid_ufunc`.
+    Decorator which turns a numpy ufunc into a "grid-aware ufunc".
 
     Parameters
     ----------
-    signature
+    grid : xgcm.Grid
+    signature : string
+        Grid universal function signature. Specifies the xgcm.Axis names and
+        positions for each input and output variable, e.g.,
+
+        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
 
     Returns
     -------
-
+    grid_ufunc : callable
     """
 
     def _as_grid_ufunc(func, *args, **kwargs):
-        return grid_ufunc(func, signature=signature, *args, **kwargs)
+        return grid_ufunc(func, grid=grid, signature=signature, *args, **kwargs)
 
     return _as_grid_ufunc
 
 
-def grid_ufunc(func, signature, *args, **kwargs):
+def grid_ufunc(func, grid, signature, *args, **kwargs):
     """
-    Turns a numpy ufunc into a "grid-aware ufunc", where the relationship between
-    xgcm axes on the input and output are specified by `signature`.
+    Apply a function to the given arguments in a grid-aware manner.
 
+    The relationship between xgcm axes on the input and output are specified by
+    `signature`. Wraps xarray.apply_ufunc, but determines the core dimensions
+    from the grid and signature passed.
 
     Parameters
     ----------
-    func
-    signature
+    func : callable
+        Function to call like `func(*args, **kwargs)` on numpy-like unlabled
+        arrays (`.data`).
+
+        Passed directly on to `xarray.apply_ufunc`.
+    grid : xgcm.Grid
+    signature : string
+        Grid universal function signature. Specifies the xgcm.Axis names and
+        positions for each input and output variable, e.g.,
+
+        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
 
     Returns
     -------
-
+    result
+        The result of the call to `apply_ufunc`.
     """
 
-    # Translate signature
-    in_core, out_core, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(signature)
+    # Extract Axes information from signature
+    in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(
+        signature
+    )
 
-    _validate_positions(args, in_ax_pos)
+    # Determine core dimensions for apply_ufunc
+    in_core_dims = [
+        [grid.axes[n].coords[p] for n, p in zip(arg_ns, arg_ps)]
+        for arg_ns, arg_ps in zip(in_ax_names, in_ax_pos)
+    ]
+    out_core_dims = [
+        [grid.axes[n].coords[p] for n, p in zip(arg_ns, arg_ps)]
+        for arg_ns, arg_ps in zip(out_ax_names, out_ax_pos)
+    ]
+
+    # TODO determine expected output sizes from grid._ds
 
     # perform operation via xarray.apply_ufunc
     result = xr.apply_ufunc(
         func,
         *args,
-        input_core_dims=in_core,
-        output_core_dims=out_core,
+        input_core_dims=in_core_dims,
+        output_core_dims=out_core_dims,
         **kwargs,
         dask="parallelized",
         dask_gufunc_kwargs={"output_sizes": "out_sizes"},
     )
-    # how to determine expected output sizes - not present in signature?
 
     # handle metrics and boundary?
 
     return result
-
-
-def _validate_positions(args, input_axis_pos):
-    for arg, ax_pos in zip(args, input_axis_pos):
-        # TODO actually check that the args have the expected xgcm axis positions
-        ...

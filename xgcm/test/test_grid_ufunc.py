@@ -5,7 +5,7 @@ from xgcm.grid_ufunc import _parse_grid_ufunc_signature
 
 class TestParseGridUfuncSignature:
     @pytest.mark.parametrize(
-        "signature, exp_in_core, exp_out_core, exp_in_ax_pos, exp_out_ax_pos",
+        "signature, exp_in_ax_names, exp_out_ax_names, exp_in_ax_pos, exp_out_ax_pos",
         [
             ("()->()", [()], [()], [()], [()]),
             ("(X:center)->()", [("X",)], [()], [("center",)], [()]),
@@ -37,13 +37,18 @@ class TestParseGridUfuncSignature:
         ],
     )
     def test_parse_valid_signatures(
-        self, signature, exp_in_core, exp_out_core, exp_in_ax_pos, exp_out_ax_pos
+        self,
+        signature,
+        exp_in_ax_names,
+        exp_out_ax_names,
+        exp_in_ax_pos,
+        exp_out_ax_pos,
     ):
-        in_core, out_core, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(
+        in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(
             signature
         )
-        assert in_core == exp_in_core
-        assert out_core == exp_out_core
+        assert in_ax_names == exp_in_ax_names
+        assert out_ax_names == exp_out_ax_names
         assert in_ax_pos == exp_in_ax_pos
         assert out_ax_pos == exp_out_ax_pos
 
