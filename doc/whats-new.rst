@@ -16,7 +16,7 @@ New Features
 - :py:meth:`~xgcm.grid.Grid.set_metrics` enables overwriting of previously assigned metrics to a grid object, and allows for multiple metrics on the same axes (must be different dimensions) (:pull:`351`, :issue:`199`).
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
-- :py:meth:`~xgcm.grid.Grid.interp_like` enables users to interpolate arrays onto the grid positions of another array, and can specify periodic and boundary conditions (:issue:`234` , :issue:`343`, :pull:`350`).
+- :py:meth:`~xgcm.grid.Grid.interp_like` enables users to interpolate arrays onto the grid positions of another array, and can specify boundary conditions and fill values (:issue:`234` , :issue:`343`, :pull:`350`).
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
 - Better input checking when creating a grid object avoids creating grid positions on dataset coordinates which are not 1D (:issue:`208`, :pull:`358`).
