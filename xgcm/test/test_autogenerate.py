@@ -1,17 +1,15 @@
-from __future__ import print_function
-from future.utils import iteritems
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
 from xarray.testing import assert_allclose, assert_equal
 
 from xgcm.autogenerate import (
-    generate_axis,
-    generate_grid_ds,
+    _fill_attrs,
     _parse_boundary_params,
     _parse_position,
     _position_to_relative,
-    _fill_attrs,
+    generate_axis,
+    generate_grid_ds,
 )
 
 # create test datasets

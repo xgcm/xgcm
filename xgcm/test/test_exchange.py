@@ -1,11 +1,8 @@
-from __future__ import print_function
-from future.utils import iteritems
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
-from dask.array import from_array
 
-from xgcm.grid import Grid, Axis
+from xgcm.grid import Grid
 
 
 @pytest.fixture(scope="module")
@@ -159,7 +156,6 @@ def test_create_connected_grid(ds, ds_face_connections_x_to_x):
     grid = Grid(ds, face_connections=ds_face_connections_x_to_x)
 
     xaxis = grid.axes["X"]
-    yaxis = grid.axes["Y"]
 
     # make sure we have actual axis objects in the connection dict
     # this is a bad test because it tests the details of the implementation,
@@ -194,8 +190,6 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # one face connection, rotated
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
-    diff_x = grid.diff(ds.data_c, "X", boundary="fill")
-    interp_x = grid.interp(ds.data_c, "X", boundary="fill")
     diff_y = grid.diff(ds.data_c, "Y", boundary="fill")
     interp_y = grid.interp(ds.data_c, "Y", boundary="fill")
 
@@ -223,12 +217,12 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
     vector_center = grid.interp_2d_vector(
         {"X": ds.u, "Y": ds.v}, to="center", boundary="fill"
     )
-    u_c_interp, v_c_interp = vector_center["X"], vector_center["Y"]
+    u_c_interp = vector_center["X"]
 
     vector_diff = grid.diff_2d_vector(
         {"X": ds.u, "Y": ds.v}, to="center", boundary="fill"
     )
-    u_c_diff, v_c_diff = vector_diff["X"], vector_diff["Y"]
+    u_c_diff = vector_diff["X"]
 
     # first point should be normal
     np.testing.assert_allclose(
@@ -248,15 +242,13 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
 
     # TODO: figure out tangent vectors
     with pytest.raises(NotImplementedError):
-        vector_corner = grid.interp_2d_vector(
-            {"X": ds.v, "Y": ds.u}, to="left", boundary="fill"
-        )
+        _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, to="left", boundary="fill")
     with pytest.raises(NotImplementedError):
-        vector_corner = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, boundary="fill")
+        _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, boundary="fill")
 
 
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
-    grid = Grid(cs, face_connections=cubed_sphere_connections)
+    _ = Grid(cs, face_connections=cubed_sphere_connections)
 
 
 def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):

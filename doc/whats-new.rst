@@ -4,33 +4,62 @@ What's New
 ===========
 
 v0.6.0 (unreleased)
--------------------------
+-------------------
 
 .. _whats-new.0.6.0:
 
+New Features
+~~~~~~~~~~~~
+- :py:meth:`~xgcm.grid.Grid.interp_like` enables users to interpolate arrays onto the grid positions of another array (:issue:`234` , :issue:`343`, :pull:`350`). By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
+
+- :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
+
+- Better input checking when creating a grid object avoids creating grid positions on dataset coordinates which are not 1D (:issue:`208`, :pull:`358`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+- Drop support for Python 3.6 (:issue:`360`, :pull:`361`). By `Julius Busecke <https://github.com/jbusecke>`_.
+
+v0.5.2 (2021/5/27)
+-------------------
+
+.. _whats-new.0.5.2:
+
+Bug fixes
+~~~~~~~~~
+- Raise more useful errors when datasets are provided as arguments to grid.transform (:pull:`329`, :issue:`328`). By `Julius Busecke <https://github.com/jbusecke>`_.
+
+
 Documentation
 ~~~~~~~~~~~~~
+- Updated Realistic Data examples in `Transforming Vertical Coordinates <https://xgcm.readthedocs.io/en/latest/transform.html>`_ (:pull:`322`)
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.
+
 - Migrated model example notebooks to `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_ which integrates with `pangeo gallery <https://gallery.pangeo.io/repos/xgcm/xgcm-examples/>`_ (:pull:`294`)
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
-
 v0.5.1 (2020/10/16)
--------------------------
+-------------------
+
+.. _whats-new.0.5.1:
 
 Bug fixes
 ~~~~~~~~~
 - Add support for older numba versions (<0.49) (:pull:`263`, :issue:`262`). By `Navid Constantinou <https://github.com/navidcy>`_.
-.. _whats-new.0.5.1:
+
 
 
 v0.5.0 (2020/9/28)
--------------------------
+------------------
+.. _whats-new.0.5.0:
 
 New Features
 ~~~~~~~~~~~~
 - :py:meth:`~xgcm.grid.Grid.transform` and :py:meth:`~xgcm.grid.Axis.transform` now enable 1-dimensional coordinate transformation (:pull:`205`, :issue:`222`).
   By `Ryan Abernathey <https://github.com/rabernat>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
-  
+
 Bug fixes
 ~~~~~~~~~
 - More reliable handling of missing values in :py:meth:`Grid.average`. Missing values between data and metrics do not have to be aligned by the user anymore. (:pull:`259`). By `Julius Busecke <https://github.com/jbusecke>`_.
@@ -49,12 +78,12 @@ New Features
 - Support for specifying default ``boundary`` and ``fill_value`` in the :py:class:`Grid` constructor.
   Default values can be overridden in individual method calls (e.g. :py:meth:`Grid.interp`) as usual.
   By `Deepak Cherian <https://github.com/dcherian>`_.
-  
+
   Bug fixes
 ~~~~~~~~~
 - Fix for parsing fill_values as dictionary (:issue:`218`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
-  
+
 Internal Changes
 ~~~~~~~~~~~~~~~~
 - Complete refactor of the CI to github actions (:issue:`214`).

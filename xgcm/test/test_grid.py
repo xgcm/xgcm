@@ -1,22 +1,17 @@
-from __future__ import print_function
-from future.utils import iteritems
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
-from dask.array import from_array
 
-from xgcm.grid import Grid, Axis
+from xgcm.grid import Axis, Grid
 
-from .datasets import (
-    all_datasets,
-    nonperiodic_1d,
-    periodic_1d,
-    periodic_2d,
-    nonperiodic_2d,
-    all_2d,
-    datasets,
-    datasets_grid_metric,
-)
+from .datasets import all_2d  # noqa: F401
+from .datasets import all_datasets  # noqa: F401
+from .datasets import datasets  # noqa: F401
+from .datasets import datasets_grid_metric  # noqa: F401
+from .datasets import nonperiodic_1d  # noqa: F401
+from .datasets import nonperiodic_2d  # noqa: F401
+from .datasets import periodic_1d  # noqa: F401
+from .datasets import periodic_2d  # noqa: F401
 
 
 # helper function to produce axes from datasets
@@ -169,14 +164,14 @@ def test_axis_repr(all_datasets):
     # TODO: make this more complete
 
 
-def test_get_axis_coord(all_datasets):
+def test_get_position_name(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
     for ax_name, axis in axis_objs.items():
         # create a dataarray with each axis coordinate
         for position, coord in axis.coords.items():
             da = 1 * ds[coord]
-            assert axis._get_axis_coord(da) == (position, coord)
+            assert axis._get_position_name(da) == (position, coord)
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
@@ -327,8 +322,8 @@ def test_axis_cumsum(nonperiodic_1d, boundary):
         fill_value = 0.0 if boundary == "fill" else cumsum_c_raw[0]
         np.testing.assert_allclose(cumsum_c.data, np.hstack([fill_value, cumsum_c_raw]))
 
-    ## not much point doing this...we don't have the right test datasets
-    ## to really test the errors
+    # not much point doing this...we don't have the right test datasets
+    # to really test the errors
     # other_positions = {'left', 'right', 'inner', 'outer'}.difference({to})
     # for pos in other_positions:
     #     with pytest.raises(KeyError):
@@ -347,7 +342,7 @@ def test_axis_cumsum(nonperiodic_1d, boundary):
 def test_axis_neighbor_pairs_2d(
     periodic_2d, varname, axis_name, to, roll, roll_axis, swap_order
 ):
-    ds, periodic, expected = periodic_2d
+    ds, _, _ = periodic_2d
 
     axis = Axis(ds, axis_name)
 
@@ -450,7 +445,7 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 def test_axis_diff_and_interp_nonperiodic_2d(
     all_2d, boundary, axis_name, varname, this, to
 ):
-    ds, periodic, expected = all_2d
+    ds, periodic, _ = all_2d
 
     try:
         ax_periodic = axis_name in periodic
@@ -476,7 +471,6 @@ def test_axis_diff_and_interp_nonperiodic_2d(
     if this == "center":
         if ax_periodic:
             data_left = np.roll(data, 1, axis=axis_num)
-            data_right = data
         else:
             pad_width = [
                 pad_left if i == axis_num else pad_none for i in range(data.ndim)
@@ -488,7 +482,7 @@ def test_axis_diff_and_interp_nonperiodic_2d(
                 ]
             )
             data_left = np.pad(data, pad_width, numpy_pad_arg[boundary])[the_slice]
-            data_right = data
+        data_right = data
     elif this == "left":
         if ax_periodic:
             data_left = data
@@ -543,27 +537,27 @@ def test_axis_errors():
     with pytest.raises(
         ValueError, match="Couldn't find a center coordinate for axis X"
     ):
-        x_axis = Axis(ds_noattr, "X", periodic=True)
+        _ = Axis(ds_noattr, "X", periodic=True)
 
     del ds_noattr.XG.attrs["axis"]
     with pytest.raises(ValueError, match="Couldn't find any coordinates for axis X"):
-        x_axis = Axis(ds_noattr, "X", periodic=True)
+        _ = Axis(ds_noattr, "X", periodic=True)
 
     ds_chopped = ds.copy().isel(XG=slice(None, 3))
     del ds_chopped["data_g"]
     with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
-        x_axis = Axis(ds_chopped, "X", periodic=True)
+        _ = Axis(ds_chopped, "X", periodic=True)
 
     ds_chopped.XG.attrs["c_grid_axis_shift"] = -0.5
     with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
-        x_axis = Axis(ds_chopped, "X", periodic=True)
+        _ = Axis(ds_chopped, "X", periodic=True)
 
     del ds_chopped.XG.attrs["c_grid_axis_shift"]
     with pytest.raises(
         ValueError,
         match="Found two coordinates without `c_grid_axis_shift` attribute for axis X",
     ):
-        x_axis = Axis(ds_chopped, "X", periodic=True)
+        _ = Axis(ds_chopped, "X", periodic=True)
 
     ax = Axis(ds, "X", periodic=True)
 
@@ -629,11 +623,9 @@ def test_create_grid_no_comodo(all_datasets):
 
 
 def test_grid_no_coords(periodic_1d):
-
+    """Ensure that you can use xgcm with Xarray datasets that don't have dimension coordinates."""
     ds, periodic, expected = periodic_1d
-    grid_expected = Grid(ds, periodic=periodic)
-
-    ds_nocoords = ds.drop_dims(list(ds.dims.keys()))
+    ds_nocoords = ds.drop_vars(list(ds.dims.keys()))
 
     coords = expected["axes"]
     grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
@@ -645,7 +637,7 @@ def test_grid_no_coords(periodic_1d):
 
 
 def test_grid_repr(all_datasets):
-    ds, periodic, expected = all_datasets
+    ds, periodic, _ = all_datasets
     grid = Grid(ds, periodic=periodic)
     r = repr(grid).split("\n")
     assert r[0] == "<xgcm.Grid>"
@@ -655,7 +647,7 @@ def test_grid_ops(all_datasets):
     """
     Check that we get the same answer using Axis or Grid objects
     """
-    ds, periodic, expected = all_datasets
+    ds, periodic, _ = all_datasets
     grid = Grid(ds, periodic=periodic)
 
     for axis_name in grid.axes.keys():
@@ -770,11 +762,11 @@ def test_keep_coords(funcname, gridtype):
             assert set(result.coords) == set(base_coords + augmented_coords)
         else:
             assert set(result.coords) == set(base_coords)
-        #
+
         if funcname not in ["integrate", "average"]:
             result = func(ds.tracer, axis_name, keep_coords=False)
             assert set(result.coords) == set(base_coords)
-            #
+
             result = func(ds.tracer, axis_name, keep_coords=True)
             assert set(result.coords) == set(base_coords + augmented_coords)
 
@@ -788,3 +780,78 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
 
     xr.testing.assert_identical(actual1, actual2)
+
+
+@pytest.mark.parametrize(
+    "metric_axes,metric_name",
+    [
+        (["Y", "X"], "area_n"),
+        ("X", "dx_t"),
+        ("Y", "dy_ne"),
+        (["Y", "X"], "dy_n"),
+        (["X"], "tracer"),
+    ],
+)
+@pytest.mark.parametrize("periodic", [True, False])
+@pytest.mark.parametrize(
+    "boundary, boundary_expected",
+    [
+        ({"X": "fill", "Y": "fill"}, {"X": "fill", "Y": "fill"}),
+        ({"X": "extend", "Y": "extend"}, {"X": "extend", "Y": "extend"}),
+        (
+            {"X": "extrapolate", "Y": "extrapolate"},
+            {"X": "extrapolate", "Y": "extrapolate"},
+        ),
+        ("fill", {"X": "fill", "Y": "fill"}),
+        ("extend", {"X": "extend", "Y": "extend"}),
+        ("extrapolate", {"X": "extrapolate", "Y": "extrapolate"}),
+        ({"X": "extend", "Y": "fill"}, {"X": "extend", "Y": "fill"}),
+        ({"X": "extrapolate", "Y": "fill"}, {"X": "extrapolate", "Y": "fill"}),
+        pytest.param(
+            "fill",
+            {"X": "fill", "Y": "extend"},
+            marks=pytest.mark.xfail,
+            id="boundary not equal to boundary_expected",
+        ),
+    ],
+)
+@pytest.mark.parametrize("fill_value", [None, 0.1])
+def test_interp_like(
+    metric_axes, metric_name, periodic, boundary, boundary_expected, fill_value
+):
+
+    ds, coords, _ = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords, periodic=periodic)
+    grid.set_metrics(metric_axes, metric_name)
+    metric_available = grid._metrics.get(frozenset(metric_axes), None)
+    metric_available = metric_available[0]
+    interp_metric = grid.interp_like(
+        metric_available, ds.u, boundary=boundary, fill_value=fill_value
+    )
+    expected_metric = grid.interp(
+        ds[metric_name], metric_axes, boundary=boundary_expected, fill_value=fill_value
+    )
+
+    xr.testing.assert_allclose(interp_metric, expected_metric)
+
+
+def test_input_not_dims():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    msg = r"is not a dimension in the input dataset"
+    with pytest.raises(ValueError, match=msg):
+        Grid(ds, coords={"X": {"center": "c"}})
+
+
+def test_input_dim_notfound():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    msg = r"Could not find dimension `other` \(for the `center` position on axis `X`\) in input dataset."
+    with pytest.raises(ValueError, match=msg):
+        Grid(ds, coords={"X": {"center": "other"}})

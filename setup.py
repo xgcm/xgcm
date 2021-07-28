@@ -1,4 +1,5 @@
 import os
+
 from setuptools import find_packages, setup
 
 here = os.path.dirname(__file__)
@@ -6,7 +7,7 @@ with open(os.path.join(here, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
 install_requires = [
-    "xarray>=0.14.1",
+    "xarray>=0.17.0",
     "dask",
     "numpy",
     "future",
@@ -46,7 +47,6 @@ setup(
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -54,7 +54,7 @@ setup(
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     install_requires=install_requires,
     extras_require=extras_require,
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     long_description=long_description,
     long_description_content_type="text/x-rst",
     setup_requires="setuptools_scm",

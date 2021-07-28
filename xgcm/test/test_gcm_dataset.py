@@ -1,8 +1,8 @@
 import numpy as np
-from xarray import Dataset, DataArray
 
 # from xray.core.ops import allclose_or_equiv
 import pytest
+from xarray import DataArray, Dataset
 
 # skip everythong
 pytestmark = pytest.mark.xfail(True, reason="deprecated")
@@ -71,11 +71,11 @@ def test_dataset():
 
 def test_create_gcm_dataset(test_dataset):
     ds = test_dataset
-    gcm = GCMDataset(ds)
+    _ = GCMDataset(ds)
     # should fail if any of the variables is missing
     for v in ds:
         with pytest.raises(KeyError):
-            gcm = GCMDataset(ds.drop(v))
+            _ = GCMDataset(ds.drop(v))
 
 
 def test_vertical_derivatives(test_dataset):

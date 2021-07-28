@@ -1,6 +1,4 @@
-from __future__ import print_function
 import pytest
-import xarray as xr
 from xarray.testing import assert_allclose
 
 from xgcm.grid import Grid
@@ -16,7 +14,7 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     elif funcname == "cumint":
         expected = grid.cumsum(da * metric, axes, boundary=boundary)
     else:
-        raise ValueError("funcname (`%s`) not recognized" % funcname)
+        raise ValueError(f"funcname {funcname} not recognized")
     return expected
 
 
@@ -34,10 +32,10 @@ class TestParametrized:
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
 
         if funcname == "cumint":
-            # cumint needs a boundary...
+            # cumint needs a boundary
             kwargs = dict(boundary=boundary)
         else:
-            # integrate and average do use the boundary input
+            # integrate and average don't use the boundary input
             kwargs = dict()
 
         func = getattr(grid, funcname)
@@ -87,14 +85,14 @@ class TestParametrized:
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
 
-        func = getattr(grid, funcname)
-
         if funcname == "cumint":
-            # cumint needs a boundary...
+            # cumint needs a boundary
             kwargs = dict(boundary=boundary)
         else:
-            # integrate and average do use the boundary input
+            # integrate and average don't use the boundary input
             kwargs = dict()
+
+        func = getattr(grid, funcname)
 
         # test tracer position
         for axis, metric_name, dim in zip(
@@ -102,6 +100,7 @@ class TestParametrized:
             ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
             ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
         ):
+
             new = func(ds.tracer, axis, **kwargs)
             expected = _expected_result(
                 ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs
@@ -138,8 +137,7 @@ class TestParametrized:
 
     @pytest.mark.parametrize("axis", ["X", "Y", "Z"])
     def test_missingaxis(self, axis, funcname, periodic, boundary):
-        # Error should be raised if application axes
-        # include dimension not in datasets
+        # Error should be raised if application axes include dimension not in datasets
 
         ds, coords, metrics = datasets_grid_metric("C")
 
@@ -154,20 +152,13 @@ class TestParametrized:
         func = getattr(grid, funcname)
 
         if funcname == "cumint":
-            # cumint needs a boundary...
+            # cumint needs a boundary
             kwargs = dict(boundary=boundary)
         else:
             kwargs = dict()
 
-        match_message = (
-            "Unable to find any combinations of metrics for array dims.*%s.*" % axis
-        )
-
-        with pytest.raises(KeyError, match=match_message):
+        with pytest.raises(KeyError, match="Did not find axis"):
             func(ds.tracer, ["X", "Y", "Z"], **kwargs)
-
-        with pytest.raises(KeyError, match=match_message):
-            func(ds, axis, **kwargs)
 
         if axis == "Y":
             # test two missing axes at the same time
@@ -181,41 +172,31 @@ class TestParametrized:
             func = getattr(grid, funcname)
 
             if funcname == "cumint":
-                # cumint needs a boundary...
+                # cumint needs a boundary
                 kwargs = dict(boundary="fill")
             else:
                 kwargs = dict()
 
-            match_message = (
-                "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
-            )
-            with pytest.raises(KeyError, match=match_message):
-                func(ds, ["X", "Y", "Z"], **kwargs)
+            with pytest.raises(KeyError, match="Did not find axis"):
+                func(ds.tracer, ["X", "Y", "Z"], **kwargs)
 
-            match_message = (
-                "Unable to find any combinations of metrics for array dims.*X.*Y.*"
-            )
-            with pytest.raises(KeyError, match=match_message):
-                func(ds, ("X", "Y"), **kwargs)
+            with pytest.raises(KeyError, match="Did not find axis"):
+                func(ds.tracer, ("X", "Y"), **kwargs)
 
-    def test_missingdim(self, funcname, periodic, boundary):
+    def test_metric_axes_missing_from_array(self, funcname, periodic, boundary):
         ds, coords, metrics = datasets_grid_metric("C")
         grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
 
-        func = getattr(grid, funcname)
-
         if funcname == "cumint":
-            # cumint needs a boundary...
-            kwargs = dict(boundary=boundary)
+            # cumint needs a boundary
+            kwargs = dict(boundary="fill")
         else:
             kwargs = dict()
 
-        match_message = "Unable to find any combinations of metrics for array dims.*X.*"
-        with pytest.raises(KeyError, match=match_message):
+        func = getattr(grid, funcname)
+
+        with pytest.raises(ValueError, match="Did not find single matching dimension"):
             func(ds.tracer.mean("xt"), "X", **kwargs)
 
-        match_message = (
-            "Unable to find any combinations of metrics for array dims.*X.*Y.*Z.*"
-        )
-        with pytest.raises(KeyError, match=match_message):
+        with pytest.raises(ValueError, match="Did not find single matching dimension"):
             func(ds.tracer.mean("xt"), ["X", "Y", "Z"], **kwargs)

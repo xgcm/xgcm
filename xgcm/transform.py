@@ -2,9 +2,10 @@
 Classes and functions for 1D coordinate transformation.
 """
 import functools
+
 import numpy as np
 import xarray as xr
-from numba import jit, guvectorize, float32, float64, boolean
+from numba import boolean, float32, float64, guvectorize
 
 """Low level functions (numba/numpy)"""
 
@@ -182,12 +183,7 @@ def input_handling(func):
         # pop kwargs used for naming
         suffix = kwargs.pop("suffix", "")
 
-        # complain if the target values are not provided as xr.dataarray
-        if not isinstance(target_theta_levels, xr.DataArray):
-            raise ValueError("`target_theta_levels` should be passed as xr.DataArray")
-
         # rename all input dims to unique names to avoid conflicts in xr.apply_ufunc
-
         temp_dim = "temp_dim_target"
         target_theta_levels = target_theta_levels.rename({target_dim: temp_dim})
 
