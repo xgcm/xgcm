@@ -88,31 +88,63 @@ def create_1d_test_grid():
                 ],
                 np.arange(0.5, 9),
             ),
+            "x_i": (
+                [
+                    "x_i",
+                ],
+                np.arange(1.5, 9),
+            ),
         }
     )
 
-    return Grid(grid_ds, coords={"X": {"center": "x_c", "left": "x_g"}})
+    return Grid(grid_ds, coords={"X": {"center": "x_c", "left": "x_g", "inner": "x_i"}})
 
 
-def test_grid_ufunc():
-    def diff_center_to_left(a):
-        return a - np.roll(a, shift=-1)
+class TestGridUFunc:
+    def test_input_on_wrong_positions(self):
+        ...
 
-    grid = create_1d_test_grid()
-    da = np.sin(grid._ds.x_c * 2 * np.pi / 9)
-    da.coords["x_g"] = grid._ds.x_c
+    def test_1d_unchanging_size(self):
+        def diff_center_to_left(a):
+            return a - np.roll(a, shift=-1)
 
-    diffed = (da - da.roll(x_c=-1, roll_coords=False)).data
-    expected = xr.DataArray(diffed, dims=["x_g"], coords={"x_g": grid._ds.x_g})
+        grid = create_1d_test_grid()
+        da = np.sin(grid._ds.x_c * 2 * np.pi / 9)
+        da.coords["x_c"] = grid._ds.x_c
 
-    # Test direct application
-    result = grid_ufunc(diff_center_to_left, grid, "(X:center)->(X:left)", da)
-    assert_equal(result, expected)
+        diffed = (da - da.roll(x_c=-1, roll_coords=False)).data
+        expected = xr.DataArray(diffed, dims=["x_g"], coords={"x_g": grid._ds.x_g})
 
-    # Test decorator
-    @as_grid_ufunc(grid, "(X:center)->(X:left)")
-    def diff_center_to_left(a):
-        return a - np.roll(a, shift=-1)
+        # Test direct application
+        result = grid_ufunc(diff_center_to_left, grid, "(X:center)->(X:left)", da)
+        assert_equal(result, expected)
 
-    result = diff_center_to_left(da)
-    assert_equal(result, expected)
+        # Test decorator
+        @as_grid_ufunc(grid, "(X:center)->(X:left)")
+        def diff_center_to_left(a):
+            return a - np.roll(a, shift=-1)
+
+        result = diff_center_to_left(da)
+        assert_equal(result, expected)
+
+
+    def test_1d_changing_size(self):
+        def interp_center_to_inner(a):
+            return 0.5 * (a[:-1] + a[1:])
+
+        grid = create_1d_test_grid()
+        da = xr.DataArray(np.arange(10, 19), dims=["x_c"], coords={"x_c": grid._ds.x_c})
+
+        expected = da.interp(x_c=np.arange(1.5, 9), method='linear').rename(x_c="x_i")
+
+        # Test direct application
+        result = grid_ufunc(interp_center_to_inner, grid, "(X:center)->(X:inner)", da)
+        assert_equal(result, expected)
+
+        # Test decorator
+        @as_grid_ufunc(grid, "(X:center)->(X:inner)")
+        def interp_center_to_inner(a):
+            return 0.5 * (a[:-1] + a[1:])
+
+        result = interp_center_to_inner(da)
+        assert_equal(result, expected)
