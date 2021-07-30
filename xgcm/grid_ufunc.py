@@ -15,6 +15,14 @@ _ARGUMENT = rf"\({_AXIS_NAME_POSITION_PAIR_LIST}\)"
 _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
+_RELATIVE_LENGTHS_OF_AXIS_POSITIONS = {
+    "center": 0,
+    "left": 0,
+    "right": 0,
+    "inner": -1,
+    "outer": +1,
+}
+
 
 def _parse_grid_ufunc_signature(signature):
     """
@@ -73,10 +81,16 @@ def _parse_grid_ufunc_signature(signature):
 
 def as_grid_ufunc(grid, signature):
     """
-    Decorator which turns a numpy ufunc into a "grid-aware ufunc".
+    Decorator which turns a numpy ufunc into a "grid-aware ufunc" by applying
+    `grid_ufunc`.
 
     Parameters
     ----------
+    func : callable
+        Function to call like `func(*args, **kwargs)` on numpy-like unlabled
+        arrays (`.data`).
+
+        Passed directly on to `xarray.apply_ufunc`.
     grid : xgcm.Grid
     signature : string
         Grid universal function signature. Specifies the xgcm.Axis names and
@@ -89,10 +103,13 @@ def as_grid_ufunc(grid, signature):
     grid_ufunc : callable
     """
 
-    def _as_grid_ufunc(func, *args, **kwargs):
-        return grid_ufunc(func, grid=grid, signature=signature, *args, **kwargs)
+    def _as_grid_ufunc_decorator(func):
+        def _as_grid_ufunc_wrapper(*args, **kwargs):
+            return grid_ufunc(func, grid, signature, *args, **kwargs)
 
-    return _as_grid_ufunc
+        return _as_grid_ufunc_wrapper
+
+    return _as_grid_ufunc_decorator
 
 
 def grid_ufunc(func, grid, signature, *args, **kwargs):
@@ -120,7 +137,8 @@ def grid_ufunc(func, grid, signature, *args, **kwargs):
     Returns
     -------
     result
-        The result of the call to `apply_ufunc`.
+        The result of the call to `apply_ufunc`, but including the coordinates
+        given by the signature, read from the grid.
     """
 
     # Extract Axes information from signature
@@ -138,7 +156,10 @@ def grid_ufunc(func, grid, signature, *args, **kwargs):
         for arg_ns, arg_ps in zip(out_ax_names, out_ax_pos)
     ]
 
-    # TODO determine expected output sizes from grid._ds
+    # Determine expected output dimension sizes from grid._ds
+    # TODO handle dimensions which change length due to change of axis position
+    all_out_core_dims = set(dim for arg in out_core_dims for dim in arg)
+    out_sizes = {out_dim: grid._ds.dims[out_dim] for out_dim in all_out_core_dims}
 
     # perform operation via xarray.apply_ufunc
     result = xr.apply_ufunc(
@@ -147,10 +168,17 @@ def grid_ufunc(func, grid, signature, *args, **kwargs):
         input_core_dims=in_core_dims,
         output_core_dims=out_core_dims,
         **kwargs,
-        dask="parallelized",
-        dask_gufunc_kwargs={"output_sizes": "out_sizes"},
     )
+    #    dask="parallelized",
+    #    dask_gufunc_kwargs={"output_sizes": out_sizes},
+    # )
 
-    # handle metrics and boundary?
+    # Restore any coordinates associated with new output dims
+    # TODO generalise for the case of apply_ufunc returning multiple objects
+    for dim in all_out_core_dims:
+        if dim in grid._ds.dims and dim not in result.coords:
+            result = result.assign_coords(coords={dim: grid._ds.coords[dim]})
+
+    # TODO handle metrics and boundary?
 
     return result
