@@ -30,9 +30,6 @@ Breaking Changes
 
 Documentation
 ~~~~~~~~~~~~~
-- Added section about boundary conditions (:pull:`325`, :issue:`273`).
-  By `Romain Caneill <https://github.com/rcaneill>`_.
-
 - Updated metrics documentation for new methods in `Grid Metrics <https://xgcm.readthedocs.io/en/latest/grid_metrics.html>`_.
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
