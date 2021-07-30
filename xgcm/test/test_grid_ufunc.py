@@ -1,6 +1,10 @@
+import numpy as np
 import pytest
+import xarray as xr
+from xarray.testing import assert_equal
 
-from xgcm.grid_ufunc import _parse_grid_ufunc_signature
+from xgcm.grid import Grid
+from xgcm.grid_ufunc import _parse_grid_ufunc_signature, as_grid_ufunc, grid_ufunc
 
 
 class TestParseGridUfuncSignature:
@@ -66,3 +70,49 @@ class TestParseGridUfuncSignature:
     def test_invalid_signatures(self, signature):
         with pytest.raises(ValueError):
             _parse_grid_ufunc_signature(signature)
+
+
+def create_1d_test_grid():
+
+    grid_ds = xr.Dataset(
+        coords={
+            "x_c": (
+                [
+                    "x_c",
+                ],
+                np.arange(1, 10),
+            ),
+            "x_g": (
+                [
+                    "x_g",
+                ],
+                np.arange(0.5, 9),
+            ),
+        }
+    )
+
+    return Grid(grid_ds, coords={"X": {"center": "x_c", "left": "x_g"}})
+
+
+def test_grid_ufunc():
+    def diff_center_to_left(a):
+        return a - np.roll(a, shift=-1)
+
+    grid = create_1d_test_grid()
+    da = np.sin(grid._ds.x_c * 2 * np.pi / 9)
+    da.coords["x_g"] = grid._ds.x_c
+
+    diffed = (da - da.roll(x_c=-1, roll_coords=False)).data
+    expected = xr.DataArray(diffed, dims=["x_g"], coords={"x_g": grid._ds.x_g})
+
+    # Test direct application
+    result = grid_ufunc(diff_center_to_left, grid, "(X:center)->(X:left)", da)
+    assert_equal(result, expected)
+
+    # Test decorator
+    @as_grid_ufunc(grid, "(X:center)->(X:left)")
+    def diff_center_to_left(a):
+        return a - np.roll(a, shift=-1)
+
+    result = diff_center_to_left(da)
+    assert_equal(result, expected)
