@@ -166,14 +166,16 @@ class TestGridUFunc:
             return a - np.roll(a, shift=-1)
 
         def diff_overlap(a):
-            return map_overlap(diff_center_to_left, a, depth=1, boundary=0)
+            return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
         grid = create_1d_test_grid()
         da = np.sin(grid._ds.x_c * 2 * np.pi / 9).chunk(1)
         da.coords["x_c"] = grid._ds.x_c
 
         diffed = (da - da.roll(x_c=-1, roll_coords=False)).data
-        expected = xr.DataArray(diffed, dims=["x_g"], coords={"x_g": grid._ds.x_g})
+        expected = xr.DataArray(
+            diffed, dims=["x_g"], coords={"x_g": grid._ds.x_g}
+        ).compute()
 
         # Test direct application
         result = grid_ufunc(
@@ -188,7 +190,7 @@ class TestGridUFunc:
         # Test decorator
         @as_grid_ufunc(grid, "(X:center)->(X:left)", dask="allowed")
         def diff_overlap(a):
-            return map_overlap(diff_center_to_left, a, depth=1, boundary=0)
+            return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
         result = diff_overlap(da).compute()
         assert_equal(result, expected)
