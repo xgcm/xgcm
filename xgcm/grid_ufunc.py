@@ -15,15 +15,6 @@ _ARGUMENT = rf"\({_AXIS_NAME_POSITION_PAIR_LIST}\)"
 _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
-# TODO these relationships should be read from the grid instead of hardcoded
-_RELATIVE_LENGTHS_OF_AXIS_POSITIONS = {
-    "center": 0,
-    "left": 0,
-    "right": 0,
-    "inner": -1,
-    "outer": +1,
-}
-
 
 def _parse_grid_ufunc_signature(signature):
     """
