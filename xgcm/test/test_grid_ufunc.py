@@ -136,30 +136,36 @@ class TestGridUFunc:
         result = diff_center_to_left(da)
         assert_equal(result, expected)
 
-    def test_1d_changing_size_no_dask(self):
+    def test_1d_changing_size_dask_parallelized(self):
         def interp_center_to_inner(a):
             return 0.5 * (a[:-1] + a[1:])
 
         grid = create_1d_test_grid()
-        da = xr.DataArray(np.arange(10, 19), dims=["x_c"], coords={"x_c": grid._ds.x_c})
+        da = xr.DataArray(
+            np.arange(10, 19), dims=["x_c"], coords={"x_c": grid._ds.x_c}
+        ).chunk()
 
         expected = da.interp(x_c=np.arange(1.5, 9), method="linear").rename(x_c="x_i")
 
         # Test direct application
         result = apply_grid_ufunc(
-            interp_center_to_inner, da, grid=grid, signature="(X:center)->(X:inner)"
-        )
+            interp_center_to_inner,
+            da,
+            grid=grid,
+            signature="(X:center)->(X:inner)",
+            dask="parallelized",
+        ).compute()
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc(grid, "(X:center)->(X:inner)")
+        @as_grid_ufunc(grid, "(X:center)->(X:inner)", dask="parallelized")
         def interp_center_to_inner(a):
             return 0.5 * (a[:-1] + a[1:])
 
-        result = interp_center_to_inner(da)
+        result = interp_center_to_inner(da).compute()
         assert_equal(result, expected)
 
-    def test_1d_dask_overlap(self):
+    def test_1d_overlap_dask_allowed(self):
         from dask.array import map_overlap
 
         def diff_center_to_left(a):

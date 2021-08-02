@@ -171,8 +171,7 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
     all_out_core_dims = set(dim for arg in out_core_dims for dim in arg)
 
     # Determine expected output dimension sizes from grid._ds
-    # TODO handle dimensions which change length due to change of axis position
-    # TODO Will only need this when dask='parallelized'
+    # Only required when dask='parallelized'
     out_sizes = {out_dim: grid._ds.dims[out_dim] for out_dim in all_out_core_dims}
 
     # Perform operation via xarray.apply_ufunc
@@ -183,9 +182,8 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
         output_core_dims=out_core_dims,
         dask=dask,
         **kwargs,
+        dask_gufunc_kwargs={"output_sizes": out_sizes},
     )
-    #    dask_gufunc_kwargs={"output_sizes": out_sizes},
-    # )
 
     # Restore any coordinates associated with new output dims
     # TODO should this be optional via a `keep_coords` arg?
