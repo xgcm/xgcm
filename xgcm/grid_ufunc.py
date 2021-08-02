@@ -83,7 +83,7 @@ def _parse_grid_ufunc_signature(signature):
 def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
     """
     Decorator which turns a numpy ufunc into a "grid-aware ufunc" by applying
-    `grid_ufunc`.
+    `apply_grid_ufunc`.
 
     Parameters
     ----------
@@ -109,7 +109,7 @@ def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
 
     def _as_grid_ufunc_decorator(func):
         def _as_grid_ufunc_wrapper(*args, **kwargs):
-            return grid_ufunc(
+            return apply_grid_ufunc(
                 func, *args, grid=grid, signature=signature, dask=dask, **kwargs
             )
 
@@ -118,7 +118,7 @@ def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
     return _as_grid_ufunc_decorator
 
 
-def grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **kwargs):
+def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **kwargs):
     """
     Apply a function to the given arguments in a grid-aware manner.
 
@@ -149,13 +149,6 @@ def grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **kwargs)
         The result of the call to `apply_ufunc`, but including the coordinates
         given by the signature, read from the grid.
     """
-
-    print(func)
-    print(*args)
-    print(grid)
-    print(signature)
-    print(dask)
-    print(**kwargs)
 
     # Extract Axes information from signature
     in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(

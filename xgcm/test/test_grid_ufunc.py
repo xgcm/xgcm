@@ -4,7 +4,7 @@ import xarray as xr
 from xarray.testing import assert_equal
 
 from xgcm.grid import Grid
-from xgcm.grid_ufunc import _parse_grid_ufunc_signature, as_grid_ufunc, grid_ufunc
+from xgcm.grid_ufunc import _parse_grid_ufunc_signature, apply_grid_ufunc, as_grid_ufunc
 
 
 class TestParseGridUfuncSignature:
@@ -109,7 +109,7 @@ class TestGridUFunc:
 
         # TODO raise more informative error
         with pytest.raises(ValueError):
-            grid_ufunc(lambda x: x, grid, "(X:center)->()", da)
+            apply_grid_ufunc(lambda x: x, grid, "(X:center)->()", da)
 
     def test_1d_unchanging_size_no_dask(self):
         def diff_center_to_left(a):
@@ -123,7 +123,7 @@ class TestGridUFunc:
         expected = xr.DataArray(diffed, dims=["x_g"], coords={"x_g": grid._ds.x_g})
 
         # Test direct application
-        result = grid_ufunc(
+        result = apply_grid_ufunc(
             diff_center_to_left, da, grid=grid, signature="(X:center)->(X:left)"
         )
         assert_equal(result, expected)
@@ -146,7 +146,7 @@ class TestGridUFunc:
         expected = da.interp(x_c=np.arange(1.5, 9), method="linear").rename(x_c="x_i")
 
         # Test direct application
-        result = grid_ufunc(
+        result = apply_grid_ufunc(
             interp_center_to_inner, da, grid=grid, signature="(X:center)->(X:inner)"
         )
         assert_equal(result, expected)
@@ -178,7 +178,7 @@ class TestGridUFunc:
         ).compute()
 
         # Test direct application
-        result = grid_ufunc(
+        result = apply_grid_ufunc(
             diff_center_to_left,
             da,
             grid=grid,

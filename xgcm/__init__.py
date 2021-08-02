@@ -5,4 +5,4 @@ except ImportError:
 
 from .autogenerate import generate_grid_ds
 from .grid import Axis, Grid
-from .grid_ufunc import as_grid_ufunc, grid_ufunc
+from .grid_ufunc import as_grid_ufunc, apply_grid_ufunc
