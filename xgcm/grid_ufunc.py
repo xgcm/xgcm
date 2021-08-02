@@ -15,6 +15,7 @@ _ARGUMENT = rf"\({_AXIS_NAME_POSITION_PAIR_LIST}\)"
 _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
+# TODO these relationships should be read from the grid instead of hardcoded
 _RELATIVE_LENGTHS_OF_AXIS_POSITIONS = {
     "center": 0,
     "left": 0,
@@ -79,7 +80,7 @@ def _parse_grid_ufunc_signature(signature):
     return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
 
 
-def as_grid_ufunc(grid, signature):
+def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
     """
     Decorator which turns a numpy ufunc into a "grid-aware ufunc" by applying
     `grid_ufunc`.
@@ -97,6 +98,9 @@ def as_grid_ufunc(grid, signature):
         positions for each input and output variable, e.g.,
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+    dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
+        How to handle applying to objects containing lazy data in the form of
+        dask arrays. Passed straight on to `xarray.apply_ufunc`.
 
     Returns
     -------
@@ -105,14 +109,16 @@ def as_grid_ufunc(grid, signature):
 
     def _as_grid_ufunc_decorator(func):
         def _as_grid_ufunc_wrapper(*args, **kwargs):
-            return grid_ufunc(func, grid, signature, *args, **kwargs)
+            return grid_ufunc(
+                func, *args, grid=grid, signature=signature, dask=dask, **kwargs
+            )
 
         return _as_grid_ufunc_wrapper
 
     return _as_grid_ufunc_decorator
 
 
-def grid_ufunc(func, grid, signature, *args, **kwargs):
+def grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **kwargs):
     """
     Apply a function to the given arguments in a grid-aware manner.
 
@@ -133,6 +139,9 @@ def grid_ufunc(func, grid, signature, *args, **kwargs):
         positions for each input and output variable, e.g.,
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+    dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
+        How to handle applying to objects containing lazy data in the form of
+        dask arrays. Passed straight on to `xarray.apply_ufunc`.
 
     Returns
     -------
@@ -141,10 +150,20 @@ def grid_ufunc(func, grid, signature, *args, **kwargs):
         given by the signature, read from the grid.
     """
 
+    print(func)
+    print(*args)
+    print(grid)
+    print(signature)
+    print(dask)
+    print(**kwargs)
+
     # Extract Axes information from signature
     in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(
         signature
     )
+
+    # TODO check that input args are in correct grid positions
+    # TODO also check that dims are the right length for their stated Axis positions on inputs?
 
     # Determine core dimensions for apply_ufunc
     in_core_dims = [
@@ -156,24 +175,27 @@ def grid_ufunc(func, grid, signature, *args, **kwargs):
         for arg_ns, arg_ps in zip(out_ax_names, out_ax_pos)
     ]
 
+    all_out_core_dims = set(dim for arg in out_core_dims for dim in arg)
+
     # Determine expected output dimension sizes from grid._ds
     # TODO handle dimensions which change length due to change of axis position
-    all_out_core_dims = set(dim for arg in out_core_dims for dim in arg)
+    # TODO Will only need this when dask='parallelized'
     out_sizes = {out_dim: grid._ds.dims[out_dim] for out_dim in all_out_core_dims}
 
-    # perform operation via xarray.apply_ufunc
+    # Perform operation via xarray.apply_ufunc
     result = xr.apply_ufunc(
         func,
         *args,
         input_core_dims=in_core_dims,
         output_core_dims=out_core_dims,
+        dask=dask,
         **kwargs,
     )
-    #    dask="parallelized",
     #    dask_gufunc_kwargs={"output_sizes": out_sizes},
     # )
 
     # Restore any coordinates associated with new output dims
+    # TODO should this be optional via a `keep_coords` arg?
     # TODO generalise for the case of apply_ufunc returning multiple objects
     for dim in all_out_core_dims:
         if dim in grid._ds.dims and dim not in result.coords:
