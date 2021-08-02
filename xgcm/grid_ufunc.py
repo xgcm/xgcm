@@ -149,11 +149,17 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
     # Check that input args are in correct grid positions
     for i, (arg_ns, arg_ps, arg) in enumerate(zip(in_ax_names, in_ax_pos, args)):
         for n, p in zip(arg_ns, arg_ps):
-            if grid.axes[n].coords[p] not in arg.coords:
+            try:
+                ax_pos = grid.axes[n].coords[p]
+            except KeyError:
+                raise ValueError(f"Axis position ({n}:{p}) does not exist in grid")
+
+            if ax_pos not in arg.coords:
                 raise ValueError(
                     f"Mismatch between signature and input argument {i}: "
                     f"Signature specified data to lie at Axis Position ({n}:{p}), "
-                    f"but grid coordinate {grid.axes[n].coords[p]} does not appear in argument"
+                    f"but the corresponding grid coordinate {grid.axes[n].coords[p]} "
+                    f"does not appear in argument"
                     f"{arg}"
                 )
 

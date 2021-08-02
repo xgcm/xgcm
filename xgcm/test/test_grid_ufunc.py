@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -88,6 +90,12 @@ def create_1d_test_grid():
                 ],
                 np.arange(0.5, 9),
             ),
+            "x_r": (
+                [
+                    "x_r",
+                ],
+                np.arange(1.5, 10),
+            ),
             "x_i": (
                 [
                     "x_i",
@@ -97,13 +105,19 @@ def create_1d_test_grid():
         }
     )
 
-    return Grid(grid_ds, coords={"X": {"center": "x_c", "left": "x_g", "inner": "x_i"}})
+    return Grid(
+        grid_ds,
+        coords={"X": {"center": "x_c", "left": "x_g", "right": "x_r", "inner": "x_i"}},
+    )
 
 
 class TestGridUFunc:
     def test_input_on_wrong_positions(self):
         grid = create_1d_test_grid()
         da = np.sin(grid._ds.x_g * 2 * np.pi / 9)
+
+        with pytest.raises(ValueError, match=re.escape("(Y:center) does not exist")):
+            apply_grid_ufunc(lambda x: x, da, grid=grid, signature="(Y:center)->()")
 
         with pytest.raises(ValueError, match="coordinate x_c does not appear"):
             apply_grid_ufunc(lambda x: x, da, grid=grid, signature="(X:center)->()")
@@ -199,7 +213,37 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
     def test_multiple_inputs(self):
-        ...
+        def inner_product_left_right(a, b):
+            return np.inner(a, b)
+
+        grid = create_1d_test_grid()
+        a = np.sin(grid._ds.x_g * 2 * np.pi / 9)
+        a.coords["x_g"] = grid._ds.x_g
+        b = np.cos(grid._ds.x_r * 2 * np.pi / 9)
+        b.coords["x_r"] = grid._ds.x_r
+
+        expected = xr.DataArray(np.inner(a, b))
+
+        # Test direct application
+        result = apply_grid_ufunc(
+            inner_product_left_right,
+            a,
+            b,
+            grid=grid,
+            signature="(X:left),(X:right)->()",
+        )
+        assert_equal(result, expected)
+
+        # Test decorator
+        @as_grid_ufunc(grid, "(X:left),(X:right)->()")
+        def inner_product_left_right(a, b):
+            return np.inner(a, b)
+
+        result = inner_product_left_right(a, b)
+        assert_equal(result, expected)
 
     def test_multiple_outputs(self):
+        def grad(a):
+            ...
+
         ...
