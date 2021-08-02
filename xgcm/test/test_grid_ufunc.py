@@ -100,16 +100,13 @@ def create_1d_test_grid():
     return Grid(grid_ds, coords={"X": {"center": "x_c", "left": "x_g", "inner": "x_i"}})
 
 
-# TODO parametrize with using/not using dask
 class TestGridUFunc:
-    @pytest.mark.xfail
     def test_input_on_wrong_positions(self):
         grid = create_1d_test_grid()
         da = np.sin(grid._ds.x_g * 2 * np.pi / 9)
 
-        # TODO raise more informative error
-        with pytest.raises(ValueError):
-            apply_grid_ufunc(lambda x: x, grid, "(X:center)->()", da)
+        with pytest.raises(ValueError, match="coordinate x_c does not appear"):
+            apply_grid_ufunc(lambda x: x, da, grid=grid, signature="(X:center)->()")
 
     def test_1d_unchanging_size_no_dask(self):
         def diff_center_to_left(a):

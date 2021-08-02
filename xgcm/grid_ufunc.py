@@ -155,8 +155,18 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
         signature
     )
 
-    # TODO check that input args are in correct grid positions
-    # TODO also check that dims are the right length for their stated Axis positions on inputs?
+    # Check that input args are in correct grid positions
+    for i, (arg_ns, arg_ps, arg) in enumerate(zip(in_ax_names, in_ax_pos, args)):
+        for n, p in zip(arg_ns, arg_ps):
+            if grid.axes[n].coords[p] not in arg.coords:
+                raise ValueError(
+                    f"Mismatch between signature and input argument {i}: "
+                    f"Signature specified data to lie at Axis Position ({n}:{p}), "
+                    f"but grid coordinate {grid.axes[n].coords[p]} does not appear in argument"
+                    f"{arg}"
+                )
+
+            # TODO also check that dims are the right length for their stated Axis positions on inputs?
 
     # Determine core dimensions for apply_ufunc
     in_core_dims = [
