@@ -111,6 +111,58 @@ def create_1d_test_grid():
     )
 
 
+def create_2d_test_grid():
+    # TODO refactor this to combine with create_1d_test_grid
+    grid_ds = xr.Dataset(
+        coords={
+            "x_c": (
+                [
+                    "x_c",
+                ],
+                np.arange(1, 10),
+            ),
+            "x_g": (
+                [
+                    "x_g",
+                ],
+                np.arange(0.5, 9),
+            ),
+            "x_i": (
+                [
+                    "x_i",
+                ],
+                np.arange(1.5, 9),
+            ),
+            "y_c": (
+                [
+                    "y_c",
+                ],
+                np.arange(1, 10),
+            ),
+            "y_g": (
+                [
+                    "y_g",
+                ],
+                np.arange(0.5, 9),
+            ),
+            "y_i": (
+                [
+                    "y_i",
+                ],
+                np.arange(1.5, 9),
+            ),
+        }
+    )
+
+    return Grid(
+        grid_ds,
+        coords={
+            "X": {"center": "x_c", "left": "x_g", "inner": "x_i"},
+            "Y": {"center": "y_c", "left": "y_g", "inner": "y_i"},
+        },
+    )
+
+
 class TestGridUFunc:
     def test_input_on_wrong_positions(self):
         grid = create_1d_test_grid()
@@ -232,6 +284,8 @@ class TestGridUFunc:
             grid=grid,
             signature="(X:left),(X:right)->()",
         )
+        print(result)
+        print(expected)
         assert_equal(result, expected)
 
         # Test decorator
@@ -243,7 +297,38 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
     def test_multiple_outputs(self):
-        def grad(a):
-            ...
+        def diff_center_to_left(a, axis):
+            return a - np.roll(a, shift=-1, axis=axis)
 
-        ...
+        def grad_to_left(a):
+            return diff_center_to_left(a, axis=0), diff_center_to_left(a, axis=1)
+
+        grid = create_2d_test_grid()
+
+        a = grid._ds.x_c ** 2 + grid._ds.y_c ** 2
+
+        expected_u = 2 * grid._ds.x_c * grid._ds.y_c ** 2
+        expected_u = expected_u.swap_dims(x_c="x_g")
+        expected_u.coords["x_c"] = grid._ds.x_g
+        expected_v = 2 * grid._ds.y_c * grid._ds.x_c ** 2
+        expected_v = expected_v.swap_dims(y_c="y_g")
+        expected_v.coords["y_c"] = grid._ds.y_g
+
+        # Test direct application
+        u, v = apply_grid_ufunc(
+            grad_to_left,
+            a,
+            grid=grid,
+            signature="(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
+        )
+        assert_equal(u, expected_u)
+        assert_equal(v, expected_v)
+
+        # Test decorator
+        @as_grid_ufunc(grid, "(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)")
+        def grad_to_left(a):
+            return diff_center_to_left(a, axis=0), diff_center_to_left(a, axis=1)
+
+        u, v = grad_to_left(a)
+        assert_equal(u, expected_u)
+        assert_equal(v, expected_v)

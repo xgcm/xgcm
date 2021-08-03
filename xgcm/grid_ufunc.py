@@ -136,9 +136,10 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
 
     Returns
     -------
-    result
+    results
         The result of the call to `apply_ufunc`, but including the coordinates
-        given by the signature, read from the grid.
+        given by the signature, read from the grid. Either a single object or a
+        tuple of such objects.
     """
 
     # Extract Axes information from signature
@@ -182,7 +183,7 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
     out_sizes = {out_dim: grid._ds.dims[out_dim] for out_dim in all_out_core_dims}
 
     # Perform operation via xarray.apply_ufunc
-    result = xr.apply_ufunc(
+    results = xr.apply_ufunc(
         func,
         *args,
         input_core_dims=in_core_dims,
@@ -192,13 +193,26 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
         dask_gufunc_kwargs={"output_sizes": out_sizes},
     )
 
-    # Restore any coordinates associated with new output dims
+    # apply_ufunc might return multiple objects
+    if not isinstance(results, tuple):
+        results = (results,)
+
+    # Restore any coordinates associated with new output dims that are present in grid
     # TODO should this be optional via a `keep_coords` arg?
-    # TODO generalise for the case of apply_ufunc returning multiple objects
-    for dim in all_out_core_dims:
-        if dim in grid._ds.dims and dim not in result.coords:
-            result = result.assign_coords(coords={dim: grid._ds.coords[dim]})
+    results_with_coords = []
+    for res, arg_out_core_dims in zip(results, out_core_dims):
+        new_core_dim_coords = {
+            dim: grid._ds.coords[dim]
+            for dim in arg_out_core_dims
+            if dim in grid._ds.dims and dim not in res.coords
+        }
+        res = res.assign_coords(new_core_dim_coords)
+        results_with_coords.append(res)
+
+    # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc
+    if len(results_with_coords) == 1:
+        (results_with_coords,) = results_with_coords
 
     # TODO handle metrics and boundary?
 
-    return result
+    return results_with_coords
