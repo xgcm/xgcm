@@ -73,13 +73,13 @@ def _parse_grid_ufunc_signature(signature):
 
 def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
     """
-    Decorator which turns a numpy ufunc into a "grid-aware ufunc" by applying
-    `apply_grid_ufunc`.
+    Decorator which turns a numpy ufunc into a "grid-aware ufunc" by wrapping
+    it with `apply_grid_ufunc`.
 
     Parameters
     ----------
     func : callable
-        Function to call like `func(*args, **kwargs)` on numpy-like unlabled
+        Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
         arrays (`.data`).
 
         Passed directly on to `xarray.apply_ufunc`.
@@ -91,11 +91,13 @@ def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
-        dask arrays. Passed straight on to `xarray.apply_ufunc`.
+        dask arrays. Passed directly on to `xarray.apply_ufunc`.
 
     Returns
     -------
     grid_ufunc : callable
+        Function which consumes and produces xarray objects, whose xgcm Axis
+        names and positions must conform to the pattern specified by `signature`.
     """
 
     def _as_grid_ufunc_decorator(func):
@@ -120,7 +122,7 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
     Parameters
     ----------
     func : callable
-        Function to call like `func(*args, **kwargs)` on numpy-like unlabled
+        Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
         arrays (`.data`).
 
         Passed directly on to `xarray.apply_ufunc`.
@@ -132,14 +134,14 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
-        dask arrays. Passed straight on to `xarray.apply_ufunc`.
+        dask arrays. Passed directly on to `xarray.apply_ufunc`.
 
     Returns
     -------
     results
-        The result of the call to `apply_ufunc`, but including the coordinates
-        given by the signature, read from the grid. Either a single object or a
-        tuple of such objects.
+        The result of the call to `xarray.apply_ufunc`, but including the coordinates
+        given by the signature, which are read from the grid. Output is either a single
+        object or a tuple of such objects.
     """
 
     # Extract Axes information from signature
