@@ -74,98 +74,81 @@ class TestParseGridUfuncSignature:
             _parse_grid_ufunc_signature(signature)
 
 
-def create_1d_test_grid():
+def create_1d_test_grid_ds(ax_name):
 
     grid_ds = xr.Dataset(
         coords={
-            "x_c": (
+            f"{ax_name}_c": (
                 [
-                    "x_c",
+                    f"{ax_name}_c",
                 ],
                 np.arange(1, 10),
             ),
-            "x_g": (
+            f"{ax_name}_g": (
                 [
-                    "x_g",
+                    f"{ax_name}_g",
                 ],
                 np.arange(0.5, 9),
             ),
-            "x_r": (
+            f"{ax_name}_r": (
                 [
-                    "x_r",
+                    f"{ax_name}_r",
                 ],
                 np.arange(1.5, 10),
             ),
-            "x_i": (
+            f"{ax_name}_i": (
                 [
-                    "x_i",
+                    f"{ax_name}_i",
                 ],
                 np.arange(1.5, 9),
             ),
         }
     )
 
-    return Grid(
-        grid_ds,
-        coords={"X": {"center": "x_c", "left": "x_g", "right": "x_r", "inner": "x_i"}},
-    )
+    return grid_ds
 
 
-def create_2d_test_grid():
-    # TODO refactor this to combine with create_1d_test_grid
-    grid_ds = xr.Dataset(
-        coords={
-            "x_c": (
-                [
-                    "x_c",
-                ],
-                np.arange(1, 10),
-            ),
-            "x_g": (
-                [
-                    "x_g",
-                ],
-                np.arange(0.5, 9),
-            ),
-            "x_i": (
-                [
-                    "x_i",
-                ],
-                np.arange(1.5, 9),
-            ),
-            "y_c": (
-                [
-                    "y_c",
-                ],
-                np.arange(1, 10),
-            ),
-            "y_g": (
-                [
-                    "y_g",
-                ],
-                np.arange(0.5, 9),
-            ),
-            "y_i": (
-                [
-                    "y_i",
-                ],
-                np.arange(1.5, 9),
-            ),
-        }
-    )
-
+def create_1d_test_grid(ax_name):
+    grid_ds = create_1d_test_grid_ds(ax_name)
     return Grid(
         grid_ds,
         coords={
-            "X": {"center": "x_c", "left": "x_g", "inner": "x_i"},
-            "Y": {"center": "y_c", "left": "y_g", "inner": "y_i"},
+            f"{ax_name.upper()}": {
+                "center": f"{ax_name}_c",
+                "left": f"{ax_name}_g",
+                "right": f"{ax_name}_r",
+                "inner": f"{ax_name}_i",
+            }
+        },
+    )
+
+
+def create_2d_test_grid(ax_name_1, ax_name_2):
+    grid_ds_1 = create_1d_test_grid_ds(ax_name_1)
+    grid_ds_2 = create_1d_test_grid_ds(ax_name_2)
+
+    return Grid(
+        ds=xr.merge([grid_ds_1, grid_ds_2]),
+        coords={
+            f"{ax_name_1.upper()}": {
+                "center": f"{ax_name_1}_c",
+                "left": f"{ax_name_1}_g",
+                "right": f"{ax_name_1}_r",
+                "inner": f"{ax_name_1}_i",
+            },
+            f"{ax_name_2.upper()}": {
+                "center": f"{ax_name_2}_c",
+                "left": f"{ax_name_2}_g",
+                "right": f"{ax_name_2}_r",
+                "inner": f"{ax_name_2}_i",
+            },
         },
     )
 
 
 class TestGridUFunc:
     def test_input_on_wrong_positions(self):
-        grid = create_1d_test_grid()
+        grid = create_1d_test_grid("x")
         da = np.sin(grid._ds.x_g * 2 * np.pi / 9)
 
         with pytest.raises(ValueError, match=re.escape("(Y:center) does not exist")):
@@ -178,7 +161,7 @@ class TestGridUFunc:
         def diff_center_to_left(a):
             return a - np.roll(a, shift=-1)
 
-        grid = create_1d_test_grid()
+        grid = create_1d_test_grid("x")
         da = np.sin(grid._ds.x_c * 2 * np.pi / 9)
         da.coords["x_c"] = grid._ds.x_c
 
@@ -203,7 +186,7 @@ class TestGridUFunc:
         def interp_center_to_inner(a):
             return 0.5 * (a[:-1] + a[1:])
 
-        grid = create_1d_test_grid()
+        grid = create_1d_test_grid("x")
         da = xr.DataArray(
             np.arange(10, 19), dims=["x_c"], coords={"x_c": grid._ds.x_c}
         ).chunk()
@@ -237,7 +220,7 @@ class TestGridUFunc:
         def diff_overlap(a):
             return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
-        grid = create_1d_test_grid()
+        grid = create_1d_test_grid("x")
         da = np.sin(grid._ds.x_c * 2 * np.pi / 9).chunk(1)
         da.coords["x_c"] = grid._ds.x_c
 
@@ -268,7 +251,7 @@ class TestGridUFunc:
         def inner_product_left_right(a, b):
             return np.inner(a, b)
 
-        grid = create_1d_test_grid()
+        grid = create_1d_test_grid("x")
         a = np.sin(grid._ds.x_g * 2 * np.pi / 9)
         a.coords["x_g"] = grid._ds.x_g
         b = np.cos(grid._ds.x_r * 2 * np.pi / 9)
@@ -302,7 +285,7 @@ class TestGridUFunc:
         def grad_to_inner(a):
             return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
 
-        grid = create_2d_test_grid()
+        grid = create_2d_test_grid("x", "y")
 
         a = grid._ds.x_c ** 2 + grid._ds.y_c ** 2
 
