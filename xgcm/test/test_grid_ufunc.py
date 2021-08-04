@@ -295,38 +295,39 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
     def test_multiple_outputs(self):
-        def diff_center_to_left(a, axis):
-            return a - np.roll(a, shift=-1, axis=axis)
+        def diff_center_to_inner(a, axis):
+            result = a - np.roll(a, shift=1, axis=axis)
+            return np.delete(result, 0, axis)  # remove first element along axis
 
-        def grad_to_left(a):
-            return diff_center_to_left(a, axis=0), diff_center_to_left(a, axis=1)
+        def grad_to_inner(a):
+            return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
 
         grid = create_2d_test_grid()
 
         a = grid._ds.x_c ** 2 + grid._ds.y_c ** 2
 
-        expected_u = 2 * grid._ds.x_c
-        expected_u = expected_u.swap_dims(x_c="x_g")
-        expected_u.coords["x_c"] = grid._ds.x_g
-        expected_v = 2 * grid._ds.y_c
-        expected_v = expected_v.swap_dims(y_c="y_g")
-        expected_v.coords["y_c"] = grid._ds.y_g
+        expected_u = 2 * grid._ds.x_i.expand_dims(dim={"y_c": len(grid._ds.y_c)})
+        expected_u.coords["y_c"] = grid._ds.y_c
+        expected_v = 2 * grid._ds.y_i.expand_dims(dim={"x_c": len(grid._ds.x_c)})
+        expected_v.coords["x_c"] = grid._ds.x_c
 
         # Test direct application
         u, v = apply_grid_ufunc(
-            grad_to_left,
+            grad_to_inner,
             a,
             grid=grid,
-            signature="(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
+            signature="(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)",
         )
-        assert_equal(u, expected_u)
+        assert_equal(u.T, expected_u)
         assert_equal(v, expected_v)
 
         # Test decorator
-        @as_grid_ufunc(grid, "(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)")
-        def grad_to_left(a):
-            return diff_center_to_left(a, axis=0), diff_center_to_left(a, axis=1)
+        @as_grid_ufunc(
+            grid, "(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)"
+        )
+        def grad_to_inner(a):
+            return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
 
-        u, v = grad_to_left(a)
-        assert_equal(u, expected_u)
+        u, v = grad_to_inner(a)
+        assert_equal(u.T, expected_u)
         assert_equal(v, expected_v)
