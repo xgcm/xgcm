@@ -8,6 +8,7 @@ dependencies:
   - future
   - numba
   - numpy
+  - scipy
   - pip
   - pre-commit
   - pytest

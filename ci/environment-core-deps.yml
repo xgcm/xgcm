@@ -9,6 +9,7 @@ dependencies:
   - docrep<=0.2.7
   - future
   - numpy
+  - scipy
   - pip
   - pre-commit
   - pytest
