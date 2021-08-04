@@ -284,8 +284,6 @@ class TestGridUFunc:
             grid=grid,
             signature="(X:left),(X:right)->()",
         )
-        print(result)
-        print(expected)
         assert_equal(result, expected)
 
         # Test decorator
@@ -307,10 +305,10 @@ class TestGridUFunc:
 
         a = grid._ds.x_c ** 2 + grid._ds.y_c ** 2
 
-        expected_u = 2 * grid._ds.x_c * grid._ds.y_c ** 2
+        expected_u = 2 * grid._ds.x_c
         expected_u = expected_u.swap_dims(x_c="x_g")
         expected_u.coords["x_c"] = grid._ds.x_g
-        expected_v = 2 * grid._ds.y_c * grid._ds.x_c ** 2
+        expected_v = 2 * grid._ds.y_c
         expected_v = expected_v.swap_dims(y_c="y_g")
         expected_v.coords["y_c"] = grid._ds.y_g
 
