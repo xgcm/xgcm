@@ -417,15 +417,16 @@ If we now compute the difference using the 5 conditions:
     g_fill_2 = grid_no_perio.diff(g, 'X', boundary='fill', fill_value=5).rename('fill5')
     g_perio = grid_perio.diff(g, 'X').rename('periodic')
 
-.. ipython:: python
+.. ipython::
 
-    for (i, var) in enumerate([g_extrapolate, g_extend, g_fill_0, g_fill_2, g_perio]):
-        var.plot.line(marker='o', label=var.name)
+    In [ ]: for (i, var) in enumerate([g_extrapolate, g_extend, g_fill_0, g_fill_2, g_perio]):
+       ...:     var.plot.line(marker='o', label=var.name)
 
     @suppress
-    plt.grid(True)
+    In [ ]: plt.grid(True)
+
     @savefig grid_bc_diff.png
-    plt.legend()
+    In [ ]: plt.legend()
     
 As expected the difference at x_c=9 is 0 for the case ``extend``,
 equals the difference at the point x_c=8 for the case ``extrapolate``,
