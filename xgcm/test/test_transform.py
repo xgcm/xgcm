@@ -809,7 +809,7 @@ def test_conservative_interp_warn():
 def test_grid_transform_noname_data(multidim_cases):
     """Check handling of a `da` input without name"""
     source, grid_kwargs, target, transform_kwargs, _, _ = multidim_cases
-  
+
     axis = list(grid_kwargs["coords"].keys())[0]
 
     grid = Grid(source, periodic=False, **grid_kwargs)
