@@ -283,7 +283,7 @@ interpolate or take differences along the axis. First we create some test data:
 
 .. ipython:: python
 
-    f = np.sin(ds.x_c * 2*np.pi/9).rename('f')
+    f = np.sin(ds.x_c * 2 * np.pi / 9).rename("f")
     print(f)
     @savefig grid_test_data.png
     f.plot()
@@ -378,31 +378,46 @@ We show here the value of the extra added point for 5 cases (extended, extrapola
 and periodic). The periodic condition is not an argument of the methods, but is provided
 as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one periodic and another one not periodic.
 
-.. ipython:: python
+.. ipython::
 
-    def plot_bc(ds):
-        plt.plot(ds.x_g, g, marker='o', color='C6', label='g')
-        #
-        plt.scatter([ds.x_g[-1]+1], [2*g[-1] - g[-2]], color='C0', label='extrapolate', marker='o')
-        plt.plot([ds.x_g[-2], ds.x_g[-1]+1], [g[-2], 2*g[-1] - g[-2]], '--', color='C0', label='_')
-        #
-        plt.scatter([ds.x_g[-1]+1], [g[-1]], color='C1', label='extend', marker='v')
-        plt.plot([ds.x_g[-1], ds.x_g[-1]+1], [g[-1], g[-1]], '--', color='C1', label='_')
-        #
-        plt.scatter([ds.x_g[-1]+1], [0], color='C2', label='fill0', marker='s')
-        plt.scatter([ds.x_g[-1]+1], [5], color='C3', label='fill5', marker='P')
-        #
-        plt.scatter([ds.x_g[-1]+1], g[0], color='C4', label='periodic', marker='X')
-        plt.plot([ds.x_g[0], ds.x_g[-1]+1], [g[0], g[0]], '--', color='C4', label='_')
-        #
-        plt.xlabel('x_g')
-        plt.legend()
-        return
-    
+    In [1]: def plot_bc(ds):
+       ...:     plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
+       ...:     #
+       ...:     plt.scatter(
+       ...:         [ds.x_g[-1] + 1],
+       ...:         [2 * g[-1] - g[-2]],
+       ...:         color="C0",
+       ...:         label="extrapolate",
+       ...:         marker="o",
+       ...:     )
+       ...:     plt.plot(
+       ...:         [ds.x_g[-2], ds.x_g[-1] + 1],
+       ...:         [g[-2], 2 * g[-1] - g[-2]],
+       ...:         "--",
+       ...:         color="C0",
+       ...:         label="_",
+       ...:     )
+       ...:     #
+       ...:     plt.scatter([ds.x_g[-1] + 1], [g[-1]], color="C1", label="extend", marker="v")
+       ...:     plt.plot(
+       ...:         [ds.x_g[-1], ds.x_g[-1] + 1], [g[-1], g[-1]], "--", color="C1", label="_"
+       ...:     )
+       ...:     #
+       ...:     plt.scatter([ds.x_g[-1] + 1], [0], color="C2", label="fill0", marker="s")
+       ...:     plt.scatter([ds.x_g[-1] + 1], [5], color="C3", label="fill5", marker="P")
+       ...:     #
+       ...:     plt.scatter([ds.x_g[-1] + 1], g[0], color="C4", label="periodic", marker="X")
+       ...:     plt.plot([ds.x_g[0], ds.x_g[-1] + 1], [g[0], g[0]], "--", color="C4", label="_")
+       ...:     #
+       ...:     plt.xlabel("x_g")
+       ...:     plt.legend()
+       ...:     return
+
     @suppress
-    plt.grid(True)
+    In [2]: plt.grid(True)
+
     @savefig grid_bc_extra_point.png
-    plot_bc(ds)
+    In [3]: plot_bc(ds)
     
 If we now compute the difference using the 5 conditions:
 
@@ -410,23 +425,25 @@ If we now compute the difference using the 5 conditions:
 
     grid_no_perio = Grid(ds, periodic=False)
     grid_perio = Grid(ds, periodic=True)
-    
-    g_extend = grid_no_perio.diff(g, 'X', boundary='extend').rename('extend')
-    g_extrapolate = grid_no_perio.diff(g, 'X', boundary='extrapolate').rename('extrapolate')
-    g_fill_0 = grid_no_perio.diff(g, 'X', boundary='fill', fill_value=0).rename('fill0')
-    g_fill_2 = grid_no_perio.diff(g, 'X', boundary='fill', fill_value=5).rename('fill5')
-    g_perio = grid_perio.diff(g, 'X').rename('periodic')
+
+    g_extend = grid_no_perio.diff(g, "X", boundary="extend").rename("extend")
+    g_extrapolate = grid_no_perio.diff(g, "X", boundary="extrapolate").rename(
+        "extrapolate"
+    )
+    g_fill_0 = grid_no_perio.diff(g, "X", boundary="fill", fill_value=0).rename("fill0")
+    g_fill_2 = grid_no_perio.diff(g, "X", boundary="fill", fill_value=5).rename("fill5")
+    g_perio = grid_perio.diff(g, "X").rename("periodic")
 
 .. ipython::
 
-    In [ ]: for (i, var) in enumerate([g_extrapolate, g_extend, g_fill_0, g_fill_2, g_perio]):
-       ...:     var.plot.line(marker='o', label=var.name)
+    In [1]: for (i, var) in enumerate([g_extrapolate, g_extend, g_fill_0, g_fill_2, g_perio]):
+       ...:     var.plot.line(marker="o", label=var.name)
 
     @suppress
-    In [ ]: plt.grid(True)
+    In [2]: plt.grid(True)
 
     @savefig grid_bc_diff.png
-    In [ ]: plt.legend()
+    In [3]: plt.legend()
     
 As expected the difference at x_c=9 is 0 for the case ``extend``,
 equals the difference at the point x_c=8 for the case ``extrapolate``,
