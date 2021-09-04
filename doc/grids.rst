@@ -423,7 +423,7 @@ as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one perio
     @savefig grid_bc_extra_point.png
     In [3]: plot_bc(ds)
 
-   @suppress
+    @suppress
     In [4]: plt.close()
 
 If we now compute the difference using the 5 conditions:
