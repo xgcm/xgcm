@@ -283,10 +283,12 @@ interpolate or take differences along the axis. First we create some test data:
 
 .. ipython:: python
 
+    import matplotlib.pyplot as plt   
     f = np.sin(ds.x_c * 2 * np.pi / 9).rename("f")
     print(f)
     @savefig grid_test_data.png
     f.plot()
+    plt.close()
 
 We interpolate as follows:
 
@@ -379,10 +381,6 @@ and periodic). The periodic condition is not an argument of the methods, but is 
 as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one periodic and another one not periodic.
 
 .. ipython::
-
-    In [4]: import matplotlib.pyplot as plt
-    @suppress
-    In [4]: plt.close()
 
     In [1]: def plot_bc(ds):
        ...:     plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
