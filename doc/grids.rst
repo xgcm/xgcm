@@ -283,7 +283,8 @@ interpolate or take differences along the axis. First we create some test data:
 
 .. ipython:: python
 
-    import matplotlib.pyplot as plt   
+    import matplotlib.pyplot as plt
+
     f = np.sin(ds.x_c * 2 * np.pi / 9).rename("f")
     print(f)
     @savefig grid_test_data.png
