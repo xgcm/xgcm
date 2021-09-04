@@ -361,7 +361,7 @@ The solution is to add an extra point for the computation ('X' point on the foll
     |     |     |     |     |
 
 
-Different options are possible (``fill`` this extra values with a certain number,
+Different options are possible (``fill`` this extra value with a certain number,
 ``extend`` to the nearest value, ``extrapolate`` linearly using the 2 nearest points,
 or periodic condition if the grid axis is periodic).
 Attention, this boundary condition is used to give the value of X, not to give the value of the
@@ -379,6 +379,10 @@ and periodic). The periodic condition is not an argument of the methods, but is 
 as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one periodic and another one not periodic.
 
 .. ipython::
+
+    In [4]: import matplotlib.pyplot as plt
+    @suppress
+    In [4]: plt.close()
 
     In [1]: def plot_bc(ds):
        ...:     plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
@@ -418,6 +422,9 @@ as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one perio
 
     @savefig grid_bc_extra_point.png
     In [3]: plot_bc(ds)
+
+   @suppress
+    In [4]: plt.close()
 
 If we now compute the difference using the 5 conditions:
 
