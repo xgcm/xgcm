@@ -364,7 +364,7 @@ The solution is to add an extra point for the computation ('X' point on the foll
 Different options are possible (``fill`` this extra values with a certain number,
 ``extend`` to the nearest value, ``extrapolate`` linearly using the 2 nearest points,
 or periodic condition if the grid axis is periodic).
-Attention, this boundary condition is used to give the value of X, not to give the value of the 
+Attention, this boundary condition is used to give the value of X, not to give the value of the
 boundary T point after the operation.
 
 We can illustrate it by creating some data located at the U point:
@@ -418,7 +418,7 @@ as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one perio
 
     @savefig grid_bc_extra_point.png
     In [3]: plot_bc(ds)
-    
+
 If we now compute the difference using the 5 conditions:
 
 .. ipython:: python
@@ -444,7 +444,7 @@ If we now compute the difference using the 5 conditions:
 
     @savefig grid_bc_diff.png
     In [3]: plt.legend()
-    
+
 As expected the difference at x_c=9 is 0 for the case ``extend``,
 equals the difference at the point x_c=8 for the case ``extrapolate``,
 is ``-2 = 1 - 3`` for the periodic case,
