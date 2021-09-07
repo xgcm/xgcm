@@ -1,3 +1,4 @@
+import functools
 import re
 
 import xarray as xr
@@ -71,7 +72,7 @@ def _parse_grid_ufunc_signature(signature):
     return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
 
 
-def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
+def as_grid_ufunc(signature="", dask="forbidden"):
     """
     Decorator which turns a numpy ufunc into a "grid-aware ufunc" by wrapping
     it with `apply_grid_ufunc`.
@@ -83,7 +84,6 @@ def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
         arrays (`.data`).
 
         Passed directly on to `xarray.apply_ufunc`.
-    grid : xgcm.Grid
     signature : string
         Grid universal function signature. Specifies the xgcm.Axis names and
         positions for each input and output variable, e.g.,
@@ -98,15 +98,19 @@ def as_grid_ufunc(grid=None, signature="", dask="forbidden"):
     grid_ufunc : callable
         Function which consumes and produces xarray objects, whose xgcm Axis
         names and positions must conform to the pattern specified by `signature`.
+        Function has an additional positional argument `grid`, of type `xgcm.Grid`,
+        so that `func`'s new signature is `func(grid, *args, **kwargs)`. This grid
+        argument is passed on to `apply_grid_ufunc`.
     """
 
     def _as_grid_ufunc_decorator(func):
-        def _as_grid_ufunc_wrapper(*args, **kwargs):
+        @functools.wraps(func)
+        def _grid_ufunc(grid, *args, **kwargs):
             return apply_grid_ufunc(
                 func, *args, grid=grid, signature=signature, dask=dask, **kwargs
             )
 
-        return _as_grid_ufunc_wrapper
+        return _grid_ufunc
 
     return _as_grid_ufunc_decorator
 
@@ -127,6 +131,8 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
 
         Passed directly on to `xarray.apply_ufunc`.
     grid : xgcm.Grid
+        The xgcm Grid object which contains the various xgcm.Axis described by
+        `signature`.
     signature : string
         Grid universal function signature. Specifies the xgcm.Axis names and
         positions for each input and output variable, e.g.,
@@ -143,6 +149,9 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
         given by the signature, which are read from the grid. Output is either a single
         object or a tuple of such objects.
     """
+
+    if grid is None:
+        raise ValueError("Must provide a grid object to describe the Axes")
 
     # Extract Axes information from signature
     in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(
