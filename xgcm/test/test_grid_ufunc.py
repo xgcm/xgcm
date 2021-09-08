@@ -175,11 +175,11 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc(grid, "(X:center)->(X:left)")
+        @as_grid_ufunc("(X:center)->(X:left)")
         def diff_center_to_left(a):
             return a - np.roll(a, shift=-1)
 
-        result = diff_center_to_left(da)
+        result = diff_center_to_left(grid, da)
         assert_equal(result, expected)
 
     def test_1d_changing_size_dask_parallelized(self):
@@ -204,11 +204,11 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc(grid, "(X:center)->(X:inner)", dask="parallelized")
+        @as_grid_ufunc("(X:center)->(X:inner)", dask="parallelized")
         def interp_center_to_inner(a):
             return 0.5 * (a[:-1] + a[1:])
 
-        result = interp_center_to_inner(da).compute()
+        result = interp_center_to_inner(grid, da).compute()
         assert_equal(result, expected)
 
     def test_1d_overlap_dask_allowed(self):
@@ -240,11 +240,11 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc(grid, "(X:center)->(X:left)", dask="allowed")
+        @as_grid_ufunc("(X:center)->(X:left)", dask="allowed")
         def diff_overlap(a):
             return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
-        result = diff_overlap(da).compute()
+        result = diff_overlap(grid, da).compute()
         assert_equal(result, expected)
 
     def test_multiple_inputs(self):
@@ -270,11 +270,11 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc(grid, "(X:left),(X:right)->()")
+        @as_grid_ufunc("(X:left),(X:right)->()")
         def inner_product_left_right(a, b):
             return np.inner(a, b)
 
-        result = inner_product_left_right(a, b)
+        result = inner_product_left_right(grid, a, b)
         assert_equal(result, expected)
 
     def test_multiple_outputs(self):
@@ -305,12 +305,10 @@ class TestGridUFunc:
         assert_equal(v, expected_v)
 
         # Test decorator
-        @as_grid_ufunc(
-            grid, "(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)"
-        )
+        @as_grid_ufunc("(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)")
         def grad_to_inner(a):
             return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
 
-        u, v = grad_to_inner(a)
+        u, v = grad_to_inner(grid, a)
         assert_equal(u.T, expected_u)
         assert_equal(v, expected_v)
