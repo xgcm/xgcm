@@ -10,6 +10,7 @@ import xarray as xr
 
 from . import comodo
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
+from .grid_ufunc import _select_grid_ufunc, apply_as_grid_ufunc
 from .metrics import iterate_axis_combinations
 
 try:
@@ -1490,6 +1491,78 @@ class Grid:
 
         return out
 
+    def _grid_ufunc_dispatch(self, funcname, da, axis, to=None, **kwargs):
+        if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
+            axis = [axis]
+
+        # TODO get correct default target axis positions somehow from grid object
+        # This info is in the Axis object stored by grid
+        if to is None:
+            to = [] * len(axis)
+        for ax in axis:
+            position_from, dim = self._get_axis_coord(da)
+            if to is None:
+                to = self._default_shifts[position_from]
+
+        signature = self._create_grid_ufunc_signature(axis=axis, to=to)
+        grid_ufunc = _select_grid_ufunc(funcname, signature)
+        return grid_ufunc(da, **kwargs)
+
+    def _create_grid_ufunc_signature(self, axis, to=None):
+        """Create a signature to pass to apply_grid_ufunc from a set of input axes and a set of target axis positions"""
+
+        # TODO how do we actually get the current axis position here?
+        input_arg_signature = ",".join([f"{ax.name}:{ax.position}" for ax in axis])
+
+        # TODO how do we set defaults? Where is the best place to do that?
+        output_arg_signature = ",".join(
+            [f"{in_ax}:{target_pos}" for in_ax, target_pos in zip(axis, to)]
+        )
+
+        return f"({input_arg_signature})->({output_arg_signature})"
+
+    def apply_as_grid_ufunc(
+        self, func, *args, signature="", dask="forbidden", **kwargs
+    ):
+        """
+        Apply a function to the given arguments in a grid-aware manner.
+
+        The relationship between xgcm axes on the input and output are specified by
+        `signature`. Wraps xarray.apply_ufunc, but determines the core dimensions
+        from the grid and signature passed.
+
+        Parameters
+        ----------
+        func : callable
+            Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
+            arrays (`.data`).
+
+            Passed directly on to `xarray.apply_ufunc`.
+        signature : string
+            Grid universal function signature. Specifies the xgcm.Axis names and
+            positions for each input and output variable, e.g.,
+
+            ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+        dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
+            How to handle applying to objects containing lazy data in the form of
+            dask arrays. Passed directly on to `xarray.apply_ufunc`.
+
+        Returns
+        -------
+        results
+            The result of the call to `xarray.apply_ufunc`, but including the coordinates
+            given by the signature, which are read from the grid. Output is either a single
+            object or a tuple of such objects.
+
+        See Also
+        --------
+        apply_grid_ufunc
+        as_grid_ufunc
+        """
+        return apply_as_grid_ufunc(
+            func, *args, grid=self, signature=signature, dask=dask, **kwargs
+        )
+
     @docstrings.dedent
     def interp(self, da, axis, **kwargs):
         """
@@ -1546,7 +1619,7 @@ class Grid:
 
         >>> grid.diff(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("diff", da, axis, **kwargs)
+        return self._grid_ufunc_dispatch("diff", da, axis, **kwargs)
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):

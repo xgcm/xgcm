@@ -174,6 +174,12 @@ class TestGridUFunc:
         )
         assert_equal(result, expected)
 
+        # Test Grid method
+        result = grid.apply_grid_ufunc(
+            diff_center_to_left, da, signature="(X:center)->(X:left)"
+        )
+        assert_equal(result, expected)
+
         # Test decorator
         @as_grid_ufunc("(X:center)->(X:left)")
         def diff_center_to_left(a):
@@ -201,6 +207,15 @@ class TestGridUFunc:
             signature="(X:center)->(X:inner)",
             dask="parallelized",
         ).compute()
+        assert_equal(result, expected)
+
+        # Test Grid method
+        result = grid.apply_grid_ufunc(
+            interp_center_to_inner,
+            da,
+            signature="(X:center)->(X:inner)",
+            dask="parallelized",
+        )
         assert_equal(result, expected)
 
         # Test decorator
@@ -239,6 +254,12 @@ class TestGridUFunc:
         ).compute()
         assert_equal(result, expected)
 
+        # Test Grid method
+        result = grid.apply_grid_ufunc(
+            diff_center_to_left, da, signature="(X:center)->(X:left)", dask="allowed"
+        )
+        assert_equal(result, expected)
+
         # Test decorator
         @as_grid_ufunc("(X:center)->(X:left)", dask="allowed")
         def diff_overlap(a):
@@ -266,6 +287,12 @@ class TestGridUFunc:
             b,
             grid=grid,
             signature="(X:left),(X:right)->()",
+        )
+        assert_equal(result, expected)
+
+        # Test Grid method
+        result = grid.apply_grid_ufunc(
+            inner_product_left_right, a, b, signature="(X:left),(X:right)->()"
         )
         assert_equal(result, expected)
 
@@ -299,6 +326,15 @@ class TestGridUFunc:
             grad_to_inner,
             a,
             grid=grid,
+            signature="(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)",
+        )
+        assert_equal(u.T, expected_u)
+        assert_equal(v, expected_v)
+
+        # Test Grid method
+        u, v = grid.apply_grid_ufunc(
+            grad_to_inner,
+            a,
             signature="(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)",
         )
         assert_equal(u.T, expected_u)

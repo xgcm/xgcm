@@ -101,6 +101,11 @@ def as_grid_ufunc(signature="", dask="forbidden"):
         Function has an additional positional argument `grid`, of type `xgcm.Grid`,
         so that `func`'s new signature is `func(grid, *args, **kwargs)`. This grid
         argument is passed on to `apply_grid_ufunc`.
+
+    See Also
+    --------
+    apply_grid_ufunc
+    Grid.apply_grid_ufunc
     """
 
     def _as_grid_ufunc_decorator(func):
@@ -148,6 +153,11 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
         The result of the call to `xarray.apply_ufunc`, but including the coordinates
         given by the signature, which are read from the grid. Output is either a single
         object or a tuple of such objects.
+
+    See Also
+    --------
+    as_grid_ufunc
+    Grid.apply_grid_ufunc
     """
 
     if grid is None:
