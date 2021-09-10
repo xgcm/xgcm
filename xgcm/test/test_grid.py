@@ -164,14 +164,14 @@ def test_axis_repr(all_datasets):
     # TODO: make this more complete
 
 
-def test_get_axis_coord(all_datasets):
+def test_get_position_name(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)
     for ax_name, axis in axis_objs.items():
         # create a dataarray with each axis coordinate
         for position, coord in axis.coords.items():
             da = 1 * ds[coord]
-            assert axis._get_axis_coord(da) == (position, coord)
+            assert axis._get_position_name(da) == (position, coord)
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
@@ -623,9 +623,9 @@ def test_create_grid_no_comodo(all_datasets):
 
 
 def test_grid_no_coords(periodic_1d):
-
+    """Ensure that you can use xgcm with Xarray datasets that don't have dimension coordinates."""
     ds, periodic, expected = periodic_1d
-    ds_nocoords = ds.drop_dims(list(ds.dims.keys()))
+    ds_nocoords = ds.drop_vars(list(ds.dims.keys()))
 
     coords = expected["axes"]
     grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
@@ -762,11 +762,11 @@ def test_keep_coords(funcname, gridtype):
             assert set(result.coords) == set(base_coords + augmented_coords)
         else:
             assert set(result.coords) == set(base_coords)
-        #
+
         if funcname not in ["integrate", "average"]:
             result = func(ds.tracer, axis_name, keep_coords=False)
             assert set(result.coords) == set(base_coords)
-            #
+
             result = func(ds.tracer, axis_name, keep_coords=True)
             assert set(result.coords) == set(base_coords + augmented_coords)
 
@@ -784,34 +784,74 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
 
 @pytest.mark.parametrize(
     "metric_axes,metric_name",
-    [("X", "dx_t"), ("Y", "dy_ne"), (["Y", "X"], "dy_n")],
+    [
+        (["Y", "X"], "area_n"),
+        ("X", "dx_t"),
+        ("Y", "dy_ne"),
+        (["Y", "X"], "dy_n"),
+        (["X"], "tracer"),
+    ],
 )
-def test_interp_like(metric_axes, metric_name):
+@pytest.mark.parametrize("periodic", [True, False])
+@pytest.mark.parametrize(
+    "boundary, boundary_expected",
+    [
+        ({"X": "fill", "Y": "fill"}, {"X": "fill", "Y": "fill"}),
+        ({"X": "extend", "Y": "extend"}, {"X": "extend", "Y": "extend"}),
+        (
+            {"X": "extrapolate", "Y": "extrapolate"},
+            {"X": "extrapolate", "Y": "extrapolate"},
+        ),
+        ("fill", {"X": "fill", "Y": "fill"}),
+        ("extend", {"X": "extend", "Y": "extend"}),
+        ("extrapolate", {"X": "extrapolate", "Y": "extrapolate"}),
+        ({"X": "extend", "Y": "fill"}, {"X": "extend", "Y": "fill"}),
+        ({"X": "extrapolate", "Y": "fill"}, {"X": "extrapolate", "Y": "fill"}),
+        pytest.param(
+            "fill",
+            {"X": "fill", "Y": "extend"},
+            marks=pytest.mark.xfail,
+            id="boundary not equal to boundary_expected",
+        ),
+    ],
+)
+@pytest.mark.parametrize("fill_value", [None, 0.1])
+def test_interp_like(
+    metric_axes, metric_name, periodic, boundary, boundary_expected, fill_value
+):
 
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, periodic=periodic)
     grid.set_metrics(metric_axes, metric_name)
     metric_available = grid._metrics.get(frozenset(metric_axes), None)
     metric_available = metric_available[0]
-    interp_metric = grid.interp_like(metric_available, ds.u)
-    test_metric = grid.interp(ds[metric_name], metric_axes)
+    interp_metric = grid.interp_like(
+        metric_available, ds.u, boundary=boundary, fill_value=fill_value
+    )
+    expected_metric = grid.interp(
+        ds[metric_name], metric_axes, boundary=boundary_expected, fill_value=fill_value
+    )
 
-    xr.testing.assert_equal(interp_metric, test_metric)
-    xr.testing.assert_allclose(interp_metric, test_metric)
+    xr.testing.assert_allclose(interp_metric, expected_metric)
 
 
-@pytest.mark.parametrize(
-    "var_name,like_name,var_axes",
-    [
-        ("tracer", "u", "X"),
-    ],
-)
-def test_interp_like_var(var_name, like_name, var_axes):
+def test_input_not_dims():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    msg = r"is not a dimension in the input dataset"
+    with pytest.raises(ValueError, match=msg):
+        Grid(ds, coords={"X": {"center": "c"}})
 
-    ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, metrics=metrics)
-    interp_var = grid.interp_like(ds[var_name], ds[like_name])
-    test_var = grid.interp(ds[var_name], var_axes)
 
-    xr.testing.assert_equal(interp_var, test_var)
-    xr.testing.assert_allclose(interp_var, test_var)
+def test_input_dim_notfound():
+    data = np.random.rand(4, 5)
+    coord = np.random.rand(4, 5)
+    ds = xr.DataArray(
+        data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
+    ).to_dataset(name="data")
+    msg = r"Could not find dimension `other` \(for the `center` position on axis `X`\) in input dataset."
+    with pytest.raises(ValueError, match=msg):
+        Grid(ds, coords={"X": {"center": "other"}})

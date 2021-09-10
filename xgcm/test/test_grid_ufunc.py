@@ -6,7 +6,12 @@ import xarray as xr
 from xarray.testing import assert_equal
 
 from xgcm.grid import Grid
-from xgcm.grid_ufunc import _parse_grid_ufunc_signature, apply_grid_ufunc, as_grid_ufunc
+from xgcm.grid_ufunc import (
+    GridUFunc,
+    _parse_grid_ufunc_signature,
+    apply_as_grid_ufunc,
+    as_grid_ufunc,
+)
 
 
 class TestParseGridUfuncSignature:
@@ -147,15 +152,31 @@ def create_2d_test_grid(ax_name_1, ax_name_2):
 
 
 class TestGridUFunc:
+    def test_stores_ufunc_kwarg_info(self):
+        signature = "(X:center)->(X:left)"
+
+        @as_grid_ufunc(signature)
+        def diff_center_to_left(a):
+            return a - np.roll(a, shift=-1)
+
+        assert isinstance(diff_center_to_left, GridUFunc)
+        assert diff_center_to_left.signature == signature
+
+        with pytest.raises(TypeError, match="Unsupported keyword argument"):
+
+            @as_grid_ufunc(signature, junk="useless")
+            def diff_center_to_left(a):
+                return a - np.roll(a, shift=-1)
+
     def test_input_on_wrong_positions(self):
         grid = create_1d_test_grid("x")
         da = np.sin(grid._ds.x_g * 2 * np.pi / 9)
 
         with pytest.raises(ValueError, match=re.escape("(Y:center) does not exist")):
-            apply_grid_ufunc(lambda x: x, da, grid=grid, signature="(Y:center)->()")
+            apply_as_grid_ufunc(lambda x: x, da, grid=grid, signature="(Y:center)->()")
 
         with pytest.raises(ValueError, match="coordinate x_c does not appear"):
-            apply_grid_ufunc(lambda x: x, da, grid=grid, signature="(X:center)->()")
+            apply_as_grid_ufunc(lambda x: x, da, grid=grid, signature="(X:center)->()")
 
     def test_1d_unchanging_size_no_dask(self):
         def diff_center_to_left(a):
@@ -169,7 +190,7 @@ class TestGridUFunc:
         expected = xr.DataArray(diffed, dims=["x_g"], coords={"x_g": grid._ds.x_g})
 
         # Test direct application
-        result = apply_grid_ufunc(
+        result = apply_as_grid_ufunc(
             diff_center_to_left, da, grid=grid, signature="(X:center)->(X:left)"
         )
         assert_equal(result, expected)
@@ -200,7 +221,7 @@ class TestGridUFunc:
         expected = da.interp(x_c=np.arange(1.5, 9), method="linear").rename(x_c="x_i")
 
         # Test direct application
-        result = apply_grid_ufunc(
+        result = apply_as_grid_ufunc(
             interp_center_to_inner,
             da,
             grid=grid,
@@ -245,7 +266,7 @@ class TestGridUFunc:
         ).compute()
 
         # Test direct application
-        result = apply_grid_ufunc(
+        result = apply_as_grid_ufunc(
             diff_center_to_left,
             da,
             grid=grid,
@@ -281,7 +302,7 @@ class TestGridUFunc:
         expected = xr.DataArray(np.inner(a, b))
 
         # Test direct application
-        result = apply_grid_ufunc(
+        result = apply_as_grid_ufunc(
             inner_product_left_right,
             a,
             b,
@@ -322,7 +343,7 @@ class TestGridUFunc:
         expected_v.coords["x_c"] = grid._ds.x_c
 
         # Test direct application
-        u, v = apply_grid_ufunc(
+        u, v = apply_as_grid_ufunc(
             grad_to_inner,
             a,
             grid=grid,

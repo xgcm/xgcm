@@ -50,7 +50,7 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
 .. _Pangeo: http://pangeo.io
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org
-.. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grid
+.. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
 .. _xgcm documentation: https://xgcm.readthedocs.io/
 
 .. |conda forge| image:: https://img.shields.io/conda/vn/conda-forge/xgcm

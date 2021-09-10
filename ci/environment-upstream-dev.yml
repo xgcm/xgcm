@@ -6,7 +6,6 @@ channels:
 dependencies:
   - codecov
   - docrep<=0.2.7
-  - future
   - numba
   - numpy
   - scipy

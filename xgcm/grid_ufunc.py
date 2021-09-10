@@ -1,4 +1,3 @@
-import functools
 import inspect
 import re
 
@@ -74,14 +73,67 @@ def _parse_grid_ufunc_signature(signature):
     return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
 
 
-def as_grid_ufunc(signature="", dask="forbidden"):
+class GridUFunc:
     """
-    Decorator which turns a numpy ufunc into a "grid-aware ufunc" by wrapping
-    it with `apply_grid_ufunc`.
+    Binds a numpy ufunc into a "grid-aware ufunc", meaning that when called ufunc is wrapped by `apply_as_grid_ufunc`.
 
     Parameters
     ----------
-    func : callable
+    ufunc : callable
+        Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
+        arrays (`.data`).
+
+        Passed directly on to `xarray.apply_ufunc`.
+    signature : string
+        Grid universal function signature. Specifies the xgcm.Axis names and
+        positions for each input and output variable, e.g.,
+
+        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+    dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
+        How to handle applying to objects containing lazy data in the form of
+        dask arrays. Passed directly on to `xarray.apply_ufunc`.
+
+    Returns
+    -------
+    grid_ufunc : callable
+        Class which when called consumes and produces xarray objects, whose xgcm Axis
+        names and positions must conform to the pattern specified by `signature`.
+        Calling function has an additional positional argument `grid`, of type `xgcm.Grid`,
+        so that `func`'s new signature is `func(grid, *args, **kwargs)`. This grid
+        argument is passed on to `apply_grid_ufunc`.
+
+    See Also
+    --------
+    as_grid_ufunc
+    apply_as_grid_ufunc
+    Grid.apply_as_grid_ufunc
+    """
+
+    def __init__(self, ufunc, **kwargs):
+        self.ufunc = ufunc
+        self.signature = kwargs.pop("signature", "")
+        self.dask = kwargs.pop("dask", "")
+        if kwargs:
+            raise TypeError("Unsupported keyword argument(s) provided")
+
+    def __call__(self, grid=None, *args, **kwargs):
+        return apply_as_grid_ufunc(
+            self.ufunc,
+            *args,
+            grid=grid,
+            signature=self.signature,
+            dask=self.dask,
+            **kwargs,
+        )
+
+
+def as_grid_ufunc(signature="", **kwargs):
+    """
+    Decorator which turns a numpy ufunc into a "grid-aware ufunc".
+
+    Parameters
+    ----------
+    ufunc : callable
         Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
         arrays (`.data`).
 
@@ -106,23 +158,24 @@ def as_grid_ufunc(signature="", dask="forbidden"):
 
     See Also
     --------
-    apply_grid_ufunc
-    Grid.apply_grid_ufunc
+    apply_as_grid_ufunc
+    Grid.apply_as_grid_ufunc
     """
+    _allowedkwargs = {
+        "dask",
+    }
+    if kwargs.keys() - _allowedkwargs:
+        raise TypeError("Unsupported keyword argument(s) provided")
 
-    def _as_grid_ufunc_decorator(func):
-        @functools.wraps(func)
-        def _grid_ufunc(grid, *args, **kwargs):
-            return apply_grid_ufunc(
-                func, *args, grid=grid, signature=signature, dask=dask, **kwargs
-            )
+    def _as_grid_ufunc(ufunc):
+        return GridUFunc(ufunc, signature=signature, **kwargs)
 
-        return _grid_ufunc
-
-    return _as_grid_ufunc_decorator
+    return _as_grid_ufunc
 
 
-def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **kwargs):
+def apply_as_grid_ufunc(
+    func, *args, grid=None, signature="", dask="forbidden", **kwargs
+):
     """
     Apply a function to the given arguments in a grid-aware manner.
 
@@ -159,7 +212,7 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
     See Also
     --------
     as_grid_ufunc
-    Grid.apply_grid_ufunc
+    Grid.apply_as_grid_ufunc
     """
 
     if grid is None:
@@ -236,7 +289,7 @@ def apply_grid_ufunc(func, *args, grid=None, signature="", dask="forbidden", **k
     if len(results_with_coords) == 1:
         (results_with_coords,) = results_with_coords
 
-    # TODO handle metrics and boundary?
+    # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
 
     return results_with_coords
 

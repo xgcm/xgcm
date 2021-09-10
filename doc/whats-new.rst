@@ -10,12 +10,37 @@ v0.6.0 (unreleased)
 
 New Features
 ~~~~~~~~~~~~
-- :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
-  By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
 - Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions :py:meth:`~xgcm.grid_ufunc.apply_grid_ufunc`
-  and :py:meth:`~xgcm.grid_ufunc.as_grid_ufunc`. Beginning of an internal refactor to write all grid computation methods
+  and :py:meth:`~xgcm.grid_ufunc.as_grid_ufunc`. Beginning of an internal refactor to rewrite all grid computation methods
   as grid ufuncs. (:pull:`362`, :issue:`344`)
   By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+- :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
+
+- :py:meth:`~xgcm.grid.Grid.get_metric` refactored, and now incorporates :py:meth:`~xgcm.grid.Grid.interp_like` to allow for automatic interpolation of missing metrics from available values on surrounding positions (:pull:`345`, :pull:`354`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
+
+- :py:meth:`~xgcm.grid.Grid.set_metrics` enables overwriting of previously assigned metrics to a grid object, and allows for multiple metrics on the same axes (must be different dimensions) (:pull:`351`, :issue:`199`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
+
+- :py:meth:`~xgcm.grid.Grid.interp_like` enables users to interpolate arrays onto the grid positions of another array, and can specify boundary conditions and fill values (:issue:`234` , :issue:`343`, :pull:`350`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
+
+- Better input checking when creating a grid object avoids creating grid positions on dataset coordinates which are not 1D (:issue:`208`, :pull:`358`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+.. [*] under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+- Drop support for Python 3.6 (:issue:`360`, :pull:`361`). By `Julius Busecke <https://github.com/jbusecke>`_.
+
+Documentation
+~~~~~~~~~~~~~
+- Updated metrics documentation for new methods in `Grid Metrics <https://xgcm.readthedocs.io/en/latest/grid_metrics.html>`_.
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
+
 
 v0.5.2 (2021/5/27)
 -------------------
@@ -30,7 +55,7 @@ Bug fixes
 Documentation
 ~~~~~~~~~~~~~
 - Updated Realistic Data examples in `Transforming Vertical Coordinates <https://xgcm.readthedocs.io/en/latest/transform.html>`_ (:pull:`322`)
-  By `Dianne Deauna <https://github.com/jdldeauna>`_.
+  By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
 - Migrated model example notebooks to `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_ which integrates with `pangeo gallery <https://gallery.pangeo.io/repos/xgcm/xgcm-examples/>`_ (:pull:`294`)
   By `Julius Busecke <https://github.com/jbusecke>`_.
