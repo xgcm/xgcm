@@ -8,6 +8,7 @@ dependencies:
   - dask
   - docrep<=0.2.7
   - numpy
+  - scipy
   - pip
   - pre-commit
   - pytest

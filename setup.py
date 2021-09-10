@@ -29,7 +29,7 @@ extras_require = {
 extras_require["dev"] = extras_require["complete"] + [
     "pytest",
     "pytest-cov",
-    "flake8",
+    "scipy" "flake8",
     "black",
     "codecov",
 ]

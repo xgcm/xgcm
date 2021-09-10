@@ -10,6 +10,14 @@ v0.6.0 (unreleased)
 
 New Features
 ~~~~~~~~~~~~
+- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions :py:meth:`~xgcm.grid_ufunc.apply_grid_ufunc`
+  and :py:meth:`~xgcm.grid_ufunc.as_grid_ufunc`. Beginning of an internal refactor to rewrite all grid computation methods
+  as grid ufuncs. (:pull:`362`, :issue:`344`)
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+- :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
+
 - :py:meth:`~xgcm.grid.Grid.get_metric` refactored, and now incorporates :py:meth:`~xgcm.grid.Grid.interp_like` to allow for automatic interpolation of missing metrics from available values on surrounding positions (:pull:`345`, :pull:`354`).
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
