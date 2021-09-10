@@ -1,7 +1,5 @@
-import inspect
 import re
 
-import gridops
 import xarray as xr
 
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
@@ -292,35 +290,3 @@ def apply_as_grid_ufunc(
     # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
 
     return results_with_coords
-
-
-def _select_grid_ufunc(funcname, signature):
-    # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
-
-    all_predefined_ufuncs = inspect.getmembers(gridops, inspect.isfunction)
-
-    name_matching_ufuncs = [
-        f for f in all_predefined_ufuncs if f.__name__.startswith(funcname)
-    ]
-    if len(name_matching_ufuncs) == 0:
-        raise NotImplementedError(
-            f"Could not find any pre-defined {funcname} grid ufuncs"
-        )
-
-    signature_matching_ufuncs = [
-        f for f in name_matching_ufuncs if f.signature == signature
-    ]
-
-    # TODO select via any other kwargs (such as boundary) once implemented
-
-    if len(signature_matching_ufuncs) == 0:
-        raise NotImplementedError(
-            f"Could not find any pre-defined {funcname} grid ufuncs with signature {signature}"
-        )
-    elif len(signature_matching_ufuncs) > 1:
-        raise ValueError(
-            f"Function {funcname} with signature {signature} is an ambiguous selection"
-        )
-    else:
-        # Exactly 1 matching function
-        return signature_matching_ufuncs[0]

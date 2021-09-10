@@ -1,4 +1,5 @@
 import functools
+import inspect
 import itertools
 import operator
 import warnings
@@ -8,9 +9,9 @@ import docrep
 import numpy as np
 import xarray as xr
 
-from . import comodo
+from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
-from .grid_ufunc import _select_grid_ufunc, apply_as_grid_ufunc
+from .grid_ufunc import apply_as_grid_ufunc
 from .metrics import iterate_axis_combinations
 
 try:
@@ -1560,31 +1561,53 @@ class Grid:
         return out
 
     def _grid_ufunc_dispatch(self, funcname, da, axis, to=None, **kwargs):
-        if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
+        """
+        Calls appropriate grid ufuncs on data, along the specified axes.
+
+        Parameters
+        ----------
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            Can be passed as a single str to use for all axis, or as a dict with separate values for each axis.
+            If not specified, the `default_shifts` stored in each Axis object will be used for that axis.
+        """
+
+        if isinstance(axis, str):
             axis = [axis]
-
-        # TODO get correct default target axis positions somehow from grid object
-        # This info is in the Axis object stored by grid
         if to is None:
-            to = [] * len(axis)
-        for ax in axis:
-            position_from, dim = self._get_axis_coord(da)
-            if to is None:
-                to = self._default_shifts[position_from]
+            to = {ax: None for ax in axis}
+        elif isinstance(to, str):
+            to = {ax: to for ax in axis}
 
-        signature = self._create_grid_ufunc_signature(axis=axis, to=to)
+        signature = self._create_grid_ufunc_signature(da, axis=axis, to=to)
         grid_ufunc = _select_grid_ufunc(funcname, signature)
         return grid_ufunc(da, **kwargs)
 
-    def _create_grid_ufunc_signature(self, axis, to=None):
-        """Create a signature to pass to apply_grid_ufunc from a set of input axes and a set of target axis positions"""
+    def _create_grid_ufunc_signature(self, da, axis, to):
+        """
+        Create a signature to pass to apply_grid_ufunc from data, list of input axes, and list of target axis positions.
+        """
 
-        # TODO how do we actually get the current axis position here?
-        input_arg_signature = ",".join([f"{ax.name}:{ax.position}" for ax in axis])
+        from_ax_positions = []
+        to_ax_positions = []
+        for ax_name in axis:
+            ax = self.axes[ax_name]
+            from_pos, dim = ax._get_position_name(da)
+            if to is None:
+                to = ax._default_shifts[from_pos]
 
-        # TODO how do we set defaults? Where is the best place to do that?
+            from_ax_positions.append(from_pos)
+            to_ax_positions.append(to)
+
+        input_arg_signature = ",".join(
+            [f"{name}:{from_pos}" for name, from_pos in zip(axis, from_ax_positions)]
+        )
         output_arg_signature = ",".join(
-            [f"{in_ax}:{target_pos}" for in_ax, target_pos in zip(axis, to)]
+            [f"{name}:{to_pos}" for name, to_pos in zip(axis, to_ax_positions)]
         )
 
         return f"({input_arg_signature})->({output_arg_signature})"
@@ -1624,7 +1647,7 @@ class Grid:
 
         See Also
         --------
-        apply_grid_ufunc
+        apply_as_grid_ufunc
         as_grid_ufunc
         """
         return apply_as_grid_ufunc(
@@ -2049,6 +2072,39 @@ class Grid:
         """
 
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
+
+
+def _select_grid_ufunc(funcname, signature):
+    # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
+
+    # TODO this avoids defining a list of functions in gridops.py, but might be too fragile to be worthwhile?
+    all_predefined_ufuncs = inspect.getmembers(gridops, inspect.isfunction)
+
+    name_matching_ufuncs = [
+        f for name, f in all_predefined_ufuncs if name.startswith(funcname)
+    ]
+    if len(name_matching_ufuncs) == 0:
+        raise NotImplementedError(
+            f"Could not find any pre-defined {funcname} grid ufuncs"
+        )
+
+    signature_matching_ufuncs = [
+        f for f in name_matching_ufuncs if f.signature == signature
+    ]
+
+    # TODO select via any other kwargs (such as boundary) once implemented
+
+    if len(signature_matching_ufuncs) == 0:
+        raise NotImplementedError(
+            f"Could not find any pre-defined {funcname} grid ufuncs with signature {signature}"
+        )
+    elif len(signature_matching_ufuncs) > 1:
+        raise ValueError(
+            f"Function {funcname} with signature {signature} is an ambiguous selection"
+        )
+    else:
+        # Exactly 1 matching function
+        return signature_matching_ufuncs[0]
 
 
 def raw_interp_function(data_left, data_right):
