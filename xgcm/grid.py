@@ -11,7 +11,7 @@ import xarray as xr
 
 from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
-from .grid_ufunc import apply_as_grid_ufunc
+from .grid_ufunc import GridUFunc, apply_as_grid_ufunc
 from .metrics import iterate_axis_combinations
 
 try:
@@ -1585,7 +1585,7 @@ class Grid:
 
         signature = self._create_grid_ufunc_signature(da, axis=axis, to=to)
         grid_ufunc = _select_grid_ufunc(funcname, signature)
-        return grid_ufunc(da, **kwargs)
+        return grid_ufunc(self, da, **kwargs)
 
     def _create_grid_ufunc_signature(self, da, axis, to):
         """
@@ -1596,12 +1596,14 @@ class Grid:
         to_ax_positions = []
         for ax_name in axis:
             ax = self.axes[ax_name]
-            from_pos, dim = ax._get_position_name(da)
-            if to is None:
-                to = ax._default_shifts[from_pos]
 
+            from_pos, dim = ax._get_position_name(da)
             from_ax_positions.append(from_pos)
-            to_ax_positions.append(to)
+
+            to_pos = to[ax_name]
+            if to_pos is None:
+                to_pos = ax._default_shifts[from_pos]
+            to_ax_positions.append(to_pos)
 
         input_arg_signature = ",".join(
             [f"{name}:{from_pos}" for name, from_pos in zip(axis, from_ax_positions)]
@@ -2077,8 +2079,11 @@ class Grid:
 def _select_grid_ufunc(funcname, signature):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
-    # TODO this avoids defining a list of functions in gridops.py, but might be too fragile to be worthwhile?
-    all_predefined_ufuncs = inspect.getmembers(gridops, inspect.isfunction)
+    def is_grid_ufunc(obj):
+        return isinstance(obj, GridUFunc)
+
+    # This avoids defining a list of functions in gridops.py
+    all_predefined_ufuncs = inspect.getmembers(gridops, is_grid_ufunc)
 
     name_matching_ufuncs = [
         f for name, f in all_predefined_ufuncs if name.startswith(funcname)

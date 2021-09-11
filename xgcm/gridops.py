@@ -3,11 +3,14 @@ import numpy as np
 from .grid_ufunc import as_grid_ufunc
 
 """
-This module should only contain "grid ufuncs".
+This module is intended to only contain "grid ufuncs".
+
+(It is however fine to add other non-"grid ufunc" functions to this list, as xgcm.grid._select_grid_ufunc will ignore
+anything 3that does not return an instance of the GridUFunc class.)
 
 If adding a new function to this list, make sure the function name starts with the name of the xgcm.Grid method you
 want it to be called from. e.g. `diff_centre_to_left_second_order` will be added to the list of functions to search
-through when `xgcm.Grid.diff()` is called. See xgc.grid_ufunc._fetch_grid_ufunc for more details.
+through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufunc for more details.
 """
 
 
