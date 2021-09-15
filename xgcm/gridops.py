@@ -14,27 +14,32 @@ through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufun
 """
 
 
-@as_grid_ufunc(signature="(X:center)->(X:left)")
-def diff_center_to_left(a):
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary="fill")
+def diff_center_to_left_fill(a):
     return a - np.roll(a, -1)
 
 
-@as_grid_ufunc(signature="(X:center)->(X:right)")
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary="extend")
+def diff_center_to_left_extend(a):
+    return a - np.roll(a, -1)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:right)", boundary="fill")
 def diff_center_to_right(a):
     return np.roll(a, 1) - a
 
 
-@as_grid_ufunc(signature="(X:center)->(X:outer)")
+@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary="fill")
 def diff_center_to_outer(a):
     raise NotImplementedError
 
 
-@as_grid_ufunc(signature="(X:left)->(X:center)")
+@as_grid_ufunc(signature="(X:left)->(X:center)", boundary="fill")
 def diff_left_to_center(a):
     raise NotImplementedError
 
 
-@as_grid_ufunc(signature="(X:left)->(X:inner)")
+@as_grid_ufunc(signature="(X:left)->(X:inner)", boundary="fill")
 def diff_left_to_inner(a):
     raise NotImplementedError
 

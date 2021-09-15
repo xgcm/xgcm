@@ -11,7 +11,7 @@ import xarray as xr
 
 from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
-from .grid_ufunc import GridUFunc, apply_as_grid_ufunc
+from .grid_ufunc import GridUFunc, _signatures_equivalent, apply_as_grid_ufunc
 from .metrics import iterate_axis_combinations
 
 try:
@@ -1584,8 +1584,10 @@ class Grid:
             to = {ax: to for ax in axis}
 
         signature = self._create_grid_ufunc_signature(da, axis=axis, to=to)
-        grid_ufunc = _select_grid_ufunc(funcname, signature)
-        return grid_ufunc(self, da, **kwargs)
+        grid_ufunc, remaining_kwargs = _select_grid_ufunc(
+            funcname, signature, module=gridops, **kwargs
+        )
+        return grid_ufunc(self, da, **remaining_kwargs)
 
     def _create_grid_ufunc_signature(self, da, axis, to):
         """
@@ -2076,14 +2078,14 @@ class Grid:
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
 
 
-def _select_grid_ufunc(funcname, signature):
+def _select_grid_ufunc(funcname, signature, module, **kwargs):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
     def is_grid_ufunc(obj):
         return isinstance(obj, GridUFunc)
 
     # This avoids defining a list of functions in gridops.py
-    all_predefined_ufuncs = inspect.getmembers(gridops, is_grid_ufunc)
+    all_predefined_ufuncs = inspect.getmembers(module, is_grid_ufunc)
 
     name_matching_ufuncs = [
         f for name, f in all_predefined_ufuncs if name.startswith(funcname)
@@ -2094,22 +2096,36 @@ def _select_grid_ufunc(funcname, signature):
         )
 
     signature_matching_ufuncs = [
-        f for f in name_matching_ufuncs if f.signature == signature
+        f
+        for f in name_matching_ufuncs
+        if _signatures_equivalent(f.signature, signature)
     ]
-
-    # TODO select via any other kwargs (such as boundary) once implemented
-
     if len(signature_matching_ufuncs) == 0:
         raise NotImplementedError(
             f"Could not find any pre-defined {funcname} grid ufuncs with signature {signature}"
         )
-    elif len(signature_matching_ufuncs) > 1:
+
+    matching_ufuncs = signature_matching_ufuncs
+
+    # TODO select via any other kwargs (such as boundary) once implemented
+    all_kwargs = kwargs.copy()
+    boundary = kwargs.pop("boundary", None)
+    if boundary:
+        matching_ufuncs = [uf for uf in matching_ufuncs if uf.boundary == boundary]
+
+    if len(matching_ufuncs) > 1:
+        # TODO include kwargs used to match in this error message
         raise ValueError(
-            f"Function {funcname} with signature {signature} is an ambiguous selection"
+            f"Function {funcname} with signature='{signature}' and kwargs={all_kwargs} is an ambiguous selection"
+        )
+    elif len(matching_ufuncs) == 0:
+        raise NotImplementedError(
+            f"Could not find any pre-defined {funcname} grid ufuncs with signature='{signature}' and kwargs"
+            f"={all_kwargs}"
         )
     else:
         # Exactly 1 matching function
-        return signature_matching_ufuncs[0]
+        return matching_ufuncs[0], kwargs
 
 
 def raw_interp_function(data_left, data_right):

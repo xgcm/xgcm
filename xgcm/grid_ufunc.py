@@ -1,4 +1,5 @@
 import re
+import string
 
 import xarray as xr
 
@@ -110,9 +111,16 @@ class GridUFunc:
     def __init__(self, ufunc, **kwargs):
         self.ufunc = ufunc
         self.signature = kwargs.pop("signature", "")
-        self.dask = kwargs.pop("dask", "")
+
+        boundary = kwargs.pop("boundary", None)
+        self.boundary = boundary
+
+        self.dask = kwargs.pop("dask", "forbidden")
         if kwargs:
             raise TypeError("Unsupported keyword argument(s) provided")
+
+    def __repr__(self):
+        return f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary='{self.boundary}', dask='{self.dask})'"
 
     def __call__(self, grid=None, *args, **kwargs):
         return apply_as_grid_ufunc(
@@ -160,6 +168,7 @@ def as_grid_ufunc(signature="", **kwargs):
     Grid.apply_as_grid_ufunc
     """
     _allowedkwargs = {
+        "boundary",
         "dask",
     }
     if kwargs.keys() - _allowedkwargs:
@@ -290,3 +299,37 @@ def apply_as_grid_ufunc(
     # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
 
     return results_with_coords
+
+
+_REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
+
+
+def _signatures_equivalent(sig1, sig2):
+    """
+    Axes names in signatures are dummy variables, so an exact string match is not required.
+
+    Our comparison strategy is to instead work through both signatures left to right, replacing all occurrences
+    of each dummy index with names drawn from a common list. If after this process the replaced names are not
+    identical, the signatures must not be equivalent. Axes positions do have to match exactly.
+    """
+    sig1_in, sig1_out, _, _ = _parse_grid_ufunc_signature(sig1)
+    sig2_in, sig2_out, _, _ = _parse_grid_ufunc_signature(sig2)
+
+    all_unique_sig1_indices = set([i for arg in sig1_in for i in arg])
+    all_unique_sig2_indices = set([i for arg in sig2_in for i in arg])
+
+    if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
+        return False
+
+    sig1_replaced = sig1
+    sig2_replaced = sig2
+    for dummy1, dummy2, common_replacement in zip(
+        all_unique_sig1_indices, all_unique_sig2_indices, _REPLACEMENT_DUMMY_INDEX_NAMES
+    ):
+        sig1_replaced = sig1_replaced.replace(dummy1, common_replacement)
+        sig2_replaced = sig2_replaced.replace(dummy2, common_replacement)
+
+    if sig1_replaced == sig2_replaced:
+        return True
+    else:
+        return False
