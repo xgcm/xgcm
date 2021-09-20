@@ -1624,6 +1624,9 @@ class Grid:
                 if ax_boundary == "extrapolate":
                     # TODO implement extrapolation
                     raise NotImplementedError
+                elif ax_boundary is None:
+                    # TODO this is necessary, but also seems inconsistent with the docstring, which says that None = "no boundary condition"
+                    ax_boundary = "periodic"
 
                 # TODO avoid repeatedly calling xarray pad
                 try:
@@ -1668,6 +1671,7 @@ class Grid:
             to = {ax: to for ax in axis}
 
         signature = self._create_grid_ufunc_signature(da, axis=axis, to=to)
+        print(signature)
         grid_ufunc, remaining_kwargs = _select_grid_ufunc(
             funcname, signature, module=gridops, **kwargs
         )
