@@ -262,6 +262,7 @@ def apply_as_grid_ufunc(
         signature, in_dummy_ax_names, axis
     )
     out_ax_names = _parse_grid_ufunc_signature(specific_signature)[1]
+    print(out_ax_names)
 
     # Check that input args are in correct grid positions
     for i, (arg_ns, arg_ps, arg) in enumerate(zip(axis, in_ax_pos, args)):
@@ -336,8 +337,12 @@ def apply_as_grid_ufunc(
 
 def _create_execution_specific_signature(signature, sig_in_dummy_ax_names, axis):
     """Create altered signature which reflects actual Axis names passed, by replacing dummy variables."""
-    unique_dummy_axes = set(ax for arg in sig_in_dummy_ax_names for ax in arg)
-    unique_real_axes = set(ax for arg in axis for ax in arg)
+
+    # We can't just use set because we need these two lists to retaining their ordering relative to one another
+    unique_dummy_axes = list(
+        dict.fromkeys(ax for arg in sig_in_dummy_ax_names for ax in arg)
+    )
+    unique_real_axes = list(dict.fromkeys(ax for arg in axis for ax in arg))
 
     specific_signature = signature
     for unique_dummy_axis, unique_real_axis in zip(unique_dummy_axes, unique_real_axes):
