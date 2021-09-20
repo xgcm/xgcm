@@ -80,14 +80,15 @@ class GridUFunc:
     ----------
     ufunc : callable
         Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
-        arrays (`.data`).
-
-        Passed directly on to `xarray.apply_ufunc`.
+        arrays (`.data`). Passed directly on to `xarray.apply_ufunc`.
     signature : string
         Grid universal function signature. Specifies the xgcm.Axis names and
         positions for each input and output variable, e.g.,
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+    boundary_width : Dict[str: Tuple[int, int], optional
+        The widths of the boundaries at the edge of each array.
+        Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -111,29 +112,28 @@ class GridUFunc:
     def __init__(self, ufunc, **kwargs):
         self.ufunc = ufunc
         self.signature = kwargs.pop("signature", "")
-
-        boundary = kwargs.pop("boundary", None)
-        self.boundary = boundary
-
+        self.boundary_width = kwargs.pop("boundary_width", None)
         self.dask = kwargs.pop("dask", "forbidden")
         if kwargs:
             raise TypeError("Unsupported keyword argument(s) provided")
 
     def __repr__(self):
-        return f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary='{self.boundary}', dask='{self.dask})'"
+        return f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', dask='{self.dask})'"
 
-    def __call__(self, grid=None, *args, **kwargs):
+    def __call__(self, grid, *args, boundary=None, **kwargs):
         return apply_as_grid_ufunc(
             self.ufunc,
             *args,
             grid=grid,
             signature=self.signature,
+            boundary_width=self.boundary_width,
+            boundary=boundary,
             dask=self.dask,
             **kwargs,
         )
 
 
-def as_grid_ufunc(signature="", **kwargs):
+def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
     """
     Decorator which turns a numpy ufunc into a "grid-aware ufunc".
 
@@ -141,14 +141,15 @@ def as_grid_ufunc(signature="", **kwargs):
     ----------
     ufunc : callable
         Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
-        arrays (`.data`).
-
-        Passed directly on to `xarray.apply_ufunc`.
+        arrays (`.data`). Passed directly on to `xarray.apply_ufunc`.
     signature : string
         Grid universal function signature. Specifies the xgcm.Axis names and
         positions for each input and output variable, e.g.,
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+    boundary_width : Dict[str: Tuple[int, int], optional
+        The widths of the boundaries at the edge of each array.
+        Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -159,7 +160,7 @@ def as_grid_ufunc(signature="", **kwargs):
         Function which consumes and produces xarray objects, whose xgcm Axis
         names and positions must conform to the pattern specified by `signature`.
         Function has an additional positional argument `grid`, of type `xgcm.Grid`,
-        so that `func`'s new signature is `func(grid, *args, **kwargs)`. This grid
+        so that `func`'s new signature is `func(grid, *args, boundary=None, **kwargs)`. This grid
         argument is passed on to `apply_grid_ufunc`.
 
     See Also
@@ -175,13 +176,23 @@ def as_grid_ufunc(signature="", **kwargs):
         raise TypeError("Unsupported keyword argument(s) provided")
 
     def _as_grid_ufunc(ufunc):
-        return GridUFunc(ufunc, signature=signature, **kwargs)
+        return GridUFunc(
+            ufunc, signature=signature, boundary_width=boundary_width, **kwargs
+        )
 
     return _as_grid_ufunc
 
 
 def apply_as_grid_ufunc(
-    func, *args, grid=None, signature="", dask="forbidden", **kwargs
+    func,
+    *args,
+    grid=None,
+    signature="",
+    boundary_width=None,
+    boundary=None,
+    fill_value=None,
+    dask="forbidden",
+    **kwargs,
 ):
     """
     Apply a function to the given arguments in a grid-aware manner.
@@ -205,6 +216,25 @@ def apply_as_grid_ufunc(
         positions for each input and output variable, e.g.,
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+    boundary_width : Dict[str: Tuple[int, int]
+        The widths of the boundaries at the edge of each array.
+        Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        A flag indicating how to handle boundaries:
+        * None: Do not apply any boundary conditions. Raise an error if
+          boundary conditions are required for the operation.
+        * 'fill':  Set values outside the array boundary to fill_value
+          (i.e. a Dirichlet boundary condition.)
+        * 'extend': Set values outside the array to the nearest array
+          value. (i.e. a limited form of Neumann boundary condition.)
+        * 'extrapolate': Set values by extrapolating linearly from the two
+          points nearest to the edge
+        Optionally a dict mapping axis name to separate values for each axis
+        can be passed.
+    fill_value : {float, dict}, optional
+        The value to use in boundary conditions with `boundary='fill'`.
+        Optionally a dict mapping axis name to separate values for each axis
+        can be passed. Default is 0.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -261,9 +291,27 @@ def apply_as_grid_ufunc(
 
     all_out_core_dims = set(dim for arg in out_core_dims for dim in arg)
 
+    # Pad arrays according to internal boundary condition information
+    if boundary and not boundary_width:
+        raise ValueError(
+            "To apply a boundary condition you must provide the widths of the boundaries"
+        )
+    if boundary_width:
+        args = grid.pad(
+            *args,
+            boundary_width=boundary_width,
+            boundary=boundary,
+            fill_value=fill_value,
+        )
+
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
+    # TODO does padding change this?
     out_sizes = {out_dim: grid._ds.dims[out_dim] for out_dim in all_out_core_dims}
+
+    # TODO Map operation over dask chunks?
+    # def mapped_func(*a, **kw):
+    #    return map_overlap(func, *a, **kw, depths=boundary_depths, boundary=None, trim=True)
 
     # Perform operation via xarray.apply_ufunc
     results = xr.apply_ufunc(
@@ -275,6 +323,9 @@ def apply_as_grid_ufunc(
         **kwargs,
         dask_gufunc_kwargs={"output_sizes": out_sizes},
     )
+
+    # TODO add option to trim result if not done in ufunc
+    # TODO loud warning if ufunc returns array of incorrect size
 
     # apply_ufunc might return multiple objects
     if not isinstance(results, tuple):
@@ -289,7 +340,18 @@ def apply_as_grid_ufunc(
             for dim in arg_out_core_dims
             if dim in grid._ds.dims and dim not in res.coords
         }
-        res = res.assign_coords(new_core_dim_coords)
+
+        try:
+            res = res.assign_coords(new_core_dim_coords)
+        except ValueError as err:
+            if boundary_width and str(err).startswith("conflicting sizes"):
+                # TODO make this error more informative?
+                raise ValueError(
+                    f"{str(err)} - does your grid ufunc correctly trim off the same number of elements "
+                    f"which were added by padding using boundary_width={boundary_width}?"
+                )
+            else:
+                raise
         results_with_coords.append(res)
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc

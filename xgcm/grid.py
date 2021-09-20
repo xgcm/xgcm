@@ -1043,6 +1043,13 @@ class Axis:
         return da.get_axis_num(coord_name)
 
 
+_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
+    "periodic": "wrap",
+    "fill": "constant",
+    "extend": "edge",
+}
+
+
 class Grid:
     """
     An object with multiple :class:`xgcm.Axis` objects representing different
@@ -1506,6 +1513,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed (see example)
         boundary : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
@@ -1559,6 +1567,82 @@ class Grid:
                 out = out / metric_new
 
         return out
+
+    def pad(self, *arrays, boundary_width=None, boundary=None, fill_value=None):
+        """
+        Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
+
+        Parameters
+        ----------
+        arrays : Sequence[xarray.DataArray]
+            Arrays to pad according to boundary and boundary_width.
+        boundary_width : Dict[str: Tuple[int, int]
+            The widths of the boundaries at the edge of each array.
+            Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+            * None: Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed. Default is 0.
+        """
+        # TODO accept a general padding function like numpy.pad does as an argument to boundary
+
+        if not boundary_width:
+            raise ValueError("Must provide the widths of the boundaries")
+
+        if boundary and isinstance(boundary, str):
+            boundary = {ax_name: boundary for ax_name in self.axes.keys()}
+        if fill_value is None:
+            fill_value = 0.0
+        if isinstance(fill_value, float):
+            fill_value = {ax_name: fill_value for ax_name in self.axes.keys()}
+
+        padded = []
+        for da in arrays:
+            new_da = da
+            for ax, widths in boundary_width.items():
+                axis = self.axes[ax]
+                _, dim = axis._get_position_name(da)
+
+                # Use default boundary for axis unless overridden
+                if boundary:
+                    ax_boundary = boundary[ax]
+                else:
+                    ax_boundary = axis.boundary
+
+                if ax_boundary == "extrapolate":
+                    # TODO implement extrapolation
+                    raise NotImplementedError
+
+                # TODO avoid repeatedly calling xarray pad
+                try:
+                    mode = _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG[ax_boundary]
+                except KeyError:
+                    raise ValueError(
+                        f"{ax_boundary} is not a supported type of boundary"
+                    )
+
+                if mode == "constant":
+                    new_da = new_da.pad(
+                        {dim: widths}, mode, constant_values=fill_value[ax]
+                    )
+                else:
+                    new_da = new_da.pad({dim: widths}, mode)
+
+            padded.append(new_da)
+
+        return padded
 
     def _grid_ufunc_dispatch(self, funcname, da, axis, to=None, **kwargs):
         """
@@ -1617,7 +1701,15 @@ class Grid:
         return f"({input_arg_signature})->({output_arg_signature})"
 
     def apply_as_grid_ufunc(
-        self, func, *args, signature="", dask="forbidden", **kwargs
+        self,
+        func,
+        *args,
+        signature="",
+        boundary_width=None,
+        boundary=None,
+        fill_value=None,
+        dask="forbidden",
+        **kwargs,
     ):
         """
         Apply a function to the given arguments in a grid-aware manner.
@@ -1638,6 +1730,25 @@ class Grid:
             positions for each input and output variable, e.g.,
 
             ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+        boundary_width : Dict[str: Tuple[int, int]
+            The widths of the boundaries at the edge of each array.
+            Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+            * None: Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed. Default is 0.
         dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
             How to handle applying to objects containing lazy data in the form of
             dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -1655,7 +1766,15 @@ class Grid:
         as_grid_ufunc
         """
         return apply_as_grid_ufunc(
-            func, *args, grid=self, signature=signature, dask=dask, **kwargs
+            func,
+            *args,
+            grid=self,
+            signature=signature,
+            boundary_width=boundary_width,
+            boundary=boundary,
+            fill_value=fill_value,
+            dask=dask,
+            **kwargs,
         )
 
     @docstrings.dedent
@@ -2107,11 +2226,11 @@ def _select_grid_ufunc(funcname, signature, module, **kwargs):
 
     matching_ufuncs = signature_matching_ufuncs
 
-    # TODO select via any other kwargs (such as boundary) once implemented
+    # TODO select via any other kwargs (such as boundary? metrics?) once implemented
     all_kwargs = kwargs.copy()
-    boundary = kwargs.pop("boundary", None)
-    if boundary:
-        matching_ufuncs = [uf for uf in matching_ufuncs if uf.boundary == boundary]
+    # boundary = kwargs.pop("boundary", None)
+    # if boundary:
+    #    matching_ufuncs = [uf for uf in matching_ufuncs if uf.boundary == boundary]
 
     if len(matching_ufuncs) > 1:
         # TODO include kwargs used to match in this error message

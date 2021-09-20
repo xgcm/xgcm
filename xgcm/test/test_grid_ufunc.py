@@ -268,7 +268,7 @@ class TestGridUFunc:
 
         # Test direct application
         result = apply_as_grid_ufunc(
-            diff_center_to_left,
+            diff_overlap,
             da,
             grid=grid,
             signature="(X:center)->(X:left)",
@@ -278,7 +278,7 @@ class TestGridUFunc:
 
         # Test Grid method
         result = grid.apply_as_grid_ufunc(
-            diff_center_to_left, da, signature="(X:center)->(X:left)", dask="allowed"
+            diff_overlap, da, signature="(X:center)->(X:left)", dask="allowed"
         )
         assert_equal(result, expected)
 
@@ -392,6 +392,10 @@ class TestSignaturesEquivalent:
         sig4 = "(X:center,X:center)->(X:left)"
         assert not _signatures_equivalent(sig1, sig4)
 
+    def test_no_indices(self):
+        sig = "()->()"
+        assert _signatures_equivalent(sig, sig)
+
 
 class GridOpsMockUp:
     """
@@ -403,6 +407,21 @@ class GridOpsMockUp:
     @as_grid_ufunc(signature="(X:center)->(X:left)")
     def diff_center_to_left(a):
         return a - np.roll(a, -1)
+
+    @staticmethod
+    @as_grid_ufunc(signature="(X:center)->(X:right)")
+    def diff_center_to_right_fill(a):
+        return np.roll(a, 1) - a
+
+    @staticmethod
+    @as_grid_ufunc(signature="(X:center)->(X:right)")
+    def diff_center_to_right_extend(a):
+        return np.roll(a, 1) - a
+
+    @staticmethod
+    @as_grid_ufunc(signature="()->()")
+    def pass_through_kwargs(**kwargs):
+        return kwargs
 
 
 class TestGridUFuncDispatch:
@@ -424,3 +443,26 @@ class TestGridUFuncDispatch:
     def test_select_ufunc_wrong_signature(self):
         with pytest.raises(NotImplementedError):
             _select_grid_ufunc("diff", "(X:center)->(X:center)", module=GridOpsMockUp)
+
+    @pytest.mark.xfail(reason="currently no need for this")
+    def test_select_ufunc_by_kwarg(self):
+        gridufunc, _ = _select_grid_ufunc(
+            "diff", "(X:center)->(X:right)", module=GridOpsMockUp, boundary="fill"
+        )
+        assert gridufunc is GridOpsMockUp.diff_center_to_right_fill
+
+        with pytest.raises(NotImplementedError):
+            _select_grid_ufunc(
+                "diff",
+                "(X:center)->(X:right)",
+                module=GridOpsMockUp,
+                boundary="nonsense",
+            )
+
+    @pytest.mark.xfail
+    def test_pass_through_other_kwargs(self):
+        # TODO put this in test_grid.py instead?
+        gridufunc, _ = _select_grid_ufunc(
+            "pass", "()->()", module=GridOpsMockUp, boundary="fill"
+        )
+        assert gridufunc(a=1) == {"a": 1}
