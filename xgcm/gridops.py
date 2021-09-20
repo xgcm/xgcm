@@ -1,5 +1,3 @@
-import numpy as np
-
 from .grid_ufunc import as_grid_ufunc
 
 """
@@ -14,24 +12,50 @@ through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufun
 """
 
 
-@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
-def diff_center_to_left(a):
+def diff_forward(a):
     return a[..., 1:] - a[..., :-1]
 
 
-@as_grid_ufunc(signature="(X:center)->(X:right)")
-def diff_center_to_right(a):
-    return np.roll(a, 1) - a
-
-
-@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary_width={"X": (1, 0)})
-def diff_center_to_outer(a):
-    raise NotImplementedError
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+def diff_center_to_left(a):
+    return diff_forward(a)
 
 
 @as_grid_ufunc(signature="(X:left)->(X:center)", boundary_width={"X": (0, 1)})
 def diff_left_to_center(a):
-    return a[..., 1:] - a[..., :-1]
+    return diff_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:right)", boundary_width={"X": (0, 1)})
+def diff_center_to_right(a):
+    return diff_forward(a)
+
+
+@as_grid_ufunc(signature="(X:right)->(X:center)", boundary_width={"X": (1, 0)})
+def diff_right_to_center(a):
+    return diff_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary_width={"X": (1, 1)})
+def diff_center_to_outer(a):
+    return diff_forward(a)
+
+
+# TODO this actually makes the array end up smaller, but boundary_width={"X": (-1, -1)} is not the correct kwarg value.
+# TODO rename `boundary_width` argument to `pad_width` to better reflect this possibility?
+@as_grid_ufunc(signature="(X:outer)->(X:center)", boundary_width={"X": (0, 0)})
+def diff_outer_to_center(a):
+    return diff_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:inner)", boundary_width={"X": (0, 0)})
+def diff_center_to_inner(a):
+    return diff_forward(a)
+
+
+@as_grid_ufunc(signature="(X:inner)->(X:center)", boundary_width={"X": (1, 1)})
+def diff_inner_to_center(a):
+    return diff_forward(a)
 
 
 @as_grid_ufunc(signature="(X:left)->(X:inner)")
