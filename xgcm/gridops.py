@@ -16,7 +16,7 @@ through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufun
 
 @as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
 def diff_center_to_left(a):
-    return a - np.roll(a, -1)
+    return a[..., 1:] - a[..., :-1]
 
 
 @as_grid_ufunc(signature="(X:center)->(X:right)")
@@ -29,9 +29,9 @@ def diff_center_to_outer(a):
     raise NotImplementedError
 
 
-@as_grid_ufunc(signature="(X:left)->(X:center)")
+@as_grid_ufunc(signature="(X:left)->(X:center)", boundary_width={"X": (0, 1)})
 def diff_left_to_center(a):
-    raise NotImplementedError
+    return a[..., 1:] - a[..., :-1]
 
 
 @as_grid_ufunc(signature="(X:left)->(X:inner)")
