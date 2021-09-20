@@ -97,8 +97,9 @@ class GridUFunc:
         Class which when called consumes and produces xarray objects, whose xgcm Axis
         names and positions must conform to the pattern specified by `signature`.
         Calling function has an additional positional argument `grid`, of type `xgcm.Grid`,
-        so that `func`'s new signature is `func(grid, *args, **kwargs)`. This grid
-        argument is passed on to `apply_grid_ufunc`.
+        and another additional positional argument `axis`, of type Sequence[Tuple[str]],
+        so that `func`'s new signature is `func(grid, *args, axis, **kwargs)`.
+        The grid and axis arguments are passed on to `apply_grid_ufunc`.
 
     See Also
     --------
@@ -114,10 +115,11 @@ class GridUFunc:
         if kwargs:
             raise TypeError("Unsupported keyword argument(s) provided")
 
-    def __call__(self, grid=None, *args, **kwargs):
+    def __call__(self, grid=None, *args, axis, **kwargs):
         return apply_as_grid_ufunc(
             self.ufunc,
             *args,
+            axis=axis,
             grid=grid,
             signature=self.signature,
             dask=self.dask,
@@ -151,8 +153,9 @@ def as_grid_ufunc(signature="", **kwargs):
         Function which consumes and produces xarray objects, whose xgcm Axis
         names and positions must conform to the pattern specified by `signature`.
         Function has an additional positional argument `grid`, of type `xgcm.Grid`,
-        so that `func`'s new signature is `func(grid, *args, **kwargs)`. This grid
-        argument is passed on to `apply_grid_ufunc`.
+        and another additional positional argument `axis`, of type Sequence[Tuple[str]],
+        so that `func`'s new signature is `func(grid, *args, axis, **kwargs)`.
+        The grid and axis arguments are passed on to `apply_grid_ufunc`.
 
     See Also
     --------
@@ -172,7 +175,7 @@ def as_grid_ufunc(signature="", **kwargs):
 
 
 def apply_as_grid_ufunc(
-    func, *args, grid=None, signature="", dask="forbidden", **kwargs
+    func, *args, axis, grid=None, signature="", dask="forbidden", **kwargs
 ):
     """
     Apply a function to the given arguments in a grid-aware manner.
@@ -188,14 +191,25 @@ def apply_as_grid_ufunc(
         arrays (`.data`).
 
         Passed directly on to `xarray.apply_ufunc`.
+    args : xarray.DataArray
+        One or more xarray objects to apply the function to.
+    axis : Sequence[Tuple[str]]
+        Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
+        Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
     grid : xgcm.Grid
-        The xgcm Grid object which contains the various xgcm.Axis described by
-        `signature`.
+        The xgcm Grid object which contains the various xgcm.Axis named in the axis kwarg, with positions matching the
+         first half of the `signature`.
     signature : string
-        Grid universal function signature. Specifies the xgcm.Axis names and
-        positions for each input and output variable, e.g.,
+        Grid universal function signature. Specifies the relationship between xgcm.Axis positions before and after the
+        operation for each input and output variable, e.g.,
 
-        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+        ``signature="(X:center)->(X:left)"`` for ``func=diff_center_to_left(a)`.
+
+        The axis names in the signature are dummy variables, so do not have to present in the Grid. Instead, these dummy
+        variables will be identified with the actual named Axes in the `axis` kwarg in order of appearance. For
+        instance, ``"(Z:center)->(Z:left)"`` is equivalent to ``"(X:center)->(X:left)"`` - both choices of `signature`
+        require only that there is exactly one xgcm.Axis name in `axis` which exists in Grid and starts on position
+        `center`.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -211,18 +225,46 @@ def apply_as_grid_ufunc(
     --------
     as_grid_ufunc
     Grid.apply_as_grid_ufunc
+    xarray.apply_ufunc
     """
 
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
 
+    if len(args) != len(axis):
+        raise ValueError(
+            "Number of entries in `axis` does not match the number of data arguments supplied"
+        )
+
     # Extract Axes information from signature
-    in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(
-        signature
+    (
+        in_dummy_ax_names,
+        out_dummy_ax_names,
+        in_ax_pos,
+        out_ax_pos,
+    ) = _parse_grid_ufunc_signature(signature)
+
+    # TODO refactor all these checks out into a verification function?
+
+    if len(axis) != len(in_dummy_ax_names):
+        raise ValueError(
+            "Number of entries in `axis` does not match the number of variables in the input signature"
+        )
+    for i, (arg_axes, dummy_arg_axes) in enumerate(zip(axis, in_dummy_ax_names)):
+        if len(arg_axes) != len(dummy_arg_axes):
+            raise ValueError(
+                f"Number of Axes in `axis` entry number {i} does not match the number of Axes in that entry in the input signature"
+            )
+
+    # Determine names of output axes from names in signature
+    # TODO what if we need to add a new core dim to the output? Where do we get the name from?
+    specific_signature = _create_execution_specific_signature(
+        signature, in_dummy_ax_names, axis
     )
+    out_ax_names = _parse_grid_ufunc_signature(specific_signature)[1]
 
     # Check that input args are in correct grid positions
-    for i, (arg_ns, arg_ps, arg) in enumerate(zip(in_ax_names, in_ax_pos, args)):
+    for i, (arg_ns, arg_ps, arg) in enumerate(zip(axis, in_ax_pos, args)):
         for n, p in zip(arg_ns, arg_ps):
             try:
                 ax_pos = grid.axes[n].coords[p]
@@ -243,7 +285,7 @@ def apply_as_grid_ufunc(
     # Determine core dimensions for apply_ufunc
     in_core_dims = [
         [grid.axes[n].coords[p] for n, p in zip(arg_ns, arg_ps)]
-        for arg_ns, arg_ps in zip(in_ax_names, in_ax_pos)
+        for arg_ns, arg_ps in zip(axis, in_ax_pos)
     ]
     out_core_dims = [
         [grid.axes[n].coords[p] for n, p in zip(arg_ns, arg_ps)]
@@ -283,10 +325,24 @@ def apply_as_grid_ufunc(
         res = res.assign_coords(new_core_dim_coords)
         results_with_coords.append(res)
 
-    # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc
+    # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
     if len(results_with_coords) == 1:
         (results_with_coords,) = results_with_coords
 
     # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
 
     return results_with_coords
+
+
+def _create_execution_specific_signature(signature, sig_in_dummy_ax_names, axis):
+    """Create altered signature which reflects actual Axis names passed, by replacing dummy variables."""
+    unique_dummy_axes = set(ax for arg in sig_in_dummy_ax_names for ax in arg)
+    unique_real_axes = set(ax for arg in axis for ax in arg)
+
+    specific_signature = signature
+    for unique_dummy_axis, unique_real_axis in zip(unique_dummy_axes, unique_real_axes):
+        specific_signature = specific_signature.replace(
+            unique_dummy_axis, unique_real_axis
+        )
+
+    return specific_signature
