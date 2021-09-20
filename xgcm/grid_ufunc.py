@@ -169,7 +169,6 @@ def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
     Grid.apply_as_grid_ufunc
     """
     _allowedkwargs = {
-        "boundary",
         "dask",
     }
     if kwargs.keys() - _allowedkwargs:
