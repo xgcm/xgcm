@@ -257,12 +257,11 @@ def apply_as_grid_ufunc(
             )
 
     # Determine names of output axes from names in signature
-    # TODO what if we need to add a new core dim to the output? Where do we get the name from?
+    # TODO what if we need to add a new core dim to the output that does match an input axis? Where do we get the name from?
     specific_signature = _create_execution_specific_signature(
         signature, in_dummy_ax_names, axis
     )
     out_ax_names = _parse_grid_ufunc_signature(specific_signature)[1]
-    print(out_ax_names)
 
     # Check that input args are in correct grid positions
     for i, (arg_ns, arg_ps, arg) in enumerate(zip(axis, in_ax_pos, args)):
@@ -293,11 +292,11 @@ def apply_as_grid_ufunc(
         for arg_ns, arg_ps in zip(out_ax_names, out_ax_pos)
     ]
 
-    all_out_core_dims = set(dim for arg in out_core_dims for dim in arg)
-
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
-    out_sizes = {out_dim: grid._ds.dims[out_dim] for out_dim in all_out_core_dims}
+    out_sizes = {
+        out_dim: grid._ds.dims[out_dim] for arg in out_core_dims for out_dim in arg
+    }
 
     # Perform operation via xarray.apply_ufunc
     results = xr.apply_ufunc(
@@ -309,6 +308,8 @@ def apply_as_grid_ufunc(
         **kwargs,
         dask_gufunc_kwargs={"output_sizes": out_sizes},
     )
+
+    # TODO should we transpose here to attempt to keep dimensions in same order given?
 
     # apply_ufunc might return multiple objects
     if not isinstance(results, tuple):
@@ -338,7 +339,7 @@ def apply_as_grid_ufunc(
 def _create_execution_specific_signature(signature, sig_in_dummy_ax_names, axis):
     """Create altered signature which reflects actual Axis names passed, by replacing dummy variables."""
 
-    # We can't just use set because we need these two lists to retaining their ordering relative to one another
+    # We can't just use set because we need these two lists to retain their ordering relative to one another
     unique_dummy_axes = list(
         dict.fromkeys(ax for arg in sig_in_dummy_ax_names for ax in arg)
     )

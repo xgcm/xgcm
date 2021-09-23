@@ -290,6 +290,41 @@ class TestGridUFunc:
         ).compute()
         assert_equal(result, expected)
 
+    def test_apply_along_one_axis(self):
+        grid = create_2d_test_grid("lon", "lat")
+
+        def diff_center_to_left(a):
+            return a - np.roll(a, shift=-1)
+
+        da = grid._ds.lat_c ** 2 + grid._ds.lon_c ** 2
+
+        diffed = (da - da.roll(lon_c=-1, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed,
+            dims=["lat_c", "lon_g"],
+            coords={"lat_c": grid._ds.lat_c, "lon_g": grid._ds.lon_g},
+        )
+
+        # Test direct application
+        result = apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("lon",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+        )
+        assert_equal(result, expected)
+
+        # Test decorator
+        @as_grid_ufunc("(X:center)->(X:left)")
+        def diff_center_to_left(a):
+            return a - np.roll(a, shift=-1)
+
+        result = diff_center_to_left(grid, da, axis=[("lon",)])
+        assert_equal(result, expected)
+
+    # TODO test a function with padding
+
     def test_multiple_inputs(self):
         def inner_product_left_right(a, b):
             return np.inner(a, b)
@@ -320,8 +355,6 @@ class TestGridUFunc:
 
         result = inner_product_left_right(grid, a, b, axis=[("depth",), ("depth",)])
         assert_equal(result, expected)
-
-    # TODO test applying over 1 Axis of 2D data
 
     def test_multiple_outputs(self):
         def diff_center_to_inner(a, axis):
