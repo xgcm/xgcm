@@ -1675,7 +1675,7 @@ class Grid:
         grid_ufunc, remaining_kwargs = _select_grid_ufunc(
             funcname, signature, module=gridops, **kwargs
         )
-        return grid_ufunc(self, da, **remaining_kwargs)
+        return grid_ufunc(self, da, axis=[axis], **remaining_kwargs)
 
     def _create_grid_ufunc_signature(self, da, axis, to):
         """

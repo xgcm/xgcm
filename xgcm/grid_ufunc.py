@@ -121,7 +121,7 @@ class GridUFunc:
     def __repr__(self):
         return f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', dask='{self.dask})'"
 
-    def __call__(self, grid=None, *args, axis, boundary=None, **kwargs):
+    def __call__(self, grid, *args, axis, boundary=None, **kwargs):
         return apply_as_grid_ufunc(
             self.ufunc,
             *args,
