@@ -366,7 +366,6 @@ def apply_as_grid_ufunc(
 
     # TODO add option to trim result if not done in ufunc
     # TODO loud warning if ufunc returns array of incorrect size
-    # TODO should we transpose here to attempt to keep dimensions in same order given?
 
     # apply_ufunc might return multiple objects
     if not isinstance(results, tuple):

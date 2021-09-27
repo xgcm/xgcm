@@ -1671,11 +1671,14 @@ class Grid:
             to = {ax: to for ax in axis}
 
         signature = self._create_grid_ufunc_signature(da, axis=axis, to=to)
-        print(signature)
+
         grid_ufunc, remaining_kwargs = _select_grid_ufunc(
             funcname, signature, module=gridops, **kwargs
         )
-        return grid_ufunc(self, da, axis=[axis], **remaining_kwargs)
+
+        result = grid_ufunc(self, da, axis=[axis], **remaining_kwargs)
+
+        return self._transpose_to_keep_same_dim_order(da, result, axis)
 
     def _create_grid_ufunc_signature(self, da, axis, to):
         """
@@ -1703,6 +1706,25 @@ class Grid:
         )
 
         return f"({input_arg_signature})->({output_arg_signature})"
+
+    def _transpose_to_keep_same_dim_order(self, da, result, axis):
+        """Reorder DataArray dimensions to match the original input."""
+
+        initial_dims = da.dims
+
+        shifted_dims = {}
+        for ax_name in axis:
+            ax = self.axes[ax_name]
+
+            _, old_dim = ax._get_position_name(da)
+            _, new_dim = ax._get_position_name(result)
+            shifted_dims[old_dim] = new_dim
+
+        output_dims_but_in_original_order = [
+            shifted_dims[dim] if dim in shifted_dims else dim for dim in initial_dims
+        ]
+
+        return result.transpose(*output_dims_but_in_original_order)
 
     def apply_as_grid_ufunc(
         self,
