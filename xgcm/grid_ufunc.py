@@ -232,7 +232,8 @@ def apply_as_grid_ufunc(
         `center`.
     boundary_width : Dict[str: Tuple[int, int]
         The widths of the boundaries at the edge of each array.
-        Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+        Supplied in a mapping of the form {dummy_axis_name: (lower_width, upper_width)}.
+        The axis names here are again dummy variables, each of which must be present in the signature.
     boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
         A flag indicating how to handle boundaries:
         * None: Do not apply any boundary conditions. Raise an error if
@@ -283,24 +284,15 @@ def apply_as_grid_ufunc(
         out_ax_pos,
     ) = _parse_grid_ufunc_signature(signature)
 
-    # TODO refactor all these checks out into a verification function?
-
-    if len(axis) != len(in_dummy_ax_names):
-        raise ValueError(
-            "Number of entries in `axis` does not match the number of variables in the input signature"
-        )
-    for i, (arg_axes, dummy_arg_axes) in enumerate(zip(axis, in_dummy_ax_names)):
-        if len(arg_axes) != len(dummy_arg_axes):
-            raise ValueError(
-                f"Number of Axes in `axis` entry number {i} does not match the number of Axes in that entry in the input signature"
-            )
+    dummy_to_real_axes_mapping = _identify_dummy_axes_with_real_axes(
+        in_dummy_ax_names, axis
+    )
 
     # Determine names of output axes from names in signature
     # TODO what if we need to add a new core dim to the output that does match an input axis? Where do we get the name from?
-    specific_signature = _create_execution_specific_signature(
-        signature, in_dummy_ax_names, axis
-    )
-    out_ax_names = _parse_grid_ufunc_signature(specific_signature)[1]
+    out_ax_names = [
+        [dummy_to_real_axes_mapping[ax] for ax in arg] for arg in out_dummy_ax_names
+    ]
 
     # Check that input args are in correct grid positions
     for i, (arg_ns, arg_ps, arg) in enumerate(zip(axis, in_ax_pos, args)):
@@ -337,9 +329,15 @@ def apply_as_grid_ufunc(
             "To apply a boundary condition you must provide the widths of the boundaries"
         )
     if boundary_width:
+        # convert dummy axes names in boundary_width to match real names of given axes
+        boundary_width_real_axes = {
+            dummy_to_real_axes_mapping[ax]: width
+            for ax, width in boundary_width.items()
+        }
+
         args = grid.pad(
             *args,
-            boundary_width=boundary_width,
+            boundary_width=boundary_width_real_axes,
             boundary=boundary,
             fill_value=fill_value,
         )
@@ -406,8 +404,18 @@ def apply_as_grid_ufunc(
     return results_with_coords
 
 
-def _create_execution_specific_signature(signature, sig_in_dummy_ax_names, axis):
-    """Create altered signature which reflects actual Axis names passed, by replacing dummy variables."""
+def _identify_dummy_axes_with_real_axes(sig_in_dummy_ax_names, axis):
+    """Create a mapping between the dummy axis names in the signature and the real axis names of the data passed."""
+
+    if len(axis) != len(sig_in_dummy_ax_names):
+        raise ValueError(
+            "Number of entries in `axis` does not match the number of variables in the input signature"
+        )
+    for i, (arg_axes, dummy_arg_axes) in enumerate(zip(axis, sig_in_dummy_ax_names)):
+        if len(arg_axes) != len(dummy_arg_axes):
+            raise ValueError(
+                f"Number of Axes in `axis` entry number {i} does not match the number of Axes in that entry in the input signature"
+            )
 
     # We can't just use set because we need these two lists to retain their ordering relative to one another
     unique_dummy_axes = list(
@@ -415,13 +423,13 @@ def _create_execution_specific_signature(signature, sig_in_dummy_ax_names, axis)
     )
     unique_real_axes = list(dict.fromkeys(ax for arg in axis for ax in arg))
 
-    specific_signature = signature
-    for unique_dummy_axis, unique_real_axis in zip(unique_dummy_axes, unique_real_axes):
-        specific_signature = specific_signature.replace(
-            unique_dummy_axis, unique_real_axis
+    if len(unique_dummy_axes) != len(unique_real_axes):
+        raise ValueError(
+            f"Found {len(unique_dummy_axes)} unique input axes in signature but {len(unique_real_axes)} "
+            f"real unique input axes were supplied to the grid ufunc when called"
         )
 
-    return specific_signature
+    return dict(zip(unique_dummy_axes, unique_real_axes))
 
 
 _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
