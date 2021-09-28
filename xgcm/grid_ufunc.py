@@ -364,7 +364,8 @@ def apply_as_grid_ufunc(
         output_core_dims=out_core_dims,
         dask=dask,
         **kwargs,
-        dask_gufunc_kwargs={"output_sizes": out_sizes, "output_dtypes": out_dtypes},
+        dask_gufunc_kwargs={"output_sizes": out_sizes},
+        output_dtypes=out_dtypes,
     )
 
     # TODO add option to trim result if not done in ufunc
