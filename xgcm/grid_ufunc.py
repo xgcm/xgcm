@@ -122,6 +122,7 @@ class GridUFunc:
         return f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', dask='{self.dask})'"
 
     def __call__(self, grid, *args, axis, boundary=None, **kwargs):
+        dask = kwargs.pop("dask", self.dask)
         return apply_as_grid_ufunc(
             self.ufunc,
             *args,
@@ -130,7 +131,7 @@ class GridUFunc:
             signature=self.signature,
             boundary_width=self.boundary_width,
             boundary=boundary,
-            dask=self.dask,
+            dask=dask,
             **kwargs,
         )
 
@@ -348,6 +349,8 @@ def apply_as_grid_ufunc(
     out_sizes = {
         out_dim: grid._ds.dims[out_dim] for arg in out_core_dims for out_dim in arg
     }
+    # TODO allow users to specify new output dtypes
+    out_dtypes = [a.dtype for a in args]
 
     # TODO Map operation over dask chunks?
     # def mapped_func(*a, **kw):
@@ -361,7 +364,7 @@ def apply_as_grid_ufunc(
         output_core_dims=out_core_dims,
         dask=dask,
         **kwargs,
-        dask_gufunc_kwargs={"output_sizes": out_sizes},
+        dask_gufunc_kwargs={"output_sizes": out_sizes, "output_dtypes": out_dtypes},
     )
 
     # TODO add option to trim result if not done in ufunc
