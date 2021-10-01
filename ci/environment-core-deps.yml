@@ -15,4 +15,3 @@ dependencies:
   - pytest-xdist
   - python=3.8
   - xarray
-  - toml
