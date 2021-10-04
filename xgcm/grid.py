@@ -1647,9 +1647,9 @@ class Grid:
 
         return padded
 
-    def _grid_ufunc_dispatch(self, funcname, da, axis, to=None, **kwargs):
+    def _1d_grid_ufunc_dispatch(self, funcname, da, axis, to=None, **kwargs):
         """
-        Calls appropriate grid ufuncs on data, along the specified axes.
+        Calls appropriate 1D grid ufuncs on data, along the specified axes, sequentially.
 
         Parameters
         ----------
@@ -1670,42 +1670,43 @@ class Grid:
         elif isinstance(to, str):
             to = {ax: to for ax in axis}
 
-        signature = self._create_grid_ufunc_signature(da, axis=axis, to=to)
+        signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
-        grid_ufunc, remaining_kwargs = _select_grid_ufunc(
-            funcname, signature, module=gridops, **kwargs
-        )
+        array = da
+        # Apply 1D function over multiple axes
+        # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
+        # TODO only actually need to call apply_ufunc once for those axes
+        for signature_1d, ax_name in zip(signatures, axis):
 
-        result = grid_ufunc(self, da, axis=[axis], **remaining_kwargs)
+            grid_ufunc, remaining_kwargs = _select_grid_ufunc(
+                funcname, signature_1d, module=gridops, **kwargs
+            )
 
-        return self._transpose_to_keep_same_dim_order(da, result, axis)
+            array = grid_ufunc(self, array, axis=[ax_name], **remaining_kwargs)
 
-    def _create_grid_ufunc_signature(self, da, axis, to):
+        return self._transpose_to_keep_same_dim_order(da, array, axis)
+
+    def _create_1d_grid_ufunc_signatures(self, da, axis, to):
         """
-        Create a signature to pass to apply_grid_ufunc from data, list of input axes, and list of target axis positions.
-        """
+        Create a list of signatures to pass to apply_grid_ufunc.
 
-        from_ax_positions = []
-        to_ax_positions = []
-        for ax_name in axis:
+        Created from data, list of input axes, and list of target axis positions.
+        One separate signature is created for each axis the 1D ufunc is going to be applied over.
+        """
+        signatures = []
+        for ax_name, to_pos in itertools.zip_longest(axis, to):
             ax = self.axes[ax_name]
 
             from_pos, dim = ax._get_position_name(da)
-            from_ax_positions.append(from_pos)
 
             to_pos = to[ax_name]
             if to_pos is None:
                 to_pos = ax._default_shifts[from_pos]
-            to_ax_positions.append(to_pos)
 
-        input_arg_signature = ",".join(
-            [f"{name}:{from_pos}" for name, from_pos in zip(axis, from_ax_positions)]
-        )
-        output_arg_signature = ",".join(
-            [f"{name}:{to_pos}" for name, to_pos in zip(axis, to_ax_positions)]
-        )
+            signature_1d = f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
+            signatures.append(signature_1d)
 
-        return f"({input_arg_signature})->({output_arg_signature})"
+        return signatures
 
     def _transpose_to_keep_same_dim_order(self, da, result, axis):
         """Reorder DataArray dimensions to match the original input."""
@@ -1859,7 +1860,7 @@ class Grid:
 
         >>> grid.diff(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_ufunc_dispatch("diff", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("diff", da, axis, **kwargs)
 
     @docstrings.dedent
     def min(self, da, axis, **kwargs):
