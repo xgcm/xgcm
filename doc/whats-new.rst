@@ -33,6 +33,13 @@ Documentation
 - Updated metrics documentation for new methods in `Grid Metrics <https://xgcm.readthedocs.io/en/latest/grid_metrics.html>`_.
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
+Internal Changes
+~~~~~~~~~~~~~
+
+- Fixed metrics tests so some tests that previously did not run now do run, and refactored the metrics tests.
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
+
+
 
 v0.5.2 (2021/5/27)
 -------------------
