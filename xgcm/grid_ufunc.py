@@ -1,6 +1,7 @@
 import re
 import string
 
+import numpy as np
 import xarray as xr
 
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
@@ -78,7 +79,7 @@ class GridUFunc:
 
     Parameters
     ----------
-    ufunc : callable
+    ufunc : function
         Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
         arrays (`.data`). Passed directly on to `xarray.apply_ufunc`.
     signature : string
@@ -92,6 +93,9 @@ class GridUFunc:
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
+    map_overlap : bool, optional
+        Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
+        Default is False. If True, will need to be accompanied by dask='allowed'.
 
     Returns
     -------
@@ -115,14 +119,19 @@ class GridUFunc:
         self.signature = kwargs.pop("signature", "")
         self.boundary_width = kwargs.pop("boundary_width", None)
         self.dask = kwargs.pop("dask", "forbidden")
+        self.map_overlap = kwargs.pop("map_overlap", False)
         if kwargs:
             raise TypeError("Unsupported keyword argument(s) provided")
 
     def __repr__(self):
-        return f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', dask='{self.dask})'"
+        return (
+            f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', "
+            f"          dask='{self.dask})', map_overlap={self.map_overlap})"
+        )
 
     def __call__(self, grid, *args, axis, boundary=None, **kwargs):
         dask = kwargs.pop("dask", self.dask)
+        map_overlap = kwargs.pop("map_overlap", self.map_overlap)
         return apply_as_grid_ufunc(
             self.ufunc,
             *args,
@@ -132,6 +141,7 @@ class GridUFunc:
             boundary_width=self.boundary_width,
             boundary=boundary,
             dask=dask,
+            map_overlap=map_overlap,
             **kwargs,
         )
 
@@ -156,6 +166,9 @@ def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
+    map_overlap : bool, optional
+        Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
+        Default is False. If True, will need to be accompanied by dask='allowed'.
 
     Returns
     -------
@@ -174,6 +187,7 @@ def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
     """
     _allowedkwargs = {
         "dask",
+        "map_overlap",
     }
     if kwargs.keys() - _allowedkwargs:
         raise TypeError("Unsupported keyword argument(s) provided")
@@ -196,6 +210,7 @@ def apply_as_grid_ufunc(
     boundary=None,
     fill_value=None,
     dask="forbidden",
+    map_overlap=False,
     **kwargs,
 ):
     """
@@ -207,7 +222,7 @@ def apply_as_grid_ufunc(
 
     Parameters
     ----------
-    func : callable
+    func : function
         Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
         arrays (`.data`).
 
@@ -254,6 +269,9 @@ def apply_as_grid_ufunc(
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
+    map_overlap : bool, optional
+        Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
+        Default is False. If True, will need to be accompanied by dask='allowed'.
 
     Returns
     -------
@@ -324,42 +342,101 @@ def apply_as_grid_ufunc(
         for arg_ns, arg_ps in zip(out_ax_names, out_ax_pos)
     ]
 
+    # TODO allow users to specify new output dtypes
+    out_dtypes = [a.dtype for a in args]
+
     # Pad arrays according to internal boundary condition information
     if boundary and not boundary_width:
         raise ValueError(
             "To apply a boundary condition you must provide the widths of the boundaries"
         )
     if boundary_width:
+        # TODO compose this padding operation with the function application to minimise number of tasks?
+
         # convert dummy axes names in boundary_width to match real names of given axes
         boundary_width_real_axes = {
             dummy_to_real_axes_mapping[ax]: width
             for ax, width in boundary_width.items()
         }
 
-        args = grid.pad(
+        print(boundary)
+        [print(arg.size) for arg in args]
+        [print(arg.chunks) for arg in args]
+        print(boundary_width_real_axes)
+
+        padded_args = grid.pad(
             *args,
             boundary_width=boundary_width_real_axes,
             boundary=boundary,
             fill_value=fill_value,
         )
+    else:
+        padded_args = args
+
+    if (
+        any(
+            _has_chunked_core_dims(arg, core_dims)
+            for arg, core_dims in zip(args, in_core_dims)
+        )
+        and map_overlap
+    ):
+        # map operation over dask chunks along core dimensions
+        from dask.array import map_overlap
+
+        [print(arg.size) for arg in padded_args]
+        [print(arg.chunks) for arg in padded_args]
+
+        # merge any lonely chunks from padding
+        da = args[0]  # TODO generalize to multiple arguments!
+        chunks_dict = dict(
+            zip(da.dims, da.chunks)
+        )  # needed for DataArrays due to xarray issue #5843
+        print(chunks_dict)
+        # TODO refactor this ugly logic to live elsewhere
+        boundary_width_dims = {
+            _get_dim(grid, da, ax): width
+            for ax, width in boundary_width_real_axes.items()
+        }
+        print(boundary_width_dims)
+        merged_boundary_chunks = _merge_boundary_chunk_pattern(
+            chunks_dict, boundary_width_dims
+        )
+        rechunked_padded_args = [
+            arg.chunk(merged_boundary_chunks) for arg in padded_args
+        ]
+        true_chunks = ...
+
+        # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
+        # calls map_blocks automatically in that scenario)
+
+        def mapped_func(*a, **kw):
+            return map_overlap(
+                func,
+                *a,
+                **kw,
+                depths=boundary_width,
+                boundary="none",
+                trim=False,
+                meta=np.array(
+                    [], dtype=out_dtypes[0]
+                ),  # TODO can map_overlap handle multiple return values?
+                chunks=true_chunks,
+            )
+
+    else:
+        rechunked_padded_args = padded_args
+        mapped_func = func
 
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
-    # TODO does padding change this?
     out_sizes = {
         out_dim: grid._ds.dims[out_dim] for arg in out_core_dims for out_dim in arg
     }
-    # TODO allow users to specify new output dtypes
-    out_dtypes = [a.dtype for a in args]
-
-    # TODO Map operation over dask chunks?
-    # def mapped_func(*a, **kw):
-    #    return map_overlap(func, *a, **kw, depths=boundary_depths, boundary=None, trim=True)
 
     # Perform operation via xarray.apply_ufunc
     results = xr.apply_ufunc(
-        func,
-        *args,
+        mapped_func,
+        *rechunked_padded_args,
         input_core_dims=in_core_dims,
         output_core_dims=out_core_dims,
         dask=dask,
@@ -405,6 +482,47 @@ def apply_as_grid_ufunc(
     # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
 
     return results_with_coords
+
+
+def _has_chunked_core_dims(da, core_dims):
+    for core_dim in core_dims:
+        axis_num = list(da.dims).index(core_dim)
+
+        if da.chunks is None:
+            continue
+        else:
+            # TODO what if only some of the core dimensions are chunked?
+            core_dim_chunks = da.chunks[axis_num]
+            if len(core_dim_chunks) > 1:
+                return True
+    return False
+
+
+def _merge_boundary_chunk_pattern(original_chunks, boundary_width_dims):
+    """Calculates the pattern of chunking needed to merge back in small chunks left on boundaries after padding"""
+
+    # TODO generalise to multiple data arguments
+    new_chunks = {}
+    for dim, width in boundary_width_dims.items():
+        lower_boundary_width, upper_boundary_width = boundary_width_dims[dim]
+        first_chunk_width, *other_chunks_widths, last_chunk_width = original_chunks[dim]
+        new_chunks_along_dim = tuple(
+            [
+                first_chunk_width + lower_boundary_width,
+                *other_chunks_widths,
+                last_chunk_width + upper_boundary_width,
+            ]
+        )
+        new_chunks[dim] = new_chunks_along_dim
+
+    print(new_chunks)
+    return new_chunks
+
+
+def _get_dim(grid, da, ax_name):
+    ax = grid.axes[ax_name]
+    from_pos, dim = ax._get_position_name(da)
+    return dim
 
 
 def _identify_dummy_axes_with_real_axes(sig_in_dummy_ax_names, axis):
