@@ -455,7 +455,7 @@ class TestDask:
         da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk(3)
         da.coords["depth_c"] = grid._ds.depth_c
 
-        diffed = (da - da.roll(depth_c=-1, roll_coords=False)).data
+        diffed = (da - da.roll(depth_c=1, roll_coords=False)).data
         expected = xr.DataArray(
             diffed, dims=["depth_g"], coords={"depth_g": grid._ds.depth_g}
         ).compute()
@@ -494,7 +494,7 @@ class TestDask:
             map_overlap=True,
         )
         def diff_center_to_left(a):
-            return a - np.roll(a, shift=-1)
+            return a[..., 1:] - a[..., :-1]
 
         result = diff_center_to_left(
             grid,

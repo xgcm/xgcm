@@ -359,10 +359,7 @@ def apply_as_grid_ufunc(
             for ax, width in boundary_width.items()
         }
 
-        print(boundary)
-        [print(arg.size) for arg in args]
-        [print(arg.chunks) for arg in args]
-        print(boundary_width_real_axes)
+        original_chunks = args[0].chunks
 
         padded_args = grid.pad(
             *args,
@@ -383,38 +380,38 @@ def apply_as_grid_ufunc(
         # map operation over dask chunks along core dimensions
         from dask.array import map_overlap
 
-        [print(arg.size) for arg in padded_args]
-        [print(arg.chunks) for arg in padded_args]
-
         # merge any lonely chunks from padding
         da = args[0]  # TODO generalize to multiple arguments!
         chunks_dict = dict(
             zip(da.dims, da.chunks)
         )  # needed for DataArrays due to xarray issue #5843
-        print(chunks_dict)
         # TODO refactor this ugly logic to live elsewhere
         boundary_width_dims = {
             _get_dim(grid, da, ax): width
             for ax, width in boundary_width_real_axes.items()
         }
-        print(boundary_width_dims)
         merged_boundary_chunks = _merge_boundary_chunk_pattern(
             chunks_dict, boundary_width_dims
         )
         rechunked_padded_args = [
             arg.chunk(merged_boundary_chunks) for arg in padded_args
         ]
-        true_chunks = ...
+        # TODO the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
+        true_chunks = original_chunks
+
+        boundary_width_numpy_axes = {
+            grid.axes[ax_name]._get_axis_dim_num(da): width
+            for ax_name, width in boundary_width_real_axes.items()
+        }
 
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
-
         def mapped_func(*a, **kw):
             return map_overlap(
                 func,
                 *a,
                 **kw,
-                depths=boundary_width,
+                depth=boundary_width_numpy_axes,
                 boundary="none",
                 trim=False,
                 meta=np.array(
@@ -515,7 +512,6 @@ def _merge_boundary_chunk_pattern(original_chunks, boundary_width_dims):
         )
         new_chunks[dim] = new_chunks_along_dim
 
-    print(new_chunks)
     return new_chunks
 
 
