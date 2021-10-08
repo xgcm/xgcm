@@ -442,6 +442,73 @@ class TestGridUFunc:
         assert_equal(v, expected_v)
 
 
+class TestDask:
+    def test_chunked_non_core_dims(self):
+        # Create 2D test data
+        ...
+
+    def test_chunked_core_dims(self):
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+        da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk(3)
+        da.coords["depth_c"] = grid._ds.depth_c
+
+        diffed = (da - da.roll(depth_c=-1, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed, dims=["depth_g"], coords={"depth_g": grid._ds.depth_g}
+        ).compute()
+
+        # Test direct application
+        result = apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            # boundary="",
+            dask="allowed",
+            map_overlap=True,
+        ).compute()
+        assert_equal(result, expected)
+
+        # Test Grid method
+        result = grid.apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="allowed",
+            map_overlap=True,
+        )
+        assert_equal(result, expected)
+
+        # Test decorator
+        @as_grid_ufunc(
+            "(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="allowed",
+            map_overlap=True,
+        )
+        def diff_center_to_left(a):
+            return a - np.roll(a, shift=-1)
+
+        result = diff_center_to_left(
+            grid,
+            da,
+            axis=[("depth",)],
+        ).compute()
+        assert_equal(result, expected)
+
+    def test_chunked_core_dims_num_tasks_regression(self):
+        # Assert numbr of tasks in optimized graph is <= some hardcoded number
+        # Obtain that number from the old performance initially
+        ...
+
+
 class TestSignaturesEquivalent:
     def test_equivalent(self):
         sig1 = "(X:center)->(X:left)"
