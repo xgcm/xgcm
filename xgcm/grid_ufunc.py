@@ -227,7 +227,7 @@ def apply_as_grid_ufunc(
         arrays (`.data`).
 
         Passed directly on to `xarray.apply_ufunc`.
-    args : xarray.DataArray
+    args : xarray.DataArray or xarray.Dataset
         One or more xarray objects to apply the function to.
     axis : Sequence[Tuple[str]]
         Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
@@ -290,6 +290,9 @@ def apply_as_grid_ufunc(
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
 
+    if any(not isinstance(arg, (xr.DataArray, xr.Dataset)) for arg in args):
+        raise TypeError("All data arguments must be of type DataArray or Dataset")
+
     if len(args) != len(axis):
         raise ValueError(
             "Number of entries in `axis` does not match the number of data arguments supplied"
@@ -345,13 +348,12 @@ def apply_as_grid_ufunc(
     # TODO allow users to specify new output dtypes
     out_dtypes = [a.dtype for a in args]
 
-    # Pad arrays according to internal boundary condition information
+    # Pad arrays according to boundary condition information
     if boundary and not boundary_width:
         raise ValueError(
             "To apply a boundary condition you must provide the widths of the boundaries"
         )
     if boundary_width:
-        # TODO compose this padding operation with the function application to minimise number of tasks?
 
         # convert dummy axes names in boundary_width to match real names of given axes
         boundary_width_real_axes = {
@@ -381,17 +383,12 @@ def apply_as_grid_ufunc(
         from dask.array import map_overlap
 
         # merge any lonely chunks from padding
-        da = args[0]  # TODO generalize to multiple arguments!
-        chunks_dict = dict(
-            zip(da.dims, da.chunks)
-        )  # needed for DataArrays due to xarray issue #5843
-        # TODO refactor this ugly logic to live elsewhere
-        boundary_width_dims = {
-            _get_dim(grid, da, ax): width
-            for ax, width in boundary_width_real_axes.items()
-        }
-        merged_boundary_chunks = _merge_boundary_chunk_pattern(
-            chunks_dict, boundary_width_dims
+        da = args[0]
+        merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
+            grid,
+            da,
+            _chunks_as_dict(da),
+            boundary_width_real_axes,
         )
         rechunked_padded_args = [
             arg.chunk(merged_boundary_chunks) for arg in padded_args
@@ -495,8 +492,27 @@ def _has_chunked_core_dims(da, core_dims):
     return False
 
 
-def _merge_boundary_chunk_pattern(original_chunks, boundary_width_dims):
+def _chunks_as_dict(data_obj):
+    """Need to special-case DataArrays due to inconsistency of xarray issue #5843"""
+
+    # TODO generalize to multiple arguments!
+    if isinstance(data_obj, xr.DataArray):
+        chunks_dict = dict(zip(data_obj.dims, data_obj.chunks))
+    else:  # must be a Dataset
+        chunks_dict = data_obj.chunks
+
+    return chunks_dict
+
+
+def _get_chunk_pattern_for_merging_boundary(
+    grid, da, original_chunks, boundary_width_real_axes
+):
     """Calculates the pattern of chunking needed to merge back in small chunks left on boundaries after padding"""
+
+    # TODO refactor this ugly logic to live elsewhere
+    boundary_width_dims = {
+        _get_dim(grid, da, ax): width for ax, width in boundary_width_real_axes.items()
+    }
 
     # TODO generalise to multiple data arguments
     new_chunks = {}
