@@ -478,30 +478,29 @@ def apply_as_grid_ufunc(
     return results_with_coords
 
 
-def _has_chunked_core_dims(da, core_dims):
-    for core_dim in core_dims:
-        axis_num = list(da.dims).index(core_dim)
+def _has_chunked_core_dims(obj, core_dims):
+    def is_core_dim_chunked(a, core_dim):
+        return len(_chunks_as_dict(a)[core_dim]) > 1
 
-        if da.chunks is None:
-            continue
-        else:
-            # TODO what if only some of the core dimensions are chunked?
-            core_dim_chunks = da.chunks[axis_num]
-            if len(core_dim_chunks) > 1:
-                return True
-    return False
+    # TODO what if only some of the core dimensions are chunked?
+    return obj.chunks is not None and any(
+        is_core_dim_chunked(obj, dim) for dim in core_dims
+    )
 
 
 def _chunks_as_dict(data_obj):
     """Need to special-case DataArrays due to inconsistency of xarray issue #5843"""
 
-    # TODO generalize to multiple arguments!
-    if isinstance(data_obj, xr.DataArray):
-        chunks_dict = dict(zip(data_obj.dims, data_obj.chunks))
-    else:  # must be a Dataset
-        chunks_dict = data_obj.chunks
+    if data_obj.chunks is None:
+        return None
+    else:
+        # TODO generalize to multiple arguments!
+        if isinstance(data_obj, xr.DataArray):
+            chunks_dict = dict(zip(data_obj.dims, data_obj.chunks))
+        else:  # must be a Dataset
+            chunks_dict = data_obj.chunks
 
-    return chunks_dict
+        return chunks_dict
 
 
 def _get_chunk_pattern_for_merging_boundary(
