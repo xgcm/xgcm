@@ -1,5 +1,6 @@
 import re
 
+import dask.array
 import numpy as np
 import pytest
 import xarray as xr
@@ -442,11 +443,16 @@ class TestGridUFunc:
         assert_equal(v, expected_v)
 
 
-class TestDask:
+class TestDaskNoOverlap:
     def test_chunked_non_core_dims(self):
         # Create 2D test data
         ...
 
+    def test_chunked_core_dims_overlap_turned_off(self):
+        ...
+
+
+class TestDaskOverlap:
     def test_chunked_core_dims(self):
         def diff_center_to_left(a):
             return a[..., 1:] - a[..., :-1]
@@ -503,10 +509,79 @@ class TestDask:
         ).compute()
         assert_equal(result, expected)
 
-    def test_chunked_core_dims_num_tasks_regression(self):
+    @pytest.mark.xfail
+    def test_num_tasks_regression(self):
         # Assert numbr of tasks in optimized graph is <= some hardcoded number
         # Obtain that number from the old performance initially
-        ...
+        raise NotImplementedError
+
+    @pytest.mark.xfail
+    def test_gave_axis_but_no_corresponding_boundary_width(self):
+        # TODO this should default to zero
+        raise NotImplementedError
+
+    def test_zero_width_boundary(self):
+        def increment(x):
+            """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
+            if isinstance(x, np.ndarray):
+                return np.add(x, 1)
+            else:
+                raise TypeError
+
+        grid = create_1d_test_grid("depth")
+        a = np.sin(grid._ds.depth_g * 2 * np.pi / 9).chunk(2)
+        a.coords["depth_g"] = grid._ds.depth_g
+
+        expected = a + 1
+        result = apply_as_grid_ufunc(
+            increment,
+            a,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:left)->(X:left)",
+            boundary_width=None,
+            dask="allowed",
+            map_overlap=True,
+        ).compute()
+        assert_equal(result, expected)
+
+        # in this case the result should be the same as using just map_blocks
+        expected_data = dask.array.map_blocks(increment, a.data)
+        np.testing.assert_equal(result.data, expected_data)
+
+    @pytest.mark.xfail
+    def test_only_some_core_dims_are_chunked(self):
+        raise NotImplementedError
+
+    @pytest.mark.xfail
+    def test_ufunc_changes_chunksize(self):
+        raise NotImplementedError
+
+    @pytest.mark.xfail
+    def test_multiple_inputs(self):
+        @as_grid_ufunc(
+            "(X:left),(X:right)->()",
+            boundary_width=None,
+            map_overlap=True,
+            dask="allowed",
+        )
+        def multiply_left_right(a, b):
+            return np.multiply(a, b)
+
+        grid = create_1d_test_grid("depth")
+        a = np.sin(grid._ds.depth_g * 2 * np.pi / 9).chunk(2)
+        a.coords["depth_g"] = grid._ds.depth_g
+        b = np.cos(grid._ds.depth_r * 2 * np.pi / 9).chunk(2)
+        b.coords["depth_r"] = grid._ds.depth_r
+
+        expected = xr.DataArray(np.inner(a, b))
+
+        result = multiply_left_right(grid, a, b, axis=[("depth",), ("depth",)])
+        assert_equal(result, expected)
+
+    @pytest.mark.xfail
+    def test_multiple_outputs(self):
+        raise NotImplementedError
 
 
 class TestSignaturesEquivalent:

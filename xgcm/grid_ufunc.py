@@ -353,15 +353,13 @@ def apply_as_grid_ufunc(
         raise ValueError(
             "To apply a boundary condition you must provide the widths of the boundaries"
         )
+    original_chunks = args[0].chunks
     if boundary_width:
-
         # convert dummy axes names in boundary_width to match real names of given axes
         boundary_width_real_axes = {
             dummy_to_real_axes_mapping[ax]: width
             for ax, width in boundary_width.items()
         }
-
-        original_chunks = args[0].chunks
 
         padded_args = grid.pad(
             *args,
@@ -370,6 +368,9 @@ def apply_as_grid_ufunc(
             fill_value=fill_value,
         )
     else:
+        boundary_width_real_axes = {
+            real_ax: (0, 0) for real_ax in dummy_to_real_axes_mapping.values()
+        }
         padded_args = args
 
     if (
