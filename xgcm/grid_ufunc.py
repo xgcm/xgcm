@@ -353,7 +353,8 @@ def apply_as_grid_ufunc(
         raise ValueError(
             "To apply a boundary condition you must provide the widths of the boundaries"
         )
-    original_chunks = args[0].chunks
+    # TODO this isn't Dataset-proof
+    original_chunks = [arg.chunks for arg in args]
     if boundary_width:
         # convert dummy axes names in boundary_width to match real names of given axes
         boundary_width_real_axes = {
@@ -384,23 +385,20 @@ def apply_as_grid_ufunc(
         from dask.array import map_overlap
 
         # merge any lonely chunks from padding
-        da = args[0]
-        merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
-            grid,
-            da,
-            _chunks_as_dict(da),
+        rechunked_padded_args = _rechunk_to_merge_in_boundary_chunks(
+            padded_args,
+            args,
             boundary_width_real_axes,
+            grid,
         )
-        rechunked_padded_args = [
-            arg.chunk(merged_boundary_chunks) for arg in padded_args
-        ]
-        # TODO the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
-        true_chunks = original_chunks
 
-        boundary_width_numpy_axes = {
-            grid.axes[ax_name]._get_axis_dim_num(da): width
+        boundary_width_per_numpy_axis = {
+            grid.axes[ax_name]._get_axis_dim_num(args[0]): width
             for ax_name, width in boundary_width_real_axes.items()
         }
+
+        # TODO the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
+        true_chunks_per_numpy_axis = original_chunks
 
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
@@ -409,13 +407,13 @@ def apply_as_grid_ufunc(
                 func,
                 *a,
                 **kw,
-                depth=boundary_width_numpy_axes,
+                depth=boundary_width_per_numpy_axis,
                 boundary="none",
                 trim=False,
                 meta=np.array(
                     [], dtype=out_dtypes[0]
                 ),  # TODO can map_overlap handle multiple return values?
-                chunks=true_chunks,
+                chunks=true_chunks_per_numpy_axis[0],
             )
 
     else:
@@ -489,6 +487,26 @@ def _has_chunked_core_dims(obj, core_dims):
     )
 
 
+def _rechunk_to_merge_in_boundary_chunks(
+    padded_args, original_args, boundary_width_real_axes, grid
+):
+
+    rechunked_padded_args = []
+    for padded_arg, original_arg in zip(padded_args, original_args):
+
+        original_arg_chunks = _chunks_as_dict(original_arg)
+        merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
+            grid,
+            padded_arg,
+            original_arg_chunks,
+            boundary_width_real_axes,
+        )
+        rechunked_arg = padded_arg.chunk(merged_boundary_chunks)
+        rechunked_padded_args.append(rechunked_arg)
+
+    return rechunked_padded_args
+
+
 def _chunks_as_dict(data_obj):
     """Need to special-case DataArrays due to inconsistency of xarray issue #5843"""
 
@@ -514,7 +532,6 @@ def _get_chunk_pattern_for_merging_boundary(
         _get_dim(grid, da, ax): width for ax, width in boundary_width_real_axes.items()
     }
 
-    # TODO generalise to multiple data arguments
     new_chunks = {}
     for dim, width in boundary_width_dims.items():
         lower_boundary_width, upper_boundary_width = boundary_width_dims[dim]

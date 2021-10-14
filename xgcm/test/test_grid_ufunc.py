@@ -453,7 +453,7 @@ class TestDaskNoOverlap:
 
 
 class TestDaskOverlap:
-    def test_chunked_core_dims(self):
+    def test_chunked_core_dims_unchanging_chunksize(self):
         def diff_center_to_left(a):
             return a[..., 1:] - a[..., :-1]
 
@@ -557,16 +557,19 @@ class TestDaskOverlap:
     def test_ufunc_changes_chunksize(self):
         raise NotImplementedError
 
-    @pytest.mark.xfail
     def test_multiple_inputs(self):
         @as_grid_ufunc(
-            "(X:left),(X:right)->()",
+            "(X:left),(X:right)->(X:center)",
             boundary_width=None,
             map_overlap=True,
             dask="allowed",
         )
         def multiply_left_right(a, b):
-            return np.multiply(a, b)
+            """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
+            if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+                return np.multiply(a, b)
+            else:
+                raise TypeError
 
         grid = create_1d_test_grid("depth")
         a = np.sin(grid._ds.depth_g * 2 * np.pi / 9).chunk(2)
@@ -574,7 +577,12 @@ class TestDaskOverlap:
         b = np.cos(grid._ds.depth_r * 2 * np.pi / 9).chunk(2)
         b.coords["depth_r"] = grid._ds.depth_r
 
-        expected = xr.DataArray(np.inner(a, b))
+        depth_c_coord = xr.DataArray(np.arange(1, 10), dims="depth_c")
+        expected = xr.DataArray(
+            np.multiply(a.data, b.data),
+            dims=["depth_c"],
+            coords={"depth_c": depth_c_coord},
+        )
 
         result = multiply_left_right(grid, a, b, axis=[("depth",), ("depth",)])
         assert_equal(result, expected)
