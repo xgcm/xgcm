@@ -624,7 +624,6 @@ def test_create_grid_no_comodo(all_datasets):
 
 def test_grid_no_coords(periodic_1d):
     """Ensure that you can use xgcm with Xarray datasets that don't have dimension coordinates."""
-
     ds, periodic, expected = periodic_1d
     ds_nocoords = ds.drop_vars(list(ds.dims.keys()))
 
@@ -635,8 +634,6 @@ def test_grid_no_coords(periodic_1d):
     assert len(diff.coords) == 0
     interp = grid.interp(ds["data_c"], "X")
     assert len(interp.coords) == 0
-
-    assert False
 
 
 def test_grid_repr(all_datasets):
