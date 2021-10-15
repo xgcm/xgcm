@@ -304,7 +304,7 @@ def apply_as_grid_ufunc(
             except KeyError:
                 raise ValueError(f"Axis position ({n}:{p}) does not exist in grid")
 
-            if ax_pos not in arg.coords:
+            if ax_pos not in arg.dims:
                 raise ValueError(
                     f"Mismatch between signature and input argument {i}: "
                     f"Signature specified data to lie at Axis Position ({n}:{p}), "
@@ -379,10 +379,13 @@ def apply_as_grid_ufunc(
     # Restore any dimension coordinates associated with new output dims that are present in grid
     results_with_coords = []
     for res, arg_out_core_dims in zip(results, out_core_dims):
+
+        # Only reconstruct coordinates that actually contain grid position info (i.e. not just integer values along a dim.)
+        # Therefore if input only had dimensions and no coordinates, the output should too.
         new_core_dim_coords = {
             dim: grid._ds.coords[dim]
             for dim in arg_out_core_dims
-            if dim in grid._ds.dims and dim not in res.coords
+            if dim in grid._ds.coords and dim not in res.coords
         }
 
         try:
