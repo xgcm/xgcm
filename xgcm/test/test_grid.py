@@ -631,7 +631,6 @@ def test_grid_no_coords(periodic_1d):
     coords = expected["axes"]
     grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
 
-    print(ds["data_c"])
     diff = grid.diff(ds["data_c"], "X")
     assert len(diff.coords) == 0
     interp = grid.interp(ds["data_c"], "X")
