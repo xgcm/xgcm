@@ -195,6 +195,7 @@ def apply_as_grid_ufunc(
     boundary_width=None,
     boundary=None,
     fill_value=None,
+    keep_coords=True,
     dask="forbidden",
     **kwargs,
 ):
@@ -303,7 +304,7 @@ def apply_as_grid_ufunc(
             except KeyError:
                 raise ValueError(f"Axis position ({n}:{p}) does not exist in grid")
 
-            if ax_pos not in arg.coords:
+            if ax_pos not in arg.dims:
                 raise ValueError(
                     f"Mismatch between signature and input argument {i}: "
                     f"Signature specified data to lie at Axis Position ({n}:{p}), "
@@ -375,14 +376,16 @@ def apply_as_grid_ufunc(
     if not isinstance(results, tuple):
         results = (results,)
 
-    # Restore any coordinates associated with new output dims that are present in grid
-    # TODO should this be optional via a `keep_coords` arg?
+    # Restore any dimension coordinates associated with new output dims that are present in grid
     results_with_coords = []
     for res, arg_out_core_dims in zip(results, out_core_dims):
+
+        # Only reconstruct coordinates that actually contain grid position info (i.e. not just integer values along a dim.)
+        # Therefore if input only had dimensions and no coordinates, the output should too.
         new_core_dim_coords = {
             dim: grid._ds.coords[dim]
             for dim in arg_out_core_dims
-            if dim in grid._ds.dims and dim not in res.coords
+            if dim in grid._ds.coords and dim not in res.coords
         }
 
         try:
@@ -396,6 +399,13 @@ def apply_as_grid_ufunc(
                 )
             else:
                 raise
+
+        if not keep_coords:
+            # TODO I don't like the `keep_coords` argument in general and think it should be removed for clarity.
+            # Drop any non-dimension coordinates on the output
+            non_dim_coords = [coord for coord in res.coords if coord not in res.dims]
+            res = res.drop_vars(non_dim_coords)
+
         results_with_coords.append(res)
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does

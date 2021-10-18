@@ -1647,7 +1647,9 @@ class Grid:
 
         return padded
 
-    def _1d_grid_ufunc_dispatch(self, funcname, da, axis, to=None, **kwargs):
+    def _1d_grid_ufunc_dispatch(
+        self, funcname, da, axis, to=None, keep_coords=False, **kwargs
+    ):
         """
         Calls appropriate 1D grid ufuncs on data, along the specified axes, sequentially.
 
@@ -1682,7 +1684,9 @@ class Grid:
                 funcname, signature_1d, module=gridops, **kwargs
             )
 
-            array = grid_ufunc(self, array, axis=[ax_name], **remaining_kwargs)
+            array = grid_ufunc(
+                self, array, axis=[ax_name], keep_coords=keep_coords, **remaining_kwargs
+            )
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
