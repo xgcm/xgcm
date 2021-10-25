@@ -22,6 +22,11 @@ Breaking Changes
 ~~~~~~~~~~~~~~~~
 - Drop support for Python 3.6 (:issue:`360`, :pull:`361`). By `Julius Busecke <https://github.com/jbusecke>`_.
 
+Documentation
+~~~~~~~~~~~~~
+- Added documentation on boundary conditions (:issue:`273`, :pull: `325`)
+  By `Romain Caneill <https://github.com/rcaneill>`_.
+
 v0.5.2 (2021/5/27)
 -------------------
 
