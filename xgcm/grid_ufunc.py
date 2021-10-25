@@ -392,6 +392,11 @@ def apply_as_grid_ufunc(
             grid,
         )
 
+        output_chunk_length_adjustment = _check_if_length_will_change(  # noqa
+            in_dummy_ax_names, out_dummy_ax_names, in_ax_pos, out_ax_pos
+        )
+
+        # TODO this will be different in case of changing chunksize
         boundary_width_per_numpy_axis = {
             grid.axes[ax_name]._get_axis_dim_num(args[0]): width
             for ax_name, width in boundary_width_real_axes.items()
@@ -485,6 +490,53 @@ def _has_chunked_core_dims(obj, core_dims):
     return obj.chunks is not None and any(
         is_core_dim_chunked(obj, dim) for dim in core_dims
     )
+
+
+RELATIVE_AXIS_POSITION_LENGTHS = {
+    "center": 0,
+    "left": 0,
+    "right": 0,
+    "inner": -1,
+    "outer": +1,
+}
+
+
+def _check_if_length_will_change(in_ax_names, out_ax_names, in_ax_pos, out_ax_pos):
+    """
+    Check if map_overlap can actually handle the complexity of this signature.
+
+    If it can then return the amount by the ufunc will alter the chunksize along the core dim.
+    """
+
+    if len(in_ax_names) > 1:
+        raise NotImplementedError(
+            "Currently cannot automatically map a ufunc over multiple inputs when the core "
+            "dimension is chunked"
+        )
+    if len(out_ax_names) > 1:
+        raise NotImplementedError(
+            "Currently cannot automatically map a ufunc over multiple outputs when the core "
+            "dimension is chunked"
+        )
+
+    for var_in_axes, var_out_axes in zip(in_ax_names, out_ax_names):
+        print(len(var_in_axes))
+        print(len(var_out_axes))
+        if len(var_in_axes) > 1 or len(var_out_axes) > 1:
+            raise NotImplementedError(
+                "Currently cannot automatically map a ufunc over multiple dimensions when the "
+                "core dimension is chunked"
+            )
+
+    before_position = in_ax_pos[0][0]
+    after_position = out_ax_pos[0][0]
+
+    length_change = (
+        RELATIVE_AXIS_POSITION_LENGTHS[after_position]
+        - RELATIVE_AXIS_POSITION_LENGTHS[before_position]
+    )
+
+    return length_change
 
 
 def _rechunk_to_merge_in_boundary_chunks(
