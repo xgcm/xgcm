@@ -565,11 +565,10 @@ class TestDaskOverlap:
     def test_only_some_core_dims_are_chunked(self):
         raise NotImplementedError
 
-    @pytest.mark.xfail
     def test_ufunc_changes_chunksize(self):
         @as_grid_ufunc(
             "(X:outer)->(X:center)",
-            boundary_width={"X": (0, 0)},
+            boundary_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )

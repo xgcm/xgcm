@@ -394,20 +394,35 @@ def apply_as_grid_ufunc(
             in_dummy_ax_names, out_dummy_ax_names, in_ax_pos, out_ax_pos
         )
 
-        # TODO this will be different in case of changing chunksize
-        boundary_width_per_numpy_axis = {
-            grid.axes[ax_name]._get_axis_dim_num(args[0]): width
-            for ax_name, width in boundary_width_real_axes.items()
-        }
-
         def _dict_to_numbered_axes(sizes):
             return tuple(sizes[dim] for dim in sizes.keys())
 
-        # TODO the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
-        # TODO map_overlap can't handle multiple return values (I think)
         original_chunksizes = [arg.chunksizes for arg in args]
-        true_chunksizes = original_chunksizes[0]
-        true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
+        if output_chunk_length_adjustment == 0:
+            boundary_width_per_numpy_axis = {
+                grid.axes[ax_name]._get_axis_dim_num(args[0]): width
+                for ax_name, width in boundary_width_real_axes.items()
+            }
+
+            # TODO map_overlap can't handle multiple return values (I think)
+            true_chunksizes = original_chunksizes[0]
+            true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
+        else:
+            # TODO the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
+            print(f"output chunk adjustment = {output_chunk_length_adjustment}")
+            print(boundary_width_real_axes)
+            # TODO should this be adjusted?
+            boundary_width_per_numpy_axis = {
+                grid.axes[ax_name]._get_axis_dim_num(args[0]): width
+                for ax_name, width in boundary_width_real_axes.items()
+            }
+
+            # the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
+            print(original_chunksizes)
+            raise NotImplementedError
+            # true_chunksizes_per_numpy_axis = f(
+            #    original_chunksizes, output_chunk_length_adjustment
+            # )
 
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
@@ -520,8 +535,8 @@ def _check_if_length_will_change(in_ax_names, out_ax_names, in_ax_pos, out_ax_po
         )
 
     for var_in_axes, var_out_axes in zip(in_ax_names, out_ax_names):
-        print(len(var_in_axes))
-        print(len(var_out_axes))
+        # print(len(var_in_axes))
+        # print(len(var_out_axes))
         if len(var_in_axes) > 1 or len(var_out_axes) > 1:
             raise NotImplementedError(
                 "Currently cannot automatically map a ufunc over multiple dimensions when the "
