@@ -353,8 +353,6 @@ def apply_as_grid_ufunc(
         raise ValueError(
             "To apply a boundary condition you must provide the widths of the boundaries"
         )
-    # TODO this isn't Dataset-proof
-    original_chunks = [arg.chunks for arg in args]
     if boundary_width:
         # convert dummy axes names in boundary_width to match real names of given axes
         boundary_width_real_axes = {
@@ -402,8 +400,14 @@ def apply_as_grid_ufunc(
             for ax_name, width in boundary_width_real_axes.items()
         }
 
+        def _dict_to_numbered_axes(sizes):
+            return tuple(sizes[dim] for dim in sizes.keys())
+
         # TODO the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
-        true_chunks_per_numpy_axis = original_chunks
+        # TODO map_overlap can't handle multiple return values (I think)
+        original_chunksizes = [arg.chunksizes for arg in args]
+        true_chunksizes = original_chunksizes[0]
+        true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
 
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
@@ -415,10 +419,8 @@ def apply_as_grid_ufunc(
                 depth=boundary_width_per_numpy_axis,
                 boundary="none",
                 trim=False,
-                meta=np.array(
-                    [], dtype=out_dtypes[0]
-                ),  # TODO can map_overlap handle multiple return values?
-                chunks=true_chunks_per_numpy_axis[0],
+                meta=np.array([], dtype=out_dtypes[0]),
+                chunks=true_chunksizes_per_numpy_axis,
             )
 
     else:
