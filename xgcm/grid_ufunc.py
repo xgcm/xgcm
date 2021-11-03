@@ -390,39 +390,47 @@ def apply_as_grid_ufunc(
             grid,
         )
 
-        output_chunk_length_adjustment = _check_if_length_will_change(  # noqa
-            in_dummy_ax_names, out_dummy_ax_names, in_ax_pos, out_ax_pos
-        )
+        print(boundary_width_real_axes)
+        # TODO should this be adjusted?
+        boundary_width_per_numpy_axis = {
+            grid.axes[ax_name]._get_axis_dim_num(args[0]): width
+            for ax_name, width in boundary_width_real_axes.items()
+        }
 
         def _dict_to_numbered_axes(sizes):
             return tuple(sizes[dim] for dim in sizes.keys())
 
+        output_chunk_length_adjustment = _check_if_length_will_change(  # noqa
+            in_dummy_ax_names, out_dummy_ax_names, in_ax_pos, out_ax_pos
+        )
+
         original_chunksizes = [arg.chunksizes for arg in args]
         if output_chunk_length_adjustment == 0:
-            boundary_width_per_numpy_axis = {
-                grid.axes[ax_name]._get_axis_dim_num(args[0]): width
-                for ax_name, width in boundary_width_real_axes.items()
-            }
-
-            # TODO map_overlap can't handle multiple return values (I think)
+            # Output chunks are the same as input chunks
+            # TODO first argument only because map_overlap can't handle multiple return values (I think)
             true_chunksizes = original_chunksizes[0]
             true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
         else:
-            # TODO the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
-            print(f"output chunk adjustment = {output_chunk_length_adjustment}")
-            print(boundary_width_real_axes)
-            # TODO should this be adjusted?
-            boundary_width_per_numpy_axis = {
-                grid.axes[ax_name]._get_axis_dim_num(args[0]): width
-                for ax_name, width in boundary_width_real_axes.items()
-            }
-
             # the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
+            print(f"output chunk adjustment = {output_chunk_length_adjustment}")
+
+            # TODO currently only allowed to have one chunked core dim
+            core_dim_which_is_changing_size = dummy_to_real_axes_mapping[
+                in_dummy_ax_names[0][0]
+            ]
+            print(core_dim_which_is_changing_size)
+
             print(original_chunksizes)
-            raise NotImplementedError
-            # true_chunksizes_per_numpy_axis = f(
-            #    original_chunksizes, output_chunk_length_adjustment
-            # )
+            # create the "true" output chunks
+            # TODO first argument only because map_overlap can't handle multiple return values (I think)
+            true_chunksizes = original_chunksizes.copy()[0]
+            # TODO how should this operation work? Which specific chunk should it adjust the length of?
+            # (as is it wouldn't work because we're adding an int to a tuple)
+            true_chunksizes[core_dim_which_is_changing_size] = (
+                true_chunksizes[core_dim_which_is_changing_size]
+                + output_chunk_length_adjustment
+            )
+            true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
 
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
@@ -539,7 +547,7 @@ def _check_if_length_will_change(in_ax_names, out_ax_names, in_ax_pos, out_ax_po
         # print(len(var_out_axes))
         if len(var_in_axes) > 1 or len(var_out_axes) > 1:
             raise NotImplementedError(
-                "Currently cannot automatically map a ufunc over multiple dimensions when the "
+                "Currently cannot automatically map a ufunc over multiple dimensions when a "
                 "core dimension is chunked"
             )
 
@@ -551,7 +559,9 @@ def _check_if_length_will_change(in_ax_names, out_ax_names, in_ax_pos, out_ax_po
         - RELATIVE_AXIS_POSITION_LENGTHS[before_position]
     )
 
-    return length_change
+    chunked_core_dim = in_ax_names[0][0]
+
+    return chunked_core_dim, length_change
 
 
 def _rechunk_to_merge_in_boundary_chunks(
