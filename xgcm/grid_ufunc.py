@@ -390,7 +390,6 @@ def apply_as_grid_ufunc(
             grid,
         )
 
-        print(boundary_width_real_axes)
         # TODO should this be adjusted?
         boundary_width_per_numpy_axis = {
             grid.axes[ax_name]._get_axis_dim_num(args[0]): width
@@ -400,37 +399,15 @@ def apply_as_grid_ufunc(
         def _dict_to_numbered_axes(sizes):
             return tuple(sizes[dim] for dim in sizes.keys())
 
-        output_chunk_length_adjustment = _check_if_length_will_change(  # noqa
-            in_dummy_ax_names, out_dummy_ax_names, in_ax_pos, out_ax_pos
+        output_chunk_length_adjustment = _check_if_length_would_change(  # noqa
+            out_dummy_ax_names, in_ax_pos, out_ax_pos
         )
 
+        # Output chunks are the same as input chunks (as we disallowed axis positions for which this is not the case)
+        # TODO first argument only because map_overlap can't handle multiple return values (I think)
         original_chunksizes = [arg.chunksizes for arg in args]
-        if output_chunk_length_adjustment == 0:
-            # Output chunks are the same as input chunks
-            # TODO first argument only because map_overlap can't handle multiple return values (I think)
-            true_chunksizes = original_chunksizes[0]
-            true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
-        else:
-            # the true chunks will differ from the original chunks if the ufunc changes the array's chunking or size
-            print(f"output chunk adjustment = {output_chunk_length_adjustment}")
-
-            # TODO currently only allowed to have one chunked core dim
-            core_dim_which_is_changing_size = dummy_to_real_axes_mapping[
-                in_dummy_ax_names[0][0]
-            ]
-            print(core_dim_which_is_changing_size)
-
-            print(original_chunksizes)
-            # create the "true" output chunks
-            # TODO first argument only because map_overlap can't handle multiple return values (I think)
-            true_chunksizes = original_chunksizes.copy()[0]
-            # TODO how should this operation work? Which specific chunk should it adjust the length of?
-            # (as is it wouldn't work because we're adding an int to a tuple)
-            true_chunksizes[core_dim_which_is_changing_size] = (
-                true_chunksizes[core_dim_which_is_changing_size]
-                + output_chunk_length_adjustment
-            )
-            true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
+        true_chunksizes = original_chunksizes[0]
+        true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
 
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
@@ -515,53 +492,25 @@ def _has_chunked_core_dims(obj, core_dims):
     return obj.chunks is not None and any(is_dim_chunked(obj, dim) for dim in core_dims)
 
 
-RELATIVE_AXIS_POSITION_LENGTHS = {
-    "center": 0,
-    "left": 0,
-    "right": 0,
-    "inner": -1,
-    "outer": +1,
-}
+DISALLOWED_OVERLAP_POSITIONS = ["inner", "outer"]
 
 
-def _check_if_length_will_change(in_ax_names, out_ax_names, in_ax_pos, out_ax_pos):
-    """
-    Check if map_overlap can actually handle the complexity of this signature.
+def _check_if_length_would_change(out_ax_names, in_ax_pos, out_ax_pos):
+    """Check if map_overlap can actually handle the complexity of this signature."""
 
-    If it can then return the amount by the ufunc will alter the chunksize along the core dim.
-    """
-
-    if len(in_ax_names) > 1:
-        raise NotImplementedError(
-            "Currently cannot automatically map a ufunc over multiple inputs when the core "
-            "dimension is chunked"
-        )
+    # TODO this restriction is because dask.array.map_overlap does not currently allow for multiple return arrays
     if len(out_ax_names) > 1:
         raise NotImplementedError(
             "Currently cannot automatically map a ufunc over multiple outputs when the core "
             "dimension is chunked"
         )
 
-    for var_in_axes, var_out_axes in zip(in_ax_names, out_ax_names):
-        # print(len(var_in_axes))
-        # print(len(var_out_axes))
-        if len(var_in_axes) > 1 or len(var_out_axes) > 1:
-            raise NotImplementedError(
-                "Currently cannot automatically map a ufunc over multiple dimensions when a "
-                "core dimension is chunked"
-            )
-
-    before_position = in_ax_pos[0][0]
-    after_position = out_ax_pos[0][0]
-
-    length_change = (
-        RELATIVE_AXIS_POSITION_LENGTHS[after_position]
-        - RELATIVE_AXIS_POSITION_LENGTHS[before_position]
-    )
-
-    chunked_core_dim = in_ax_names[0][0]
-
-    return chunked_core_dim, length_change
+    all_ax_positions = set(p for arg_ps in in_ax_pos + out_ax_pos for p in arg_ps)
+    if any(pos in DISALLOWED_OVERLAP_POSITIONS for pos in all_ax_positions):
+        raise NotImplementedError(
+            "Cannot chunk along a core dimension for a grid ufunc which has a signature which "
+            f"includes one of the axis positions {DISALLOWED_OVERLAP_POSITIONS}"
+        )
 
 
 def _rechunk_to_merge_in_boundary_chunks(

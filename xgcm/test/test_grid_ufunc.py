@@ -561,7 +561,7 @@ class TestDaskOverlap:
         expected_data = dask.array.map_blocks(increment, a.data)
         np.testing.assert_equal(result.data, expected_data)
 
-    @pytest.mark.xfail
+    @pytest.mark.skip
     def test_only_some_core_dims_are_chunked(self):
         raise NotImplementedError
 
@@ -583,24 +583,15 @@ class TestDaskOverlap:
         da = np.sin(grid._ds.depth_o * 2 * np.pi / 9).chunk(3)
         da.coords["depth_o"] = grid._ds.depth_o
 
-        print(da)
-        diffed = da.data[1:] - da.data[:-1]
-        print(diffed)
+        with pytest.raises(
+            NotImplementedError, match="includes one of the axis positions"
+        ):
+            diff_outer_to_center(
+                grid,
+                da,
+                axis=[("depth",)],
+            ).compute()
 
-        expected = xr.DataArray(
-            diffed, dims=["depth_c"], coords={"depth_c": grid._ds.depth_c}
-        ).compute()
-
-        result = diff_outer_to_center(
-            grid,
-            da,
-            axis=[("depth",)],
-        ).compute()
-        assert_equal(result, expected)
-
-    @pytest.mark.xfail(
-        reason="currently code can't deduce if chunksize will change for multiple inputs, so throws error"
-    )
     def test_multiple_inputs(self):
         @as_grid_ufunc(
             "(X:left),(X:right)->(X:center)",
