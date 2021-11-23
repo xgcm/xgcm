@@ -294,7 +294,7 @@ class TestGridUFunc:
         grid = create_2d_test_grid("lon", "lat")
 
         def diff_center_to_left(a):
-            return a - np.roll(a, shift=-1)
+            return a - np.roll(a, shift=-1, axis=-1)
 
         da = grid._ds.lat_c ** 2 + grid._ds.lon_c ** 2
 
@@ -318,7 +318,7 @@ class TestGridUFunc:
         # Test decorator
         @as_grid_ufunc("(X:center)->(X:left)")
         def diff_center_to_left(a):
-            return a - np.roll(a, shift=-1)
+            return a - np.roll(a, shift=-1, axis=-1)
 
         result = diff_center_to_left(grid, da, axis=[("lon",)])
         assert_equal(result, expected)
