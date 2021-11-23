@@ -621,9 +621,29 @@ class TestDaskOverlap:
         result = multiply_left_right(grid, a, b, axis=[("depth",), ("depth",)])
         assert_equal(result, expected)
 
-    @pytest.mark.xfail
     def test_multiple_outputs(self):
-        raise NotImplementedError
+        def diff_center_to_inner(a, axis):
+            result = a - np.roll(a, shift=1, axis=axis)
+            return np.delete(result, 0, axis)  # remove first element along axis
+
+        def grad_to_inner(a):
+            return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
+
+        grid = create_2d_test_grid("lon", "lat")
+
+        a = (grid._ds.lon_c ** 2 + grid._ds.lat_c ** 2).chunk(1)
+
+        # Test direct application
+        with pytest.raises(NotImplementedError, match="multiple outputs"):
+            apply_as_grid_ufunc(
+                grad_to_inner,
+                a,
+                axis=[("lon", "lat")],
+                grid=grid,
+                signature="(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)",
+                map_overlap=True,
+                dask="allowed",
+            )
 
 
 class TestSignaturesEquivalent:
