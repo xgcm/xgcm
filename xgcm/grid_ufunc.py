@@ -118,10 +118,8 @@ class GridUFunc:
         if kwargs:
             raise TypeError("Unsupported keyword argument(s) provided")
 
-    def __repr__(self):
-        return f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', dask='{self.dask})'"
-
-    def __call__(self, grid, *args, axis, boundary=None, **kwargs):
+    def __call__(self, grid=None, *args, axis, **kwargs):
+        boundary = kwargs.pop("boundary", None)
         dask = kwargs.pop("dask", self.dask)
         return apply_as_grid_ufunc(
             self.ufunc,
@@ -164,7 +162,7 @@ def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
         names and positions must conform to the pattern specified by `signature`.
         Function has an additional positional argument `grid`, of type `xgcm.Grid`,
         and another additional positional argument `axis`, of type Sequence[Tuple[str]],
-        so that `func`'s new signature is `func(grid, *args, axis, boundary=None, **kwargs)`.
+        so that `func`'s new signature is `func(grid, *args, axis, **kwargs)`.
         The grid and axis arguments are passed on to `apply_grid_ufunc`.
 
     See Also
