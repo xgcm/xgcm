@@ -698,8 +698,6 @@ class Axis:
               value. (i.e. a limited form of Neumann boundary condition.)
         fill_value : float, optional
             The value to use in the boundary condition with `boundary='fill'`.
-        vector_partner : dict, optional
-            A single key (string), value (DataArray)
         keep_coords : boolean, optional
             Preserves compatible coordinates. False by default.
 
@@ -1881,9 +1879,6 @@ class Grid:
         fill_value : {float, dict}, optional
             The value to use in the boundary condition with `boundary='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        vector_partner : dict, optional
-            A single key (string), value (DataArray).
-            Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
             If an axis or list of axes is specified,
             the appropriate grid metrics will be used to determined the weight for interpolation.
@@ -2079,7 +2074,7 @@ class Grid:
         to : str or dict, optional
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with separate values for each axis can be passed (see example)
         boundary : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
@@ -2090,19 +2085,16 @@ class Grid:
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Neumann boundary condition.)
 
-            Optionally a dict with separate values for each axis can be passed (see example)
+            Optionally a dict with separate values for each axis can be passed.
         fill_value : {float, dict}, optional
             The value to use in the boundary condition with `boundary='fill'`.
-            Optionally a dict with seperate values for each axis can be passed (see example)
-        vector_partner : dict, optional
-            A single key (string), value (DataArray).
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with separate values for each axis can be passed.
         metric_weighted : str or tuple of str or dict, optional
             If an axis or list of axes is specified,
             the appropriate grid metrics will be used to determined the weight for interpolation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with separate values for each axis can be passed.
 
         Returns
         -------
