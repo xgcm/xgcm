@@ -4,7 +4,6 @@ channels:
 dependencies:
   - codecov
   - dask
-  - docrep<=0.2.7
   - numba
   - numpy
   - pip

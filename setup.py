@@ -11,7 +11,6 @@ install_requires = [
     "dask",
     "numpy",
     "future",
-    "docrep<=0.2.7",
 ]
 doc_requires = [
     "sphinx",
