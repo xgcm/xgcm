@@ -6,7 +6,6 @@ channels:
 dependencies:
   - codecov
   - dask
-  - docrep<=0.2.7
   - numpy
   - pip
   - pre-commit

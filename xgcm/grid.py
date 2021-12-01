@@ -4,7 +4,6 @@ import operator
 import warnings
 from collections import OrderedDict
 
-import docrep
 import numpy as np
 import xarray as xr
 
@@ -18,9 +17,6 @@ try:
     from .transform import conservative_interpolation, linear_interpolation
 except ImportError:
     numba = None
-
-
-docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
 
 def _maybe_promote_str_to_list(a):
