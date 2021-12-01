@@ -1599,11 +1599,10 @@ class Grid:
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed.
         """
 
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
@@ -1668,11 +1667,10 @@ class Grid:
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -1721,11 +1719,10 @@ class Grid:
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -1774,11 +1771,10 @@ class Grid:
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -1828,11 +1824,10 @@ class Grid:
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -1880,11 +1875,10 @@ class Grid:
             The value to use in the boundary condition with `boundary='fill'`.
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -2016,11 +2010,10 @@ class Grid:
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -2090,11 +2083,10 @@ class Grid:
             The value to use in the boundary condition with `boundary='fill'`.
             Optionally a dict with separate values for each axis can be passed.
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with separate values for each axis can be passed.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
