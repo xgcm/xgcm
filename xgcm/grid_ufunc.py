@@ -96,6 +96,10 @@ class GridUFunc:
     map_overlap : bool, optional
         Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
         Default is False. If True, will need to be accompanied by dask='allowed'.
+    **kwargs
+        Keyword arguments are passed directly onto xarray.apply_ufunc.
+        (As such then kwargs should not be xarray data objects, as they will not be subject to
+        alignment, nor downcast to numpy-like arrays.)
 
     Returns
     -------
@@ -170,6 +174,10 @@ def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
     map_overlap : bool, optional
         Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
         Default is False. If True, will need to be accompanied by dask='allowed'.
+    **kwargs
+        Keyword arguments are passed directly onto xarray.apply_ufunc.
+        (As such then kwargs should not be xarray data objects, as they will not be subject to
+        alignment, nor downcast to numpy-like arrays.)
 
     Returns
     -------
@@ -229,7 +237,7 @@ def apply_as_grid_ufunc(
         arrays (`.data`).
 
         Passed directly on to `xarray.apply_ufunc`.
-    args : xarray.DataArray or xarray.Dataset
+    *args : xarray.DataArray or xarray.Dataset
         One or more xarray objects to apply the function to.
     axis : Sequence[Tuple[str]]
         Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
@@ -274,6 +282,10 @@ def apply_as_grid_ufunc(
     map_overlap : bool, optional
         Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
         Default is False. If True, will need to be accompanied by dask='allowed'.
+    **kwargs
+        Keyword arguments are passed directly onto xarray.apply_ufunc.
+        (As such then kwargs should not be xarray data objects, as they will not be subject to
+        alignment, nor downcast to numpy-like arrays.)
 
     Returns
     -------
