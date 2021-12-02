@@ -399,7 +399,7 @@ def apply_as_grid_ufunc(
         }
 
         def _dict_to_numbered_axes(sizes):
-            return tuple(sizes[dim] for dim in sizes.keys())
+            return tuple(sizes.values())
 
         output_chunk_length_adjustment = _check_if_length_would_change(  # noqa
             out_dummy_ax_names, in_ax_pos, out_ax_pos
