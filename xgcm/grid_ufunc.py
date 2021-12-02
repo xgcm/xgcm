@@ -1,8 +1,15 @@
 import re
 import string
+from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Sequence, Tuple, Union
 
 import numpy as np
 import xarray as xr
+
+if TYPE_CHECKING:
+    # Avoids circular references when type checking
+
+    from .grid import Grid
+
 
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
@@ -18,7 +25,14 @@ _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
 
-def _parse_grid_ufunc_signature(signature):
+def _parse_grid_ufunc_signature(
+    signature: str,
+) -> Tuple[
+    List[Tuple[str, ...]],
+    List[Tuple[str, ...]],
+    List[Tuple[str, ...]],
+    List[Tuple[str, ...]],
+]:
     """
     Parse string signatures for a grid-aware universal function.
 
@@ -118,7 +132,7 @@ class GridUFunc:
     Grid.apply_as_grid_ufunc
     """
 
-    def __init__(self, ufunc, **kwargs):
+    def __init__(self, ufunc: Callable, **kwargs):
         self.ufunc = ufunc
         self.signature = kwargs.pop("signature", "")
         self.boundary_width = kwargs.pop("boundary_width", None)
@@ -133,7 +147,13 @@ class GridUFunc:
             f"          dask='{self.dask})', map_overlap={self.map_overlap})"
         )
 
-    def __call__(self, grid=None, *args, axis, **kwargs):
+    def __call__(
+        self,
+        grid: "Grid" = None,
+        *args: xr.DataArray,
+        axis: Sequence[str],
+        **kwargs,
+    ):
         boundary = kwargs.pop("boundary", None)
         dask = kwargs.pop("dask", self.dask)
         map_overlap = kwargs.pop("map_overlap", self.map_overlap)
@@ -151,7 +171,9 @@ class GridUFunc:
         )
 
 
-def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
+def as_grid_ufunc(
+    signature: str = "", boundary_width: Mapping[str, Tuple[int, int]] = None, **kwargs
+) -> Callable:
     """
     Decorator which turns a numpy ufunc into a "grid-aware ufunc".
 
@@ -210,19 +232,19 @@ def as_grid_ufunc(signature="", boundary_width=None, **kwargs):
 
 
 def apply_as_grid_ufunc(
-    func,
-    *args,
-    axis,
-    grid=None,
-    signature="",
-    boundary_width=None,
-    boundary=None,
-    fill_value=None,
-    keep_coords=True,
-    dask="forbidden",
-    map_overlap=False,
+    func: Callable,
+    *args: xr.DataArray,
+    axis: Sequence[str],
+    grid: "Grid" = None,
+    signature: str = "",
+    boundary_width: Mapping[str, Tuple[int, int]] = None,
+    boundary: Union[str, Mapping[str, str]] = None,
+    fill_value: Union[float, Mapping[str, float]] = None,
+    keep_coords: bool = True,
+    dask: str = "forbidden",
+    map_overlap: bool = False,
     **kwargs,
-):
+) -> List[Any]:
     """
     Apply a function to the given arguments in a grid-aware manner.
 
@@ -395,7 +417,7 @@ def apply_as_grid_ufunc(
         and map_overlap
     ):
         # map operation over dask chunks along core dimensions
-        from dask.array import map_overlap
+        from dask.array import map_overlap as dask_map_overlap  # type: ignore
 
         # merge any lonely chunks from padding
         rechunked_padded_args = _rechunk_to_merge_in_boundary_chunks(
@@ -424,7 +446,7 @@ def apply_as_grid_ufunc(
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
         def mapped_func(*a, **kw):
-            return map_overlap(
+            return dask_map_overlap(
                 func,
                 *a,
                 **kw,
@@ -505,7 +527,9 @@ def apply_as_grid_ufunc(
     return results_with_coords
 
 
-def _has_chunked_core_dims(obj, core_dims):
+def _has_chunked_core_dims(
+    obj: Union[xr.DataArray, xr.Dataset], core_dims: Sequence[str]
+) -> bool:
     def is_dim_chunked(a, dim):
         return len(a.chunksizes[dim]) > 1
 
@@ -516,7 +540,11 @@ def _has_chunked_core_dims(obj, core_dims):
 DISALLOWED_OVERLAP_POSITIONS = ["inner", "outer"]
 
 
-def _check_if_length_would_change(out_ax_names, in_ax_pos, out_ax_pos):
+def _check_if_length_would_change(
+    out_ax_names: List[Tuple[str, ...]],
+    in_ax_pos: List[Tuple[str, ...]],
+    out_ax_pos: List[Tuple[str, ...]],
+):
     """Check if map_overlap can actually handle the complexity of this signature."""
 
     # TODO this restriction is because dask.array.map_overlap does not currently allow for multiple return arrays
@@ -535,8 +563,11 @@ def _check_if_length_would_change(out_ax_names, in_ax_pos, out_ax_pos):
 
 
 def _rechunk_to_merge_in_boundary_chunks(
-    padded_args, original_args, boundary_width_real_axes, grid
-):
+    padded_args: Sequence[xr.DataArray],
+    original_args: Sequence[xr.DataArray],
+    boundary_width_real_axes: Mapping[str, Tuple[int, int]],
+    grid: "Grid",
+) -> List[xr.DataArray]:
 
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
@@ -555,7 +586,10 @@ def _rechunk_to_merge_in_boundary_chunks(
 
 
 def _get_chunk_pattern_for_merging_boundary(
-    grid, da, original_chunks, boundary_width_real_axes
+    grid: "Grid",
+    da: xr.DataArray,
+    original_chunks: Mapping[str, Tuple[int, ...]],
+    boundary_width_real_axes: Mapping[str, Tuple[int, int]],
 ):
     """Calculates the pattern of chunking needed to merge back in small chunks left on boundaries after padding"""
 
@@ -580,13 +614,15 @@ def _get_chunk_pattern_for_merging_boundary(
     return new_chunks
 
 
-def _get_dim(grid, da, ax_name):
+def _get_dim(grid: "Grid", da: xr.DataArray, ax_name: str) -> str:
     ax = grid.axes[ax_name]
     from_pos, dim = ax._get_position_name(da)
     return dim
 
 
-def _identify_dummy_axes_with_real_axes(sig_in_dummy_ax_names, axis):
+def _identify_dummy_axes_with_real_axes(
+    sig_in_dummy_ax_names: List[Tuple[str, ...]], axis: Sequence[str]
+) -> Mapping[str, str]:
     """Create a mapping between the dummy axis names in the signature and the real axis names of the data passed."""
 
     if len(axis) != len(sig_in_dummy_ax_names):
@@ -617,7 +653,7 @@ def _identify_dummy_axes_with_real_axes(sig_in_dummy_ax_names, axis):
 _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
 
 
-def _signatures_equivalent(sig1, sig2):
+def _signatures_equivalent(sig1: str, sig2: str) -> bool:
     """
     Axes names in signatures are dummy variables, so an exact string match is not required.
 
