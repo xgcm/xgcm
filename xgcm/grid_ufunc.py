@@ -413,9 +413,7 @@ def apply_as_grid_ufunc(
         def _dict_to_numbered_axes(sizes):
             return tuple(sizes.values())
 
-        output_chunk_length_adjustment = _check_if_length_would_change(  # noqa
-            out_dummy_ax_names, in_ax_pos, out_ax_pos
-        )
+        _check_if_length_would_change(out_dummy_ax_names, in_ax_pos, out_ax_pos)
 
         # Output chunks are the same as input chunks (as we disallowed axis positions for which this is not the case)
         # TODO first argument only because map_overlap can't handle multiple return values (I think)
