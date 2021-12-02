@@ -369,6 +369,7 @@ def apply_as_grid_ufunc(
             fill_value=fill_value,
         )
     else:
+        # If the boundary_width kwarg was not specified assume that zero padding is required
         boundary_width_real_axes = {
             real_ax: (0, 0) for real_ax in dummy_to_real_axes_mapping.values()
         }
@@ -392,7 +393,6 @@ def apply_as_grid_ufunc(
             grid,
         )
 
-        # TODO should this be adjusted?
         boundary_width_per_numpy_axis = {
             grid.axes[ax_name]._get_axis_dim_num(args[0]): width
             for ax_name, width in boundary_width_real_axes.items()
