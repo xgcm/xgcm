@@ -3,7 +3,25 @@
 What's New
 ===========
 
-v0.6.0 (unreleased)
+v0.6.1 (unreleased)
+-------------------
+
+.. _whats-new.0.6.1:
+
+New Features
+~~~~~~~~~~~~
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+Documentation
+~~~~~~~~~~~~~
+
+Internal Changes
+~~~~~~~~~~~~~
+
+
+v0.6.0 (2021/11/03)
 -------------------
 
 .. _whats-new.0.6.0:
@@ -41,6 +59,10 @@ Internal Changes
 - Fixed metrics tests so some tests that previously did not run now do run, and refactored the metrics tests.
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
+- Removed dependency on docrep, which as docrep 2.7 used a GPL licence, implicitly changed the license of xGCM.
+  Therefore xGCM now has a valid MIT license, instead of accidentally being a GPL licence as it was before.
+  (:issue:`308`, :pull:`384`)
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
 Deprecations
 ~~~~~~~~~~~~~
