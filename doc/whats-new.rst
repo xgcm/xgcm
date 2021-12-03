@@ -42,6 +42,14 @@ Internal Changes
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
 
+Deprecations
+~~~~~~~~~~~~~
+
+- The `keep_coords` kwarg is now deprecated, and will be removed in the next version. (:issue:`382`)
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
+
+
+
 v0.5.2 (2021/5/27)
 -------------------
 

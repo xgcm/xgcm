@@ -1070,6 +1070,14 @@ class Axis:
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
         """
+
+        if not keep_coords:
+            warnings.warn(
+                "The keep_coords keyword argument is being deprecated - in future it will be removed "
+                "entirely, and the behaviour will always be that currently given by keep_coords=True.",
+                category=DeprecationWarning,
+            )
+
         position_from, old_dim = self._get_position_name(da)
         try:
             new_dim = self.coords[position_to]
