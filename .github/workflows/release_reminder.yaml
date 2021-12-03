@@ -1,7 +1,7 @@
 name: Create release reminder
 on:
   schedule:
-  # Run every Monday at 00:00 AM UTC
+  # Run on the first of the month
   - cron: "0 00 1 * *"
 
   workflow_dispatch:
