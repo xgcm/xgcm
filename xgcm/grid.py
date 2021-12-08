@@ -1201,7 +1201,7 @@ class Grid:
                 self.set_metrics(key, value)
 
     def _parse_axes_kwargs(self, kwargs):
-        """Convvert kwarg input into dict for each available axis
+        """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
         or if not all axes are provided, the other axes will be parsed as defaults (None)
@@ -1648,8 +1648,16 @@ class Grid:
         return padded
 
     def _1d_grid_ufunc_dispatch(
-        self, funcname, da, axis, to=None, keep_coords=False, **kwargs
+        self,
+        funcname,
+        da,
+        axis,
+        to=None,
+        keep_coords=False,
+        metric_weighted=False,
+        **kwargs,
     ):
+        # TODO can we get away with just writing out each possible kwarg explicitly, instead of **kwargs?
         """
         Calls appropriate 1D grid ufuncs on data, along the specified axes, sequentially.
 
@@ -1667,10 +1675,16 @@ class Grid:
 
         if isinstance(axis, str):
             axis = [axis]
-        if to is None:
-            to = {ax: None for ax in axis}
-        elif isinstance(to, str):
-            to = {ax: to for ax in axis}
+
+        # Promote single kwargs to axis-kwarg mappings
+
+        to = self._parse_axes_kwargs(to)
+        print(to)
+
+        # adjust _parse_axis_kwargs to include this?
+        if isinstance(metric_weighted, str):
+            metric_weighted = (metric_weighted,)
+        metric_weighted = self._parse_axes_kwargs(metric_weighted)
 
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
@@ -1684,9 +1698,19 @@ class Grid:
                 funcname, signature_1d, module=gridops, **kwargs
             )
 
+            ax_metric_weighted = metric_weighted[ax_name]
+
+            if ax_metric_weighted:
+                metric = self.get_metric(array, ax_metric_weighted)
+                array = array * metric
+
             array = grid_ufunc(
                 self, array, axis=[ax_name], keep_coords=keep_coords, **remaining_kwargs
             )
+
+            if ax_metric_weighted:
+                metric = self.get_metric(array, ax_metric_weighted)
+                array = array / metric
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
@@ -1698,7 +1722,8 @@ class Grid:
         One separate signature is created for each axis the 1D ufunc is going to be applied over.
         """
         signatures = []
-        for ax_name, to_pos in itertools.zip_longest(axis, to):
+        print(to)
+        for ax_name in axis:
             ax = self.axes[ax_name]
 
             from_pos, dim = ax._get_position_name(da)

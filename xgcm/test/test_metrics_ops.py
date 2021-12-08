@@ -13,7 +13,8 @@ GRID_UFUNC_REFACTOR_ERR = "Metrics have not yet been implemented for the grid uf
     "funcname",
     [
         "interp",
-        pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
+        # pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
+        "diff",
         "min",
         "max",
         "cumsum",
@@ -41,11 +42,13 @@ class TestParametrized:
 
         metric = grid.get_metric(ds[variable], metric_weighted)
         expected_raw = func(ds[variable] * metric, axis, boundary=boundary)
+        print(metric_weighted)
         metric_new = grid.get_metric(expected_raw, metric_weighted)
         expected = expected_raw / metric_new
         new = func(
             ds[variable], axis, metric_weighted=metric_weighted, boundary=boundary
         )
+        print(new)
         assert new.equals(expected)
 
     @pytest.mark.parametrize("multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")])
