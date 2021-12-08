@@ -6,14 +6,11 @@ from xarray.testing import assert_allclose
 from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
-GRID_UFUNC_REFACTOR_ERR = "Metrics have not yet been implemented for the grid ufunc refactor, and diff is currently the only function which uses the new code path"
-
 
 @pytest.mark.parametrize(
     "funcname",
     [
         "interp",
-        # pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
         "diff",
         "min",
         "max",
@@ -42,13 +39,11 @@ class TestParametrized:
 
         metric = grid.get_metric(ds[variable], metric_weighted)
         expected_raw = func(ds[variable] * metric, axis, boundary=boundary)
-        print(metric_weighted)
         metric_new = grid.get_metric(expected_raw, metric_weighted)
         expected = expected_raw / metric_new
         new = func(
             ds[variable], axis, metric_weighted=metric_weighted, boundary=boundary
         )
-        print(new)
         assert new.equals(expected)
 
     @pytest.mark.parametrize("multi_axis", ["X", ["X"], ("Y"), ["X", "Y"], ("Y", "X")])
@@ -87,7 +82,7 @@ class TestParametrized:
     "funcname",
     [
         "interp",
-        pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
+        "diff",
         "min",
         "max",
         "cumsum",
@@ -96,7 +91,7 @@ class TestParametrized:
     ],
 )
 @pytest.mark.parametrize("boundary", ["fill", "extend"])
-@pytest.mark.parametrize("fill_value", [0, 10, None])
+@pytest.mark.parametrize("fill_value", [0, 10, 5.0, None])
 def test_boundary_global_input(funcname, boundary, fill_value):
     """Test that globally defined boundary values result in
     the same output as when the parameters are defined on either

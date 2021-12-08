@@ -398,6 +398,8 @@ def apply_as_grid_ufunc(
             for ax, width in boundary_width.items()
         }
 
+        # TODO check if fill_value present in axes
+
         padded_args = grid.pad(
             *args,
             boundary_width=boundary_width_real_axes,

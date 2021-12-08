@@ -1200,7 +1200,7 @@ class Grid:
             for key, value in metrics.items():
                 self.set_metrics(key, value)
 
-    def _parse_axes_kwargs(self, kwargs):
+    def _as_axis_kwarg_mapping(self, kwargs):
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
@@ -1212,6 +1212,7 @@ class Grid:
             parsed_kwargs = kwargs
         else:
             for axis in self.axes:
+
                 parsed_kwargs[axis] = kwargs
         return parsed_kwargs
 
@@ -1543,7 +1544,7 @@ class Grid:
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
             axis = [axis]
         # parse multi axis kwargs like e.g. `boundary`
-        multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+        multi_kwargs = {k: self._as_axis_kwarg_mapping(v) for k, v in kwargs.items()}
 
         out = da
         for axx in axis:
@@ -1605,7 +1606,7 @@ class Grid:
             boundary = {ax_name: boundary for ax_name in self.axes.keys()}
         if fill_value is None:
             fill_value = 0.0
-        if isinstance(fill_value, float):
+        if isinstance(fill_value, (int, float)):
             fill_value = {ax_name: fill_value for ax_name in self.axes.keys()}
 
         padded = []
@@ -1677,16 +1678,17 @@ class Grid:
             axis = [axis]
 
         # Promote single kwargs to axis-kwarg mappings
+        to = self._as_axis_kwarg_mapping(to)
 
-        to = self._parse_axes_kwargs(to)
-        print(to)
-
-        # adjust _parse_axis_kwargs to include this?
+        # TODO adjust _parse_axis_kwargs to include this?
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
-        metric_weighted = self._parse_axes_kwargs(metric_weighted)
+        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
 
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
+
+        # TODO needs to consult axes to see if default value is already stored there
+        # fill_value = self._as_axis_kwarg_mapping(fill_value)
 
         array = da
         # Apply 1D function over multiple axes
@@ -1722,7 +1724,6 @@ class Grid:
         One separate signature is created for each axis the 1D ufunc is going to be applied over.
         """
         signatures = []
-        print(to)
         for ax_name in axis:
             ax = self.axes[ax_name]
 
