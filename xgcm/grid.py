@@ -1922,7 +1922,7 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("max", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
     @docstrings.dedent
     def cumsum(self, da, axis, **kwargs):

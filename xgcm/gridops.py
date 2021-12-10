@@ -159,3 +159,49 @@ def min_center_to_inner(a):
 @as_grid_ufunc(signature="(X:inner)->(X:center)", boundary_width={"X": (1, 1)})
 def min_inner_to_center(a):
     return pairwise_forward_min(a)
+
+
+def pairwise_forward_max(a):
+    left, right = a[..., :-1], a[..., 1:]
+    stacked_pairs = np.stack([left, right], axis=-1)
+    return np.max(stacked_pairs, axis=-1)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+def max_center_to_left(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:left)->(X:center)", boundary_width={"X": (0, 1)})
+def max_left_to_center(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:right)", boundary_width={"X": (0, 1)})
+def max_center_to_right(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:right)->(X:center)", boundary_width={"X": (1, 0)})
+def max_right_to_center(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary_width={"X": (1, 1)})
+def max_center_to_outer(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:outer)->(X:center)", boundary_width={"X": (0, 0)})
+def max_outer_to_center(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:inner)", boundary_width={"X": (0, 0)})
+def max_center_to_inner(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:inner)->(X:center)", boundary_width={"X": (1, 1)})
+def max_inner_to_center(a):
+    return pairwise_forward_max(a)
