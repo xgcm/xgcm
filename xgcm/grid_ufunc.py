@@ -578,6 +578,7 @@ def _rechunk_to_merge_in_boundary_chunks(
     boundary_width_real_axes: Mapping[str, Tuple[int, int]],
     grid: Grid,
 ) -> List[xr.DataArray]:
+    """Merges in any small floating chunks at the edges that were created by the padding operation"""
 
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
@@ -603,7 +604,7 @@ def _get_chunk_pattern_for_merging_boundary(
 ):
     """Calculates the pattern of chunking needed to merge back in small chunks left on boundaries after padding"""
 
-    # TODO refactor this ugly logic to live elsewhere
+    # Easier to work with width of boundaries in terms of str axis names rather than int axis numbers
     boundary_width_dims = {
         _get_dim(grid, da, ax): width for ax, width in boundary_width_real_axes.items()
     }
