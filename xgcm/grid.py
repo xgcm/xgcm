@@ -1836,7 +1836,7 @@ class Grid:
 
         >>> grid.interp(da, ["X", "Y"], periodic={"X": True, "Y": False})
         """
-        return self._grid_func("interp", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("interp", da, axis, **kwargs)
 
     @docstrings.dedent
     def diff(self, da, axis, **kwargs):

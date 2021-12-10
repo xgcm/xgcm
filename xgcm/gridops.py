@@ -12,6 +12,9 @@ through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufun
 """
 
 
+# TODO can we allow for grouping these definitions into classes? Similar to pytest tests?
+
+
 def diff_forward(a):
     return a[..., 1:] - a[..., :-1]
 
@@ -64,3 +67,47 @@ def diff_left_to_inner(a):
 
 
 # TODO fill out all the other ufuncs for interp etc...
+
+
+def interp_forward(a):
+    return (a[..., :-1] + a[..., 1:]) / 2.0
+
+
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+def interp_center_to_left(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:left)->(X:center)", boundary_width={"X": (0, 1)})
+def interp_left_to_center(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:right)", boundary_width={"X": (0, 1)})
+def interp_center_to_right(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:right)->(X:center)", boundary_width={"X": (1, 0)})
+def interp_right_to_center(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary_width={"X": (1, 1)})
+def interp_center_to_outer(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:outer)->(X:center)", boundary_width={"X": (0, 0)})
+def interp_outer_to_center(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:inner)", boundary_width={"X": (0, 0)})
+def interp_center_to_inner(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:inner)->(X:center)", boundary_width={"X": (1, 1)})
+def interp_inner_to_center(a):
+    return interp_forward(a)
