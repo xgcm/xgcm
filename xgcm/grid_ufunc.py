@@ -434,15 +434,23 @@ def apply_as_grid_ufunc(
             for ax_name, width in boundary_width_real_axes.items()
         }
 
-        def _dict_to_numbered_axes(sizes):
-            return tuple(sizes.values())
-
+        # Disallow situations where shifting axis position would cause chunk size to change
         _check_if_length_would_change(out_dummy_ax_names, in_ax_pos, out_ax_pos)
 
-        # Output chunks are the same as input chunks (as we disallowed axis positions for which this is not the case)
-        # TODO first argument only because map_overlap can't handle multiple return values (I think)
+        single_dim_chunktype = Tuple[int, ...]
+
+        def _dict_to_numbered_axes(
+            sizes: Mapping[str, single_dim_chunktype]
+        ) -> Tuple[single_dim_chunktype, ...]:
+            return tuple(sizes.values())
+
+        # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have
+        # But in this case output chunks are the same as input chunks
+        # (as we disallowed axis positions for which this is not the case)
         original_chunksizes = [arg.chunksizes for arg in args]
+        # TODO first argument only because map_overlap can't handle multiple return values (I think)
         true_chunksizes = original_chunksizes[0]
+        # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
         true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
 
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
