@@ -6,16 +6,18 @@ from xarray.testing import assert_allclose
 from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
-GRID_UFUNC_REFACTOR_ERR = "Metrics have not yet been implemented for the grid ufunc refactor, and diff is currently the only function which uses the new code path"
+GRID_UFUNC_REFACTOR_ERR = (
+    "Metrics have not yet been implemented for the grid ufunc refactor"
+)
 
 
 @pytest.mark.parametrize(
     "funcname",
     [
-        "interp",
+        pytest.param("interp", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
         pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        "min",
-        "max",
+        pytest.param("min", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
+        pytest.param("max", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
         "cumsum",
     ],
 )
@@ -83,12 +85,14 @@ class TestParametrized:
 @pytest.mark.parametrize(
     "funcname",
     [
-        "interp",
+        pytest.param("interp", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
         pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        "min",
-        "max",
+        pytest.param("min", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
+        pytest.param("max", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
         "cumsum",
-        "derivative",
+        pytest.param(
+            "derivative", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)
+        ),
         "cumint",
     ],
 )
