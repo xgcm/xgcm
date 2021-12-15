@@ -1043,13 +1043,6 @@ class Axis:
         return da.get_axis_num(coord_name)
 
 
-_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
-    "periodic": "wrap",
-    "fill": "constant",
-    "extend": "edge",
-}
-
-
 class Grid:
     """
     An object with multiple :class:`xgcm.Axis` objects representing different
@@ -1567,85 +1560,6 @@ class Grid:
                 out = out / metric_new
 
         return out
-
-    def pad(self, *arrays, boundary_width=None, boundary=None, fill_value=None):
-        """
-        Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
-
-        Parameters
-        ----------
-        arrays : Sequence[xarray.DataArray]
-            Arrays to pad according to boundary and boundary_width.
-        boundary_width : Dict[str: Tuple[int, int]
-            The widths of the boundaries at the edge of each array.
-            Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
-            A flag indicating how to handle boundaries:
-            * None: Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-            * 'extrapolate': Set values by extrapolating linearly from the two
-              points nearest to the edge
-            Optionally a dict mapping axis name to separate values for each axis
-            can be passed.
-        fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
-            Optionally a dict mapping axis name to separate values for each axis
-            can be passed. Default is 0.
-        """
-        # TODO accept a general padding function like numpy.pad does as an argument to boundary
-
-        if not boundary_width:
-            raise ValueError("Must provide the widths of the boundaries")
-
-        if boundary and isinstance(boundary, str):
-            boundary = {ax_name: boundary for ax_name in self.axes.keys()}
-        if fill_value is None:
-            fill_value = 0.0
-        if isinstance(fill_value, float):
-            fill_value = {ax_name: fill_value for ax_name in self.axes.keys()}
-
-        padded = []
-        for da in arrays:
-            new_da = da
-            for ax, widths in boundary_width.items():
-                axis = self.axes[ax]
-                _, dim = axis._get_position_name(da)
-
-                # Use default boundary for axis unless overridden
-                if boundary:
-                    ax_boundary = boundary[ax]
-                else:
-                    ax_boundary = axis.boundary
-
-                if ax_boundary == "extrapolate":
-                    # TODO implement extrapolation
-                    raise NotImplementedError
-                elif ax_boundary is None:
-                    # TODO this is necessary, but also seems inconsistent with the docstring, which says that None = "no boundary condition"
-                    ax_boundary = "periodic"
-
-                # TODO avoid repeatedly calling xarray pad
-                try:
-                    mode = _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG[ax_boundary]
-                except KeyError:
-                    raise ValueError(
-                        f"{ax_boundary} is not a supported type of boundary"
-                    )
-
-                if mode == "constant":
-                    new_da = new_da.pad(
-                        {dim: widths}, mode, constant_values=fill_value[ax]
-                    )
-                else:
-                    new_da = new_da.pad({dim: widths}, mode)
-
-            padded.append(new_da)
-
-        return padded
 
     def _1d_grid_ufunc_dispatch(
         self, funcname, da, axis, to=None, keep_coords=False, **kwargs

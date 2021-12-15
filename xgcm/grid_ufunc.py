@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Sequence, Tuple,
 import numpy as np
 import xarray as xr
 
+from .padding import pad
+
 if TYPE_CHECKING:
     # Avoids circular references when type checking
 
@@ -398,12 +400,17 @@ def apply_as_grid_ufunc(
             for ax, width in boundary_width.items()
         }
 
-        padded_args = grid.pad(
-            *args,
-            boundary_width=boundary_width_real_axes,
-            boundary=boundary,
-            fill_value=fill_value,
-        )
+        padded_args = [
+            pad(
+                a,
+                grid,
+                boundary_width=boundary_width_real_axes,
+                boundary=boundary,
+                fill_value=fill_value,
+            )
+            for a in args
+        ]
+
     else:
         # If the boundary_width kwarg was not specified assume that zero padding is required
         boundary_width_real_axes = {
