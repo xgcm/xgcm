@@ -1,5 +1,6 @@
 import re
 
+import dask.array
 import numpy as np
 import pytest
 import xarray as xr
@@ -108,6 +109,12 @@ def create_1d_test_grid_ds(ax_name):
                 ],
                 np.arange(1.5, 9),
             ),
+            f"{ax_name}_o": (
+                [
+                    f"{ax_name}_o",
+                ],
+                np.arange(0.5, 10),
+            ),
         }
     )
 
@@ -124,6 +131,7 @@ def create_1d_test_grid(ax_name):
                 "left": f"{ax_name}_g",
                 "right": f"{ax_name}_r",
                 "inner": f"{ax_name}_i",
+                "outer": f"{ax_name}_o",
             }
         },
     )
@@ -141,12 +149,14 @@ def create_2d_test_grid(ax_name_1, ax_name_2):
                 "left": f"{ax_name_1}_g",
                 "right": f"{ax_name_1}_r",
                 "inner": f"{ax_name_1}_i",
+                "outer": f"{ax_name_1}_o",
             },
             f"{ax_name_2}": {
                 "center": f"{ax_name_2}_c",
                 "left": f"{ax_name_2}_g",
                 "right": f"{ax_name_2}_r",
                 "inner": f"{ax_name_2}_i",
+                "outer": f"{ax_name_2}_o",
             },
         },
     )
@@ -169,8 +179,11 @@ class TestGridUFunc:
             def diff_center_to_left(a):
                 return a - np.roll(a, shift=-1)
 
+    # TODO change test so that this passes
+    @pytest.mark.xfail(reason="changed the test fixture")
     def test_input_on_wrong_positions(self):
         grid = create_1d_test_grid("depth")
+        grid._ds.drop_vars("depth_o")
         da = np.sin(grid._ds.depth_g * 2 * np.pi / 9)
 
         with pytest.raises(ValueError, match=re.escape("(depth:outer) does not exist")):
@@ -439,6 +452,198 @@ class TestGridUFunc:
         u, v = grad_to_inner(grid, a, axis=[("lon", "lat")])
         assert_equal(u.T, expected_u)
         assert_equal(v, expected_v)
+
+
+class TestDaskNoOverlap:
+    def test_chunked_non_core_dims(self):
+        # Create 2D test data
+        ...
+
+    def test_chunked_core_dims_overlap_turned_off(self):
+        ...
+
+
+class TestDaskOverlap:
+    def test_chunked_core_dims_unchanging_chunksize(self):
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+        da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk(3)
+        da.coords["depth_c"] = grid._ds.depth_c
+
+        diffed = (da - da.roll(depth_c=1, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed, dims=["depth_g"], coords={"depth_g": grid._ds.depth_g}
+        ).compute()
+
+        # Test direct application
+        result = apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            # boundary="",
+            dask="allowed",
+            map_overlap=True,
+        ).compute()
+        assert_equal(result, expected)
+
+        # Test Grid method
+        result = grid.apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="allowed",
+            map_overlap=True,
+        )
+        assert_equal(result, expected)
+
+        # Test decorator
+        @as_grid_ufunc(
+            "(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="allowed",
+            map_overlap=True,
+        )
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        result = diff_center_to_left(
+            grid,
+            da,
+            axis=[("depth",)],
+        ).compute()
+        assert_equal(result, expected)
+
+    @pytest.mark.xfail
+    def test_num_tasks_regression(self):
+        # Assert numbr of tasks in optimized graph is <= some hardcoded number
+        # Obtain that number from the old performance initially
+        raise NotImplementedError
+
+    @pytest.mark.xfail
+    def test_gave_axis_but_no_corresponding_boundary_width(self):
+        # TODO this should default to zero
+        raise NotImplementedError
+
+    def test_zero_width_boundary(self):
+        def increment(x):
+            """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
+            if isinstance(x, np.ndarray):
+                return np.add(x, 1)
+            else:
+                raise TypeError
+
+        grid = create_1d_test_grid("depth")
+        a = np.sin(grid._ds.depth_g * 2 * np.pi / 9).chunk(2)
+        a.coords["depth_g"] = grid._ds.depth_g
+
+        expected = a + 1
+        result = apply_as_grid_ufunc(
+            increment,
+            a,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:left)->(X:left)",
+            boundary_width=None,
+            dask="allowed",
+            map_overlap=True,
+        ).compute()
+        assert_equal(result, expected)
+
+        # in this case the result should be the same as using just map_blocks
+        expected_data = dask.array.map_blocks(increment, a.data)
+        np.testing.assert_equal(result.data, expected_data)
+
+    @pytest.mark.skip
+    def test_only_some_core_dims_are_chunked(self):
+        raise NotImplementedError
+
+    def test_ufunc_changes_chunksize(self):
+        @as_grid_ufunc(
+            "(X:outer)->(X:center)",
+            boundary_width={"X": (1, 0)},
+            dask="allowed",
+            map_overlap=True,
+        )
+        def diff_outer_to_center(a):
+            """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
+            if isinstance(a, np.ndarray):
+                return a[..., 1:] - a[..., :-1]
+            else:
+                raise TypeError
+
+        grid = create_1d_test_grid("depth")
+        da = np.sin(grid._ds.depth_o * 2 * np.pi / 9).chunk(3)
+        da.coords["depth_o"] = grid._ds.depth_o
+
+        with pytest.raises(
+            NotImplementedError, match="includes one of the axis positions"
+        ):
+            diff_outer_to_center(
+                grid,
+                da,
+                axis=[("depth",)],
+            ).compute()
+
+    def test_multiple_inputs(self):
+        @as_grid_ufunc(
+            "(X:left),(X:right)->(X:center)",
+            boundary_width=None,
+            map_overlap=True,
+            dask="allowed",
+        )
+        def multiply_left_right(a, b):
+            """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
+            if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+                return np.multiply(a, b)
+            else:
+                raise TypeError
+
+        grid = create_1d_test_grid("depth")
+        a = np.sin(grid._ds.depth_g * 2 * np.pi / 9).chunk(2)
+        a.coords["depth_g"] = grid._ds.depth_g
+        b = np.cos(grid._ds.depth_r * 2 * np.pi / 9).chunk(2)
+        b.coords["depth_r"] = grid._ds.depth_r
+
+        depth_c_coord = xr.DataArray(np.arange(1, 10), dims="depth_c")
+        expected = xr.DataArray(
+            np.multiply(a.data, b.data),
+            dims=["depth_c"],
+            coords={"depth_c": depth_c_coord},
+        )
+
+        result = multiply_left_right(grid, a, b, axis=[("depth",), ("depth",)])
+        assert_equal(result, expected)
+
+    def test_multiple_outputs(self):
+        def diff_center_to_inner(a, axis):
+            result = a - np.roll(a, shift=1, axis=axis)
+            return np.delete(result, 0, axis)  # remove first element along axis
+
+        def grad_to_inner(a):
+            return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
+
+        grid = create_2d_test_grid("lon", "lat")
+
+        a = (grid._ds.lon_c ** 2 + grid._ds.lat_c ** 2).chunk(1)
+
+        # Test direct application
+        with pytest.raises(NotImplementedError, match="multiple outputs"):
+            apply_as_grid_ufunc(
+                grad_to_inner,
+                a,
+                axis=[("lon", "lat")],
+                grid=grid,
+                signature="(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)",
+                map_overlap=True,
+                dask="allowed",
+            )
 
 
 class TestSignaturesEquivalent:
