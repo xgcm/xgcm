@@ -798,15 +798,30 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     [
         ({"X": "fill", "Y": "fill"}, {"X": "fill", "Y": "fill"}),
         ({"X": "extend", "Y": "extend"}, {"X": "extend", "Y": "extend"}),
-        (
+        pytest.param(
             {"X": "extrapolate", "Y": "extrapolate"},
             {"X": "extrapolate", "Y": "extrapolate"},
+            marks=pytest.mark.xfail(
+                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
+            ),
         ),
         ("fill", {"X": "fill", "Y": "fill"}),
         ("extend", {"X": "extend", "Y": "extend"}),
-        ("extrapolate", {"X": "extrapolate", "Y": "extrapolate"}),
+        pytest.param(
+            "extrapolate",
+            {"X": "extrapolate", "Y": "extrapolate"},
+            marks=pytest.mark.xfail(
+                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
+            ),
+        ),
         ({"X": "extend", "Y": "fill"}, {"X": "extend", "Y": "fill"}),
-        ({"X": "extrapolate", "Y": "fill"}, {"X": "extrapolate", "Y": "fill"}),
+        pytest.param(
+            {"X": "extrapolate", "Y": "fill"},
+            {"X": "extrapolate", "Y": "fill"},
+            marks=pytest.mark.xfail(
+                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
+            ),
+        ),
         pytest.param(
             "fill",
             {"X": "fill", "Y": "extend"},
