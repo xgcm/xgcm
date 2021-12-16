@@ -1750,7 +1750,7 @@ class Grid:
 
         >>> grid.interp(da, ["X", "Y"], periodic={"X": True, "Y": False})
         """
-        return self._grid_func("interp", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("interp", da, axis, **kwargs)
 
     @docstrings.dedent
     def diff(self, da, axis, **kwargs):
@@ -1807,7 +1807,7 @@ class Grid:
 
         >>> grid.min(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("min", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("min", da, axis, **kwargs)
 
     @docstrings.dedent
     def max(self, da, axis, **kwargs):
@@ -1836,7 +1836,7 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("max", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
     @docstrings.dedent
     def cumsum(self, da, axis, **kwargs):
