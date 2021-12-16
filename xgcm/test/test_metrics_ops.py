@@ -6,6 +6,7 @@ from xarray.testing import assert_allclose
 from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
+
 GRID_UFUNC_REFACTOR_ERR = (
     "Metrics have not yet been implemented for the grid ufunc refactor"
 )
