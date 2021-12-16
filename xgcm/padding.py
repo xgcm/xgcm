@@ -17,6 +17,10 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
 }
 
 
+def _pad_fill(da, boundary_width, fill_value):
+    pass
+
+
 def pad(
     da: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
@@ -36,8 +40,8 @@ def pad(
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
     boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
         A flag indicating how to handle boundaries:
-        * None: Do not apply any boundary conditions. Raise an error if
-          boundary conditions are required for the operation.
+        * None: Defaults to `periodic`
+        * 'periodic' : Wrap array along the specified axes
         * 'fill':  Set values outside the array boundary to fill_value
           (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
@@ -53,14 +57,17 @@ def pad(
     """
     # TODO accept a general padding function like numpy.pad does as an argument to boundary
 
+    # TODO: boundary width should not really be optional here I think?
     if not boundary_width:
         raise ValueError("Must provide the widths of the boundaries")
 
+    # TODO: Refactor this with grid logic that creates a per axis mapping, checks values in grid object and sets defaults.
     if boundary and isinstance(boundary, str):
         boundary = {ax_name: boundary for ax_name in grid.axes.keys()}
     if fill_value is None:
         fill_value = 0.0
-    if isinstance(fill_value, float):
+    if isinstance(fill_value, float) or isinstance(fill_value, int):
+        # TODO: not sure if we should allow ints?
         fill_value = {ax_name: fill_value for ax_name in grid.axes.keys()}
 
     new_da = da
