@@ -342,6 +342,10 @@ class Axis:
         boundary conditions.
         """
 
+        # raise to see if my new padding implementation does not touch this logic anymore
+        # raise
+        # I have confirmed that my current padding does not touch this logic anymore, but it is still needed for other tests.
+
         position, this_dim = self._get_position_name(da)
         this_axis_num = da.get_axis_num(this_dim)
 
@@ -1281,6 +1285,10 @@ class Grid:
         for axis, axis_links in axis_connections.items():
             self.axes[axis]._facedim = facedim
             self.axes[axis]._connections = axis_links
+
+        # Hacky way to get the face connections on a grid level
+        self._connections = fc
+        self._facedim = facedim
 
     def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))

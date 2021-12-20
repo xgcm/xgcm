@@ -129,6 +129,20 @@ class TestPaddingDefaults:
             {"xt": (0, 1)}, "constant", constant_values=default_fill_value
         )
         result = pad(data, grid, boundary="fill", boundary_width={"X": (0, 1)})
+        print(result)
+        print(expected)
+        xr.testing.assert_allclose(expected, result)
+
+    def test_padding_None(self):
+        "we currently expect the default padding to be periodic"
+        ds, coords, _ = datasets_grid_metric("C")
+        grid = Grid(ds, coords=coords)
+        data = ds.tracer
+
+        expected = data.pad({"xt": (0, 1)}, "wrap")
+        result = pad(data, grid, boundary=None, boundary_width={"X": (0, 1)})
+        print(result)
+        print(expected)
         xr.testing.assert_allclose(expected, result)
 
 
