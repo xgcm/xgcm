@@ -7,7 +7,7 @@ from xgcm.grid import Grid
 
 @pytest.fixture(scope="module")
 def ds():
-    N = 25
+    N = 6
     return xr.Dataset(
         {
             "data_c": (["face", "y", "x"], np.random.rand(2, N, N)),
@@ -59,7 +59,7 @@ def ds_face_connections_x_to_y():
 @pytest.fixture(scope="module")
 def cs():
     # cubed-sphere
-    N = 25
+    N = 29
     ds = xr.Dataset(
         {"data_c": (["face", "y", "x"], np.random.rand(6, N, N))},
         coords={
@@ -177,9 +177,16 @@ def test_create_connected_grid_missing_face(ds, ds_face_connections_x_to_x):
 
 def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     # simplest scenario with one face connection
-    grid = Grid(ds, face_connections=ds_face_connections_x_to_x)
-    diff_x = grid.diff(ds.data_c, "X", boundary="fill")
+    grid = Grid(
+        ds, face_connections=ds_face_connections_x_to_x, boundary="fill"
+    )  # !!! Check if this helps.
+    diff_x = grid.diff(
+        ds.data_c, "X", boundary="fill"
+    )  # are these still blocked by the defaults thing on the axis?
     interp_x = grid.interp(ds.data_c, "X", boundary="fill")
+
+    print(interp_x)
+    print(diff_x)
 
     # make sure the face connection got applied correctly
     np.testing.assert_allclose(
@@ -194,13 +201,45 @@ def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     np.testing.assert_allclose(interp_x[0, :, 0], 0.5 * (ds.data_c[0, :, 0] + 0.0))
 
 
-@pytest.mark.xfail(reason="This one still does not pass yet.")
+# def test_diff_interp_connected_grid_x_to_x_reverse(
+#     ds,
+# ):
+#     face_connections = {
+#         "face": {
+#             0: {"X": (None, (1, "X", True))},
+#             1: {"X": (None, (0, "X", True))},
+#         }
+#     }
+#     # simplest scenario with one face connection
+#     grid = Grid(ds, face_connections=face_connections)
+#     diff_x = grid.diff(ds.data_c, "X", boundary="fill")
+#     interp_x = grid.interp(ds.data_c, "X", boundary="fill")
+
+#     # make sure the face connection got applied correctly
+#     np.testing.assert_allclose(
+#         diff_x[1, :, -1], ds.data_c[0, :, -1] - ds.data_c[1, :, -1]
+#     )
+#     # TODO: This wont work with widths more than one yet...
+#     # np.testing.assert_allclose(
+#     #     interp_x[1, :, 0], 0.5 * (ds.data_c[1, :, 0] + ds.data_c[0, :, -1])
+#     # )
+
+#     # # make sure the left boundary got applied correctly
+#     # np.testing.assert_allclose(diff_x[0, :, 0], ds.data_c[0, :, 0] - 0.0)
+#     # np.testing.assert_allclose(interp_x[0, :, 0], 0.5 * (ds.data_c[0, :, 0] + 0.0))
+
+
+# @pytest.mark.xfail(reason="This one still does not pass yet.")
 def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # one face connection, rotated
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
     diff_y = grid.diff(ds.data_c, "Y", boundary="fill")
     interp_y = grid.interp(ds.data_c, "Y", boundary="fill")
+
+    print(ds)
+    print(diff_y)
+    print(interp_y)
 
     # make sure the face connection got applied correctly
     # non-same axis connections require rotation
