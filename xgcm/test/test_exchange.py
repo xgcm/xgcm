@@ -203,10 +203,6 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     diff_y = grid.diff(ds.data_c, "Y", boundary="fill")
     interp_y = grid.interp(ds.data_c, "Y", boundary="fill")
 
-    print(ds)
-    print(diff_y)
-    print(interp_y)
-
     # make sure the face connection got applied correctly
     # non-same axis connections require rotation
     # ravel everything to avoid dealing with broadcasting
