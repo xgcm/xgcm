@@ -177,8 +177,7 @@ def test_create_connected_grid_missing_face(ds, ds_face_connections_x_to_x):
 
 def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     # simplest scenario with one face connection
-    grid = Grid(ds, face_connections=ds_face_connections_x_to_x)
-    # , periodic=False)
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_x, periodic=False)
     # TODO: Setting periodic=False fixes this issue, but that is breaking existing defaults it seems.
     # TODO: Need to figure out how the old tests were running exactly.
     diff_x = grid.diff(ds.data_c, "X", boundary="fill", fill_value=0.0)
