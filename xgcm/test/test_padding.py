@@ -176,15 +176,31 @@ class TestPaddingErrors:
 
 
 @pytest.mark.parametrize("fill_value", [np.nan, 0])
+@pytest.mark.parametrize(
+    "boundary_width",
+    [
+        {"X": (1, 1)},
+        {"X": (1, 2)},
+        {"X": (0, 1)},
+        {
+            "X": (1, 1),
+            "Y": (1, 1),
+        },
+        {
+            "X": (2, 2),
+            "Y": (2, 2),
+        },
+        {
+            "X": (0, 1),
+            "Y": (1, 0),
+        },
+        {
+            "X": (0, 2),
+            "Y": (1, 0),
+        },
+    ],
+)
 class TestPaddingFaceConnection:
-    @pytest.mark.parametrize(
-        "boundary_width",
-        [
-            {"X": (1, 1)},  # Test one case with 'regular padding on the 'other' side.
-            {"X": (1, 2)},
-            {"X": (0, 1), "Y": (1, 0)},
-        ],
-    )
     def test_face_connections_right_left_same_axis(
         self, boundary_width, ds_faces, fill_value
     ):
@@ -196,16 +212,17 @@ class TestPaddingFaceConnection:
         }
         grid = Grid(ds_faces, face_connections=face_connections)
         data = ds_faces.data_c
-        # restrict data here, so its easier to see the output
-        data = data.isel(y=slice(0, 2), x=slice(0, 2))
+
+        # fill in zeros for y boundary width if not given
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
+
+        # # restrict data here, so its easier to see the output
+        # data = data.isel(y=slice(0, 2), x=slice(0, 2))
         data = data.reset_coords(drop=True).reset_index(data.dims, drop=True)
 
         # Manually put together the data
         face_0 = data.isel(face=0)
         face_1 = data.isel(face=1)
-
-        # fill in zeros for y boundary width if not given
-        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
 
         # pad on each side except on the connected side
         face_0_padded = face_0.pad(
@@ -252,23 +269,83 @@ class TestPaddingFaceConnection:
         )
         xr.testing.assert_allclose(result, expected)
 
-    @pytest.mark.parametrize(
-        "boundary_width",
-        [
-            {
-                "X": (1, 1),
-                "Y": (1, 1),
-            },  # Test one case with 'regular padding on the 'other' side.
-            {
-                "X": (2, 2),
-                "Y": (2, 2),
-            },  # can we only allow same padding amount on each  side?
-            {
-                "X": (0, 1),
-                "Y": (1, 0),
-            },
-        ],
-    )
+    def test_face_connections_right_right_same_axis(
+        self, boundary_width, ds_faces, fill_value
+    ):
+        face_connections = {
+            "face": {
+                0: {"X": (None, (1, "X", True))},
+                1: {"X": (None, (0, "X", True))},
+            }
+        }
+        grid = Grid(ds_faces, face_connections=face_connections)
+        data = ds_faces.data_c
+
+        # fill in zeros for y boundary width if not given
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
+
+        # # restrict data here, so its easier to see the output
+        # data = data.isel(y=slice(0, 2), x=slice(0, 2))
+        data = data.reset_coords(drop=True).reset_index(data.dims, drop=True)
+
+        # Manually put together the data
+        face_0 = data.isel(face=0)
+        face_1 = data.isel(face=1)
+
+        # pad on each side except on the connected side
+        face_0_padded = face_0.pad(
+            x=(boundary_width["X"][0], 0),
+            y=(boundary_width["Y"][0], boundary_width["Y"][1]),
+            mode="constant",
+            constant_values=fill_value,
+        )
+
+        face_1_padded = face_1.pad(
+            x=(boundary_width["X"][0], 0),
+            y=(boundary_width["Y"][0], boundary_width["Y"][1]),
+            mode="constant",
+            constant_values=fill_value,
+        )
+
+        # Process the padded data
+        face_0_addition = face_1_padded.isel(
+            x=slice(
+                -boundary_width["X"][1],
+                None if boundary_width["X"][1] > 0 else 0,
+            )
+        )
+
+        face_1_addition = face_0_padded.isel(
+            x=slice(
+                -boundary_width["X"][1],
+                None if boundary_width["X"][1] > 0 else 0,
+            )
+        )
+
+        # do a parallel flip since this connection is reversed
+        face_0_addition = face_0_addition.isel(x=slice(None, None, -1))
+        face_1_addition = face_1_addition.isel(x=slice(None, None, -1))
+
+        # then simply add the corresponding slice to each face according to the connection
+        face_0_expected = xr.concat(
+            [face_0_padded, face_0_addition],
+            dim="x",
+        )
+        face_1_expected = xr.concat(
+            [face_1_padded, face_1_addition],
+            dim="x",
+        )
+
+        expected = xr.concat([face_0_expected, face_1_expected], dim="face")
+        result = pad(
+            data,
+            grid,
+            boundary_width=boundary_width,
+            boundary="fill",
+            fill_value=fill_value,
+        )
+        xr.testing.assert_allclose(result, expected)
+
     def test_face_connections_right_left_swap_axis(
         self, boundary_width, ds_faces, fill_value
     ):
@@ -281,8 +358,11 @@ class TestPaddingFaceConnection:
         grid = Grid(ds_faces, face_connections=face_connections)
         data = ds_faces.data_c
 
+        # fill in zeros for y boundary width if not given
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
+
         # restrict data here, so its easier to see the output
-        data = data.isel(y=slice(0, 3), x=slice(0, 3))
+        data = data.isel(y=slice(0, 2), x=slice(0, 2))
         data = data.reset_coords(drop=True).reset_index(data.dims, drop=True)
 
         # Manually put together the data
@@ -304,17 +384,33 @@ class TestPaddingFaceConnection:
             constant_values=fill_value,
         )
 
+        # Now pad each face according to the swapped axes, so that the connected slices match
+        # This is only relevant when the boundary width is not equal for all sides.
+        face_0_padded_swapped = face_0.pad(
+            x=(boundary_width["Y"][0], 0),
+            y=(boundary_width["X"][1], boundary_width["X"][0]),
+            mode="constant",
+            constant_values=fill_value,
+        )
+
+        face_1_padded_swapped = face_1.pad(
+            x=(boundary_width["Y"][1], boundary_width["Y"][0]),
+            y=(0, boundary_width["X"][1]),
+            mode="constant",
+            constant_values=fill_value,
+        )
+
         # then simply add the corresponding slice to each face according to the connection
         # in this case we also need to rename them
 
-        face_0_addition = face_1_padded.isel(y=slice(0, boundary_width["X"][1]))
+        face_0_addition = face_1_padded_swapped.isel(y=slice(0, boundary_width["X"][1]))
         # Flip both of these along the orthogonal axis
         face_0_addition = face_0_addition.isel(x=slice(None, None, -1))
         # In this case we need to rename the 'addition' dimensions
         face_0_addition = _maybe_swap_dimension_names(face_0_addition, "y", "x")
 
         # Same steps for the other face
-        face_1_addition = face_0_padded.isel(
+        face_1_addition = face_0_padded_swapped.isel(
             x=slice(
                 -boundary_width["Y"][0],
                 None if boundary_width["Y"][0] > 0 else 0,
@@ -334,10 +430,7 @@ class TestPaddingFaceConnection:
             dim="x",
         )
         face_1_expected = xr.concat(
-            [
-                face_1_addition,
-                face_1_padded,
-            ],
+            [face_1_addition, face_1_padded],
             dim="y",
         )
 
@@ -352,26 +445,13 @@ class TestPaddingFaceConnection:
         )
         xr.testing.assert_allclose(result, expected)
 
-    @pytest.mark.parametrize(
-        "boundary_width",
-        [
-            {
-                "X": (1, 1),
-                "Y": (1, 1),
-            },  # Test one case with 'regular padding on the 'other' side.
-            {
-                "X": (2, 2),
-                "Y": (2, 2),
-            },
-            {
-                "X": (0, 1),
-                "Y": (1, 0),
-            },
-        ],
-    )
     def test_face_connections_right_right_swap_axis(
         self, boundary_width, ds_faces, fill_value
     ):
+
+        # set a default for boundary widths
+        boundary_width = {k: boundary_width.get(k, (0, 0)) for k in ["X", "Y"]}
+
         face_connections = {
             "face": {
                 0: {"X": (None, (1, "Y", True))},
@@ -380,6 +460,9 @@ class TestPaddingFaceConnection:
         }
         grid = Grid(ds_faces, face_connections=face_connections)
         data = ds_faces.data_c
+
+        # fill in zeros for y boundary width if not given
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
 
         # restrict data here, so its easier to see the output
         data = data.isel(y=slice(0, 3), x=slice(0, 3))

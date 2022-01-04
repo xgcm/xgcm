@@ -57,7 +57,12 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
         }
         return expanded_padding_width
 
+    # !!! Hacky. This fixes the cubed-sphere test. I am not quite sure yet what the underlying cause is.
+    # TODO: Why is this problem not caught in the padding tests?
+    # I am concerned that we are really hardcoding the axes in here. Is there a way to make this more general?
+    padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in ["X", "Y"]}
     padding_width_original = {k: v for k, v in padding_width.items()}
+
     padding_width = _expand_boundary_width(padding_width)
 
     # The edges of the array which are not connected, need to be padded with the
@@ -67,8 +72,6 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
 
     da_prepadded = _pad_basic(da, grid, padding_width, **kwargs)
 
-    # The old logic is too convoluted, lets rewrite this!
-    # Step 1: separate each face into a separate dataset
     pad_axes = padding_width.keys()
 
     # i made some alterations to the grid init to store the
@@ -88,7 +91,7 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
 
         da_single_padded = da_single
         for axname in pad_axes:
-            # get any connections relevant to the current axis, default to None (regular padding otherwise)
+            # get any connections relevant to the current axis, default to None.
             (left_connection, right_connection) = connection_single.get(
                 axname, (None, None)
             )
