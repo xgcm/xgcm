@@ -363,16 +363,10 @@ class TestPaddingFaceConnection:
                 "X": (2, 2),
                 "Y": (2, 2),
             },
-            pytest.param(
-                {
-                    "X": (0, 1),
-                    "Y": (1, 0),
-                },
-                # marks=pytest.mark.xfail(
-                #     reason="can we only allow same padding amount on each  side?"
-                #     # I think I need to solve this to get the padding to work for the other examples
-                # ),
-            ),
+            {
+                "X": (0, 1),
+                "Y": (1, 0),
+            },
         ],
     )
     def test_face_connections_right_right_swap_axis(
@@ -391,52 +385,86 @@ class TestPaddingFaceConnection:
         data = data.isel(y=slice(0, 3), x=slice(0, 3))
         data = data.reset_coords(drop=True).reset_index(data.dims, drop=True)
 
-        # pad along all axes given in boundary_width, and then replace the connected axis
-        # Note: If we chose a different method than 'fill' the final result would depend on the order of padding
-        # and this might not work properly? For fill it shouldnt matter.
-        padded = data.pad(
-            x=(boundary_width["X"][0], boundary_width["X"][1]),
+        # Manually put together the data
+        face_0 = data.isel(face=0)
+        face_1 = data.isel(face=1)
+
+        # pad on each side except on the connected side
+        face_0_padded = face_0.pad(
+            x=(boundary_width["X"][0], 0),
             y=(boundary_width["Y"][0], boundary_width["Y"][1]),
             mode="constant",
             constant_values=fill_value,
         )
 
-        padded_x = data.pad(
+        face_1_padded = face_1.pad(
             x=(boundary_width["X"][0], boundary_width["X"][1]),
+            y=(boundary_width["Y"][0], 0),
             mode="constant",
             constant_values=fill_value,
         )
 
-        padded_y = data.pad(
-            y=(boundary_width["Y"][0], boundary_width["Y"][1]),
+        # Now pad each face according to the swapped axes, so that the connected slices match
+        # This is only relevant when the boundary width is not equal for all sides.
+        face_0_padded_swapped = face_0.pad(
+            x=(boundary_width["Y"][0], 0),
+            y=(boundary_width["X"][0], boundary_width["X"][1]),
             mode="constant",
             constant_values=fill_value,
         )
 
-        # manually add the x boundaries
-        face_0 = padded.isel(face=0)
-        face_1 = padded.isel(face=1)
+        face_1_padded_swapped = face_1.pad(
+            x=(boundary_width["Y"][0], boundary_width["Y"][1]),
+            y=(boundary_width["X"][0], 0),
+            mode="constant",
+            constant_values=fill_value,
+        )
 
-        # Extract and process the additional data
-        face_0_addition = padded_x[dict(face=1, y=slice(-boundary_width["Y"][1], None))]
-        face_1_addition = padded_y[dict(face=0, x=slice(-boundary_width["X"][1], None))]
+        # then simply add the corresponding slice to each face according to the connection
+        # in this case we also need to rename them
 
-        # Flip both of these along the parallel axis (because the connection is reverse)
+        face_0_addition = face_1_padded_swapped.isel(
+            y=slice(
+                -boundary_width["X"][1],
+                None if boundary_width["X"][1] > 0 else 0,
+                # this is a bit annoying. if the boundary width on this side is
+                # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
+            )
+        )
+        # Flip both of these along the parallel axis
         face_0_addition = face_0_addition.isel(y=slice(None, None, -1))
+        # In this case we need to rename the 'addition' dimensions
+        face_0_addition = _maybe_swap_dimension_names(face_0_addition, "y", "x")
+
+        # Same steps for the other face
+        face_1_addition = face_0_padded_swapped.isel(
+            x=slice(
+                -boundary_width["Y"][1],
+                None if boundary_width["Y"][1] > 0 else 0,
+                # this is a bit annoying. if the boundary width on this side is
+                # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
+            )
+        )
         face_1_addition = face_1_addition.isel(x=slice(None, None, -1))
-
-        # rename the dimension and concatenate each face
-        face_0_addition = _maybe_swap_dimension_names(
-            face_0_addition, "y", "x"
-        ).transpose(*face_0.dims)
         face_1_addition = _maybe_swap_dimension_names(
-            face_1_addition, "x", "y"
-        ).transpose(*face_1.dims)
+            face_1_addition,
+            "x",
+            "y",
+        )
 
-        face_0[dict(x=slice(-boundary_width["X"][1], None))] = face_0_addition
-        face_1[dict(y=slice(-boundary_width["Y"][1], None))] = face_1_addition
+        face_0_expected = xr.concat(
+            [face_0_padded, face_0_addition],
+            dim="x",
+        )
+        face_1_expected = xr.concat(
+            [
+                face_1_padded,
+                face_1_addition,
+            ],
+            dim="y",
+        )
 
-        expected = xr.concat([face_0, face_1], dim="face")
+        expected = xr.concat([face_0_expected, face_1_expected], dim="face")
 
         result = pad(
             data,
@@ -445,6 +473,5 @@ class TestPaddingFaceConnection:
             boundary="fill",
             fill_value=fill_value,
         )
-        print(result)
-        print(expected)
+        print(data)
         xr.testing.assert_allclose(result, expected)

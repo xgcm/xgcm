@@ -65,7 +65,7 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
     # the same shape. We will pad everything now and then replace the connections.
     # That might however not be the most computational efficient way to do it.
 
-    da = _pad_basic(da, grid, padding_width, **kwargs)
+    da_prepadded = _pad_basic(da, grid, padding_width, **kwargs)
 
     # The old logic is too convoluted, lets rewrite this!
     # Step 1: separate each face into a separate dataset
@@ -83,7 +83,7 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
 
     # Iterate over each face and pad accordingly
     for i in range(n_facedim):
-        da_single = da.isel({facedim: i})
+        da_single = da_prepadded.isel({facedim: i})
         connection_single = connections[facedim][i]
 
         da_single_padded = da_single
@@ -103,7 +103,7 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
                     if connection:
                         # apply face connection logic #
                         source_face, source_axis, reverse = connection
-                        source_da = da.isel({facedim: source_face})
+                        source_da = da_prepadded.isel({facedim: source_face})
                         _, source_dim = grid.axes[source_axis]._get_position_name(
                             source_da
                         )
@@ -144,17 +144,10 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
                             {target_dim: target_slice_index}
                         )
 
-                        # Apply parallel flip if reverse and the slice has more than one element
-                        if reverse and len(source_slice[source_dim]) > 1:
-                            source_slice = source_slice.isel(
-                                {source_dim: slice(None, None, -1)}
-                            )
-
-                        source_slice = source_slice.squeeze()
-
                         # rename dimension if different
                         if source_dim != target_dim:
                             if not reverse:
+                                # Flip along the orthogonal axis
                                 source_slice = source_slice.isel(
                                     {target_dim: slice(None, None, -1)}
                                 )
@@ -163,6 +156,15 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
                                 source_dim,
                                 target_dim,
                             )
+
+                        # Apply parallel flip if reverse
+                        if reverse:
+                            source_slice = source_slice.isel(
+                                {target_dim: slice(None, None, -1)}
+                            )
+                        source_slice = source_slice.squeeze()
+
+                        # assemble the padded array
                         if is_right:
                             concat_list = [target_slice, source_slice]
                         else:
