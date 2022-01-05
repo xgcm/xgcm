@@ -34,6 +34,11 @@ def _maybe_promote_str_to_list(a):
 
 
 _VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
+_VALID_AXIS_PROPERTIES = [
+    "periodic",
+    "boundary",
+    "fill_value",
+]
 
 
 class Axis:
@@ -120,7 +125,7 @@ class Axis:
 
         self._ds = ds
         self.name = axis_name
-        self._periodic = periodic
+        self.periodic = periodic
         if boundary not in _VALID_BOUNDARY:
             raise ValueError(
                 f"Expected 'boundary' to be one of {_VALID_BOUNDARY}. Received {boundary!r} instead."
@@ -212,7 +217,7 @@ class Axis:
             self._connections = {None: ((None, self, False), (None, self, False))}
 
     def __repr__(self):
-        is_periodic = "periodic" if self._periodic else "not periodic"
+        is_periodic = "periodic" if self.periodic else "not periodic"
         summary = [
             "<xgcm.Axis '%s' (%s, boundary=%r)>"
             % (self.name, is_periodic, self.boundary)
@@ -447,7 +452,7 @@ class Axis:
             edge_data = concatenate(arrays, face_axis_num)
         else:
             edge_data = face_edge_data(None, None)
-        if self._periodic:
+        if self.periodic:
             if boundary_discontinuity:
                 if is_left_edge:
                     edge_data = edge_data - boundary_discontinuity
@@ -864,7 +869,7 @@ class Axis:
             )
 
         # raise error if axis is periodic
-        if self._periodic:
+        if self.periodic:
             raise ValueError(
                 "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
             )
@@ -1150,44 +1155,38 @@ class Grid:
                         f"Input `{dim}` (for the `{pos}` position on axis `{axis}`) is not a dimension in the input datasets `ds`."
                     )
 
+        # Parse axis properties
+        padding = self._as_axis_kwarg_mapping(
+            boundary, axes=all_axes
+        )  # also switching boundary to padding to reflect the new internal lingo
+        fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+
+        # periodic is the only argument that accepts lists. Since we deprecate this soon, ill implement
+        # a fix right here
+        if isinstance(periodic, list):
+            periodic = {axname: True for axname in periodic}
+        periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
+
+        # TODO: Check the provided input to be valid?
+
         self.axes = OrderedDict()
-        for axis_name in all_axes:
-            try:
-                is_periodic = axis_name in periodic
-            except TypeError:
-                is_periodic = periodic
-            if axis_name in default_shifts:
-                axis_default_shifts = default_shifts[axis_name]
-            else:
-                axis_default_shifts = {}
 
-            if isinstance(boundary, dict):
-                axis_boundary = boundary.get(axis_name, None)
-            elif isinstance(boundary, str) or boundary is None:
-                axis_boundary = boundary
-            else:
-                raise ValueError(
-                    f"boundary={boundary} is invalid. Please specify a dictionary "
-                    "mapping axis name to a boundary option; a string or None."
-                )
-
-            if isinstance(fill_value, dict):
-                axis_fillvalue = fill_value.get(axis_name, None)
-            elif isinstance(fill_value, (int, float)) or fill_value is None:
-                axis_fillvalue = fill_value
-            else:
-                raise ValueError(
-                    f"fill_value={fill_value} is invalid. Please specify a dictionary "
-                    "mapping axis name to a boundary option; a number or None."
-                )
-
-            self.axes[axis_name] = Axis(
+        # Overwrite axes with actual input
+        for axname in all_axes:
+            axis_coords = coords.get(axname)
+            axis_perodic = periodic.get(axname, None)
+            axis_padding = padding.get(axname, "fill")  # TODO Is fill the default?
+            axis_fillvalue = fill_value.get(
+                axname, None
+            )  # TODO Should 0 be the default? I think nan is better. It is incredibly confusing where these defaults are set!
+            axis_default_shifts = default_shifts.get(axname, {})
+            self.axes[axname] = Axis(
                 ds,
-                axis_name,
-                is_periodic,
+                axname,
+                axis_perodic,
                 default_shifts=axis_default_shifts,
-                coords=coords.get(axis_name),
-                boundary=axis_boundary,
+                coords=axis_coords,
+                boundary=axis_padding,
                 fill_value=axis_fillvalue,
             )
 
@@ -1200,21 +1199,37 @@ class Grid:
             for key, value in metrics.items():
                 self.set_metrics(key, value)
 
-    def _as_axis_kwarg_mapping(self, kwargs):
+    def _as_axis_kwarg_mapping(self, kwargs, axes=None):
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
         or if not all axes are provided, the other axes will be parsed as defaults (None)
         periodic = {'X':True} --> periodic={'X': True, 'Y':None}
         """
+        if axes is None:
+            axes = self.axes
+
         parsed_kwargs = dict()
         if isinstance(kwargs, dict):
             parsed_kwargs = kwargs
         else:
-            for axis in self.axes:
+            for axis in axes:
 
                 parsed_kwargs[axis] = kwargs
         return parsed_kwargs
+
+    def _check_axis_kwarg_mapping(self, kwargs):
+        # Make sure that axis properties are included in kwarg mapping if not explicitly provided
+        for kwarg_name in _VALID_AXIS_PROPERTIES:
+            if kwarg_name not in kwargs.keys():  # do not overwrite
+                kwargs_mapping = {}
+                for axname in self.axes:
+                    kwargs_mapping[axname] = getattr(self.axes[axname], kwarg_name)
+            else:
+                # but make sure that input is provided as an axis kwarg mapping
+                kwargs_mapping = self._as_axis_kwarg_mapping(kwargs[kwarg_name])
+            kwargs[kwarg_name] = kwargs_mapping
+        return kwargs
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -1491,7 +1506,7 @@ class Grid:
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
         for name, axis in self.axes.items():
-            is_periodic = "periodic" if axis._periodic else "not periodic"
+            is_periodic = "periodic" if axis.periodic else "not periodic"
             summary.append(
                 "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
             )
@@ -1687,8 +1702,24 @@ class Grid:
 
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
-        # TODO needs to consult axes to see if default value is already stored there
-        # fill_value = self._as_axis_kwarg_mapping(fill_value)
+        # Grab default kwargs from axis
+
+        # I ran into issues with cases, where periodic is not explicitly set and a grid method sets boundary
+        # (test_exchange/test_diff_interp_connected_grid_x_to_x).
+        # I am not sure about the legacy behavior? If I do not set anythin on the grid, it will assume its periodic,
+        # but then when I specify boundary this gets overwritten? This is extremely confusing, we need to kill periodic asap.
+
+        # consult axes to see if default value is already stored there
+        kwargs = self._check_axis_kwarg_mapping(kwargs)
+
+        # !!! Ugly workaround for periodic. This should be cleaner once we deprecate
+        if "periodic" in kwargs.keys():
+            for axname in self.axes.keys():
+                is_periodic = kwargs["periodic"].get(axname, None)
+                if is_periodic:
+                    # if periodic is set, overwrite boundary.
+                    kwargs["boundary"][axname] = "periodic"
+            del kwargs["periodic"]
 
         array = da
         # Apply 1D function over multiple axes

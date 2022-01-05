@@ -91,7 +91,7 @@ class TestParametrized:
     ],
 )
 @pytest.mark.parametrize("boundary", ["fill", "extend"])
-@pytest.mark.parametrize("fill_value", [0, 10, 5.0, None])
+@pytest.mark.parametrize("fill_value", [0, 10, None])
 def test_boundary_global_input(funcname, boundary, fill_value):
     """Test that globally defined boundary values result in
     the same output as when the parameters are defined on either
@@ -120,6 +120,7 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     manual_result = func_manual(
         ds.tracer, axis, boundary=boundary, fill_value=fill_value
     )
+
     xr.testing.assert_allclose(global_result, manual_result)
 
 
