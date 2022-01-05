@@ -8,7 +8,7 @@ build:
 python:
     install:
        - method: setuptools
-         path: package
+         path: .
 
 conda:
   environment: doc/environment.yml
