@@ -1,3 +1,5 @@
+import numpy as np
+
 from .grid_ufunc import as_grid_ufunc
 
 """
@@ -10,6 +12,9 @@ If adding a new function to this list, make sure the function name starts with t
 want it to be called from. e.g. `diff_centre_to_left_second_order` will be added to the list of functions to search
 through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufunc for more details.
 """
+
+
+# TODO can we allow for grouping these definitions into classes? Similar to pytest tests?
 
 
 def diff_forward(a):
@@ -63,4 +68,140 @@ def diff_left_to_inner(a):
     raise NotImplementedError
 
 
-# TODO fill out all the other ufuncs for interp etc...
+def interp_forward(a):
+    return (a[..., :-1] + a[..., 1:]) / 2.0
+
+
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+def interp_center_to_left(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:left)->(X:center)", boundary_width={"X": (0, 1)})
+def interp_left_to_center(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:right)", boundary_width={"X": (0, 1)})
+def interp_center_to_right(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:right)->(X:center)", boundary_width={"X": (1, 0)})
+def interp_right_to_center(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary_width={"X": (1, 1)})
+def interp_center_to_outer(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:outer)->(X:center)", boundary_width={"X": (0, 0)})
+def interp_outer_to_center(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:inner)", boundary_width={"X": (0, 0)})
+def interp_center_to_inner(a):
+    return interp_forward(a)
+
+
+@as_grid_ufunc(signature="(X:inner)->(X:center)", boundary_width={"X": (1, 1)})
+def interp_inner_to_center(a):
+    return interp_forward(a)
+
+
+# TODO ufuncs for max, cumsum
+
+
+def pairwise_forward_min(a):
+    left, right = a[..., :-1], a[..., 1:]
+    stacked_pairs = np.stack([left, right], axis=-1)
+    return np.min(stacked_pairs, axis=-1)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+def min_center_to_left(a):
+    return pairwise_forward_min(a)
+
+
+@as_grid_ufunc(signature="(X:left)->(X:center)", boundary_width={"X": (0, 1)})
+def min_left_to_center(a):
+    return pairwise_forward_min(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:right)", boundary_width={"X": (0, 1)})
+def min_center_to_right(a):
+    return pairwise_forward_min(a)
+
+
+@as_grid_ufunc(signature="(X:right)->(X:center)", boundary_width={"X": (1, 0)})
+def min_right_to_center(a):
+    return pairwise_forward_min(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary_width={"X": (1, 1)})
+def min_center_to_outer(a):
+    return pairwise_forward_min(a)
+
+
+@as_grid_ufunc(signature="(X:outer)->(X:center)", boundary_width={"X": (0, 0)})
+def min_outer_to_center(a):
+    return pairwise_forward_min(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:inner)", boundary_width={"X": (0, 0)})
+def min_center_to_inner(a):
+    return pairwise_forward_min(a)
+
+
+@as_grid_ufunc(signature="(X:inner)->(X:center)", boundary_width={"X": (1, 1)})
+def min_inner_to_center(a):
+    return pairwise_forward_min(a)
+
+
+def pairwise_forward_max(a):
+    left, right = a[..., :-1], a[..., 1:]
+    stacked_pairs = np.stack([left, right], axis=-1)
+    return np.max(stacked_pairs, axis=-1)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+def max_center_to_left(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:left)->(X:center)", boundary_width={"X": (0, 1)})
+def max_left_to_center(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:right)", boundary_width={"X": (0, 1)})
+def max_center_to_right(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:right)->(X:center)", boundary_width={"X": (1, 0)})
+def max_right_to_center(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:outer)", boundary_width={"X": (1, 1)})
+def max_center_to_outer(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:outer)->(X:center)", boundary_width={"X": (0, 0)})
+def max_outer_to_center(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:center)->(X:inner)", boundary_width={"X": (0, 0)})
+def max_center_to_inner(a):
+    return pairwise_forward_max(a)
+
+
+@as_grid_ufunc(signature="(X:inner)->(X:center)", boundary_width={"X": (1, 1)})
+def max_inner_to_center(a):
+    return pairwise_forward_max(a)

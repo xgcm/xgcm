@@ -6,6 +6,10 @@ from xarray.testing import assert_allclose
 from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
+GRID_UFUNC_REFACTOR_ERR = (
+    "Metrics have not yet been implemented for the grid ufunc refactor"
+)
+
 
 @pytest.mark.parametrize(
     "funcname",
@@ -86,7 +90,9 @@ class TestParametrized:
         "min",
         "max",
         "cumsum",
-        "derivative",
+        pytest.param(
+            "derivative", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)
+        ),
         "cumint",
     ],
 )
