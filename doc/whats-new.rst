@@ -16,6 +16,8 @@ Breaking Changes
 
 Documentation
 ~~~~~~~~~~~~~
+- Switch RTD build to use mamba for increased speed and reduced memory useage (:pull:`401`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 Internal Changes
 ~~~~~~~~~~~~~
