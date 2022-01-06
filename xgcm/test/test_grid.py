@@ -920,5 +920,4 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     manual_result = func_manual(
         ds.tracer, axis, boundary=boundary, fill_value=fill_value
     )
-    # assert 1 == 0
     xr.testing.assert_allclose(global_result, manual_result)
