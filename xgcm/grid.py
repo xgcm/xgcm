@@ -1166,9 +1166,9 @@ class Grid:
         # Set properties on grid object. I think we are better of
         # getting completely rid of the axis object and storing/getting info from the grid object properties
         # (all of which need to be supplied/converted to axis-value mapping).
-        self.boundary = boundary
-        self.fill_value = fill_value
-        self.periodic = periodic
+        self.boundary: Dict[str, Union[str, float, int]] = boundary
+        self.fill_value: Dict[str, Union[str, float, int]] = fill_value
+        self.periodic: Dict[str, Union[str, float, int]] = periodic
         # TODO we probably want to properly define these as class properties with setter/getter?
         # TODO: This also needs to check valid inputs for each one.
 
