@@ -21,6 +21,7 @@ try:
 except ImportError:
     numba = None
 
+from typing import Dict, Optional, Union
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1155,31 +1156,25 @@ class Grid:
         boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
         fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
 
-        # this case does only apply to periodic. Since we plan on deprecating it soon
-        # handle it here
+        # Parse list input. This case does only apply to periodic.
+        # Since we plan on deprecating it soon handle it here, so we can easily
+        # remove it later
         if isinstance(periodic, list):
             periodic = {axname: True for axname in periodic}
         periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
 
-        # Set properties on
-
-        # Populate axes. Much of this is just for backward compatibility. I think we are better of
+        # Set properties on grid object. I think we are better of
         # getting completely rid of the axis object and storing/getting info from the grid object properties
-        # (all of which are axis-value mapping).
+        # (all of which need to be supplied/converted to axis-value mapping).
         self.boundary = boundary
         self.fill_value = fill_value
         self.periodic = periodic
         # TODO we probably want to properly define these as class properties with setter/getter?
+        # TODO: This also needs to check valid inputs for each one.
 
+        # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
-            # try:
-            #     is_periodic = axis_name in periodic
-            # except TypeError:
-            #     is_periodic = periodic
-
-            # setting this properly is still needed for the transform axis method
-            # TODO: migrate that over to grid
             is_periodic = periodic.get(axis_name, False)
 
             if axis_name in default_shifts:
@@ -1196,7 +1191,7 @@ class Grid:
                     f"boundary={boundary} is invalid. Please specify a dictionary "
                     "mapping axis name to a boundary option; a string or None."
                 )
-            # TODO Reimplement value checking on grid properties.
+            # TODO Reimplement value checking on grid properties. See comment above
             if isinstance(fill_value, dict):
                 axis_fillvalue = fill_value.get(axis_name, None)
             elif isinstance(fill_value, (int, float)) or fill_value is None:
@@ -1228,7 +1223,11 @@ class Grid:
 
         # Finish setup
 
-    def _as_axis_kwarg_mapping(self, kwargs, axes=None):
+    def _as_axis_kwarg_mapping(
+        self,
+        kwargs: Union[str, float, int, Dict[str, Union[str, float, int]]],
+        axes: Optional[list] = None,
+    ):
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
@@ -1703,10 +1702,6 @@ class Grid:
 
         # convert inpug arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)
-        # if to is None:
-        #     to = {ax: None for ax in axis}
-        # elif isinstance(to, str):
-        #     to = {ax: to for ax in axis}
 
         # If I understand correctly, this could contain some other kwargs, which are not appropriate to convert
         # Note that the option to pass boundary (actually padding) options on the method will be deprecated,
@@ -1716,11 +1711,13 @@ class Grid:
             k: self._as_axis_kwarg_mapping(v) if k in VALID_BOUNDARY_KWARGS else v
             for k, v in kwargs.items()
         }
+
         # Now check if some of the values not provided in the kwargs are set as grid properties
-        # In the future this should be the only way to access that information!
+        # In the future grid object properties should be the only way to access that information
+        # and we can remove this.
         kwargs_with_defaults = {}
 
-        for k in np.unique(
+        for k in set(
             list(kwargs.keys()) + VALID_BOUNDARY_KWARGS
         ):  # iterate over all axis properties and any additional keys of `kwarg`
             if k in VALID_BOUNDARY_KWARGS:
