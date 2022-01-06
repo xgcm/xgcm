@@ -6,7 +6,6 @@ from xarray.testing import assert_allclose
 from xgcm.grid import Grid
 from xgcm.test.datasets import datasets_grid_metric
 
-
 GRID_UFUNC_REFACTOR_ERR = (
     "Metrics have not yet been implemented for the grid ufunc refactor"
 )
@@ -81,53 +80,6 @@ class TestParametrized:
             boundary=boundary,
         )
         assert new.equals(expected)
-
-
-@pytest.mark.parametrize(
-    "funcname",
-    [
-        pytest.param("interp", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        pytest.param("min", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        pytest.param("max", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        "cumsum",
-        pytest.param(
-            "derivative", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)
-        ),
-        "cumint",
-    ],
-)
-@pytest.mark.parametrize("boundary", ["fill", "extend"])
-@pytest.mark.parametrize("fill_value", [0, 10, None])
-def test_boundary_global_input(funcname, boundary, fill_value):
-    """Test that globally defined boundary values result in
-    the same output as when the parameters are defined on either
-    the grid or axis methods
-    """
-    ds, coords, metrics = datasets_grid_metric("C")
-    axis = "X"
-
-    # Test results by globally specifying fill value/boundary on grid object
-    grid_global = Grid(
-        ds,
-        coords=coords,
-        metrics=metrics,
-        periodic=False,
-        boundary=boundary,
-        fill_value=fill_value,
-    )
-    func_global = getattr(grid_global, funcname)
-    global_result = func_global(ds.tracer, axis)
-
-    # Test results by manually specifying fill value/boundary on grid method
-    grid_manual = Grid(
-        ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
-    )
-    func_manual = getattr(grid_manual, funcname)
-    manual_result = func_manual(
-        ds.tracer, axis, boundary=boundary, fill_value=fill_value
-    )
-    xr.testing.assert_allclose(global_result, manual_result)
 
 
 def test_average_unmatched_missing():
