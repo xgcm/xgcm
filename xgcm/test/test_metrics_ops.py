@@ -14,10 +14,10 @@ GRID_UFUNC_REFACTOR_ERR = (
 @pytest.mark.parametrize(
     "funcname",
     [
-        pytest.param("interp", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        pytest.param("diff", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        pytest.param("min", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
-        pytest.param("max", marks=pytest.mark.xfail(reason=GRID_UFUNC_REFACTOR_ERR)),
+        "interp",
+        "diff",
+        "min",
+        "max",
         "cumsum",
     ],
 )
