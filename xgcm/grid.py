@@ -1227,7 +1227,7 @@ class Grid:
         self,
         kwargs: Union[str, float, int, Dict[str, Union[str, float, int]]],
         axes: Optional[list] = None,
-    ):
+    ) -> Dict[str, Union[str, float, int]]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
