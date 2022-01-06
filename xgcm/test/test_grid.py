@@ -662,7 +662,6 @@ def test_grid_ops(all_datasets):
             for boundary in bcs:
                 da_interp = grid.interp(ds[varname], axis_name, boundary=boundary)
                 da_interp_ax = axis.interp(ds[varname], boundary=boundary)
-                print((da_interp - da_interp_ax).sum())
                 assert da_interp.equals(da_interp_ax)
 
                 da_diff = grid.diff(ds[varname], axis_name, boundary=boundary)
