@@ -1150,12 +1150,38 @@ class Grid:
                         f"Input `{dim}` (for the `{pos}` position on axis `{axis}`) is not a dimension in the input datasets `ds`."
                     )
 
+        # Convert all inputs to axes-kwarg mappings
+        # Parse axis properties
+        boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
+        fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+
+        # this case does only apply to periodic. Since we plan on deprecating it soon
+        # handle it here
+        if isinstance(periodic, list):
+            periodic = {axname: True for axname in periodic}
+        periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
+
+        # Set properties on
+
+        # Populate axes. Much of this is just for backward compatibility. I think we are better of
+        # getting completely rid of the axis object and storing/getting info from the grid object properties
+        # (all of which are axis-value mapping).
+        self.boundary = boundary
+        self.fill_value = fill_value
+        self.periodic = periodic
+        # TODO we probably want to properly define these as class properties with setter/getter?
+
         self.axes = OrderedDict()
         for axis_name in all_axes:
-            try:
-                is_periodic = axis_name in periodic
-            except TypeError:
-                is_periodic = periodic
+            # try:
+            #     is_periodic = axis_name in periodic
+            # except TypeError:
+            #     is_periodic = periodic
+
+            # setting this properly is still needed for the transform axis method
+            # TODO: migrate that over to grid
+            is_periodic = periodic.get(axis_name, False)
+
             if axis_name in default_shifts:
                 axis_default_shifts = default_shifts[axis_name]
             else:
@@ -1170,7 +1196,7 @@ class Grid:
                     f"boundary={boundary} is invalid. Please specify a dictionary "
                     "mapping axis name to a boundary option; a string or None."
                 )
-
+            # TODO Reimplement value checking on grid properties.
             if isinstance(fill_value, dict):
                 axis_fillvalue = fill_value.get(axis_name, None)
             elif isinstance(fill_value, (int, float)) or fill_value is None:
@@ -1200,18 +1226,23 @@ class Grid:
             for key, value in metrics.items():
                 self.set_metrics(key, value)
 
-    def _parse_axes_kwargs(self, kwargs):
-        """Convvert kwarg input into dict for each available axis
+        # Finish setup
+
+    def _as_axis_kwarg_mapping(self, kwargs, axes=None):
+        """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
         or if not all axes are provided, the other axes will be parsed as defaults (None)
         periodic = {'X':True} --> periodic={'X': True, 'Y':None}
         """
+        if axes is None:
+            axes = self.axes
+
         parsed_kwargs = dict()
         if isinstance(kwargs, dict):
             parsed_kwargs = kwargs
         else:
-            for axis in self.axes:
+            for axis in axes:
                 parsed_kwargs[axis] = kwargs
         return parsed_kwargs
 
@@ -1543,7 +1574,7 @@ class Grid:
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
             axis = [axis]
         # parse multi axis kwargs like e.g. `boundary`
-        multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
+        multi_kwargs = {k: self._as_axis_kwarg_mapping(v) for k, v in kwargs.items()}
 
         out = da
         for axx in axis:
@@ -1607,6 +1638,8 @@ class Grid:
             fill_value = 0.0
         if isinstance(fill_value, float):
             fill_value = {ax_name: fill_value for ax_name in self.axes.keys()}
+        # xgcm uses a default fill value of 0, while xarray uses nan.
+        fill_value = {k: 0.0 if v is None else v for k, v in fill_value.items()}
 
         padded = []
         for da in arrays:
@@ -1667,10 +1700,53 @@ class Grid:
 
         if isinstance(axis, str):
             axis = [axis]
-        if to is None:
-            to = {ax: None for ax in axis}
-        elif isinstance(to, str):
-            to = {ax: to for ax in axis}
+
+        # convert inpug arguments into axes-kwarg mappings
+        to = self._as_axis_kwarg_mapping(to)
+        # if to is None:
+        #     to = {ax: None for ax in axis}
+        # elif isinstance(to, str):
+        #     to = {ax: to for ax in axis}
+
+        # If I understand correctly, this could contain some other kwargs, which are not appropriate to convert
+        # Note that the option to pass boundary (actually padding) options on the method will be deprecated,
+        # so for now I will just store everything I need here.
+        VALID_BOUNDARY_KWARGS = ["boundary", "periodic", "fill_value"]
+        kwargs = {
+            k: self._as_axis_kwarg_mapping(v) if k in VALID_BOUNDARY_KWARGS else v
+            for k, v in kwargs.items()
+        }
+        # Now check if some of the values not provided in the kwargs are set as grid properties
+        # In the future this should be the only way to access that information!
+        kwargs_with_defaults = {}
+
+        for k in np.unique(
+            list(kwargs.keys()) + VALID_BOUNDARY_KWARGS
+        ):  # iterate over all axis properties and any additional keys of `kwarg`
+            if k in VALID_BOUNDARY_KWARGS:
+                defaults = getattr(self, k, {})
+                kwargs_input = kwargs.get(k, {})
+                # overwrite if given as input
+                defaults.update(kwargs_input)
+                kwargs_with_defaults[k] = defaults
+            else:
+                kwargs_with_defaults[k] = kwargs[k]
+        kwargs = kwargs_with_defaults
+
+        # Lastly go through the inputs axis by axis, and replace
+        # boundary with 'periodic' if periodic is True
+        # (again this is temporary until `periodic` is deprecated)
+        if "periodic" in kwargs.keys():
+            boundary = kwargs.get("boundary", {})
+            new_boundary = {
+                k: "periodic"
+                for k in kwargs["periodic"].keys()
+                if kwargs["periodic"].get(k, False)
+            }
+            boundary.update(new_boundary)
+            kwargs["boundary"] = boundary
+        # remove the periodic input
+        kwargs = {k: v for k, v in kwargs.items() if k != "periodic"}
 
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
@@ -1698,10 +1774,10 @@ class Grid:
         One separate signature is created for each axis the 1D ufunc is going to be applied over.
         """
         signatures = []
-        for ax_name, to_pos in itertools.zip_longest(axis, to):
+        for ax_name in axis:
             ax = self.axes[ax_name]
 
-            from_pos, dim = ax._get_position_name(da)
+            from_pos, _ = ax._get_position_name(da)  # removed `dim` since it wasnt used
 
             to_pos = to[ax_name]
             if to_pos is None:
