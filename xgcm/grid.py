@@ -1174,6 +1174,7 @@ class Grid:
         if face_connections is not None:
             self._connections = face_connections
             self._facedim = list(face_connections.keys())[0]
+
         # TODO we probably want to properly define these as class properties with setter/getter?
         # TODO: This also needs to check valid inputs for each one.
 
