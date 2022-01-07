@@ -1680,7 +1680,16 @@ class Grid:
         return padded
 
     def _1d_grid_ufunc_dispatch(
-        self, funcname, da, axis, to=None, keep_coords=False, **kwargs
+        self,
+        funcname,
+        da,
+        axis,
+        to=None,
+        keep_coords=False,
+        metric_weighted: Union[
+            str, list, tuple, Dict[str, Union[str, list, tuple]]
+        ] = False,
+        **kwargs,
     ):
         """
         Calls appropriate 1D grid ufuncs on data, along the specified axes, sequentially.
@@ -1702,6 +1711,10 @@ class Grid:
 
         # convert inpug arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)
+
+        if isinstance(metric_weighted, str):
+            metric_weighted = (metric_weighted,)
+        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
 
         # If I understand correctly, this could contain some other kwargs, which are not appropriate to convert
         # Note that the option to pass boundary (actually padding) options on the method will be deprecated,
@@ -1756,10 +1769,19 @@ class Grid:
             grid_ufunc, remaining_kwargs = _select_grid_ufunc(
                 funcname, signature_1d, module=gridops, **kwargs
             )
+            ax_metric_weighted = metric_weighted[ax_name]
+
+            if ax_metric_weighted:
+                metric = self.get_metric(array, ax_metric_weighted)
+                array = array * metric
 
             array = grid_ufunc(
                 self, array, axis=[ax_name], keep_coords=keep_coords, **remaining_kwargs
             )
+
+            if ax_metric_weighted:
+                metric = self.get_metric(array, ax_metric_weighted)
+                array = array / metric
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
