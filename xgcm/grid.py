@@ -1210,6 +1210,16 @@ class Grid:
         self._ds = ds
         self._check_dims = check_dims
 
+        # Deprecation Warnigns
+        if boundary:
+            warnings.warn(
+                "The `boundary` argument will be renamed "
+                "to `padding` to better reflect the process "
+                "of array padding and avoid confusion with "
+                "physical boundary conditions (e.g. ocean land boundary).",
+                category=DeprecationWarning,
+            )
+
         if coords:
             all_axes = coords.keys()
         else:
