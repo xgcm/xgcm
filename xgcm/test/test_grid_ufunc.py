@@ -1,6 +1,6 @@
 import re
 
-import dask.array
+import dask.array  # type: ignore
 import numpy as np
 import pytest
 import xarray as xr
