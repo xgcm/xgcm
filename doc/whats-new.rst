@@ -20,7 +20,9 @@ Documentation
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
 Internal Changes
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
+- Switch CI to use mamba (:pull:`412`, :issue:`398`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 
 v0.6.0 (2021/11/03)
