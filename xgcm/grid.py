@@ -12,7 +12,7 @@ from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 from .metrics import iterate_axis_combinations
 
 try:
-    import numba
+    import numba  # type: ignore
 
     from .transform import conservative_interpolation, linear_interpolation
 except ImportError:
