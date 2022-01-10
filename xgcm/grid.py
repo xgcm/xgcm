@@ -22,6 +22,7 @@ except ImportError:
 
 from typing import Dict, Optional, Union
 
+
 def _maybe_promote_str_to_list(a):
     # TODO: improve this
     if isinstance(a, str):
