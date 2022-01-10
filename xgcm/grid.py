@@ -21,7 +21,7 @@ try:
 except ImportError:
     numba = None
 
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Iterable, List, Union
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1225,9 +1225,9 @@ class Grid:
 
     def _as_axis_kwarg_mapping(
         self,
-        kwargs: Union[str, float, int, Dict[str, Union[str, float, int]]],
-        axes: Optional[list] = None,
-    ) -> Dict[str, Union[str, float, int]]:
+        kwargs: Union[Any, Dict[str, Any]],
+        axes: List[str] = None,
+    ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
@@ -1237,7 +1237,7 @@ class Grid:
         if axes is None:
             axes = self.axes
 
-        parsed_kwargs = dict()
+        parsed_kwargs: Dict[str, Any] = dict()
         if isinstance(kwargs, dict):
             parsed_kwargs = kwargs
         else:
@@ -1687,8 +1687,8 @@ class Grid:
         to=None,
         keep_coords=False,
         metric_weighted: Union[
-            str, list, tuple, Dict[str, Union[str, list, tuple]]
-        ] = False,
+            str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
+        ] = None,
         **kwargs,
     ):
         """
@@ -1709,7 +1709,7 @@ class Grid:
         if isinstance(axis, str):
             axis = [axis]
 
-        # convert inpug arguments into axes-kwarg mappings
+        # convert input arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)
 
         if isinstance(metric_weighted, str):
