@@ -21,6 +21,8 @@ Documentation
 
 Internal Changes
 ~~~~~~~~~~~~~
+- Add deprecation warnings for future changes in the API (:issue:`409`,:pull:`411`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 
 v0.6.0 (2021/11/03)
