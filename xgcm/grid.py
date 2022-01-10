@@ -1220,6 +1220,14 @@ class Grid:
                 category=DeprecationWarning,
             )
 
+        # Deprecation Warnigns
+        if periodic:
+            warnings.warn(
+                "The `periodic` argument will be deprecated. "
+                "To preserve previous behavior supply `boundary = 'periodic'.",
+                category=DeprecationWarning,
+            )
+
         if coords:
             all_axes = coords.keys()
         else:
