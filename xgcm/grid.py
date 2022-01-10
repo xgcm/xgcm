@@ -1211,6 +1211,13 @@ class Grid:
         self._check_dims = check_dims
 
         # Deprecation Warnigns
+        warnings.warn(
+            "The `xgcm.Axis` class will be deprecated in the future. "
+            "Please make sure to use the `xgcm.Grid` methods for your work instead.",
+            category=DeprecationWarning,
+        )
+        # This will show up every time, but I think that is fine
+
         if boundary:
             warnings.warn(
                 "The `boundary` argument will be renamed "
