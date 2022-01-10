@@ -663,9 +663,11 @@ def test_grid_ops(all_datasets):
                 da_interp = grid.interp(ds[varname], axis_name, boundary=boundary)
                 da_interp_ax = axis.interp(ds[varname], boundary=boundary)
                 assert da_interp.equals(da_interp_ax)
+
                 da_diff = grid.diff(ds[varname], axis_name, boundary=boundary)
                 da_diff_ax = axis.diff(ds[varname], boundary=boundary)
                 assert da_diff.equals(da_diff_ax)
+
                 if boundary is not None:
                     da_cumsum = grid.cumsum(ds[varname], axis_name, boundary=boundary)
                     da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
@@ -798,15 +800,30 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     [
         ({"X": "fill", "Y": "fill"}, {"X": "fill", "Y": "fill"}),
         ({"X": "extend", "Y": "extend"}, {"X": "extend", "Y": "extend"}),
-        (
+        pytest.param(
             {"X": "extrapolate", "Y": "extrapolate"},
             {"X": "extrapolate", "Y": "extrapolate"},
+            marks=pytest.mark.xfail(
+                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
+            ),
         ),
         ("fill", {"X": "fill", "Y": "fill"}),
         ("extend", {"X": "extend", "Y": "extend"}),
-        ("extrapolate", {"X": "extrapolate", "Y": "extrapolate"}),
+        pytest.param(
+            "extrapolate",
+            {"X": "extrapolate", "Y": "extrapolate"},
+            marks=pytest.mark.xfail(
+                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
+            ),
+        ),
         ({"X": "extend", "Y": "fill"}, {"X": "extend", "Y": "fill"}),
-        ({"X": "extrapolate", "Y": "fill"}, {"X": "extrapolate", "Y": "fill"}),
+        pytest.param(
+            {"X": "extrapolate", "Y": "fill"},
+            {"X": "extrapolate", "Y": "fill"},
+            marks=pytest.mark.xfail(
+                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
+            ),
+        ),
         pytest.param(
             "fill",
             {"X": "fill", "Y": "extend"},
@@ -855,3 +872,53 @@ def test_input_dim_notfound():
     msg = r"Could not find dimension `other` \(for the `center` position on axis `X`\) in input dataset."
     with pytest.raises(ValueError, match=msg):
         Grid(ds, coords={"X": {"center": "other"}})
+
+
+@pytest.mark.parametrize(
+    "funcname",
+    [
+        "interp",
+        "diff",
+        "min",
+        "max",
+        "cumsum",
+        "derivative",
+        "cumint",
+    ],
+)
+@pytest.mark.parametrize(
+    "boundary",
+    ["fill", "extend"],
+)
+@pytest.mark.parametrize(
+    "fill_value",
+    [0, 10, None],
+)
+def test_boundary_global_input(funcname, boundary, fill_value):
+    """Test that globally defined boundary values result in
+    the same output as when the parameters are defined the grid methods
+    """
+    ds, coords, metrics = datasets_grid_metric("C")
+    axis = "X"
+    # Test results by globally specifying fill value/boundary on grid object
+    grid_global = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary=boundary,
+        fill_value=fill_value,
+    )
+    func_global = getattr(grid_global, funcname)
+    global_result = func_global(ds.tracer, axis)
+
+    # Test results by manually specifying fill value/boundary on grid method
+    grid_manual = Grid(
+        ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
+    )
+    func_manual = getattr(grid_manual, funcname)
+    manual_result = func_manual(
+        ds.tracer, axis, boundary=boundary, fill_value=fill_value
+    )
+    # assert 1 == 0
+    xr.testing.assert_allclose(global_result, manual_result)
