@@ -1235,6 +1235,25 @@ class Grid:
                 category=DeprecationWarning,
             )
 
+        if fill_value:
+            warnings.warn(
+                "The default fill_value will be changed to nan (from 0.0 previously) "
+                "in future versions. Provide `fill_value=0.0` to preserve previous behavior.",
+                category=DeprecationWarning,
+            )
+
+        extrapolate_warning = False
+        if boundary == "extrapolate":
+            extrapolate_warning = True
+        if isinstance(boundary, dict):
+            if any([k == "extrapolate" for k in boundary.keys()]):
+                extrapolate_warning = True
+        if extrapolate_warning:
+            warnings.warn(
+                "The `boundary='extrapolate'` option will no longer be supported in future releases.",
+                category=DeprecationWarning,
+            )
+
         if coords:
             all_axes = coords.keys()
         else:
@@ -1932,6 +1951,12 @@ class Grid:
     def _apply_vector_function(self, function, vector, **kwargs):
         # the keys, should be axis names
         assert len(vector) == 2
+
+        warnings.warn(
+            "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
+            "The same functionality will be available under the `xgcm.Grid` methods.",
+            category=DeprecationWarning,
+        )
 
         # this is currently only tested for c-grid vectors defined on edges
         # moving to cell centers. We need to detect if we got something else
