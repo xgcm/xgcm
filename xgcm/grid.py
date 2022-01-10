@@ -5,7 +5,7 @@ import operator
 import warnings
 from collections import OrderedDict
 
-import docrep
+import docrep  # type: ignore
 import numpy as np
 import xarray as xr
 
@@ -21,7 +21,7 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Dict, Iterable, List, Union
+from typing import Any, Dict, Iterable, Union
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1226,7 +1226,7 @@ class Grid:
     def _as_axis_kwarg_mapping(
         self,
         kwargs: Union[Any, Dict[str, Any]],
-        axes: List[str] = None,
+        axes: Iterable[str] = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
