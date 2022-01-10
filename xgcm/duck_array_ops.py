@@ -5,7 +5,7 @@ Shamelessly copied from xarray."""
 import numpy as np
 
 try:
-    import dask.array as dsa
+    import dask.array as dsa  # type: ignore
 
     has_dask = True
 except ImportError:

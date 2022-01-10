@@ -14,7 +14,7 @@ from .grid_ufunc import GridUFunc, _signatures_equivalent, apply_as_grid_ufunc
 from .metrics import iterate_axis_combinations
 
 try:
-    import numba
+    import numba  # type: ignore
 
     from .transform import conservative_interpolation, linear_interpolation
 except ImportError:

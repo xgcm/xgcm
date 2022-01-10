@@ -1,4 +1,4 @@
-import dask as dsk
+import dask as dsk  # type: ignore
 import numpy as np
 
 from xgcm.duck_array_ops import concatenate
