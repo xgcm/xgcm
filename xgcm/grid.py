@@ -3,14 +3,18 @@ import inspect
 import itertools
 import operator
 import warnings
-from collections import OrderedDict
 
 import docrep  # type: ignore
 import numpy as np
 import xarray as xr
 
 from . import comodo, gridops
-from .grid_ufunc import GridUFunc, _signatures_equivalent, apply_as_grid_ufunc
+from .grid_ufunc import (
+    VALID_POSITION_NAMES,
+    GridUFunc,
+    _signatures_equivalent,
+    apply_as_grid_ufunc,
+)
 from .metrics import iterate_axis_combinations
 
 try:
@@ -20,7 +24,7 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Dict, Iterable, Mapping, Tuple, Union
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -41,6 +45,103 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
     "fill": "constant",
     "extend": "edge",
 }
+
+
+def default_boundary():
+    return "periodic"
+
+
+class Axis:
+    _coords: Mapping[
+        str, str
+    ]  # TODO give this mapping from positions to dimension names a better name?
+    _default_shifts: Mapping[str, str]
+    _boundary: str
+    _fill_value: float
+
+    def __init__(
+        self,
+        coords,
+        default_shifts=None,
+        boundary="periodic",
+        fill_value=np.NAN,
+    ):
+
+        # check all inputted values are valid here
+
+        # TODO Write error messages (See issue #208)
+        for pos, dim in coords.values():
+            if pos not in VALID_POSITION_NAMES.split("|"):
+                raise ValueError
+            if dim not in ds.dims:
+                raise ValueError
+        self._coords = coords
+
+        # self.coords is a dictionary with the following structure
+        #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
+        #   value: name of the dimension
+
+        # set default position shifts
+        fallback_shifts = {
+            "center": ("left", "right", "outer", "inner"),
+            "left": ("center",),
+            "right": ("center",),
+            "outer": ("center",),
+            "inner": ("center",),
+        }
+        _default_shifts = {}
+        for pos in self.coords:
+            # use user-specified value if present
+            if pos in default_shifts:
+                _default_shifts[pos] = default_shifts[pos]
+            else:
+                for possible_shift in fallback_shifts[pos]:
+                    if possible_shift in self.coords:
+                        _default_shifts[pos] = possible_shift
+                        break
+        self._default_shifts = default_shifts
+
+        # TODO better error messages
+        if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
+            raise ValueError
+        self._boundary = boundary
+
+        if not isinstance(fill_value, float):
+            raise ValueError
+        self._fill_value = fill_value
+
+    @property
+    def coords(self) -> Mapping[str, str]:
+        return self._coords
+
+    @property
+    def default_shifts(self) -> Mapping[str, str]:
+        return self._default_shifts
+
+    @property
+    def boundary(self) -> str:
+        return self._boundary
+
+    @property
+    def fill_value(self) -> float:
+        return self._fill_value
+
+    def _get_position_name(self, da):
+        """Return the position and name of the axis coordinate in a DataArray."""
+        for position, coord_name in self.coords.items():
+            # TODO: should we have more careful checking of alignment here?
+            if coord_name in da.dims:
+                return position, coord_name
+
+        raise KeyError(
+            "None of the DataArray's dims %s were found in axis "
+            "coords." % repr(da.dims)
+        )
+
+    def _get_axis_dim_num(self, da):
+        """Return the dimension number of the axis coordinate in a DataArray."""
+        _, coord_name = self._get_position_name(da)
+        return da.get_axis_num(coord_name)
 
 
 class Grid:
@@ -125,11 +226,15 @@ class Grid:
         self._ds = ds
         self._check_dims = check_dims
 
-        if coords:
-            all_axes = coords.keys()
-        else:
-            all_axes = comodo.get_all_axes(ds)
-            coords = {}
+        comodo_axes = comodo.get_all_axes(ds)
+        comodo_coords = {
+            axis_name: comodo.get_axis_positions_and_coords(ds, axis_name)
+            for axis_name in comodo_axes
+        }
+
+        # TODO ensure this update works properly
+        comodo_coords.update(coords)
+        self._coords = comodo_coords
 
         # check coords input validity
         for axis, positions in coords.items():
@@ -144,67 +249,24 @@ class Grid:
                     )
 
         # Convert all inputs to axes-kwarg mappings
-        # Parse axis properties
-        boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
-        fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+        # TODO default shifts
+        boundary = self._as_axis_kwarg_mapping(
+            boundary, axes=all_axes, default="periodic"
+        )
+        fill_value = self._as_axis_kwarg_mapping(
+            fill_value, axes=all_axes, default=np.NAN
+        )
 
-        # Parse list input. This case does only apply to periodic.
-        # Since we plan on deprecating it soon handle it here, so we can easily
-        # remove it later
-        if isinstance(periodic, list):
-            periodic = {axname: True for axname in periodic}
-        periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
-
-        # Set properties on grid object. I think we are better of
-        # getting completely rid of the axis object and storing/getting info from the grid object properties
-        # (all of which need to be supplied/converted to axis-value mapping).
-        self.boundary: Dict[str, Union[str, float, int]] = boundary
-        self.fill_value: Dict[str, Union[str, float, int]] = fill_value
-        self.periodic: Dict[str, Union[str, float, int]] = periodic
-        # TODO we probably want to properly define these as class properties with setter/getter?
-        # TODO: This also needs to check valid inputs for each one.
-
-        """
-        # Populate axes. Much of this is just for backward compatibility.
-        self.axes = OrderedDict()
-        for axis_name in all_axes:
-            is_periodic = periodic.get(axis_name, False)
-
-            if axis_name in default_shifts:
-                axis_default_shifts = default_shifts[axis_name]
-            else:
-                axis_default_shifts = {}
-
-            if isinstance(boundary, dict):
-                axis_boundary = boundary.get(axis_name, None)
-            elif isinstance(boundary, str) or boundary is None:
-                axis_boundary = boundary
-            else:
-                raise ValueError(
-                    f"boundary={boundary} is invalid. Please specify a dictionary "
-                    "mapping axis name to a boundary option; a string or None."
-                )
-            # TODO Reimplement value checking on grid properties. See comment above
-            if isinstance(fill_value, dict):
-                axis_fillvalue = fill_value.get(axis_name, None)
-            elif isinstance(fill_value, (int, float)) or fill_value is None:
-                axis_fillvalue = fill_value
-            else:
-                raise ValueError(
-                    f"fill_value={fill_value} is invalid. Please specify a dictionary "
-                    "mapping axis name to a boundary option; a number or None."
-                )
-
-            self.axes[axis_name] = Axis(
-                ds,
-                axis_name,
-                is_periodic,
-                default_shifts=axis_default_shifts,
-                coords=coords.get(axis_name),
-                boundary=axis_boundary,
-                fill_value=axis_fillvalue,
+        # Populate Axes
+        self._axes = {
+            ax_name: Axis(
+                coords,
+                default_shifts=default_shifts[ax_name],
+                boundary=boundary[ax_name],
+                fill_value=fill_value[ax_name],
             )
-        """
+            for ax_name, in coords.keys()
+        }
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
@@ -216,6 +278,18 @@ class Grid:
                 self.set_metrics(key, value)
 
         # Finish setup
+
+    @property
+    def axes(self) -> Mapping[str, Axis]:
+        return self._axes
+
+    @property
+    def boundary(self) -> Dict[str, str]:
+        return {ax_name: ax.boundary for ax_name, ax in self.axes.items()}
+
+    @property
+    def fill_value(self) -> Dict[str, float]:
+        return {ax_name: ax.fill_value for ax_name, ax in self.axes.items()}
 
     def _as_axis_kwarg_mapping(
         self,
@@ -309,9 +383,7 @@ class Grid:
                 right = check_neighbor(link_right, 0)
                 axis_connections[axis][fidx] = (left, right)
 
-        for axis, axis_links in axis_connections.items():
-            self.axes[axis]._facedim = facedim
-            self.axes[axis]._connections = axis_links
+        # TODO need to save face connections in grid - merge this with padding refactor
 
     def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
@@ -794,7 +866,7 @@ class Grid:
 
             to_pos = to[ax_name]
             if to_pos is None:
-                to_pos = ax._default_shifts[from_pos]
+                to_pos = ax.default_shifts[from_pos]
 
             signature_1d = f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
             signatures.append(signature_1d)

@@ -434,6 +434,7 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 
 # this mega test covers all options for 2D data
 
+
 @pytest.mark.xfail
 @pytest.mark.parametrize(
     "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]

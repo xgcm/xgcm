@@ -12,12 +12,14 @@ if TYPE_CHECKING:
 
     from .grid import Grid
 
+VALID_POSITION_NAMES = "center|left|right|inner|outer"
+
 
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
 #   - Specify xgcm.Axis name and "axis positions" instead of numpy axes as (ax_name:ax_pos)
 _AXIS_NAME = r"\w+"
-_AXIS_POSITION = "(?:center|left|right|inner|outer)"
+_AXIS_POSITION = f"(?:{VALID_POSITION_NAMES})"
 _AXIS_NAME_POSITION_PAIR = f"{_AXIS_NAME}:{_AXIS_POSITION}"
 _AXIS_NAME_POSITION_PAIR_LIST = (
     f"(?:{_AXIS_NAME_POSITION_PAIR}(?:,{_AXIS_NAME_POSITION_PAIR})*,?)*"
