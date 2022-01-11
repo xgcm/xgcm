@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from xgcm.grid import Axis, Grid
+from xgcm.grid import Grid
 
 from .datasets import all_2d  # noqa: F401
 from .datasets import all_datasets  # noqa: F401
@@ -434,7 +434,7 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 
 # this mega test covers all options for 2D data
 
-
+@pytest.mark.xfail
 @pytest.mark.parametrize(
     "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
 )
