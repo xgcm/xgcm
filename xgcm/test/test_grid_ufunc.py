@@ -1,4 +1,5 @@
 import re
+from typing import Tuple
 
 import dask.array  # type: ignore
 import numpy as np
@@ -8,6 +9,7 @@ from xarray.testing import assert_equal
 
 from xgcm.grid import Grid, _select_grid_ufunc
 from xgcm.grid_ufunc import (
+    Gridded,
     GridUFunc,
     _parse_grid_ufunc_signature,
     _signatures_equivalent,
@@ -79,6 +81,99 @@ class TestParseGridUfuncSignature:
     def test_invalid_signatures(self, signature):
         with pytest.raises(ValueError):
             _parse_grid_ufunc_signature(signature)
+
+
+class TestGetSignatureFromTypeHints:
+
+    def test_no_args_to_annotate(self):
+        @as_grid_ufunc()
+        def ufunc():
+            ...
+
+        assert ufunc.signature == "()->()"
+
+    def test_annotated_args(self):
+        # TODO test hints without annotations
+        # TODO test hints with annotations that don't conform to Xgcm
+
+        @as_grid_ufunc()
+        def ufunc(a: Gridded[xr.DataArray, "X:center"]):
+            ...
+
+        assert ufunc.signature == "(X:center)->()"
+
+        @as_grid_ufunc()
+        def ufunc(a: Gridded[xr.DataArray, "X:center,Y:center"]):
+            ...
+
+        assert ufunc.signature == "(X:center,Y:center)->()"
+
+        @as_grid_ufunc()
+        def ufunc(
+            a: Gridded[xr.DataArray, "X:left"],
+            b: Gridded[xr.DataArray, "Y:right"],
+        ):
+            ...
+
+        assert ufunc.signature == "(X:left),(Y:right)->()"
+
+    def test_annotated_return_args(self):
+        @as_grid_ufunc()
+        def ufunc() -> Gridded[xr.DataArray, "X:center"]:
+            ...
+
+        assert ufunc.signature == "()->(X:center)"
+
+        @as_grid_ufunc()
+        def ufunc() -> Gridded[xr.DataArray, "X:left,Y:right"]:
+            ...
+
+        assert ufunc.signature == "()->(X:left,Y:right)"
+
+        @as_grid_ufunc()
+        def ufunc() -> Tuple[
+            Gridded[xr.DataArray, "X:left"], Gridded[xr.DataArray, "Y:right"]
+        ]:
+            ...
+
+        assert ufunc.signature == "()->(X:left),(Y:right)"
+
+        @as_grid_ufunc()
+        def ufunc(
+            a: Gridded[xr.DataArray, "X:center"]
+        ) -> Gridded[xr.DataArray, "X:left"]:
+            ...
+
+        assert ufunc.signature == "(X:center)->(X:left)"
+
+    def test_invalid_arg_annotation(self):
+        with pytest.raises(
+            ValueError, match="Argument a has an invalid grid signature"
+        ):
+
+            @as_grid_ufunc()
+            def ufunc(a: Gridded[xr.DataArray, "(X:Mars)"]):
+                ...
+
+    def test_invalid_return_arg_annotation(self):
+        with pytest.raises(
+            ValueError, match="Return argument(s) have an invalid grid signature"
+        ):
+
+            @as_grid_ufunc()
+            def ufunc() -> Gridded[xr.DataArray, "(X:Venus)"]:
+                ...
+
+    def test_both_sig_kwarg_and_hints_given(self):
+        with pytest.raises(
+            ValueError, match="either type hints or through the signature kwarg"
+        ):
+
+            @as_grid_ufunc(signature="(X:center)->(X:left)")
+            def ufunc(
+                a: Gridded[xr.DataArray, "(X:center)"]
+            ) -> Gridded[xr.DataArray, "(X:left)"]:
+                ...
 
 
 def create_1d_test_grid_ds(ax_name):
@@ -166,8 +261,10 @@ class TestGridUFunc:
     def test_stores_ufunc_kwarg_info(self):
         signature = "(X:center)->(X:left)"
 
-        @as_grid_ufunc(signature)
-        def diff_center_to_left(a):
+        @as_grid_ufunc()
+        def diff_center_to_left(
+            a: Gridded[np.ndarray, "X:center"]
+        ) -> Gridded[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1)
 
         assert isinstance(diff_center_to_left, GridUFunc)
@@ -175,7 +272,7 @@ class TestGridUFunc:
 
         with pytest.raises(TypeError, match="Unsupported keyword argument"):
 
-            @as_grid_ufunc(signature, junk="useless")
+            @as_grid_ufunc(junk="useless")
             def diff_center_to_left(a):
                 return a - np.roll(a, shift=-1)
 
@@ -186,18 +283,22 @@ class TestGridUFunc:
         grid._ds.drop_vars("depth_o")
         da = np.sin(grid._ds.depth_g * 2 * np.pi / 9)
 
-        with pytest.raises(ValueError, match=re.escape("(depth:outer) does not exist")):
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Axis:positions pair depth:outer does not exist"),
+        ):
+            da: Gridded[xr.DataArray, "X:outer"]
             apply_as_grid_ufunc(
                 lambda x: x, da, axis=[("depth",)], grid=grid, signature="(X:outer)->()"
             )
 
         with pytest.raises(ValueError, match="coordinate depth_c does not appear"):
+            da: Gridded[xr.DataArray, "X:center"]
             apply_as_grid_ufunc(
                 lambda x: x,
                 da,
                 axis=[("depth",)],
                 grid=grid,
-                signature="(X:center)->()",
             )
 
     def test_1d_unchanging_size_no_dask(self):
@@ -214,24 +315,31 @@ class TestGridUFunc:
         )
 
         # Test direct application
+        da: Gridded[xr.DataArray, "X:center"]
         result = apply_as_grid_ufunc(
             diff_center_to_left,
             da,
             axis=[("depth",)],
             grid=grid,
-            signature="(X:center)->(X:left)",
+            return_grid="X:left",
         )
         assert_equal(result, expected)
 
         # Test Grid method
+        da: Gridded[xr.DataArray, "X:center"]
         result = grid.apply_as_grid_ufunc(
-            diff_center_to_left, da, axis=[("depth",)], signature="(X:center)->(X:left)"
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            return_grid="X:left",
         )
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:left)")
-        def diff_center_to_left(a):
+        @as_grid_ufunc()
+        def diff_center_to_left(
+            a: Gridded[np.ndarray, "X:left"]
+        ) -> Gridded[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1)
 
         result = diff_center_to_left(grid, da, axis=[("depth",)])
