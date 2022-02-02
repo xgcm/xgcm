@@ -83,7 +83,6 @@ class TestParseGridUfuncSignature:
 
 
 class TestGetSignatureFromTypeHints:
-
     def test_no_args_to_annotate(self):
         @as_grid_ufunc()
         def ufunc():
@@ -145,6 +144,7 @@ class TestGetSignatureFromTypeHints:
 
         assert ufunc.signature == "(X:center)->(X:left)"
 
+    @pytest.mark.xfail
     def test_invalid_arg_annotation(self):
         with pytest.raises(
             ValueError, match="Argument a has an invalid grid signature"
@@ -154,6 +154,7 @@ class TestGetSignatureFromTypeHints:
             def ufunc(a: Gridded[xr.DataArray, "(X:Mars)"]):
                 ...
 
+    @pytest.mark.xfail
     def test_invalid_return_arg_annotation(self):
         with pytest.raises(
             ValueError, match="Return argument(s) have an invalid grid signature"
@@ -165,7 +166,7 @@ class TestGetSignatureFromTypeHints:
 
     def test_both_sig_kwarg_and_hints_given(self):
         with pytest.raises(
-            ValueError, match="either type hints or through the signature kwarg"
+            ValueError, match="only one of either type hints or signature kwarg"
         ):
 
             @as_grid_ufunc(signature="(X:center)->(X:left)")
