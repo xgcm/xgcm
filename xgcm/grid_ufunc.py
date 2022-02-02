@@ -2,7 +2,19 @@ from __future__ import annotations
 
 import re
 import string
-from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Sequence, Tuple, Union
+from typing import TYPE_CHECKING
+from typing import Annotated as Gridded  # noqa
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+    get_type_hints,
+)
 
 import numpy as np
 import xarray as xr
@@ -16,6 +28,7 @@ if TYPE_CHECKING:
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
 #   - Specify xgcm.Axis name and "axis positions" instead of numpy axes as (ax_name:ax_pos)
+
 _AXIS_NAME = r"\w+"
 _AXIS_POSITION = "(?:center|left|right|inner|outer)"
 _AXIS_NAME_POSITION_PAIR = f"{_AXIS_NAME}:{_AXIS_POSITION}"
@@ -27,14 +40,12 @@ _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
 
+T_AX_POS_LIST = List[Tuple[str, ...]]
+
+
 def _parse_grid_ufunc_signature(
     signature: str,
-) -> Tuple[
-    List[Tuple[str, ...]],
-    List[Tuple[str, ...]],
-    List[Tuple[str, ...]],
-    List[Tuple[str, ...]],
-]:
+) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
     """
     Parse string signatures for a grid-aware universal function.
 
@@ -89,6 +100,56 @@ def _parse_grid_ufunc_signature(
     return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
 
 
+def _get_signature_from_type_hints(hints: Dict[str, Any]) -> str:
+    """
+    Constructs the grid signature from the type hints of a function, and returns it ready for parsing.
+
+    Type hints must first be obtained using `typing.get_type_hints(ufunc, include_extras=True)`.
+    """
+
+    if "return" in hints:
+        return_hint = hints.pop("return")
+
+        # if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first
+        return_hints = (
+            list(return_hint.__args__)
+            if return_hint._name == "Tuple"
+            else [return_hint]
+        )
+
+        return_annotations = [
+            hint.__metadata__[0]
+            for hint in return_hints
+            if hasattr(hint, "__metadata__")
+        ]
+
+        return_arg_signature = ",".join(
+            [f"({variable_annotation})" for variable_annotation in return_annotations]
+        )
+    else:
+        return_arg_signature = "()"
+
+    arg_annotations = {
+        argname: hint.__metadata__[0]
+        for argname, hint in hints.items()
+        if hasattr(hint, "__metadata__")
+    }
+
+    # TODO check number of annotations?
+
+    if len(arg_annotations) > 0:
+        input_arg_signature = ",".join(
+            [
+                f"({variable_annotation})"
+                for variable_annotation in arg_annotations.values()
+            ]
+        )
+    else:
+        input_arg_signature = "()"
+
+    return f"{input_arg_signature}->{return_arg_signature}"
+
+
 class GridUFunc:
     """
     Binds a numpy ufunc into a "grid-aware ufunc", meaning that when called ufunc is wrapped by `apply_as_grid_ufunc`.
@@ -135,8 +196,18 @@ class GridUFunc:
     """
 
     def __init__(self, ufunc: Callable, **kwargs):
+
+        # Get grid ufunc signature, either from type hints or from kwarg
+        sig = kwargs.pop("signature")
+        hints = get_type_hints(ufunc, include_extras=True)
+        sig_from_type_hints = _get_signature_from_type_hints(hints)
+        if sig and sig_from_type_hints != "()->()":
+            raise ValueError(
+                "Must specify axis positions through only one of either type hints or signature kwarg, not both."
+            )
+        self.signature = sig_from_type_hints if sig == "" else sig
+
         self.ufunc = ufunc
-        self.signature = kwargs.pop("signature", "")
         self.boundary_width = kwargs.pop("boundary_width", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
@@ -337,6 +408,7 @@ def apply_as_grid_ufunc(
         )
 
     # Extract Axes information from signature
+    # TODO should we move this check to the decorator?
     (
         in_dummy_ax_names,
         out_dummy_ax_names,
