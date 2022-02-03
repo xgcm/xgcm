@@ -177,16 +177,16 @@ class TestGetSignatureFromTypeHints:
                 ...
 
     def test_type_hint_as_numpy_ndarray(self):
-        # This should fail mypy
-        # TODO but it doesn't
+        # TODO I want this to fail mypy but it doesn't
         @as_grid_ufunc()
-        def ufunc(a: Gridded[str, "(X:center)"]):
-            assert isinstance(a, np.ndarray)
+        def ufunc1(a: Gridded[str, "(X:center)"]):
+            ...
 
         # This should pass mypy
         @as_grid_ufunc()
-        def ufunc(a: Gridded[np.ndarray, "(X:center)"]):
-            assert isinstance(a, np.ndarray)
+        def ufunc3(a: Gridded[np.ndarray, "(X:center)"]):
+            # np.ndarray has a .strides method but str doesn't (and nor does xr.DataArray)
+            print(a.strides)
 
 
 def create_1d_test_grid_ds(ax_name):
