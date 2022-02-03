@@ -300,6 +300,7 @@ class TestGridUFunc:
                 da,
                 axis=[("depth",)],
                 grid=grid,
+                signature="(X:center)->()",
             )
 
     def test_1d_unchanging_size_no_dask(self):
@@ -316,30 +317,25 @@ class TestGridUFunc:
         )
 
         # Test direct application
-        da: Gridded[xr.DataArray, "X:center"]
         result = apply_as_grid_ufunc(
             diff_center_to_left,
             da,
             axis=[("depth",)],
             grid=grid,
-            return_grid="X:left",
+            signature="(X:center)->(X:left)",
         )
         assert_equal(result, expected)
 
         # Test Grid method
-        da: Gridded[xr.DataArray, "X:center"]
         result = grid.apply_as_grid_ufunc(
-            diff_center_to_left,
-            da,
-            axis=[("depth",)],
-            return_grid="X:left",
+            diff_center_to_left, da, axis=[("depth",)], signature="(X:center)->(X:left)"
         )
         assert_equal(result, expected)
 
         # Test decorator
         @as_grid_ufunc()
         def diff_center_to_left(
-            a: Gridded[np.ndarray, "X:left"]
+            a: Gridded[np.ndarray, "X:center"]
         ) -> Gridded[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1)
 
@@ -381,8 +377,10 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:inner)", dask="parallelized")
-        def interp_center_to_inner(a):
+        @as_grid_ufunc(dask="parallelized")
+        def interp_center_to_inner(
+            a: Gridded[xr.DataArray, "X:center"]
+        ) -> Gridded[xr.DataArray, "X:inner"]:
             return 0.5 * (a[:-1] + a[1:])
 
         result = interp_center_to_inner(grid, da, axis=[("depth",)]).compute()
@@ -428,8 +426,10 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:left)", dask="allowed")
-        def diff_overlap(a):
+        @as_grid_ufunc(dask="allowed")
+        def diff_overlap(
+            a: Gridded[xr.DataArray, "X:center"]
+        ) -> Gridded[xr.DataArray, "X:left"]:
             return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
         result = diff_overlap(
@@ -465,8 +465,10 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:left)")
-        def diff_center_to_left(a):
+        @as_grid_ufunc()
+        def diff_center_to_left(
+            a: Gridded[xr.DataArray, "X:center"]
+        ) -> Gridded[xr.DataArray, "X:left"]:
             return a - np.roll(a, shift=-1, axis=-1)
 
         result = diff_center_to_left(grid, da, axis=[("lon",)])
@@ -508,8 +510,10 @@ class TestGridUFunc:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:left),(X:right)->()")
-        def inner_product_left_right(a, b):
+        @as_grid_ufunc()
+        def inner_product_left_right(
+            a: Gridded[xr.DataArray, "X:left"], b: Gridded[xr.DataArray, "X:right"]
+        ):
             return np.inner(a, b)
 
         result = inner_product_left_right(grid, a, b, axis=[("depth",), ("depth",)])
@@ -554,8 +558,13 @@ class TestGridUFunc:
         assert_equal(v, expected_v)
 
         # Test decorator
-        @as_grid_ufunc("(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)")
-        def grad_to_inner(a):
+        @as_grid_ufunc()
+        def grad_to_inner(
+            a: Gridded[xr.DataArray, "X:center,Y:center"]
+        ) -> Tuple[
+            Gridded[xr.DataArray, "X:inner,Y:center"],
+            Gridded[xr.DataArray, "X:center,Y:inner"],
+        ]:
             return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
 
         u, v = grad_to_inner(grid, a, axis=[("lon", "lat")])
@@ -614,12 +623,13 @@ class TestDaskOverlap:
 
         # Test decorator
         @as_grid_ufunc(
-            "(X:center)->(X:left)",
             boundary_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )
-        def diff_center_to_left(a):
+        def diff_center_to_left(
+            a: Gridded[xr.DataArray, "X:center"]
+        ) -> Gridded[xr.DataArray, "X:left"]:
             return a[..., 1:] - a[..., :-1]
 
         result = diff_center_to_left(
@@ -675,12 +685,13 @@ class TestDaskOverlap:
 
     def test_ufunc_changes_chunksize(self):
         @as_grid_ufunc(
-            "(X:outer)->(X:center)",
             boundary_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )
-        def diff_outer_to_center(a):
+        def diff_outer_to_center(
+            a: Gridded[xr.DataArray, "X:outer"]
+        ) -> Gridded[xr.DataArray, "X:center"]:
             """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
             if isinstance(a, np.ndarray):
                 return a[..., 1:] - a[..., :-1]
@@ -702,12 +713,13 @@ class TestDaskOverlap:
 
     def test_multiple_inputs(self):
         @as_grid_ufunc(
-            "(X:left),(X:right)->(X:center)",
             boundary_width=None,
             map_overlap=True,
             dask="allowed",
         )
-        def multiply_left_right(a, b):
+        def multiply_left_right(
+            a: Gridded[xr.DataArray, "X:left"], b: Gridded[xr.DataArray, "X:right"]
+        ) -> Gridded[xr.DataArray, "X:center"]:
             """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
             if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
                 return np.multiply(a, b)
@@ -787,22 +799,28 @@ class GridOpsMockUp:
     """
 
     @staticmethod
-    @as_grid_ufunc(signature="(X:center)->(X:left)")
-    def diff_center_to_left(a):
+    @as_grid_ufunc()
+    def diff_center_to_left(
+        a: Gridded[xr.DataArray, "X:center"]
+    ) -> Gridded[xr.DataArray, "X:left"]:
         return a - np.roll(a, -1)
 
     @staticmethod
-    @as_grid_ufunc(signature="(X:center)->(X:right)")
-    def diff_center_to_right_fill(a):
+    @as_grid_ufunc()
+    def diff_center_to_right_fill(
+        a: Gridded[xr.DataArray, "X:center"]
+    ) -> Gridded[xr.DataArray, "X:right"]:
         return np.roll(a, 1) - a
 
     @staticmethod
-    @as_grid_ufunc(signature="(X:center)->(X:right)")
-    def diff_center_to_right_extend(a):
+    @as_grid_ufunc()
+    def diff_center_to_right_extend(
+        a: Gridded[xr.DataArray, "X:center"]
+    ) -> Gridded[xr.DataArray, "X:right"]:
         return np.roll(a, 1) - a
 
     @staticmethod
-    @as_grid_ufunc(signature="()->()")
+    @as_grid_ufunc()
     def pass_through_kwargs(**kwargs):
         return kwargs
 
