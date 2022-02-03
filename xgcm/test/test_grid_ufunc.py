@@ -176,6 +176,20 @@ class TestGetSignatureFromTypeHints:
             ) -> Gridded[xr.DataArray, "(X:left)"]:
                 ...
 
+    @pytest.mark.skip
+    def test_type_hint_as_numpy_ndarray(self):
+        # This should fail mypy
+        @as_grid_ufunc()
+        def ufunc(a: Gridded[str, "(X:Mars)"]):
+            # cast(a, np.ndarray)
+            ...
+
+        # This should pass mypy
+        @as_grid_ufunc()
+        def ufunc(a: Gridded[np.ndarray, "(X:Mars)"]):
+            # cast(a, np.ndarray)
+            ...
+
 
 def create_1d_test_grid_ds(ax_name):
 
