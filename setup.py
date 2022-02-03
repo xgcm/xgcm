@@ -12,7 +12,7 @@ install_requires = [
     "numpy",
     "future",
     "docrep<=0.2.7",
-    "typing_extensions >= 3.10",  # python_version < '3.8'
+    "typing_extensions >= 4.0.1",  # python_version < '3.8'
 ]
 doc_requires = [
     "sphinx",
