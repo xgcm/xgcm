@@ -96,21 +96,21 @@ class TestGetSignatureFromTypeHints:
         # TODO test hints with annotations that don't conform to Xgcm
 
         @as_grid_ufunc()
-        def ufunc(a: Gridded[xr.DataArray, "X:center"]):
+        def ufunc(a: Gridded[np.ndarray, "X:center"]):
             ...
 
         assert ufunc.signature == "(X:center)->()"
 
         @as_grid_ufunc()
-        def ufunc(a: Gridded[xr.DataArray, "X:center,Y:center"]):
+        def ufunc(a: Gridded[np.ndarray, "X:center,Y:center"]):
             ...
 
         assert ufunc.signature == "(X:center,Y:center)->()"
 
         @as_grid_ufunc()
         def ufunc(
-            a: Gridded[xr.DataArray, "X:left"],
-            b: Gridded[xr.DataArray, "Y:right"],
+            a: Gridded[np.ndarray, "X:left"],
+            b: Gridded[np.ndarray, "Y:right"],
         ):
             ...
 
@@ -118,20 +118,20 @@ class TestGetSignatureFromTypeHints:
 
     def test_annotated_return_args(self):
         @as_grid_ufunc()
-        def ufunc() -> Gridded[xr.DataArray, "X:center"]:
+        def ufunc() -> Gridded[np.ndarray, "X:center"]:
             ...
 
         assert ufunc.signature == "()->(X:center)"
 
         @as_grid_ufunc()
-        def ufunc() -> Gridded[xr.DataArray, "X:left,Y:right"]:
+        def ufunc() -> Gridded[np.ndarray, "X:left,Y:right"]:
             ...
 
         assert ufunc.signature == "()->(X:left,Y:right)"
 
         @as_grid_ufunc()
         def ufunc() -> Tuple[
-            Gridded[xr.DataArray, "X:left"], Gridded[xr.DataArray, "Y:right"]
+            Gridded[np.ndarray, "X:left"], Gridded[np.ndarray, "Y:right"]
         ]:
             ...
 
@@ -140,7 +140,7 @@ class TestGetSignatureFromTypeHints:
         @as_grid_ufunc()
         def ufunc(
             a: Gridded[xr.DataArray, "X:center"]
-        ) -> Gridded[xr.DataArray, "X:left"]:
+        ) -> Gridded[np.ndarray, "X:left"]:
             ...
 
         assert ufunc.signature == "(X:center)->(X:left)"
@@ -152,7 +152,7 @@ class TestGetSignatureFromTypeHints:
         ):
 
             @as_grid_ufunc()
-            def ufunc(a: Gridded[xr.DataArray, "(X:Mars)"]):
+            def ufunc(a: Gridded[np.ndarray, "(X:Mars)"]):
                 ...
 
     @pytest.mark.xfail
@@ -162,7 +162,7 @@ class TestGetSignatureFromTypeHints:
         ):
 
             @as_grid_ufunc()
-            def ufunc() -> Gridded[xr.DataArray, "(X:Venus)"]:
+            def ufunc() -> Gridded[np.ndarray, "(X:Venus)"]:
                 ...
 
     def test_both_sig_kwarg_and_hints_given(self):
@@ -172,23 +172,21 @@ class TestGetSignatureFromTypeHints:
 
             @as_grid_ufunc(signature="(X:center)->(X:left)")
             def ufunc(
-                a: Gridded[xr.DataArray, "(X:center)"]
-            ) -> Gridded[xr.DataArray, "(X:left)"]:
+                a: Gridded[np.ndarray, "(X:center)"]
+            ) -> Gridded[np.ndarray, "(X:left)"]:
                 ...
 
-    @pytest.mark.skip
     def test_type_hint_as_numpy_ndarray(self):
         # This should fail mypy
+        # TODO but it doesn't
         @as_grid_ufunc()
-        def ufunc(a: Gridded[str, "(X:Mars)"]):
-            # cast(a, np.ndarray)
-            ...
+        def ufunc(a: Gridded[str, "(X:center)"]):
+            assert isinstance(a, np.ndarray)
 
         # This should pass mypy
         @as_grid_ufunc()
-        def ufunc(a: Gridded[np.ndarray, "(X:Mars)"]):
-            # cast(a, np.ndarray)
-            ...
+        def ufunc(a: Gridded[np.ndarray, "(X:center)"]):
+            assert isinstance(a, np.ndarray)
 
 
 def create_1d_test_grid_ds(ax_name):
@@ -302,13 +300,13 @@ class TestGridUFunc:
             ValueError,
             match=re.escape("Axis:positions pair depth:outer does not exist"),
         ):
-            da: Gridded[xr.DataArray, "X:outer"]
+            da: Gridded[np.ndarray, "X:outer"]
             apply_as_grid_ufunc(
                 lambda x: x, da, axis=[("depth",)], grid=grid, signature="(X:outer)->()"
             )
 
         with pytest.raises(ValueError, match="coordinate depth_c does not appear"):
-            da: Gridded[xr.DataArray, "X:center"]
+            da: Gridded[np.ndarray, "X:center"]
             apply_as_grid_ufunc(
                 lambda x: x,
                 da,
@@ -393,8 +391,8 @@ class TestGridUFunc:
         # Test decorator
         @as_grid_ufunc(dask="parallelized")
         def interp_center_to_inner(
-            a: Gridded[xr.DataArray, "X:center"]
-        ) -> Gridded[xr.DataArray, "X:inner"]:
+            a: Gridded[np.ndarray, "X:center"]
+        ) -> Gridded[np.ndarray, "X:inner"]:
             return 0.5 * (a[:-1] + a[1:])
 
         result = interp_center_to_inner(grid, da, axis=[("depth",)]).compute()
@@ -442,8 +440,8 @@ class TestGridUFunc:
         # Test decorator
         @as_grid_ufunc(dask="allowed")
         def diff_overlap(
-            a: Gridded[xr.DataArray, "X:center"]
-        ) -> Gridded[xr.DataArray, "X:left"]:
+            a: Gridded[np.ndarray, "X:center"]
+        ) -> Gridded[np.ndarray, "X:left"]:
             return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
         result = diff_overlap(
@@ -481,8 +479,8 @@ class TestGridUFunc:
         # Test decorator
         @as_grid_ufunc()
         def diff_center_to_left(
-            a: Gridded[xr.DataArray, "X:center"]
-        ) -> Gridded[xr.DataArray, "X:left"]:
+            a: Gridded[np.ndarray, "X:center"]
+        ) -> Gridded[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1, axis=-1)
 
         result = diff_center_to_left(grid, da, axis=[("lon",)])
@@ -526,7 +524,7 @@ class TestGridUFunc:
         # Test decorator
         @as_grid_ufunc()
         def inner_product_left_right(
-            a: Gridded[xr.DataArray, "X:left"], b: Gridded[xr.DataArray, "X:right"]
+            a: Gridded[np.ndarray, "X:left"], b: Gridded[np.ndarray, "X:right"]
         ):
             return np.inner(a, b)
 
@@ -574,10 +572,10 @@ class TestGridUFunc:
         # Test decorator
         @as_grid_ufunc()
         def grad_to_inner(
-            a: Gridded[xr.DataArray, "X:center,Y:center"]
+            a: Gridded[np.ndarray, "X:center,Y:center"]
         ) -> Tuple[
-            Gridded[xr.DataArray, "X:inner,Y:center"],
-            Gridded[xr.DataArray, "X:center,Y:inner"],
+            Gridded[np.ndarray, "X:inner,Y:center"],
+            Gridded[np.ndarray, "X:center,Y:inner"],
         ]:
             return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
 
@@ -642,8 +640,8 @@ class TestDaskOverlap:
             map_overlap=True,
         )
         def diff_center_to_left(
-            a: Gridded[xr.DataArray, "X:center"]
-        ) -> Gridded[xr.DataArray, "X:left"]:
+            a: Gridded[np.ndarray, "X:center"]
+        ) -> Gridded[np.ndarray, "X:left"]:
             return a[..., 1:] - a[..., :-1]
 
         result = diff_center_to_left(
@@ -704,8 +702,8 @@ class TestDaskOverlap:
             map_overlap=True,
         )
         def diff_outer_to_center(
-            a: Gridded[xr.DataArray, "X:outer"]
-        ) -> Gridded[xr.DataArray, "X:center"]:
+            a: Gridded[np.ndarray, "X:outer"]
+        ) -> Gridded[np.ndarray, "X:center"]:
             """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
             if isinstance(a, np.ndarray):
                 return a[..., 1:] - a[..., :-1]
@@ -732,8 +730,8 @@ class TestDaskOverlap:
             dask="allowed",
         )
         def multiply_left_right(
-            a: Gridded[xr.DataArray, "X:left"], b: Gridded[xr.DataArray, "X:right"]
-        ) -> Gridded[xr.DataArray, "X:center"]:
+            a: Gridded[np.ndarray, "X:left"], b: Gridded[np.ndarray, "X:right"]
+        ) -> Gridded[np.ndarray, "X:center"]:
             """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
             if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
                 return np.multiply(a, b)
@@ -815,22 +813,22 @@ class GridOpsMockUp:
     @staticmethod
     @as_grid_ufunc()
     def diff_center_to_left(
-        a: Gridded[xr.DataArray, "X:center"]
-    ) -> Gridded[xr.DataArray, "X:left"]:
+        a: Gridded[np.ndarray, "X:center"]
+    ) -> Gridded[np.ndarray, "X:left"]:
         return a - np.roll(a, -1)
 
     @staticmethod
     @as_grid_ufunc()
     def diff_center_to_right_fill(
-        a: Gridded[xr.DataArray, "X:center"]
-    ) -> Gridded[xr.DataArray, "X:right"]:
+        a: Gridded[np.ndarray, "X:center"]
+    ) -> Gridded[np.ndarray, "X:right"]:
         return np.roll(a, 1) - a
 
     @staticmethod
     @as_grid_ufunc()
     def diff_center_to_right_extend(
-        a: Gridded[xr.DataArray, "X:center"]
-    ) -> Gridded[xr.DataArray, "X:right"]:
+        a: Gridded[np.ndarray, "X:center"]
+    ) -> Gridded[np.ndarray, "X:right"]:
         return np.roll(a, 1) - a
 
     @staticmethod
