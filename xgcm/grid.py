@@ -2049,7 +2049,6 @@ class Grid:
         """
         return self._grid_func("cumsum", da, axis, **kwargs)
 
-    @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
         # the keys, should be axis names
         assert len(vector) == 2
