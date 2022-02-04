@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import re
 import string
 from typing import TYPE_CHECKING
@@ -222,7 +220,7 @@ class GridUFunc:
 
     def __call__(
         self,
-        grid: Grid = None,
+        grid: "Grid" = None,
         *args: xr.DataArray,
         axis: Sequence[str],
         **kwargs,
@@ -308,7 +306,7 @@ def apply_as_grid_ufunc(
     func: Callable,
     *args: xr.DataArray,
     axis: Sequence[str],
-    grid: Grid = None,
+    grid: "Grid" = None,
     signature: str = "",
     boundary_width: Mapping[str, Tuple[int, int]] = None,
     boundary: Union[str, Mapping[str, str]] = None,
@@ -648,7 +646,7 @@ def _rechunk_to_merge_in_boundary_chunks(
     padded_args: Sequence[xr.DataArray],
     original_args: Sequence[xr.DataArray],
     boundary_width_real_axes: Mapping[str, Tuple[int, int]],
-    grid: Grid,
+    grid: "Grid",
 ) -> List[xr.DataArray]:
     """Merges in any small floating chunks at the edges that were created by the padding operation"""
 
@@ -669,7 +667,7 @@ def _rechunk_to_merge_in_boundary_chunks(
 
 
 def _get_chunk_pattern_for_merging_boundary(
-    grid: Grid,
+    grid: "Grid",
     da: xr.DataArray,
     original_chunks: Mapping[str, Tuple[int, ...]],
     boundary_width_real_axes: Mapping[str, Tuple[int, int]],
@@ -697,7 +695,7 @@ def _get_chunk_pattern_for_merging_boundary(
     return new_chunks
 
 
-def _get_dim(grid: Grid, da: xr.DataArray, ax_name: str) -> str:
+def _get_dim(grid: "Grid", da: xr.DataArray, ax_name: str) -> str:
     ax = grid.axes[ax_name]
     from_pos, dim = ax._get_position_name(da)
     return dim
