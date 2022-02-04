@@ -5,7 +5,6 @@ channels:
   - conda-forge
 dependencies:
   - codecov
-  - dask
   - docrep<=0.2.7
   - numpy
   - scipy
