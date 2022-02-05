@@ -31,7 +31,7 @@ jobs:
         env:
           VERSION: python setup.py --version
         uses: ethomson/send-tweet-action@v1
-          with:
+        with:
             status: "We just released $VERSION of Xgcm "
             access-token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
             access-token-secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
