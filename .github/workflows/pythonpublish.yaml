@@ -35,3 +35,5 @@ jobs:
             status: "We just released $VERSION of Xgcm "
             access-token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
             access-token-secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+            consumer-key: ${{ secrets.TWITTER_CONSUMER_API_KEY }}
+            consumer-secret: ${{ secrets.TWITTER_CONSUMER_API_SECRET }}
