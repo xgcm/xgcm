@@ -27,3 +27,11 @@ jobs:
           python setup.py --version
           twine check dist/*
           twine upload dist/*
+      - name: Send Release Tweet
+        env:
+          VERSION: python setup.py --version
+        uses: ethomson/send-tweet-action@v1
+          with:
+            status: "We just released $VERSION of Xgcm "
+            access-token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+            access-token-secret: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
