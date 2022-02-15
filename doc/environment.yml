@@ -1,6 +1,6 @@
 name: test_env_xgcm_docs
 dependencies:
-  - python=3.6
+  - python=3.9
   - xarray
   - netcdf4
   - cartopy
@@ -11,6 +11,7 @@ dependencies:
   - pytest
   - numpydoc
   - sphinx
+  - sphinx-panels
   - ipython
   - matplotlib
   - sphinx_rtd_theme
