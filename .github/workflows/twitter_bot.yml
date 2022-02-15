@@ -23,4 +23,3 @@ jobs:
 #             2nd.png
 
       - run: echo ${{ steps.tweet.outputs.response }}
-      
