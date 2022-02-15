@@ -45,6 +45,7 @@ Contents
    grids
    grid_topology
    grid_metrics
+   grid_ufuncs
    transform
    xgcm-examples/02_mitgcm
    xgcm-examples/01_eccov4
