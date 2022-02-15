@@ -22,6 +22,9 @@ Documentation
 Internal Changes
 ~~~~~~~~~~~~~~~~
 - Switch CI to use mamba (:pull:`412`, :issue:`398`).
+ By `Julius Busecke <https://github.com/jbusecke>`_.
+
+- Add deprecation warnings for future changes in the API (:issue:`409`,:pull:`411`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
 
