@@ -12,7 +12,9 @@ We tell a function about the axes information through a ``signature``, which for
 
 If you are not already familiar with numpy generalised universal functions (hereon referred to as "numpy ufuncs"), then here is a quick primer.
 
-- Primer on numpy generalized ufuncs (dropdown)
+.. dropdown:: Primer on numpy generalized universal functions
+
+    Content about numpy...
 
 Grid ufuncs allow us to:
 
