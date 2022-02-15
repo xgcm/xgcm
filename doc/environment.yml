@@ -11,7 +11,6 @@ dependencies:
   - pytest
   - numpydoc
   - sphinx
-  - sphinx-panels
   - ipython
   - matplotlib
   - sphinx_rtd_theme
@@ -23,3 +22,4 @@ dependencies:
     - sphinx_pangeo_theme
     - sphinx-copybutton
     - sphinxcontrib-srclinks
+    - sphinx-panels

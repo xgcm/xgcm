@@ -572,7 +572,7 @@ class TestDaskOverlap:
             map_overlap=True,
         )
         def diff_outer_to_center(a):
-            """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
+            """Mocking up a function which can only act on in-memory arrays, and requires padding"""
             if isinstance(a, np.ndarray):
                 return a[..., 1:] - a[..., :-1]
             else:
