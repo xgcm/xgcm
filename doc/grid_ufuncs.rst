@@ -149,6 +149,7 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
 Now when we call the ``diff_forward`` function, it will act as if we had applied it using ``apply_as_grid_ufunc``.
 
 .. ipython:: python
+    :okexcept:
 
     diff_forward(grid, da, axis=[["X"]])
 
@@ -158,12 +159,16 @@ Decorator with type hints
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Finally you can use type hints to specify the grid positions of the variables instead of passing a ``signature`` argument.
-::
+
+.. ipython:: python
+    :okexcept:
 
     from xgcm import Gridded
 
     @as_grid_ufunc()
-    def diff_forward(a: Gridded[np.ndarray, "ax1:center"]) -> Gridded[np.ndarray, "ax1:left"]:
+    def diff_forward(
+        a: Gridded[np.ndarray, "ax1:center"]
+    ) -> Gridded[np.ndarray, "ax1:left"]:
         return a - np.roll(a, -1, axis=-1)
 
 .. note::
@@ -173,19 +178,16 @@ Finally you can use type hints to specify the grid positions of the variables in
 Again we call this decorated function, remembering to supply the grid and axis arguments
 
 .. ipython:: python
+    :okexcept:
 
     diff_forward(grid, da, axis=[["X"]])
 
 The signature argument is incompatible with using ``Gridded`` to annotate the types of any of the function arguments - i.e. you cannot mix the signature approach with the type hinting approach.
 
-A Simple Example
-^^^^^^^^^^^^^^^^
+.. note::
 
-- Can we think of one that has no boundary?
-- Something with an axis?
-- Mean
-
-.. _Boundaries and Padding:
+    If you want to use type hints to specify a signature with multiple return arguments, your return value should be type hinted as a tuple of annotated hints, e.g.
+    ``Tuple[Gridded[np.ndarray, "ax1:left"], Gridded[np.ndarray, "ax1:right"]]``.
 
 Boundaries and Padding
 ~~~~~~~~~~~~~~~~~~~~~~
