@@ -19,8 +19,8 @@ Grid ufuncs
 .. autosummary::
    :toctree: generated/
 
-   apply_grid_ufunc
-   as_grid_ufunc
+   xgcm.apply_as_grid_ufunc
+   xgcm.as_grid_ufunc
 
 autogenerate
 ============
