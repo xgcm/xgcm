@@ -192,6 +192,60 @@ The signature argument is incompatible with using ``Gridded`` to annotate the ty
 Boundaries and Padding
 ~~~~~~~~~~~~~~~~~~~~~~
 
+Manually Applying Boundary Conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The example differencing function we used above had an implicit periodic boundary condition, but what if we wanted to use a different boundary condition?
+
+We'll show this using a simple linear interpolation function. It has the same signature at the differencing function we used above, but it does not apply any specific boundary condition.
+
+.. ipython:: python
+
+    def interp(a):
+        return 0.5 * (a[..., :-1] + a[..., 1:])
+
+This function simply averages each element from the one on its right, but that means the resulting array is shorter by one element.
+
+.. ipython:: python
+
+    arr = np.arange(10)
+    arr
+    arr.shape
+
+    interpolated = interp(arr)
+    interpolated
+    interpolated.shape
+
+Applying a boundary condition during this operation is equivalent to choosing how to pad the original array so that the application of ``interp`` still returns an array of the starting length.
+
+We could do this manually - implementing a periodic boundary condition would mean first pre-pending the right-most element of the input array onto the left-hand side:
+
+.. ipython:: python
+
+    periodically_padded_arr = np.insert(arr, 0, arr[-1])
+    periodically_padded_arr
+
+    interpolated_periodically = interp(periodically_padded_arr)
+    interpolated_periodically.shape
+
+and implementing a constant zero-padding boundary condition would mean first pre-pending the input array with a zero:
+
+.. ipython:: python
+
+    zero_padded_arr = np.insert(arr, 0, 0)
+    zero_padded_arr
+
+    interpolated_with_zero_padding = interp(zero_padded_arr)
+    interpolated_with_zero_padding
+    interpolated_with_zero_padding.shape
+
+In both cases the result has the same length as the original input array.
+We can also see that the result depends on the choice of boundary conditions.
+
+Automatically Applying Boundary Conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
 - ``boundary_width``
 - Relationship to padding
 - ``boundary``
