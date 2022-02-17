@@ -7,11 +7,14 @@ Concept of a Grid Ufunc
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 In short, a "grid ufunc" is a generalisation of a `numpy generalized universal function`_ to include the xGCM Axes and Positions of input and output variables.
-We tell a function about the axes information through a ``signature``, which for a function which accepts data located at the center grid positions and returns data located on the same axis but now at the left-hand grid positions would look like:
+We tell a function about the axes information through a ``signature``,
+which for a function which accepts data located at the center grid positions and returns
+data located on the same axis but now at the left-hand grid positions would look like:
 
 ``"(ax1:center)->(ax1:left)"``.
 
-If you are not already familiar with numpy generalised universal functions (hereon referred to as "numpy ufuncs"), then here is a quick primer.
+If you are not already familiar with numpy generalised universal functions (hereon referred to as "numpy ufuncs"),
+then here is a quick primer.
 
 .. dropdown:: **Primer on numpy generalized universal functions**
 
@@ -36,10 +39,12 @@ A simple example would be
 The signature has two parts, one for the input variables, and one for the output variables.
 The output variables live on the right of the arrow (``->``).
 
-There needs to be one bracketed entry for each variable, so in this case the signature tells use that the function accepts one input data variable and returns one output data variable.
+There needs to be one bracketed entry for each variable,
+so in this case the signature tells use that the function accepts one input data variable and returns one output data variable.
 (Functions which accept a data variable in the form of a keyword-only argument are not supported.)
 
-For each variable, the signature tells us the ``xgcm.Axis`` positions we require that variable to have, both before and after our grid ufunc is applied.
+For each variable, the signature tells us the ``xgcm.Axis`` positions we require that variable to have,
+both before and after our grid ufunc is applied.
 This information is encoded in the format ``axis_name:position``.
 Each variable can be operated on along multiple axes, which are separated by a comma, e.g. ``(ax1:left, ax2:right)``.
 
@@ -64,8 +69,10 @@ Lets imagine we have a numpy function which does forward differencing along one 
     def diff_forward(a):
         return a - np.roll(a, -1, axis=-1)
 
-All this function does is subtract each element of the given array from the element immediately to its right, with the ends of the array wrapped around in a periodic fashion.
-If we imagine this function acting on a variable located at the cell centers, our axis position diagram suggests that the result would lie on the left-hand cell edges.
+All this function does is subtract each element of the given array from the element immediately to its right,
+with the ends of the array wrapped around in a periodic fashion.
+If we imagine this function acting on a variable located at the cell centers,
+our axis position diagram suggests that the result would lie on the left-hand cell edges.
 Therefore the signature of this function could be
 ``"(ax1:center)->(ax1:left)"``.
 
@@ -182,7 +189,8 @@ Again we call this decorated function, remembering to supply the grid and axis a
 
     diff_center_to_left(grid, da, axis=[["X"]])
 
-The signature argument is incompatible with using ``Gridded`` to annotate the types of any of the function arguments - i.e. you cannot mix the signature approach with the type hinting approach.
+The signature argument is incompatible with using ``Gridded`` to annotate the types of any of the function arguments
+- i.e. you cannot mix the signature approach with the type hinting approach.
 
 .. note::
 
@@ -195,9 +203,11 @@ Boundaries and Padding
 Manually Applying Boundary Conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The example differencing function we used above had an implicit periodic boundary condition, but what if we wanted to use a different boundary condition?
+The example differencing function we used above had an implicit periodic boundary condition,
+but what if we wanted to use a different boundary condition?
 
-We'll show this using a simple linear interpolation function. It has the same signature at the differencing function we used above, but it does not apply any specific boundary condition.
+We'll show this using a simple linear interpolation function.
+It has the same signature at the differencing function we used above, but it does not apply any specific boundary condition.
 
 .. ipython:: python
 
@@ -216,7 +226,8 @@ This function simply averages each element from the one on its right, but that m
     interpolated
     interpolated.shape
 
-Applying a boundary condition during this operation is equivalent to choosing how to pad the original array so that the application of ``interp`` still returns an array of the starting length.
+Applying a boundary condition during this operation is equivalent to choosing how to pad the original array
+so that the application of ``interp`` still returns an array of the starting length.
 
 We could do this manually - implementing a periodic boundary condition would mean first pre-pending the right-most element of the input array onto the left-hand side:
 
@@ -245,10 +256,35 @@ We can also see that the result depends on the choice of boundary conditions.
 Automatically Applying Boundary Conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- ``boundary_width``
-- Relationship to padding
-- ``boundary``
-- 1D forward differencing?
+Doing this manually is a chore, so xgcm allows you to apply boundary conditions automatically when using grid ufuncs.
+
+When doing the padding manually for ``interp``, we had to add one element on the left-hand side of the ```"X"`` axis,
+so we tell xGCM to do the same thing by specifying the keyword argument ``boundary_width={"X": (1, 0)}``,
+
+.. ipython:: python
+
+    @as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+    def interp_center_to_left(a):
+        return interp(a)
+
+Now when we run our decorated function `interp_center_to_left`, xgcm will automatically add an extra element to the left hand side for us,
+before applying the operation in the function we decorated.
+
+.. ipython:: python
+
+    da = xr.DataArray(arr)
+
+    interp_center_to_left(grid, da, axis=[["X"]])
+
+It's used a periodic boundary condition as the default, but we can choose other boundary conditions using the ``boundary`` kwarg:
+
+.. ipython:: python
+
+    interp_center_to_left(grid, da, axis=[["X"]], boundary="constant", fill_value=0)
+
+We can also choose a different default boundary condition at decorator definition time,
+and then override it at function call time if we prefer.
+
 - Link to more specific docs?
 - Link to more complex examples?
 
