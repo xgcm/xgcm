@@ -143,15 +143,15 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
     from xgcm import as_grid_ufunc
 
     @as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
-    def diff_forward(a):
-        return a - np.roll(a, -1, axis=-1)
+    def diff_center_to_left(a):
+        return diff_forward(a)
 
-Now when we call the ``diff_forward`` function, it will act as if we had applied it using ``apply_as_grid_ufunc``.
+Now when we call the ``diff_center_to_left`` function, it will act as if we had applied it using ``apply_as_grid_ufunc``.
 
 .. ipython:: python
     :okexcept:
 
-    diff_forward(grid, da, axis=[["X"]])
+    diff_center_to_left(grid, da, axis=[["X"]])
 
 Notice that we still need to provide the ``grid`` and ``axis`` arguments when we call the decorated function.
 
@@ -166,10 +166,10 @@ Finally you can use type hints to specify the grid positions of the variables in
     from xgcm import Gridded
 
     @as_grid_ufunc()
-    def diff_forward(
+    def diff_center_to_left(
         a: Gridded[np.ndarray, "ax1:center"]
     ) -> Gridded[np.ndarray, "ax1:left"]:
-        return a - np.roll(a, -1, axis=-1)
+        return diff_forward(a)
 
 .. note::
 
@@ -180,7 +180,7 @@ Again we call this decorated function, remembering to supply the grid and axis a
 .. ipython:: python
     :okexcept:
 
-    diff_forward(grid, da, axis=[["X"]])
+    diff_center_to_left(grid, da, axis=[["X"]])
 
 The signature argument is incompatible with using ``Gridded`` to annotate the types of any of the function arguments - i.e. you cannot mix the signature approach with the type hinting approach.
 
@@ -244,7 +244,6 @@ We can also see that the result depends on the choice of boundary conditions.
 
 Automatically Applying Boundary Conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 
 - ``boundary_width``
 - Relationship to padding
