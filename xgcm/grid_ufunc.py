@@ -1,6 +1,16 @@
 import re
 import string
-from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import xarray as xr
@@ -606,22 +616,25 @@ def _get_chunk_pattern_for_merging_boundary(
         _get_dim(grid, da, ax): width for ax, width in boundary_width_real_axes.items()
     }
 
-    new_chunks = {}
+    new_chunks: Dict[str, Tuple[int, ...]] = {}
     for dim, width in boundary_width_dims.items():
         lower_boundary_width, upper_boundary_width = boundary_width_dims[dim]
 
+        new_chunks_along_dim: Tuple[int, ...]
         if len(original_chunks[dim]) == 1:
             # unpadded array had only one chunk, but padding has meant new array is extended
             original_array_length = original_chunks[dim][0]
             new_chunks_along_dim = (
-                lower_boundary_width + original_array_length + upper_boundary_width
+                lower_boundary_width + original_array_length + upper_boundary_width,
             )
         elif len(original_chunks[dim]) == 2:
             first_chunk_width, last_chunk_width = original_chunks[dim]
+            lower = first_chunk_width + lower_boundary_width
+            upper = last_chunk_width + upper_boundary_width
             new_chunks_along_dim = tuple(
                 [
-                    first_chunk_width + lower_boundary_width,
-                    last_chunk_width + upper_boundary_width,
+                    lower,
+                    upper,
                 ]
             )
         else:
