@@ -1,6 +1,16 @@
 import re
 import string
-from typing import TYPE_CHECKING, Any, Callable, List, Mapping, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import xarray as xr
@@ -409,23 +419,23 @@ def apply_as_grid_ufunc(
         }
         padded_args = args
 
-    if (
-        any(
-            _has_chunked_core_dims(arg, core_dims)
-            for arg, core_dims in zip(args, in_core_dims)
-        )
-        and map_overlap
+    if any(
+        _has_chunked_core_dims(padded_arg, core_dims)
+        for padded_arg, core_dims in zip(padded_args, in_core_dims)
     ):
-        # map operation over dask chunks along core dimensions
-        from dask.array import map_overlap as dask_map_overlap  # type: ignore
-
-        # merge any lonely chunks from padding
+        # merge any lonely chunks on either end created by padding
         rechunked_padded_args = _rechunk_to_merge_in_boundary_chunks(
             padded_args,
             args,
             boundary_width_real_axes,
             grid,
         )
+    else:
+        rechunked_padded_args = padded_args
+
+    if map_overlap:
+        # map operation over dask chunks along core dimensions
+        from dask.array import map_overlap as dask_map_overlap  # type: ignore
 
         boundary_width_per_numpy_axis = {
             grid.axes[ax_name]._get_axis_dim_num(args[0]): width
@@ -466,7 +476,6 @@ def apply_as_grid_ufunc(
             )
 
     else:
-        rechunked_padded_args = padded_args
         mapped_func = func
 
     # Determine expected output dimension sizes from grid._ds
@@ -599,25 +608,36 @@ def _get_chunk_pattern_for_merging_boundary(
     da: xr.DataArray,
     original_chunks: Mapping[str, Tuple[int, ...]],
     boundary_width_real_axes: Mapping[str, Tuple[int, int]],
-):
+) -> Mapping[str, Tuple[int, ...]]:
     """Calculates the pattern of chunking needed to merge back in small chunks left on boundaries after padding"""
 
-    # Easier to work with width of boundaries in terms of str axis names rather than int axis numbers
+    # Easier to work with width of boundaries in terms of str dimension names rather than int axis numbers
     boundary_width_dims = {
         _get_dim(grid, da, ax): width for ax, width in boundary_width_real_axes.items()
     }
 
-    new_chunks = {}
+    new_chunks: Dict[str, Tuple[int, ...]] = {}
     for dim, width in boundary_width_dims.items():
         lower_boundary_width, upper_boundary_width = boundary_width_dims[dim]
-        first_chunk_width, *other_chunks_widths, last_chunk_width = original_chunks[dim]
-        new_chunks_along_dim = tuple(
-            [
-                first_chunk_width + lower_boundary_width,
-                *other_chunks_widths,
-                last_chunk_width + upper_boundary_width,
+
+        new_chunks_along_dim: Tuple[int, ...]
+        if len(original_chunks[dim]) == 1:
+            # unpadded array had only one chunk, but padding has meant new array is extended
+            original_array_length = original_chunks[dim][0]
+            new_chunks_along_dim = (
+                lower_boundary_width + original_array_length + upper_boundary_width,
+            )
+        else:
+            first_chunk_width, *other_chunks_widths, last_chunk_width = original_chunks[
+                dim
             ]
-        )
+            new_chunks_along_dim = tuple(
+                [
+                    first_chunk_width + lower_boundary_width,
+                    *other_chunks_widths,
+                    last_chunk_width + upper_boundary_width,
+                ]
+            )
         new_chunks[dim] = new_chunks_along_dim
 
     return new_chunks
