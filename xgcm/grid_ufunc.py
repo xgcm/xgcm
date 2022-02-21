@@ -627,16 +627,6 @@ def _get_chunk_pattern_for_merging_boundary(
             new_chunks_along_dim = (
                 lower_boundary_width + original_array_length + upper_boundary_width,
             )
-        elif len(original_chunks[dim]) == 2:
-            first_chunk_width, last_chunk_width = original_chunks[dim]
-            lower = first_chunk_width + lower_boundary_width
-            upper = last_chunk_width + upper_boundary_width
-            new_chunks_along_dim = tuple(
-                [
-                    lower,
-                    upper,
-                ]
-            )
         else:
             first_chunk_width, *other_chunks_widths, last_chunk_width = original_chunks[
                 dim
