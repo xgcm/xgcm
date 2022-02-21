@@ -701,7 +701,6 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
         xr.testing.assert_allclose(serial, full)
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
 @pytest.mark.parametrize("periodic", ["True", "False", ["X"], ["Y"], ["X", "Y"]])
 @pytest.mark.parametrize(
