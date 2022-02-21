@@ -269,8 +269,8 @@ def apply_as_grid_ufunc(
         arrays (`.data`).
 
         Passed directly on to `xarray.apply_ufunc`.
-    *args : xarray.DataArray or xarray.Dataset
-        One or more xarray objects to apply the function to.
+    *args : xarray.DataArray
+        One or more xarray DataArray objects to apply the function to.
     axis : Sequence[Tuple[str]]
         Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
         Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
@@ -336,8 +336,8 @@ def apply_as_grid_ufunc(
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
 
-    if any(not isinstance(arg, (xr.DataArray, xr.Dataset)) for arg in args):
-        raise TypeError("All data arguments must be of type DataArray or Dataset")
+    if any(not isinstance(arg, xr.DataArray) for arg in args):
+        raise TypeError("All data arguments must be of type DataArray")
 
     if len(args) != len(axis):
         raise ValueError(
@@ -455,7 +455,7 @@ def apply_as_grid_ufunc(
         # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have
         # But in this case output chunks are the same as input chunks
         # (as we disallowed axis positions for which this is not the case)
-        original_chunksizes = [arg.chunksizes for arg in args]
+        original_chunksizes = [arg.variable.chunksizes for arg in args]
         # TODO first argument only because map_overlap can't handle multiple return values (I think)
         true_chunksizes = original_chunksizes[0]
         # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
@@ -544,11 +544,10 @@ def apply_as_grid_ufunc(
     return results_with_coords
 
 
-def _has_chunked_core_dims(
-    obj: Union[xr.DataArray, xr.Dataset], core_dims: Sequence[str]
-) -> bool:
+def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:
     def is_dim_chunked(a, dim):
-        return len(a.chunksizes[dim]) > 1
+        # TODO this func can't handle Datasets - it will error if you check multiple variables with different chunking
+        return len(a.variable.chunksizes[dim]) > 1
 
     # TODO what if only some of the core dimensions are chunked?
     return obj.chunks is not None and any(is_dim_chunked(obj, dim) for dim in core_dims)
@@ -590,7 +589,7 @@ def _rechunk_to_merge_in_boundary_chunks(
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
 
-        original_arg_chunks = original_arg.chunksizes
+        original_arg_chunks = original_arg.variable.chunksizes
         merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
             grid,
             padded_arg,
