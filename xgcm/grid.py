@@ -8,10 +8,16 @@ from collections import OrderedDict
 import docrep  # type: ignore
 import numpy as np
 import xarray as xr
+from dask.array import Array as Dask_Array
 
 from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
-from .grid_ufunc import GridUFunc, _signatures_equivalent, apply_as_grid_ufunc
+from .grid_ufunc import (
+    GridUFunc,
+    _has_chunked_core_dims,
+    _signatures_equivalent,
+    apply_as_grid_ufunc,
+)
 from .metrics import iterate_axis_combinations
 
 try:
@@ -1760,6 +1766,12 @@ class Grid:
 
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
+        # if any dims are chunked then we need dask
+        if isinstance(da.data, Dask_Array):
+            dask = "parallelized"
+        else:
+            dask = "forbidden"
+
         array = da
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
@@ -1775,8 +1787,22 @@ class Grid:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array * metric
 
+            # if chunked along core dim then we need map_overlap
+            core_dim = self._get_dims_from_axis(da, ax_name)
+            if _has_chunked_core_dims(array, core_dim):
+                map_overlap = True
+                dask = "allowed"
+            else:
+                map_overlap = False
+
             array = grid_ufunc(
-                self, array, axis=[ax_name], keep_coords=keep_coords, **remaining_kwargs
+                self,
+                array,
+                axis=[(ax_name,)],
+                keep_coords=keep_coords,
+                dask=dask,
+                map_overlap=map_overlap,
+                **remaining_kwargs,
             )
 
             if ax_metric_weighted:

@@ -81,7 +81,7 @@ class TestParseGridUfuncSignature:
             _parse_grid_ufunc_signature(signature)
 
 
-def create_1d_test_grid_ds(ax_name):
+def create_1d_test_grid_ds(ax_name, length):
 
     grid_ds = xr.Dataset(
         coords={
@@ -89,25 +89,25 @@ def create_1d_test_grid_ds(ax_name):
                 [
                     f"{ax_name}_c",
                 ],
-                np.arange(1, 10),
+                np.arange(1, length + 1),
             ),
             f"{ax_name}_g": (
                 [
                     f"{ax_name}_g",
                 ],
-                np.arange(0.5, 9),
+                np.arange(0.5, length),
             ),
             f"{ax_name}_r": (
                 [
                     f"{ax_name}_r",
                 ],
-                np.arange(1.5, 10),
+                np.arange(1.5, length + 1),
             ),
             f"{ax_name}_i": (
                 [
                     f"{ax_name}_i",
                 ],
-                np.arange(1.5, 9),
+                np.arange(1.5, length),
             ),
             f"{ax_name}_o": (
                 [
@@ -121,8 +121,8 @@ def create_1d_test_grid_ds(ax_name):
     return grid_ds
 
 
-def create_1d_test_grid(ax_name):
-    grid_ds = create_1d_test_grid_ds(ax_name)
+def create_1d_test_grid(ax_name, length=9):
+    grid_ds = create_1d_test_grid_ds(ax_name, length)
     return Grid(
         grid_ds,
         coords={
@@ -137,9 +137,9 @@ def create_1d_test_grid(ax_name):
     )
 
 
-def create_2d_test_grid(ax_name_1, ax_name_2):
-    grid_ds_1 = create_1d_test_grid_ds(ax_name_1)
-    grid_ds_2 = create_1d_test_grid_ds(ax_name_2)
+def create_2d_test_grid(ax_name_1, ax_name_2, length1=9, length2=11):
+    grid_ds_1 = create_1d_test_grid_ds(ax_name_1, length1)
+    grid_ds_2 = create_1d_test_grid_ds(ax_name_2, length2)
 
     return Grid(
         ds=xr.merge([grid_ds_1, grid_ds_2]),
@@ -542,7 +542,6 @@ class TestDaskOverlap:
             grid=grid,
             signature="(X:center)->(X:left)",
             boundary_width={"X": (1, 0)},
-            # boundary="",
             dask="allowed",
             map_overlap=True,
         ).compute()
@@ -621,7 +620,7 @@ class TestDaskOverlap:
     def test_only_some_core_dims_are_chunked(self):
         raise NotImplementedError
 
-    def test_ufunc_changes_chunksize(self):
+    def test_raise_when_ufunc_changes_chunksize(self):
         @as_grid_ufunc(
             "(X:outer)->(X:center)",
             boundary_width={"X": (1, 0)},
@@ -701,6 +700,21 @@ class TestDaskOverlap:
                 map_overlap=True,
                 dask="allowed",
             )
+
+
+# TODO tests for handling dask in gri.diff etc. should eventually live in test_grid.py
+def test_grid_diff_center_to_right_1d():
+    grid = create_1d_test_grid("depth")
+    da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk(1)
+    da.coords["depth_c"] = grid._ds.depth_c
+
+    diffed = (da.roll(depth_c=-1, roll_coords=False) - da).data
+    expected = xr.DataArray(
+        diffed, dims=["depth_r"], coords={"depth_r": grid._ds.depth_r}
+    ).compute()
+
+    result = grid.diff(da, axis="depth", to="right").compute()
+    assert_equal(result, expected)
 
 
 class TestSignaturesEquivalent:

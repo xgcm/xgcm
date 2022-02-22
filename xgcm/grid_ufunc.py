@@ -544,11 +544,12 @@ def apply_as_grid_ufunc(
     return results_with_coords
 
 
-def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:
-    def is_dim_chunked(a, dim):
-        # TODO this func can't handle Datasets - it will error if you check multiple variables with different chunking
-        return len(a.variable.chunksizes[dim]) > 1
+def is_dim_chunked(a, dim):
+    # TODO this func can't handle Datasets - it will error if you check multiple variables with different chunking
+    return len(a.variable.chunksizes[dim]) > 1
 
+
+def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:
     # TODO what if only some of the core dimensions are chunked?
     return obj.chunks is not None and any(is_dim_chunked(obj, dim) for dim in core_dims)
 
