@@ -335,7 +335,7 @@ def apply_as_grid_ufunc(
 
     print(args[0].chunksizes)
     print(axis)
-    print(signature)
+    print(f"signature={signature}")
     print(boundary_width)
     print(boundary)
     print(dask)
@@ -359,6 +359,9 @@ def apply_as_grid_ufunc(
         in_ax_pos,
         out_ax_pos,
     ) = _parse_grid_ufunc_signature(signature)
+
+    print(axis)
+    print(in_dummy_ax_names)
 
     dummy_to_real_axes_mapping = _identify_dummy_axes_with_real_axes(
         in_dummy_ax_names, axis
@@ -469,6 +472,9 @@ def apply_as_grid_ufunc(
         # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
         true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
 
+        print(boundary_width_per_numpy_axis)
+        print(true_chunksizes_per_numpy_axis)
+
         # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
         # calls map_blocks automatically in that scenario)
         def mapped_func(*a, **kw):
@@ -492,6 +498,8 @@ def apply_as_grid_ufunc(
     out_sizes = {
         out_dim: grid._ds.dims[out_dim] for arg in out_core_dims for out_dim in arg
     }
+
+    print(rechunked_padded_args[0].chunksizes)
 
     # Perform operation via xarray.apply_ufunc
     results = xr.apply_ufunc(
@@ -668,6 +676,8 @@ def _identify_dummy_axes_with_real_axes(
             "Number of entries in `axis` does not match the number of variables in the input signature"
         )
     for i, (arg_axes, dummy_arg_axes) in enumerate(zip(axis, sig_in_dummy_ax_names)):
+        print(arg_axes)
+        print(dummy_arg_axes)
         if len(arg_axes) != len(dummy_arg_axes):
             raise ValueError(
                 f"Number of Axes in `axis` entry number {i} does not match the number of Axes in that entry in the input signature"

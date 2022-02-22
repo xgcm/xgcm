@@ -1798,10 +1798,14 @@ class Grid:
             else:
                 map_overlap = False
 
+            print("grid_ufunc call here:")
+            print(grid_ufunc.signature)
+            print(ax_name)
+
             array = grid_ufunc(
                 self,
                 array,
-                axis=[ax_name],
+                axis=[(ax_name,)],
                 keep_coords=keep_coords,
                 dask=dask,
                 map_overlap=map_overlap,
