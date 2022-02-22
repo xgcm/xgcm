@@ -621,7 +621,7 @@ class TestDaskOverlap:
     def test_only_some_core_dims_are_chunked(self):
         raise NotImplementedError
 
-    def test_ufunc_changes_chunksize(self):
+    def test_raise_when_ufunc_changes_chunksize(self):
         @as_grid_ufunc(
             "(X:outer)->(X:center)",
             boundary_width={"X": (1, 0)},
@@ -701,6 +701,42 @@ class TestDaskOverlap:
                 map_overlap=True,
                 dask="allowed",
             )
+
+
+class TestMapOverlapGridops:
+    def test_chunked_core_dims_unchanging_chunksize_center_to_right(self):
+        # attempt to debug GH #438
+
+        grid = create_1d_test_grid("depth")
+        da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk(1)
+        da.coords["depth_c"] = grid._ds.depth_c
+
+        diffed = (da.roll(depth_c=-1, roll_coords=False) - da).data
+        expected = xr.DataArray(
+            diffed, dims=["depth_r"], coords={"depth_r": grid._ds.depth_r}
+        ).compute()
+
+        result = grid.diff(da, axis="depth", to="right").compute()
+        assert_equal(result, expected)
+
+    def test_chunked_core_dims_unchanging_chunksize_center_to_right_2d(self):
+        # attempt to debug GH #440
+
+        grid = create_2d_test_grid("depth", "y")
+
+        da = (grid._ds.depth_c ** 2 + grid._ds.y_c ** 2).chunk(3)
+        da.coords["depth_c"] = grid._ds.depth_c
+        da.coords["y_c"] = grid._ds.y_c
+
+        diffed = (da.roll(depth_c=-1, roll_coords=False) - da).data
+        expected = xr.DataArray(
+            diffed,
+            dims=["depth_r", "y_c"],
+            coords={"depth_r": grid._ds.depth_r, "y_c": grid._ds.y_c},
+        ).compute()
+
+        result = grid.diff(da, axis="depth", to="right").compute()
+        assert_equal(result, expected)
 
 
 class TestSignaturesEquivalent:
