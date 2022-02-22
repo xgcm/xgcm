@@ -434,56 +434,17 @@ def apply_as_grid_ufunc(
         rechunked_padded_args = padded_args
 
     if map_overlap:
-        # map operation over dask chunks along core dimensions
-        from dask.array import map_overlap as dask_map_overlap  # type: ignore
-
-        # Need to transpose the numpy axis arguments to leave core dims at end
-        # else they won't match up inside mapped_func after xr.apply_ufunc does its transposition
-        transposed_original_args = [
-            arg.transpose(..., *in_core_dims[i]) for i, arg in enumerate(args)
-        ]
-
-        boundary_width_per_numpy_axis = {
-            grid.axes[ax_name]._get_axis_dim_num(transposed_original_args[0]): width
-            for ax_name, width in boundary_width_real_axes.items()
-        }
-
-        # Disallow situations where shifting axis position would cause chunk size to change
-        _check_if_length_would_change(out_dummy_ax_names, in_ax_pos, out_ax_pos)
-
-        single_dim_chunktype = Tuple[int, ...]
-
-        def _dict_to_numbered_axes(
-            sizes: Mapping[str, single_dim_chunktype]
-        ) -> Tuple[single_dim_chunktype, ...]:
-            """This implicitly crystallises the order of the given mapping"""
-            return tuple(sizes.values())
-
-        # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have
-        # But in this case output chunks are the same as input chunks
-        # (as we disallowed axis positions for which this is not the case)
-        original_chunksizes = [
-            arg.variable.chunksizes for arg in transposed_original_args
-        ]
-        # TODO first argument only because map_overlap can't handle multiple return values (I think)
-        true_chunksizes = original_chunksizes[0]
-        # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
-        true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
-
-        # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
-        # calls map_blocks automatically in that scenario)
-        def mapped_func(*a, **kw):
-            return dask_map_overlap(
-                func,
-                *a,
-                **kw,
-                depth=boundary_width_per_numpy_axis,
-                boundary="none",
-                trim=False,
-                meta=np.array([], dtype=out_dtypes[0]),
-                chunks=true_chunksizes_per_numpy_axis,
-            )
-
+        mapped_func = _map_func_over_core_dims(
+            func,
+            args,
+            grid,
+            in_core_dims,
+            boundary_width_real_axes,
+            out_dummy_ax_names,
+            in_ax_pos,
+            out_ax_pos,
+            out_dtypes,
+        )
     else:
         mapped_func = func
 
@@ -513,36 +474,9 @@ def apply_as_grid_ufunc(
         results = (results,)
 
     # Restore any dimension coordinates associated with new output dims that are present in grid
-    results_with_coords = []
-    for res, arg_out_core_dims in zip(results, out_core_dims):
-
-        # Only reconstruct coordinates that actually contain grid position info (i.e. not just integer values along a dim.)
-        # Therefore if input only had dimensions and no coordinates, the output should too.
-        new_core_dim_coords = {
-            dim: grid._ds.coords[dim]
-            for dim in arg_out_core_dims
-            if dim in grid._ds.coords and dim not in res.coords
-        }
-
-        try:
-            res = res.assign_coords(new_core_dim_coords)
-        except ValueError as err:
-            if boundary_width and str(err).startswith("conflicting sizes"):
-                # TODO make this error more informative?
-                raise ValueError(
-                    f"{str(err)} - does your grid ufunc correctly trim off the same number of elements "
-                    f"which were added by padding using boundary_width={boundary_width}?"
-                )
-            else:
-                raise
-
-        if not keep_coords:
-            # TODO I don't like the `keep_coords` argument in general and think it should be removed for clarity.
-            # Drop any non-dimension coordinates on the output
-            non_dim_coords = [coord for coord in res.coords if coord not in res.dims]
-            res = res.drop_vars(non_dim_coords)
-
-        results_with_coords.append(res)
+    results_with_coords = _reattach_coords(
+        results, grid, out_core_dims, boundary_width, keep_coords
+    )
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
     if len(results_with_coords) == 1:
@@ -553,14 +487,79 @@ def apply_as_grid_ufunc(
     return results_with_coords
 
 
-def is_dim_chunked(a, dim):
+def _is_dim_chunked(a, dim):
     # TODO this func can't handle Datasets - it will error if you check multiple variables with different chunking
     return len(a.variable.chunksizes[dim]) > 1
 
 
 def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:
     # TODO what if only some of the core dimensions are chunked?
-    return obj.chunks is not None and any(is_dim_chunked(obj, dim) for dim in core_dims)
+    return obj.chunks is not None and any(
+        _is_dim_chunked(obj, dim) for dim in core_dims
+    )
+
+
+def _map_func_over_core_dims(
+    func,
+    args,
+    grid,
+    in_core_dims,
+    boundary_width_real_axes,
+    out_dummy_ax_names,
+    in_ax_pos,
+    out_ax_pos,
+    out_dtypes,
+):
+    """map operation over dask chunks along core dimensions"""
+
+    from dask.array import map_overlap as dask_map_overlap  # type: ignore
+
+    # Need to transpose the numpy axis arguments to leave core dims at end
+    # else they won't match up inside mapped_func after xr.apply_ufunc does its transposition
+    transposed_original_args = [
+        arg.transpose(..., *in_core_dims[i]) for i, arg in enumerate(args)
+    ]
+
+    boundary_width_per_numpy_axis = {
+        grid.axes[ax_name]._get_axis_dim_num(transposed_original_args[0]): width
+        for ax_name, width in boundary_width_real_axes.items()
+    }
+
+    # Disallow situations where shifting axis position would cause chunk size to change
+    _check_if_length_would_change(out_dummy_ax_names, in_ax_pos, out_ax_pos)
+
+    single_dim_chunktype = Tuple[int, ...]
+
+    def _dict_to_numbered_axes(
+        sizes: Mapping[str, single_dim_chunktype]
+    ) -> Tuple[single_dim_chunktype, ...]:
+        """This implicitly crystallises the order of the given mapping"""
+        return tuple(sizes.values())
+
+    # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have
+    # But in this case output chunks are the same as input chunks
+    # (as we disallowed axis positions for which this is not the case)
+    original_chunksizes = [arg.variable.chunksizes for arg in transposed_original_args]
+    # TODO first argument only because map_overlap can't handle multiple return values (I think)
+    true_chunksizes = original_chunksizes[0]
+    # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
+    true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
+
+    # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
+    # calls map_blocks automatically in that scenario)
+    def mapped_func(*a, **kw):
+        return dask_map_overlap(
+            func,
+            *a,
+            **kw,
+            depth=boundary_width_per_numpy_axis,
+            boundary="none",
+            trim=False,
+            meta=np.array([], dtype=out_dtypes[0]),
+            chunks=true_chunksizes_per_numpy_axis,
+        )
+
+    return mapped_func
 
 
 DISALLOWED_OVERLAP_POSITIONS = ["inner", "outer"]
@@ -686,6 +685,41 @@ def _identify_dummy_axes_with_real_axes(
         )
 
     return dict(zip(unique_dummy_axes, unique_real_axes))
+
+
+def _reattach_coords(results, grid, out_core_dims, boundary_width, keep_coords):
+    results_with_coords = []
+    for res, arg_out_core_dims in zip(results, out_core_dims):
+
+        # Only reconstruct coordinates that actually contain grid position info (i.e. not just integer values along a dim.)
+        # Therefore if input only had dimensions and no coordinates, the output should too.
+        new_core_dim_coords = {
+            dim: grid._ds.coords[dim]
+            for dim in arg_out_core_dims
+            if dim in grid._ds.coords and dim not in res.coords
+        }
+
+        try:
+            res = res.assign_coords(new_core_dim_coords)
+        except ValueError as err:
+            if boundary_width and str(err).startswith("conflicting sizes"):
+                # TODO make this error more informative?
+                raise ValueError(
+                    f"{str(err)} - does your grid ufunc correctly trim off the same number of elements "
+                    f"which were added by padding using boundary_width={boundary_width}?"
+                )
+            else:
+                raise
+
+        if not keep_coords:
+            # TODO I don't like the `keep_coords` argument in general and think it should be removed for clarity.
+            # Drop any non-dimension coordinates on the output
+            non_dim_coords = [coord for coord in res.coords if coord not in res.dims]
+            res = res.drop_vars(non_dim_coords)
+
+        results_with_coords.append(res)
+
+    return results_with_coords
 
 
 _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
