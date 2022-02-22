@@ -542,7 +542,6 @@ class TestDaskOverlap:
             grid=grid,
             signature="(X:center)->(X:left)",
             boundary_width={"X": (1, 0)},
-            # boundary="",
             dask="allowed",
             map_overlap=True,
         ).compute()
@@ -703,6 +702,7 @@ class TestDaskOverlap:
             )
 
 
+# TODO tests for handling dask in gri.diff etc. should eventually live in test_grid.py
 class TestMapOverlapGridops:
     def test_chunked_core_dims_unchanging_chunksize_center_to_right(self):
         # attempt to debug GH #438
