@@ -1788,19 +1788,12 @@ class Grid:
                 array = array * metric
 
             # if chunked along core dim then we need map_overlap
-            print(type(array.data))
             core_dim = self._get_dims_from_axis(da, ax_name)
-            print(core_dim)
-            print(remaining_kwargs)
             if _has_chunked_core_dims(array, core_dim):
                 map_overlap = True
                 dask = "allowed"
             else:
                 map_overlap = False
-
-            print("grid_ufunc call here:")
-            print(grid_ufunc.signature)
-            print(ax_name)
 
             array = grid_ufunc(
                 self,

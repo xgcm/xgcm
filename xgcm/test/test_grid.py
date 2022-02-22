@@ -701,38 +701,6 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
         xr.testing.assert_allclose(serial, full)
 
 
-@pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
-@pytest.mark.parametrize("periodic", ["True", "False", ["X"], ["Y"], ["X", "Y"]])
-@pytest.mark.parametrize(
-    "boundary",
-    [
-        "fill",
-        # "extrapolate", # do we not support extrapolation anymore?
-        "extend",
-        {"X": "fill", "Y": "extend"},
-        {"X": "extend", "Y": "fill"},
-    ],
-)
-def test_dask_vs_eager(all_datasets, func, periodic, boundary):
-    ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
-
-    print(grid)
-    print(ds.coords)
-
-    eager_result = grid.diff(ds.tracer, "X")
-
-    print(eager_result)
-
-    ds = ds.chunk({"xt": 3, "yt": 1, "time": 1, "zt": 1})
-    grid = Grid(ds, coords=coords)
-    dask_result = grid.diff(ds.tracer, "X").compute()
-
-    xr.testing.assert_identical(dask_result, eager_result)
-
-    # assert False
-
-
 def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     """Test axis kwarg input functionality using dict input"""
     ds, _, _ = nonperiodic_1d
