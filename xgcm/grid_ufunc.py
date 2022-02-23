@@ -574,7 +574,7 @@ def _map_func_over_core_dims(
     boundary_width_real_axes,
     out_dtypes,
 ):
-    """map operation over dask chunks along core dimensions"""
+    """Map operation over dask chunks along core dimensions"""
 
     from dask.array import map_overlap as dask_map_overlap  # type: ignore
 
