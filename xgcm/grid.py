@@ -27,7 +27,7 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Dict, Iterable, List, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Tuple, Union
 
 # Only need this until python 3.8
 try:
@@ -1860,13 +1860,14 @@ class Grid:
 
     def apply_as_grid_ufunc(
         self,
-        func,
-        *args,
-        signature="",
-        boundary_width=None,
-        boundary=None,
-        fill_value=None,
-        dask: Literal["forbidden", "parallelized", "allowed"],
+        func: Callable,
+        *args: xr.DataArray,
+        signature: Union[str, Signature] = "",
+        boundary_width: Mapping[str, Tuple[int, int]] = None,
+        boundary: Union[str, Mapping[str, str]] = None,
+        fill_value: Union[float, Mapping[str, float]] = None,
+        dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
+        map_overlap: bool = False,
         **kwargs,
     ):
         """
@@ -1932,6 +1933,7 @@ class Grid:
             boundary=boundary,
             fill_value=fill_value,
             dask=dask,
+            map_overlap=map_overlap,
             **kwargs,
         )
 

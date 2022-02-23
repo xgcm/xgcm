@@ -325,7 +325,7 @@ def apply_as_grid_ufunc(
     boundary: Union[str, Mapping[str, str]] = None,
     fill_value: Union[float, Mapping[str, float]] = None,
     keep_coords: bool = True,
-    dask: Literal["forbidden", "parallelized", "allowed"],
+    dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
     **kwargs,
 ) -> List[Any]:
