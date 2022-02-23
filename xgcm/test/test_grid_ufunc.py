@@ -9,8 +9,8 @@ from xarray.testing import assert_equal
 from xgcm.grid import Grid, _select_grid_ufunc
 from xgcm.grid_ufunc import (
     GridUFunc,
+    Signature,
     _parse_grid_ufunc_signature,
-    _signatures_equivalent,
     apply_as_grid_ufunc,
     as_grid_ufunc,
 )
@@ -171,7 +171,7 @@ class TestGridUFunc:
             return a - np.roll(a, shift=-1)
 
         assert isinstance(diff_center_to_left, GridUFunc)
-        assert diff_center_to_left.signature == signature
+        assert str(diff_center_to_left.signature) == signature
 
         with pytest.raises(TypeError, match="Unsupported keyword argument"):
 
@@ -741,27 +741,27 @@ class TestMapOverlapGridops:
 
 class TestSignaturesEquivalent:
     def test_equivalent(self):
-        sig1 = "(X:center)->(X:left)"
-        sig2 = "(X:center)->(X:left)"
-        assert _signatures_equivalent(sig1, sig2)
+        sig1 = Signature("(X:center)->(X:left)")
+        sig2 = Signature("(X:center)->(X:left)")
+        assert sig1.equivalent(sig2)
 
-        sig3 = "(Y:center)->(Y:left)"
-        assert _signatures_equivalent(sig1, sig3)
+        sig3 = Signature("(Y:center)->(Y:left)")
+        assert sig1.equivalent(sig3)
 
     def test_not_equivalent(self):
-        sig1 = "(X:center)->(X:left)"
-        sig2 = "(X:center)->(X:center)"
-        assert not _signatures_equivalent(sig1, sig2)
+        sig1 = Signature("(X:center)->(X:left)")
+        sig2 = Signature("(X:center)->(X:center)")
+        assert not sig1.equivalent(sig2)
 
-        sig3 = "(X:center)->(Y:left)"
-        assert not _signatures_equivalent(sig1, sig3)
+        sig3 = Signature("(X:center)->(Y:left)")
+        assert not sig1.equivalent(sig3)
 
-        sig4 = "(X:center,X:center)->(X:left)"
-        assert not _signatures_equivalent(sig1, sig4)
+        sig4 = Signature("(X:center,X:center)->(X:left)")
+        assert not sig1.equivalent(sig4)
 
     def test_no_indices(self):
-        sig = "()->()"
-        assert _signatures_equivalent(sig, sig)
+        sig = Signature("()->()")
+        assert sig.equivalent(sig)
 
 
 class GridOpsMockUp:
@@ -794,34 +794,41 @@ class GridOpsMockUp:
 class TestGridUFuncDispatch:
     def test_select_ufunc(self):
         gridufunc, _ = _select_grid_ufunc(
-            "diff", "(X:center)->(X:left)", module=GridOpsMockUp
+            "diff", Signature("(X:center)->(X:left)"), module=GridOpsMockUp
         )
         assert gridufunc is GridOpsMockUp.diff_center_to_left
 
     def test_select_ufunc_equivalent_signature(self):
         gridufunc, _ = _select_grid_ufunc(
-            "diff", "(Y:center)->(Y:left)", module=GridOpsMockUp
+            "diff", Signature("(Y:center)->(Y:left)"), module=GridOpsMockUp
         )
         assert gridufunc is GridOpsMockUp.diff_center_to_left
 
         with pytest.raises(NotImplementedError):
-            _select_grid_ufunc("diff", "(X:center)->(Y:left)", module=GridOpsMockUp)
+            _select_grid_ufunc(
+                "diff", Signature("(X:center)->(Y:left)"), module=GridOpsMockUp
+            )
 
     def test_select_ufunc_wrong_signature(self):
         with pytest.raises(NotImplementedError):
-            _select_grid_ufunc("diff", "(X:center)->(X:center)", module=GridOpsMockUp)
+            _select_grid_ufunc(
+                "diff", Signature("(X:center)->(X:center)"), module=GridOpsMockUp
+            )
 
     @pytest.mark.xfail(reason="currently no need for this")
     def test_select_ufunc_by_kwarg(self):
         gridufunc, _ = _select_grid_ufunc(
-            "diff", "(X:center)->(X:right)", module=GridOpsMockUp, boundary="fill"
+            "diff",
+            Signature("(X:center)->(X:right)"),
+            module=GridOpsMockUp,
+            boundary="fill",
         )
         assert gridufunc is GridOpsMockUp.diff_center_to_right_fill
 
         with pytest.raises(NotImplementedError):
             _select_grid_ufunc(
                 "diff",
-                "(X:center)->(X:right)",
+                Signature("(X:center)->(X:right)"),
                 module=GridOpsMockUp,
                 boundary="nonsense",
             )
@@ -830,6 +837,6 @@ class TestGridUFuncDispatch:
     def test_pass_through_other_kwargs(self):
         # TODO put this in test_grid.py instead?
         gridufunc, _ = _select_grid_ufunc(
-            "pass", "()->()", module=GridOpsMockUp, boundary="fill"
+            "pass", Signature("()->()"), module=GridOpsMockUp, boundary="fill"
         )
         assert gridufunc(a=1) == {"a": 1}

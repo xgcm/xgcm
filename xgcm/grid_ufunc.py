@@ -6,7 +6,9 @@ from typing import (
     Callable,
     Dict,
     List,
+    Literal,
     Mapping,
+    Optional,
     Sequence,
     Tuple,
     Union,
@@ -97,6 +99,62 @@ def _parse_grid_ufunc_signature(
     return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
 
 
+class Signature:
+    signature: str
+    in_ax_names: List[Tuple[str, ...]]
+    out_ax_names: List[Tuple[str, ...]]
+    in_ax_positions: List[Tuple[str, ...]]
+    out_ax_positions: List[Tuple[str, ...]]
+
+    _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
+
+    def __init__(self, signature: str):
+        self.signature: str = signature
+        (
+            self.in_ax_names,
+            self.out_ax_names,
+            self.in_ax_positions,
+            self.out_ax_positions,
+        ) = _parse_grid_ufunc_signature(signature)
+
+    def __str__(self):
+        return self.signature
+
+    def __repr__(self):
+        return f"Signature({self.signature})"
+
+    def equivalent(self, other: "Signature") -> bool:
+        """Whether or not two signatures are equivalent."""
+
+        """
+        Axes names in signatures are dummy variables, so an exact string match is not required.
+        Our comparison strategy is to instead work through both signatures left to right, replacing all occurrences
+        of each dummy index with names drawn from a common list. If after this process the replaced names are not
+        identical, the signatures must not be equivalent. Axes positions do have to match exactly.
+        """
+
+        sig1_in, sig1_out = self.in_ax_names, self.out_ax_names
+        sig2_in, sig2_out = other.in_ax_names, other.out_ax_names
+
+        all_unique_sig1_indices = set([i for arg in sig1_in for i in arg])
+        all_unique_sig2_indices = set([i for arg in sig2_in for i in arg])
+
+        if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
+            return False
+
+        sig1_replaced = self.signature
+        sig2_replaced = other.signature
+        for dummy1, dummy2, common_replacement in zip(
+            all_unique_sig1_indices,
+            all_unique_sig2_indices,
+            self._REPLACEMENT_DUMMY_INDEX_NAMES,
+        ):
+            sig1_replaced = sig1_replaced.replace(dummy1, common_replacement)
+            sig2_replaced = sig2_replaced.replace(dummy2, common_replacement)
+
+        return sig1_replaced == sig2_replaced
+
+
 class GridUFunc:
     """
     Binds a numpy ufunc into a "grid-aware ufunc", meaning that when called ufunc is wrapped by `apply_as_grid_ufunc`.
@@ -142,9 +200,16 @@ class GridUFunc:
     Grid.apply_as_grid_ufunc
     """
 
+    ufunc: Callable
+    signature: Signature
+    boundary_width: Optional[Mapping[str, Tuple[int, int]]]
+    dask: Literal["forbidden", "parallelized", "allowed"]
+    map_overlap: bool
+
     def __init__(self, ufunc: Callable, **kwargs):
-        self.ufunc = ufunc
-        self.signature = kwargs.pop("signature", "")
+        self.ufunc = ufunc  # type: ignore  # see mypy issue 2427
+        signature = kwargs.pop("signature", "")
+        self.signature = Signature(signature)
         self.boundary_width = kwargs.pop("boundary_width", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
@@ -246,7 +311,7 @@ def apply_as_grid_ufunc(
     *args: xr.DataArray,
     axis: Sequence[str],
     grid: "Grid" = None,
-    signature: str = "",
+    signature: Union[str, Signature] = "",
     boundary_width: Mapping[str, Tuple[int, int]] = None,
     boundary: Union[str, Mapping[str, str]] = None,
     fill_value: Union[float, Mapping[str, float]] = None,
@@ -345,25 +410,23 @@ def apply_as_grid_ufunc(
         )
 
     # Extract Axes information from signature
-    (
-        in_dummy_ax_names,
-        out_dummy_ax_names,
-        in_ax_pos,
-        out_ax_pos,
-    ) = _parse_grid_ufunc_signature(signature)
+    if not isinstance(signature, Signature):
+        sig = Signature(signature)
+    else:
+        sig = signature
 
     dummy_to_real_axes_mapping = _identify_dummy_axes_with_real_axes(
-        in_dummy_ax_names, axis
+        sig.in_ax_names, axis
     )
 
     # Determine names of output axes from names in signature
     # TODO what if we need to add a new core dim to the output that does match an input axis? Where do we get the name from?
     out_ax_names = [
-        [dummy_to_real_axes_mapping[ax] for ax in arg] for arg in out_dummy_ax_names
+        [dummy_to_real_axes_mapping[ax] for ax in arg] for arg in sig.out_ax_names
     ]
 
     # Check that input args are in correct grid positions
-    for i, (arg_ns, arg_ps, arg) in enumerate(zip(axis, in_ax_pos, args)):
+    for i, (arg_ns, arg_ps, arg) in enumerate(zip(axis, sig.in_ax_positions, args)):
         for n, p in zip(arg_ns, arg_ps):
             try:
                 ax_pos = grid.axes[n].coords[p]
@@ -384,11 +447,11 @@ def apply_as_grid_ufunc(
     # Determine core dimensions for apply_ufunc
     in_core_dims = [
         [grid.axes[n].coords[p] for n, p in zip(arg_ns, arg_ps)]
-        for arg_ns, arg_ps in zip(axis, in_ax_pos)
+        for arg_ns, arg_ps in zip(axis, sig.in_ax_positions)
     ]
     out_core_dims = [
         [grid.axes[n].coords[p] for n, p in zip(arg_ns, arg_ps)]
-        for arg_ns, arg_ps in zip(out_ax_names, out_ax_pos)
+        for arg_ns, arg_ps in zip(out_ax_names, sig.out_ax_positions)
     ]
 
     # TODO allow users to specify new output dtypes
@@ -434,15 +497,15 @@ def apply_as_grid_ufunc(
         rechunked_padded_args = padded_args
 
     if map_overlap:
+        # Disallow situations where shifting axis position would cause chunk size to change
+        _check_if_length_would_change(sig)
+
         mapped_func = _map_func_over_core_dims(
             func,
             args,
             grid,
             in_core_dims,
             boundary_width_real_axes,
-            out_dummy_ax_names,
-            in_ax_pos,
-            out_ax_pos,
             out_dtypes,
         )
     else:
@@ -505,9 +568,6 @@ def _map_func_over_core_dims(
     grid,
     in_core_dims,
     boundary_width_real_axes,
-    out_dummy_ax_names,
-    in_ax_pos,
-    out_ax_pos,
     out_dtypes,
 ):
     """map operation over dask chunks along core dimensions"""
@@ -524,9 +584,6 @@ def _map_func_over_core_dims(
         grid.axes[ax_name]._get_axis_dim_num(transposed_original_args[0]): width
         for ax_name, width in boundary_width_real_axes.items()
     }
-
-    # Disallow situations where shifting axis position would cause chunk size to change
-    _check_if_length_would_change(out_dummy_ax_names, in_ax_pos, out_ax_pos)
 
     single_dim_chunktype = Tuple[int, ...]
 
@@ -565,21 +622,21 @@ def _map_func_over_core_dims(
 DISALLOWED_OVERLAP_POSITIONS = ["inner", "outer"]
 
 
-def _check_if_length_would_change(
-    out_ax_names: List[Tuple[str, ...]],
-    in_ax_pos: List[Tuple[str, ...]],
-    out_ax_pos: List[Tuple[str, ...]],
-):
+def _check_if_length_would_change(signature: Signature):
     """Check if map_overlap can actually handle the complexity of this signature."""
 
     # TODO this restriction is because dask.array.map_overlap does not currently allow for multiple return arrays
-    if len(out_ax_names) > 1:
+    if len(signature.out_ax_names) > 1:
         raise NotImplementedError(
             "Currently cannot automatically map a ufunc over multiple outputs when the core "
             "dimension is chunked"
         )
 
-    all_ax_positions = set(p for arg_ps in in_ax_pos + out_ax_pos for p in arg_ps)
+    all_ax_positions = set(
+        p
+        for arg_ps in signature.in_ax_positions + signature.out_ax_positions
+        for p in arg_ps
+    )
     if any(pos in DISALLOWED_OVERLAP_POSITIONS for pos in all_ax_positions):
         raise NotImplementedError(
             "Cannot chunk along a core dimension for a grid ufunc which has a signature which "
@@ -720,37 +777,3 @@ def _reattach_coords(results, grid, out_core_dims, boundary_width, keep_coords):
         results_with_coords.append(res)
 
     return results_with_coords
-
-
-_REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
-
-
-def _signatures_equivalent(sig1: str, sig2: str) -> bool:
-    """
-    Axes names in signatures are dummy variables, so an exact string match is not required.
-
-    Our comparison strategy is to instead work through both signatures left to right, replacing all occurrences
-    of each dummy index with names drawn from a common list. If after this process the replaced names are not
-    identical, the signatures must not be equivalent. Axes positions do have to match exactly.
-    """
-    sig1_in, sig1_out, _, _ = _parse_grid_ufunc_signature(sig1)
-    sig2_in, sig2_out, _, _ = _parse_grid_ufunc_signature(sig2)
-
-    all_unique_sig1_indices = set([i for arg in sig1_in for i in arg])
-    all_unique_sig2_indices = set([i for arg in sig2_in for i in arg])
-
-    if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
-        return False
-
-    sig1_replaced = sig1
-    sig2_replaced = sig2
-    for dummy1, dummy2, common_replacement in zip(
-        all_unique_sig1_indices, all_unique_sig2_indices, _REPLACEMENT_DUMMY_INDEX_NAMES
-    ):
-        sig1_replaced = sig1_replaced.replace(dummy1, common_replacement)
-        sig2_replaced = sig2_replaced.replace(dummy2, common_replacement)
-
-    if sig1_replaced == sig2_replaced:
-        return True
-    else:
-        return False

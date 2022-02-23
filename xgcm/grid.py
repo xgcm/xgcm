@@ -14,8 +14,8 @@ from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 from .grid_ufunc import (
     GridUFunc,
+    Signature,
     _has_chunked_core_dims,
-    _signatures_equivalent,
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
@@ -27,7 +27,7 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Dict, Iterable, List, Union
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1811,7 +1811,7 @@ class Grid:
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
-    def _create_1d_grid_ufunc_signatures(self, da, axis, to):
+    def _create_1d_grid_ufunc_signatures(self, da, axis, to) -> List[Signature]:
         """
         Create a list of signatures to pass to apply_grid_ufunc.
 
@@ -1828,7 +1828,7 @@ class Grid:
             if to_pos is None:
                 to_pos = ax._default_shifts[from_pos]
 
-            signature_1d = f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
+            signature_1d = Signature(f"({ax_name}:{from_pos})->({ax_name}:{to_pos})")
             signatures.append(signature_1d)
 
         return signatures
@@ -2348,7 +2348,7 @@ class Grid:
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
 
 
-def _select_grid_ufunc(funcname, signature, module, **kwargs):
+def _select_grid_ufunc(funcname, signature: Signature, module, **kwargs):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
     def is_grid_ufunc(obj):
@@ -2366,9 +2366,7 @@ def _select_grid_ufunc(funcname, signature, module, **kwargs):
         )
 
     signature_matching_ufuncs = [
-        f
-        for f in name_matching_ufuncs
-        if _signatures_equivalent(f.signature, signature)
+        f for f in name_matching_ufuncs if f.signature.equivalent(signature)
     ]
     if len(signature_matching_ufuncs) == 0:
         raise NotImplementedError(
