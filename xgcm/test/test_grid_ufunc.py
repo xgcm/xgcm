@@ -145,21 +145,15 @@ class TestGetSignatureFromTypeHints:
 
         assert str(ufunc.signature) == "(X:center)->(X:left)"
 
-    @pytest.mark.xfail
     def test_invalid_arg_annotation(self):
-        with pytest.raises(
-            ValueError, match="Argument a has an invalid grid signature"
-        ):
+        with pytest.raises(ValueError, match="Not a valid grid ufunc signature"):
 
             @as_grid_ufunc()
             def ufunc(a: Gridded[np.ndarray, "X:Mars"]):
                 ...
 
-    @pytest.mark.xfail
     def test_invalid_return_arg_annotation(self):
-        with pytest.raises(
-            ValueError, match="Return argument(s) have an invalid grid signature"
-        ):
+        with pytest.raises(ValueError, match="Not a valid grid ufunc signature"):
 
             @as_grid_ufunc()
             def ufunc() -> Gridded[np.ndarray, "X:Venus"]:
