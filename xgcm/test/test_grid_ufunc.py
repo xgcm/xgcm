@@ -703,18 +703,40 @@ class TestDaskOverlap:
 
 
 # TODO tests for handling dask in gri.diff etc. should eventually live in test_grid.py
-def test_grid_diff_center_to_right_1d():
-    grid = create_1d_test_grid("depth")
-    da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk(1)
-    da.coords["depth_c"] = grid._ds.depth_c
+class TestMapOverlapGridops:
+    def test_chunked_core_dims_unchanging_chunksize_center_to_right(self):
+        # attempt to debug GH #438
 
-    diffed = (da.roll(depth_c=-1, roll_coords=False) - da).data
-    expected = xr.DataArray(
-        diffed, dims=["depth_r"], coords={"depth_r": grid._ds.depth_r}
-    ).compute()
+        grid = create_1d_test_grid("depth")
+        da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk(1)
+        da.coords["depth_c"] = grid._ds.depth_c
 
-    result = grid.diff(da, axis="depth", to="right").compute()
-    assert_equal(result, expected)
+        diffed = (da.roll(depth_c=-1, roll_coords=False) - da).data
+        expected = xr.DataArray(
+            diffed, dims=["depth_r"], coords={"depth_r": grid._ds.depth_r}
+        ).compute()
+
+        result = grid.diff(da, axis="depth", to="right").compute()
+        assert_equal(result, expected)
+
+    def test_chunked_core_dims_unchanging_chunksize_center_to_right_2d(self):
+        # attempt to debug GH #440
+
+        grid = create_2d_test_grid("depth", "y")
+
+        da = (grid._ds.depth_c ** 2 + grid._ds.y_c ** 2).chunk(3)
+        da.coords["depth_c"] = grid._ds.depth_c
+        da.coords["y_c"] = grid._ds.y_c
+
+        diffed = (da.roll(depth_c=-1, roll_coords=False) - da).data
+        expected = xr.DataArray(
+            diffed,
+            dims=["depth_r", "y_c"],
+            coords={"depth_r": grid._ds.depth_r, "y_c": grid._ds.y_c},
+        ).compute()
+
+        result = grid.diff(da, axis="depth", to="right").compute()
+        assert_equal(result, expected)
 
 
 class TestSignaturesEquivalent:

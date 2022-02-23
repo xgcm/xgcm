@@ -437,8 +437,14 @@ def apply_as_grid_ufunc(
         # map operation over dask chunks along core dimensions
         from dask.array import map_overlap as dask_map_overlap  # type: ignore
 
+        # Need to transpose the numpy axis arguments to leave core dims at end
+        # else they won't match up inside mapped_func after xr.apply_ufunc does its transposition
+        transposed_original_args = [
+            arg.transpose(..., *in_core_dims[i]) for i, arg in enumerate(args)
+        ]
+
         boundary_width_per_numpy_axis = {
-            grid.axes[ax_name]._get_axis_dim_num(args[0]): width
+            grid.axes[ax_name]._get_axis_dim_num(transposed_original_args[0]): width
             for ax_name, width in boundary_width_real_axes.items()
         }
 
@@ -450,12 +456,15 @@ def apply_as_grid_ufunc(
         def _dict_to_numbered_axes(
             sizes: Mapping[str, single_dim_chunktype]
         ) -> Tuple[single_dim_chunktype, ...]:
+            """This implicitly crystallises the order of the given mapping"""
             return tuple(sizes.values())
 
         # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have
         # But in this case output chunks are the same as input chunks
         # (as we disallowed axis positions for which this is not the case)
-        original_chunksizes = [arg.variable.chunksizes for arg in args]
+        original_chunksizes = [
+            arg.variable.chunksizes for arg in transposed_original_args
+        ]
         # TODO first argument only because map_overlap can't handle multiple return values (I think)
         true_chunksizes = original_chunksizes[0]
         # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
