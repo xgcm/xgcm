@@ -177,7 +177,6 @@ class Signature:
 
         obj = object.__new__(cls)
         signature = _build_signature_from_type_hints(hints)
-        print(signature)
         return obj._parse(signature)
 
     def __str__(self):
@@ -280,8 +279,6 @@ class GridUFunc:
         sig = kwargs.pop("signature")
         hints = get_type_hints(ufunc, include_extras=True)
         sig_from_type_hints = Signature.from_type_hints(hints)
-        print(sig)
-        print(sig_from_type_hints)
         if sig and str(sig_from_type_hints) != "()->()":
             raise ValueError(
                 "Must specify axis positions through only one of either type hints or signature kwarg, not both."
