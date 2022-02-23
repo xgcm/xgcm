@@ -133,11 +133,15 @@ class Signature:
         identical, the signatures must not be equivalent. Axes positions do have to match exactly.
         """
 
-        sig1_in, sig1_out = self.in_ax_names, self.out_ax_names
-        sig2_in, sig2_out = other.in_ax_names, other.out_ax_names
+        def set_unique_inds(sig_part):
+            return set([i for arg in sig_part for i in arg])
 
-        all_unique_sig1_indices = set([i for arg in sig1_in for i in arg])
-        all_unique_sig2_indices = set([i for arg in sig2_in for i in arg])
+        all_unique_sig1_indices = set_unique_inds(self.in_ax_names) | set_unique_inds(
+            self.out_ax_names
+        )
+        all_unique_sig2_indices = set_unique_inds(other.in_ax_names) | set_unique_inds(
+            other.out_ax_names
+        )
 
         if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
             return False
