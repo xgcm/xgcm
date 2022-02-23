@@ -6,13 +6,18 @@ from typing import (
     Callable,
     Dict,
     List,
-    Literal,
     Mapping,
     Optional,
     Sequence,
     Tuple,
     Union,
 )
+
+# Only need this until python 3.8
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import numpy as np
 import xarray as xr
@@ -320,7 +325,7 @@ def apply_as_grid_ufunc(
     boundary: Union[str, Mapping[str, str]] = None,
     fill_value: Union[float, Mapping[str, float]] = None,
     keep_coords: bool = True,
-    dask: str = "forbidden",
+    dask: Literal["forbidden", "parallelized", "allowed"],
     map_overlap: bool = False,
     **kwargs,
 ) -> List[Any]:

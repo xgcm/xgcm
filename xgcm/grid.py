@@ -29,6 +29,12 @@ except ImportError:
 
 from typing import Any, Dict, Iterable, List, Union
 
+# Only need this until python 3.8
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
 
@@ -1860,7 +1866,7 @@ class Grid:
         boundary_width=None,
         boundary=None,
         fill_value=None,
-        dask="forbidden",
+        dask: Literal["forbidden", "parallelized", "allowed"],
         **kwargs,
     ):
         """
