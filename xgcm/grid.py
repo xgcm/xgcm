@@ -8,10 +8,16 @@ from collections import OrderedDict
 import docrep  # type: ignore
 import numpy as np
 import xarray as xr
+from dask.array import Array as Dask_Array
 
 from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
-from .grid_ufunc import GridUFunc, _signatures_equivalent, apply_as_grid_ufunc
+from .grid_ufunc import (
+    GridUFunc,
+    Signature,
+    _has_chunked_core_dims,
+    apply_as_grid_ufunc,
+)
 from .metrics import iterate_axis_combinations
 
 try:
@@ -21,7 +27,7 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Tuple, Union
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1760,6 +1766,12 @@ class Grid:
 
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
+        # if any dims are chunked then we need dask
+        if isinstance(da.data, Dask_Array):
+            dask = "parallelized"
+        else:
+            dask = "forbidden"
+
         array = da
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
@@ -1775,8 +1787,22 @@ class Grid:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array * metric
 
+            # if chunked along core dim then we need map_overlap
+            core_dim = self._get_dims_from_axis(da, ax_name)
+            if _has_chunked_core_dims(array, core_dim):
+                map_overlap = True
+                dask = "allowed"
+            else:
+                map_overlap = False
+
             array = grid_ufunc(
-                self, array, axis=[ax_name], keep_coords=keep_coords, **remaining_kwargs
+                self,
+                array,
+                axis=[(ax_name,)],
+                keep_coords=keep_coords,
+                dask=dask,
+                map_overlap=map_overlap,
+                **remaining_kwargs,
             )
 
             if ax_metric_weighted:
@@ -1785,7 +1811,7 @@ class Grid:
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
-    def _create_1d_grid_ufunc_signatures(self, da, axis, to):
+    def _create_1d_grid_ufunc_signatures(self, da, axis, to) -> List[Signature]:
         """
         Create a list of signatures to pass to apply_grid_ufunc.
 
@@ -1802,7 +1828,7 @@ class Grid:
             if to_pos is None:
                 to_pos = ax._default_shifts[from_pos]
 
-            signature_1d = f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
+            signature_1d = Signature(f"({ax_name}:{from_pos})->({ax_name}:{to_pos})")
             signatures.append(signature_1d)
 
         return signatures
@@ -1828,13 +1854,14 @@ class Grid:
 
     def apply_as_grid_ufunc(
         self,
-        func,
-        *args,
-        signature="",
-        boundary_width=None,
-        boundary=None,
-        fill_value=None,
-        dask="forbidden",
+        func: Callable,
+        *args: xr.DataArray,
+        signature: Union[str, Signature] = "",
+        boundary_width: Mapping[str, Tuple[int, int]] = None,
+        boundary: Union[str, Mapping[str, str]] = None,
+        fill_value: Union[float, Mapping[str, float]] = None,
+        dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
+        map_overlap: bool = False,
         **kwargs,
     ):
         """
@@ -1900,6 +1927,7 @@ class Grid:
             boundary=boundary,
             fill_value=fill_value,
             dask=dask,
+            map_overlap=map_overlap,
             **kwargs,
         )
 
@@ -2322,7 +2350,7 @@ class Grid:
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
 
 
-def _select_grid_ufunc(funcname, signature, module, **kwargs):
+def _select_grid_ufunc(funcname, signature: Signature, module, **kwargs):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
     def is_grid_ufunc(obj):
@@ -2340,9 +2368,7 @@ def _select_grid_ufunc(funcname, signature, module, **kwargs):
         )
 
     signature_matching_ufuncs = [
-        f
-        for f in name_matching_ufuncs
-        if _signatures_equivalent(f.signature, signature)
+        f for f in name_matching_ufuncs if f.signature.equivalent(signature)
     ]
     if len(signature_matching_ufuncs) == 0:
         raise NotImplementedError(
