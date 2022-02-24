@@ -464,7 +464,8 @@ def apply_as_grid_ufunc(
     ]
 
     # TODO allow users to specify new output dtypes
-    out_dtypes = [a.dtype for a in args]
+    n_output_vars = len(sig.out_ax_names)
+    out_dtypes = [args[0].dtype] * n_output_vars  # assume uniformity of dtypes
 
     # Pad arrays according to boundary condition information
     if boundary and not boundary_width:
