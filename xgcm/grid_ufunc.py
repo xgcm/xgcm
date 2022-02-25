@@ -318,7 +318,7 @@ def as_grid_ufunc(
 def apply_as_grid_ufunc(
     func: Callable,
     *args: xr.DataArray,
-    axis: Sequence[str],
+    axis: Sequence[Sequence[str]] = None,
     grid: "Grid" = None,
     signature: Union[str, Signature] = "",
     boundary_width: Mapping[str, Tuple[int, int]] = None,
@@ -345,7 +345,7 @@ def apply_as_grid_ufunc(
         Passed directly on to `xarray.apply_ufunc`.
     *args : xarray.DataArray
         One or more xarray DataArray objects to apply the function to.
-    axis : Sequence[Tuple[str]]
+    axis : Sequence[Sequence[str]], optional
         Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
         Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
     grid : xgcm.Grid
@@ -412,6 +412,9 @@ def apply_as_grid_ufunc(
 
     if any(not isinstance(arg, xr.DataArray) for arg in args):
         raise TypeError("All data arguments must be of type DataArray")
+
+    if axis is None:
+        raise ValueError("Must provide an axis along which to apply the grid ufunc")
 
     if len(args) != len(axis):
         raise ValueError(
@@ -725,7 +728,7 @@ def _get_dim(grid: "Grid", da: xr.DataArray, ax_name: str) -> str:
 
 
 def _identify_dummy_axes_with_real_axes(
-    sig_in_dummy_ax_names: List[Tuple[str, ...]], axis: Sequence[str]
+    sig_in_dummy_ax_names: List[Tuple[str, ...]], axis: Sequence[Sequence[str]]
 ) -> Mapping[str, str]:
     """Create a mapping between the dummy axis names in the signature and the real axis names of the data passed."""
 
