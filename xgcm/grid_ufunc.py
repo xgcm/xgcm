@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
     from .grid import Grid
 
+from padding import Padder
+
 
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
@@ -475,46 +477,29 @@ def apply_as_grid_ufunc(
         raise ValueError(
             "To apply a boundary condition you must provide the widths of the boundaries"
         )
+
     if boundary_width:
         # convert dummy axes names in boundary_width to match real names of given axes
         boundary_width_real_axes = {
             dummy_to_real_axes_mapping[ax]: width
             for ax, width in boundary_width.items()
         }
-
-        padded_args = grid.pad(
-            *args,
-            boundary_width=boundary_width_real_axes,
-            boundary=boundary,
-            fill_value=fill_value,
-        )
     else:
         # If the boundary_width kwarg was not specified assume that zero padding is required
         boundary_width_real_axes = {
             real_ax: (0, 0) for real_ax in dummy_to_real_axes_mapping.values()
         }
-        padded_args = args
 
-    if any(
-        _has_chunked_core_dims(padded_arg, core_dims)
-        for padded_arg, core_dims in zip(padded_args, in_core_dims)
-    ):
-        # merge any lonely chunks on either end created by padding
-        rechunked_padded_args = _rechunk_to_merge_in_boundary_chunks(
-            padded_args,
-            args,
-            boundary_width_real_axes,
-            grid,
-        )
-    else:
-        rechunked_padded_args = padded_args
+    # Compose the ufunc with the padding needed to replace trimmed elements
+    padder = Padder(grid, boundary_width_real_axes, boundary, fill_value)
+    pad_then_func = padder.compose_with(func)
 
     if map_overlap:
         # Disallow situations where shifting axis position would cause chunk size to change
         _check_if_length_would_change(sig)
 
-        mapped_func = _map_func_over_core_dims(
-            func,
+        mapped_pad_then_func = _map_func_over_core_dims(
+            pad_then_func,
             args,
             grid,
             in_core_dims,
@@ -522,7 +507,7 @@ def apply_as_grid_ufunc(
             out_dtypes,
         )
     else:
-        mapped_func = func
+        mapped_pad_then_func = func
 
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
@@ -532,8 +517,8 @@ def apply_as_grid_ufunc(
 
     # Perform operation via xarray.apply_ufunc
     results = xr.apply_ufunc(
-        mapped_func,
-        *rechunked_padded_args,
+        mapped_pad_then_func,
+        *args,
         input_core_dims=in_core_dims,
         output_core_dims=out_core_dims,
         dask=dask,
@@ -561,18 +546,6 @@ def apply_as_grid_ufunc(
     # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
 
     return results_with_coords
-
-
-def _is_dim_chunked(a, dim):
-    # TODO this func can't handle Datasets - it will error if you check multiple variables with different chunking
-    return len(a.variable.chunksizes[dim]) > 1
-
-
-def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:
-    # TODO what if only some of the core dimensions are chunked?
-    return obj.chunks is not None and any(
-        _is_dim_chunked(obj, dim) for dim in core_dims
-    )
 
 
 def _map_func_over_core_dims(
@@ -655,70 +628,6 @@ def _check_if_length_would_change(signature: Signature):
             "Cannot chunk along a core dimension for a grid ufunc which has a signature which "
             f"includes one of the axis positions {DISALLOWED_OVERLAP_POSITIONS}"
         )
-
-
-def _rechunk_to_merge_in_boundary_chunks(
-    padded_args: Sequence[xr.DataArray],
-    original_args: Sequence[xr.DataArray],
-    boundary_width_real_axes: Mapping[str, Tuple[int, int]],
-    grid: "Grid",
-) -> List[xr.DataArray]:
-    """Merges in any small floating chunks at the edges that were created by the padding operation"""
-
-    rechunked_padded_args = []
-    for padded_arg, original_arg in zip(padded_args, original_args):
-
-        original_arg_chunks = original_arg.variable.chunksizes
-        merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
-            grid,
-            padded_arg,
-            original_arg_chunks,
-            boundary_width_real_axes,
-        )
-        rechunked_arg = padded_arg.chunk(merged_boundary_chunks)
-        rechunked_padded_args.append(rechunked_arg)
-
-    return rechunked_padded_args
-
-
-def _get_chunk_pattern_for_merging_boundary(
-    grid: "Grid",
-    da: xr.DataArray,
-    original_chunks: Mapping[str, Tuple[int, ...]],
-    boundary_width_real_axes: Mapping[str, Tuple[int, int]],
-) -> Mapping[str, Tuple[int, ...]]:
-    """Calculates the pattern of chunking needed to merge back in small chunks left on boundaries after padding"""
-
-    # Easier to work with width of boundaries in terms of str dimension names rather than int axis numbers
-    boundary_width_dims = {
-        _get_dim(grid, da, ax): width for ax, width in boundary_width_real_axes.items()
-    }
-
-    new_chunks: Dict[str, Tuple[int, ...]] = {}
-    for dim, width in boundary_width_dims.items():
-        lower_boundary_width, upper_boundary_width = boundary_width_dims[dim]
-
-        new_chunks_along_dim: Tuple[int, ...]
-        if len(original_chunks[dim]) == 1:
-            # unpadded array had only one chunk, but padding has meant new array is extended
-            original_array_length = original_chunks[dim][0]
-            new_chunks_along_dim = (
-                lower_boundary_width + original_array_length + upper_boundary_width,
-            )
-        else:
-            first_chunk_width, *other_chunks_widths, last_chunk_width = original_chunks[
-                dim
-            ]
-            new_chunks_along_dim = tuple(
-                [
-                    first_chunk_width + lower_boundary_width,
-                    *other_chunks_widths,
-                    last_chunk_width + upper_boundary_width,
-                ]
-            )
-        new_chunks[dim] = new_chunks_along_dim
-
-    return new_chunks
 
 
 def _get_dim(grid: "Grid", da: xr.DataArray, ax_name: str) -> str:
