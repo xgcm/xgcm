@@ -462,7 +462,7 @@ class TestGridUfuncWithPadding:
         da = np.sin(grid._ds.depth_c * 2 * np.pi / 9)
         da.coords["depth_c"] = grid._ds.depth_c
 
-        diffed = (da - da.roll(depth_c=-2, roll_coords=False)).data
+        diffed = (da - da.roll(depth_c=2, roll_coords=False)).data
         expected = xr.DataArray(
             diffed, dims=["depth_c"], coords={"depth_c": grid._ds.depth_c}
         )
