@@ -27,7 +27,13 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+
+# Only need this until python 3.8
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1856,6 +1862,7 @@ class Grid:
         self,
         func: Callable,
         *args: xr.DataArray,
+        axis: Sequence[Sequence[str]] = None,
         signature: Union[str, Signature] = "",
         boundary_width: Mapping[str, Tuple[int, int]] = None,
         boundary: Union[str, Mapping[str, str]] = None,
@@ -1878,6 +1885,11 @@ class Grid:
             arrays (`.data`).
 
             Passed directly on to `xarray.apply_ufunc`.
+        *args : xarray.DataArray
+            One or more xarray DataArray objects to apply the function to.
+        axis : Sequence[Sequence[str]], optional
+            Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
+            Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
         signature : string
             Grid universal function signature. Specifies the xgcm.Axis names and
             positions for each input and output variable, e.g.,
@@ -1905,6 +1917,9 @@ class Grid:
         dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
             How to handle applying to objects containing lazy data in the form of
             dask arrays. Passed directly on to `xarray.apply_ufunc`.
+        map_overlap : bool, optional
+            Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
+            Default is False. If True, will need to be accompanied by dask='allowed'.
 
         Returns
         -------
@@ -1921,6 +1936,7 @@ class Grid:
         return apply_as_grid_ufunc(
             func,
             *args,
+            axis=axis,
             grid=self,
             signature=signature,
             boundary_width=boundary_width,
