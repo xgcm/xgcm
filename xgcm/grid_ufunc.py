@@ -1,8 +1,7 @@
 import re
 import string
-from typing import TYPE_CHECKING
-from typing import Annotated as Gridded  # noqa
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
