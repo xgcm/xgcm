@@ -19,7 +19,7 @@ from xgcm.grid_ufunc import (
 
 class TestParseSignatureFromString:
     @pytest.mark.parametrize(
-        "signature, exp_in_ax_names, exp_in_ax_pos, exp_out_ax_names, exp_out_ax_pos",
+        "sig_str, exp_in_ax_names, exp_in_ax_pos, exp_out_ax_names, exp_out_ax_pos",
         [
             ("()->()", [()], [()], [()], [()]),
             ("(X:center)->()", [("X",)], [()], [("center",)], [()]),
@@ -52,14 +52,14 @@ class TestParseSignatureFromString:
     )
     def test_parse_valid_signatures(
         self,
-        signature,
+        sig_str,
         exp_in_ax_names,
         exp_out_ax_names,
         exp_in_ax_pos,
         exp_out_ax_pos,
     ):
         in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_signature_from_string(
-            signature
+            sig_str
         )
         assert in_ax_names == exp_in_ax_names
         assert in_ax_pos == exp_in_ax_pos
@@ -81,14 +81,33 @@ class TestParseSignatureFromString:
         with pytest.raises(ValueError):
             _parse_signature_from_string(signature)
 
+    @pytest.mark.parametrize(
+        "sig_str",
+        [
+            "()->()",
+            "(X:center)->()",
+            "()->(X:left)",
+            "(X:center)->(X:left)",
+            "(X:left)->(Y:center)",
+            "(X:left)->(Y:center)",
+            "(X:left),(X:right)->(Y:center)",
+            "(X:center)->(Y:inner),(Y:outer)",
+            "(X:center,Y:center)->(Z:center)",
+        ],
+    )
+    def test_roundtrip_from_string(self, sig_str):
+        """Checks that the __str__ method of the signature class works"""
+        sig = _GridUFuncSignature.from_string(sig_str)
+        assert str(sig) == sig_str
+
 
 class TestParseSignatureFromTypeHints:
     def test_no_args_to_annotate(self):
-        @as_grid_ufunc()
-        def ufunc():
-            ...
+        with pytest.raises(ValueError, match="Must specify axis positions"):
 
-        assert str(ufunc.signature) == "()->()"
+            @as_grid_ufunc()
+            def ufunc():
+                ...
 
     def test_annotated_args(self):
         # TODO test hints without annotations

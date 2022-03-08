@@ -2,6 +2,7 @@ import re
 import string
 from typing import (
     TYPE_CHECKING,
+    Annotated,
     Any,
     Callable,
     Dict,
@@ -71,11 +72,22 @@ class _GridUFuncSignature:
 
     def __str__(self):
         """The string representation of this signature object"""
-        print(self.in_ax_names)
-        print(self.in_ax_positions)
-        input_arg_signature = f"({','.join(f'({ax}:{pos})' for ax, pos in zip(self.in_ax_names, self.in_ax_positions))})"
-        return_arg_signature = f"({','.join(f'({ax}:{pos})' for ax, pos in zip(self.out_ax_names, self.out_ax_positions))})"
-        return f"{input_arg_signature}->{return_arg_signature}"
+
+        in_arg_sigs = [
+            f",".join(f"{ax}:{pos}" for ax, pos in zip(arg_in_names, arg_in_pos))
+            for arg_in_names, arg_in_pos in zip(self.in_ax_names, self.in_ax_positions)
+        ]
+        lhs = ",".join(f"({arg_sig})" for arg_sig in in_arg_sigs)
+
+        out_arg_sigs = [
+            f",".join(f"{ax}:{pos}" for ax, pos in zip(arg_out_names, arg_out_pos))
+            for arg_out_names, arg_out_pos in zip(
+                self.out_ax_names, self.out_ax_positions
+            )
+        ]
+        rhs = ",".join(f"({arg_sig})" for arg_sig in out_arg_sigs)
+
+        return f"{lhs}->{rhs}"
 
     @classmethod
     def from_string(cls, signature: str) -> "_GridUFuncSignature":
@@ -198,58 +210,58 @@ def _parse_signature_from_string(
     return in_ax_names, in_ax_pos, out_ax_names, out_ax_pos
 
 
-def _parse_signature_from_type_hints(hints: Dict[str, Any]) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
+def _parse_signature_from_type_hints(
+    hints: Dict[str, Annotated]
+) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
 
     # TODO ideally want some kind of validation check here
 
     # First do output args
-    print(hints)
-    return_hint = hints.pop("return")
+    try:
+        return_hint = hints.pop("return")
+    except KeyError:
+        out_ax_names = []
+        out_ax_pos = []
+    else:
+        # if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first
+        return_hints = (
+            list(return_hint.__args__)
+            if return_hint._name == "Tuple"
+            else [return_hint]
+        )
 
-    # if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first
-    return_hints = (
-        list(return_hint.__args__)
-        if return_hint._name == "Tuple"
-        else [return_hint]
-    )
+        return_annotations = [
+            hint.__metadata__[0]
+            for hint in return_hints
+            if hasattr(hint, "__metadata__")
+        ]
 
-    return_annotations = [
-        hint.__metadata__[0]
-        for hint in return_hints
-        if hasattr(hint, "__metadata__")
-    ]
+        out_ax_names = []
+        for arg in return_annotations:
+            # Delete the axis positions so they aren't matched as axis names
+            only_names = re.sub(_AXIS_POSITION, "", arg)
+            out_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
 
-    out_ax_names = []
-    for arg in return_annotations.values():
-        # Delete the axis positions so they aren't matched as axis names
-        only_names = re.sub(_AXIS_POSITION, "", arg)
-        out_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
-
-    out_ax_pos = [
-        tuple(re.findall(_AXIS_POSITION, arg)) for arg in return_annotations.values()
-    ]
+        out_ax_pos = [
+            tuple(re.findall(_AXIS_POSITION, arg)) for arg in return_annotations
+        ]
 
     # Now do input args
-    arg_annotations = {
-        argname: hint.__metadata__[0]
-        for argname, hint in hints.items()
-        if hasattr(hint, "__metadata__")
-    }
+    arg_annotations = [
+        hint.__metadata__[0] for hint in hints.values() if hasattr(hint, "__metadata__")
+    ]
 
     # TODO check number of annotations?
 
     in_ax_names = []
-    for arg in arg_annotations.values():
+    for arg in arg_annotations:
         # Delete the axis positions so they aren't matched as axis names
         only_names = re.sub(_AXIS_POSITION, "", arg)
         in_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
 
-    in_ax_pos = [
-        tuple(re.findall(_AXIS_POSITION, arg)) for arg in arg_annotations.values()
-    ]
+    in_ax_pos = [tuple(re.findall(_AXIS_POSITION, arg)) for arg in arg_annotations]
 
     return in_ax_names, in_ax_pos, out_ax_names, out_ax_pos
-
 
     # if len(arg_annotations) > 0:
     #     input_arg_signature = ",".join(
@@ -324,7 +336,7 @@ class GridUFunc:
 
         def _has_annotations(hints):
             # TODO improve this check to look at return args too
-            return any(hasattr(hint, "__metadata__") for hint in hints)
+            return any(hasattr(hint, "__metadata__") for hint in hints.values())
 
         if sig:
             if _has_annotations(hints):
@@ -341,10 +353,6 @@ class GridUFunc:
 
             self.signature = _GridUFuncSignature.from_type_hints(hints)
 
-        # print(repr(sig_from_type_hints))
-        # print(sig_from_type_hints.in_ax_positions)
-        # print(sig_from_type_hints.out_ax_names)
-        #
         self.boundary_width = kwargs.pop("boundary_width", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
