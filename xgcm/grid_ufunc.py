@@ -42,7 +42,106 @@ _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 T_AX_POS_LIST = List[Tuple[str, ...]]
 
 
-def _parse_grid_ufunc_signature(
+class _GridUFuncSignature:
+    """
+    Core xGCM Axes and grid positions signature for a given function.
+
+    Based on the signature provided by generalized ufuncs in NumPy, and in xarray.
+    """
+
+    in_ax_names: T_AX_POS_LIST
+    in_ax_positions: T_AX_POS_LIST
+    out_ax_names: T_AX_POS_LIST
+    out_ax_positions: T_AX_POS_LIST
+
+    _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
+
+    def __init__(
+        self,
+        in_ax_names: T_AX_POS_LIST,
+        in_ax_positions: T_AX_POS_LIST,
+        out_ax_names: T_AX_POS_LIST,
+        out_ax_positions: T_AX_POS_LIST,
+    ):
+        """Construct the grid signature directly from its internal attributes."""
+        self.in_ax_names = in_ax_names
+        self.in_ax_positions = in_ax_positions
+        self.out_ax_names = out_ax_names
+        self.out_ax_positions = out_ax_positions
+
+    def __str__(self):
+        """The string representation of this signature object"""
+        print(self.in_ax_names)
+        print(self.in_ax_positions)
+        input_arg_signature = f"({','.join(f'({ax}:{pos})' for ax, pos in zip(self.in_ax_names, self.in_ax_positions))})"
+        return_arg_signature = f"({','.join(f'({ax}:{pos})' for ax, pos in zip(self.out_ax_names, self.out_ax_positions))})"
+        return f"{input_arg_signature}->{return_arg_signature}"
+
+    @classmethod
+    def from_string(cls, signature: str) -> "_GridUFuncSignature":
+        """Constructs the grid signature from its string representation."""
+        (
+            in_ax_names,
+            in_ax_positions,
+            out_ax_names,
+            out_ax_positions,
+        ) = _parse_signature_from_string(signature)
+
+        return cls(in_ax_names, in_ax_positions, out_ax_names, out_ax_positions)
+
+    @classmethod
+    def from_type_hints(cls, hints: Dict[str, Any]) -> "_GridUFuncSignature":
+        """
+        Constructs the grid signature from the type hints of a function, and returns it ready for parsing.
+
+        Type hints must first be obtained using `typing.get_type_hints(ufunc, include_extras=True)`.
+        """
+        (
+            in_ax_names,
+            in_ax_positions,
+            out_ax_names,
+            out_ax_positions,
+        ) = _parse_signature_from_type_hints(hints)
+
+        return cls(in_ax_names, in_ax_positions, out_ax_names, out_ax_positions)
+
+    def equivalent(self, other: "_GridUFuncSignature") -> bool:
+        """
+        Whether or not two signatures are equivalent.
+
+        Axes names in signatures are dummy variables, so an exact string match is not required.
+        Our comparison strategy is to instead work through both signatures left to right, replacing all occurrences
+        of each dummy index with names drawn from a common list. If after this process the replaced names are not
+        identical, the signatures must not be equivalent. Axes positions do have to match exactly.
+        """
+
+        def set_unique_inds(sig_part):
+            return set([i for arg in sig_part for i in arg])
+
+        all_unique_sig1_indices = set_unique_inds(self.in_ax_names) | set_unique_inds(
+            self.out_ax_names
+        )
+        all_unique_sig2_indices = set_unique_inds(other.in_ax_names) | set_unique_inds(
+            other.out_ax_names
+        )
+
+        if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
+            return False
+
+        sig1_replaced = str(self)
+        sig2_replaced = str(other)
+        for dummy1, dummy2, common_replacement in zip(
+            all_unique_sig1_indices,
+            all_unique_sig2_indices,
+            self._REPLACEMENT_DUMMY_INDEX_NAMES,
+        ):
+            sig1_replaced = sig1_replaced.replace(dummy1, common_replacement)
+            sig2_replaced = sig2_replaced.replace(dummy2, common_replacement)
+
+        return sig1_replaced == sig2_replaced
+
+
+def _parse_signature_from_string(
     signature: str,
 ) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
     """
@@ -96,33 +195,41 @@ def _parse_grid_ufunc_signature(
         tuple(re.findall(_AXIS_POSITION, arg)) for arg in re.findall(_ARGUMENT, out_txt)
     ]
 
-    return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
+    return in_ax_names, in_ax_pos, out_ax_names, out_ax_pos
 
 
-def _build_signature_from_type_hints(hints: Dict[str, Any]) -> str:
+def _parse_signature_from_type_hints(hints: Dict[str, Any]) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
 
-    if "return" in hints:
-        return_hint = hints.pop("return")
+    # TODO ideally want some kind of validation check here
 
-        # if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first
-        return_hints = (
-            list(return_hint.__args__)
-            if return_hint._name == "Tuple"
-            else [return_hint]
-        )
+    # First do output args
+    print(hints)
+    return_hint = hints.pop("return")
 
-        return_annotations = [
-            hint.__metadata__[0]
-            for hint in return_hints
-            if hasattr(hint, "__metadata__")
-        ]
+    # if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first
+    return_hints = (
+        list(return_hint.__args__)
+        if return_hint._name == "Tuple"
+        else [return_hint]
+    )
 
-        return_arg_signature = ",".join(
-            [f"({variable_annotation})" for variable_annotation in return_annotations]
-        )
-    else:
-        return_arg_signature = "()"
+    return_annotations = [
+        hint.__metadata__[0]
+        for hint in return_hints
+        if hasattr(hint, "__metadata__")
+    ]
 
+    out_ax_names = []
+    for arg in return_annotations.values():
+        # Delete the axis positions so they aren't matched as axis names
+        only_names = re.sub(_AXIS_POSITION, "", arg)
+        out_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
+
+    out_ax_pos = [
+        tuple(re.findall(_AXIS_POSITION, arg)) for arg in return_annotations.values()
+    ]
+
+    # Now do input args
     arg_annotations = {
         argname: hint.__metadata__[0]
         for argname, hint in hints.items()
@@ -131,93 +238,30 @@ def _build_signature_from_type_hints(hints: Dict[str, Any]) -> str:
 
     # TODO check number of annotations?
 
-    if len(arg_annotations) > 0:
-        input_arg_signature = ",".join(
-            [
-                f"({variable_annotation})"
-                for variable_annotation in arg_annotations.values()
-            ]
-        )
-    else:
-        input_arg_signature = "()"
+    in_ax_names = []
+    for arg in arg_annotations.values():
+        # Delete the axis positions so they aren't matched as axis names
+        only_names = re.sub(_AXIS_POSITION, "", arg)
+        in_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
 
-    return f"{input_arg_signature}->{return_arg_signature}"
+    in_ax_pos = [
+        tuple(re.findall(_AXIS_POSITION, arg)) for arg in arg_annotations.values()
+    ]
+
+    return in_ax_names, in_ax_pos, out_ax_names, out_ax_pos
 
 
-class Signature:
-    signature: str
-    in_ax_names: T_AX_POS_LIST
-    out_ax_names: T_AX_POS_LIST
-    in_ax_positions: T_AX_POS_LIST
-    out_ax_positions: T_AX_POS_LIST
-
-    _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
-
-    def __init__(self, signature: str):
-        self._parse(signature)
-
-    def _parse(self, signature: str) -> "Signature":
-        self.signature = signature
-        (
-            self.in_ax_names,
-            self.out_ax_names,
-            self.in_ax_positions,
-            self.out_ax_positions,
-        ) = _parse_grid_ufunc_signature(signature)
-        return self
-
-    @classmethod
-    def from_type_hints(cls, hints: Dict[str, Any]) -> "Signature":
-        """
-        Constructs the grid signature from the type hints of a function, and returns it ready for parsing.
-
-        Type hints must first be obtained using `typing.get_type_hints(ufunc, include_extras=True)`.
-        """
-
-        obj = object.__new__(cls)
-        signature = _build_signature_from_type_hints(hints)
-        return obj._parse(signature)
-
-    def __str__(self):
-        return self.signature
-
-    def __repr__(self):
-        return f"Signature({self.signature})"
-
-    def equivalent(self, other: "Signature") -> bool:
-        """Whether or not two signatures are equivalent."""
-
-        """
-        Axes names in signatures are dummy variables, so an exact string match is not required.
-        Our comparison strategy is to instead work through both signatures left to right, replacing all occurrences
-        of each dummy index with names drawn from a common list. If after this process the replaced names are not
-        identical, the signatures must not be equivalent. Axes positions do have to match exactly.
-        """
-
-        def set_unique_inds(sig_part):
-            return set([i for arg in sig_part for i in arg])
-
-        all_unique_sig1_indices = set_unique_inds(self.in_ax_names) | set_unique_inds(
-            self.out_ax_names
-        )
-        all_unique_sig2_indices = set_unique_inds(other.in_ax_names) | set_unique_inds(
-            other.out_ax_names
-        )
-
-        if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
-            return False
-
-        sig1_replaced = self.signature
-        sig2_replaced = other.signature
-        for dummy1, dummy2, common_replacement in zip(
-            all_unique_sig1_indices,
-            all_unique_sig2_indices,
-            self._REPLACEMENT_DUMMY_INDEX_NAMES,
-        ):
-            sig1_replaced = sig1_replaced.replace(dummy1, common_replacement)
-            sig2_replaced = sig2_replaced.replace(dummy2, common_replacement)
-
-        return sig1_replaced == sig2_replaced
+    # if len(arg_annotations) > 0:
+    #     input_arg_signature = ",".join(
+    #         [
+    #             f"({variable_annotation})"
+    #             for variable_annotation in arg_annotations.values()
+    #         ]
+    #     )
+    # else:
+    #     input_arg_signature = "()"
+    #
+    # return f"{input_arg_signature}->{return_arg_signature}"
 
 
 class GridUFunc:
@@ -266,7 +310,7 @@ class GridUFunc:
     """
 
     ufunc: Callable
-    signature: Signature
+    signature: _GridUFuncSignature
     boundary_width: Optional[Mapping[str, Tuple[int, int]]]
     dask: Literal["forbidden", "parallelized", "allowed"]
     map_overlap: bool
@@ -277,13 +321,30 @@ class GridUFunc:
         # Get grid ufunc signature, either from type hints or from kwarg
         sig = kwargs.pop("signature")
         hints = get_type_hints(ufunc, include_extras=True)
-        sig_from_type_hints = Signature.from_type_hints(hints)
-        if sig and str(sig_from_type_hints) != "()->()":
-            raise ValueError(
-                "Must specify axis positions through only one of either type hints or signature kwarg, not both."
-            )
-        self.signature = sig_from_type_hints if sig == "" else Signature(sig)
 
+        def _has_annotations(hints):
+            # TODO improve this check to look at return args too
+            return any(hasattr(hint, "__metadata__") for hint in hints)
+
+        if sig:
+            if _has_annotations(hints):
+                raise ValueError(
+                    "Must specify axis positions through only one of either type hints or signature kwarg, not both."
+                )
+
+            self.signature = _GridUFuncSignature.from_string(sig)
+        else:
+            if not _has_annotations(hints):
+                raise ValueError(
+                    "Must specify axis positions through either type hints or signature kwarg"
+                )
+
+            self.signature = _GridUFuncSignature.from_type_hints(hints)
+
+        # print(repr(sig_from_type_hints))
+        # print(sig_from_type_hints.in_ax_positions)
+        # print(sig_from_type_hints.out_ax_names)
+        #
         self.boundary_width = kwargs.pop("boundary_width", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
@@ -385,7 +446,7 @@ def apply_as_grid_ufunc(
     *args: xr.DataArray,
     axis: Sequence[Sequence[str]] = None,
     grid: "Grid" = None,
-    signature: Union[str, Signature] = "",
+    signature: Union[str, _GridUFuncSignature] = "",
     boundary_width: Mapping[str, Tuple[int, int]] = None,
     boundary: Union[str, Mapping[str, str]] = None,
     fill_value: Union[float, Mapping[str, float]] = None,
@@ -487,8 +548,8 @@ def apply_as_grid_ufunc(
         )
 
     # Extract Axes information from signature
-    if not isinstance(signature, Signature):
-        sig = Signature(signature)
+    if not isinstance(signature, _GridUFuncSignature):
+        sig = _GridUFuncSignature.from_string(signature)
     else:
         sig = signature
 
@@ -700,7 +761,7 @@ def _map_func_over_core_dims(
 DISALLOWED_OVERLAP_POSITIONS = ["inner", "outer"]
 
 
-def _check_if_length_would_change(signature: Signature):
+def _check_if_length_would_change(signature: _GridUFuncSignature):
     """Check if map_overlap can actually handle the complexity of this signature."""
 
     # TODO this restriction is because dask.array.map_overlap does not currently allow for multiple return arrays

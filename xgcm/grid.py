@@ -14,7 +14,7 @@ from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 from .grid_ufunc import (
     GridUFunc,
-    Signature,
+    _GridUFuncSignature,
     _has_chunked_core_dims,
     apply_as_grid_ufunc,
 )
@@ -1817,7 +1817,7 @@ class Grid:
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
-    def _create_1d_grid_ufunc_signatures(self, da, axis, to) -> List[Signature]:
+    def _create_1d_grid_ufunc_signatures(self, da, axis, to) -> List[_GridUFuncSignature]:
         """
         Create a list of signatures to pass to apply_grid_ufunc.
 
@@ -1834,7 +1834,8 @@ class Grid:
             if to_pos is None:
                 to_pos = ax._default_shifts[from_pos]
 
-            signature_1d = Signature(f"({ax_name}:{from_pos})->({ax_name}:{to_pos})")
+            # TODO build this more directly?
+            signature_1d = _GridUFuncSignature.from_string(f"({ax_name}:{from_pos})->({ax_name}:{to_pos})")
             signatures.append(signature_1d)
 
         return signatures
@@ -1863,7 +1864,7 @@ class Grid:
         func: Callable,
         *args: xr.DataArray,
         axis: Sequence[Sequence[str]] = None,
-        signature: Union[str, Signature] = "",
+        signature: Union[str, _GridUFuncSignature] = "",
         boundary_width: Mapping[str, Tuple[int, int]] = None,
         boundary: Union[str, Mapping[str, str]] = None,
         fill_value: Union[float, Mapping[str, float]] = None,
@@ -2366,7 +2367,7 @@ class Grid:
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
 
 
-def _select_grid_ufunc(funcname, signature: Signature, module, **kwargs):
+def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwargs):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
     def is_grid_ufunc(obj):
