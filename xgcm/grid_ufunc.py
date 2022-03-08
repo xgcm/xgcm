@@ -65,10 +65,18 @@ class _GridUFuncSignature:
         out_ax_positions: T_AX_POS_LIST,
     ):
         """Construct the grid signature directly from its internal attributes."""
-        self.in_ax_names = in_ax_names
-        self.in_ax_positions = in_ax_positions
-        self.out_ax_names = out_ax_names
-        self.out_ax_positions = out_ax_positions
+
+        if not in_ax_names or not in_ax_positions:
+            raise ValueError("Grid UFunc signature must have input arguments")
+        else:
+            self.in_ax_names = in_ax_names
+            self.in_ax_positions = in_ax_positions
+
+        if not out_ax_names or not out_ax_positions:
+            raise ValueError("Grid UFunc signature must have output arguments")
+        else:
+            self.out_ax_names = out_ax_names
+            self.out_ax_positions = out_ax_positions
 
     def __str__(self):
         """The string representation of this signature object"""
@@ -211,10 +219,8 @@ def _parse_signature_from_string(
 
 
 def _parse_signature_from_type_hints(
-    hints: Dict[str, Annotated]
+    hints: Dict[str, Any]
 ) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
-
-    # TODO ideally want some kind of validation check here
 
     # First do output args
     try:
@@ -223,12 +229,7 @@ def _parse_signature_from_type_hints(
         out_ax_names = []
         out_ax_pos = []
     else:
-        # if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first
-        return_hints = (
-            list(return_hint.__args__)
-            if return_hint._name == "Tuple"
-            else [return_hint]
-        )
+        return_hints = _maybe_multiple_return_vals(return_hint)
 
         return_annotations = [
             hint.__metadata__[0]
@@ -261,19 +262,22 @@ def _parse_signature_from_type_hints(
 
     in_ax_pos = [tuple(re.findall(_AXIS_POSITION, arg)) for arg in arg_annotations]
 
+    # Do a sanity check before going any further
+    str_signature = str(
+        _GridUFuncSignature(in_ax_names, in_ax_pos, out_ax_names, out_ax_pos)
+    )
+    if not re.match(_SIGNATURE, str_signature):
+        raise ValueError(f"Not a valid grid ufunc signature: {str_signature}")
+
     return in_ax_names, in_ax_pos, out_ax_names, out_ax_pos
 
-    # if len(arg_annotations) > 0:
-    #     input_arg_signature = ",".join(
-    #         [
-    #             f"({variable_annotation})"
-    #             for variable_annotation in arg_annotations.values()
-    #         ]
-    #     )
-    # else:
-    #     input_arg_signature = "()"
-    #
-    # return f"{input_arg_signature}->{return_arg_signature}"
+
+def _maybe_multiple_return_vals(return_hint):
+    """if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first"""
+    return_hints = (
+        list(return_hint.__args__) if return_hint._name == "Tuple" else [return_hint]
+    )
+    return return_hints
 
 
 class GridUFunc:
@@ -330,34 +334,49 @@ class GridUFunc:
     def __init__(self, ufunc: Callable, **kwargs):
         self.ufunc = ufunc  # type: ignore  # see mypy issue 2427
 
-        # Get grid ufunc signature, either from type hints or from kwarg
-        sig = kwargs.pop("signature")
+        str_sig = kwargs.pop("signature")
+        self.signature = self._get_signature_from_str_or_type_hints(ufunc, str_sig)
+        self.boundary_width = kwargs.pop("boundary_width", None)
+        self.dask = kwargs.pop("dask", "forbidden")
+        self.map_overlap = kwargs.pop("map_overlap", False)
+        if kwargs:
+            raise TypeError("Unsupported keyword argument(s) provided")
+
+    @staticmethod
+    def _get_signature_from_str_or_type_hints(
+        ufunc, str_sig: Optional[str]
+    ) -> _GridUFuncSignature:
+        """Get grid ufunc signature, either from type hints or from string signature kwarg"""
+
         hints = get_type_hints(ufunc, include_extras=True)
 
         def _has_annotations(hints):
-            # TODO improve this check to look at return args too
+            try:
+                # TODO I want this to be .pop but then I get problems with variable scope
+                return_hint = hints["return"]
+            except KeyError:
+                pass
+            else:
+                return_hints = _maybe_multiple_return_vals(return_hint)
+                if any(hasattr(hint, "__metadata__") for hint in return_hints):
+                    return True
+
             return any(hasattr(hint, "__metadata__") for hint in hints.values())
 
-        if sig:
+        if str_sig:
             if _has_annotations(hints):
                 raise ValueError(
                     "Must specify axis positions through only one of either type hints or signature kwarg, not both."
                 )
 
-            self.signature = _GridUFuncSignature.from_string(sig)
+            return _GridUFuncSignature.from_string(str_sig)
         else:
             if not _has_annotations(hints):
                 raise ValueError(
                     "Must specify axis positions through either type hints or signature kwarg"
                 )
 
-            self.signature = _GridUFuncSignature.from_type_hints(hints)
-
-        self.boundary_width = kwargs.pop("boundary_width", None)
-        self.dask = kwargs.pop("dask", "forbidden")
-        self.map_overlap = kwargs.pop("map_overlap", False)
-        if kwargs:
-            raise TypeError("Unsupported keyword argument(s) provided")
+            return _GridUFuncSignature.from_type_hints(hints)
 
     def __repr__(self):
         return (
