@@ -933,24 +933,18 @@ class GridOpsMockUp:
     """
 
     @staticmethod
-    @as_grid_ufunc()
-    def diff_center_to_left(
-        a: Annotated[np.ndarray, "X:center"]
-    ) -> Annotated[np.ndarray, "X:left"]:
+    @as_grid_ufunc(signature="(X:center)->(X:left)")
+    def diff_center_to_left(a):
         return a - np.roll(a, -1)
 
     @staticmethod
-    @as_grid_ufunc()
-    def diff_center_to_right_fill(
-        a: Annotated[np.ndarray, "X:center"]
-    ) -> Annotated[np.ndarray, "X:right"]:
+    @as_grid_ufunc(signature="(X:center)->(X:right)")
+    def diff_center_to_right_fill(a):
         return np.roll(a, 1) - a
 
     @staticmethod
-    @as_grid_ufunc()
-    def diff_center_to_right_extend(
-        a: Annotated[np.ndarray, "X:center"]
-    ) -> Annotated[np.ndarray, "X:right"]:
+    @as_grid_ufunc(signature="(X:center)->(X:right)")
+    def diff_center_to_right_extend(a):
         return np.roll(a, 1) - a
 
 
