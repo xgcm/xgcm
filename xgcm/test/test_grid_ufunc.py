@@ -198,17 +198,19 @@ class TestParseSignatureFromTypeHints:
                 ...
 
     def test_type_hint_as_numpy_ndarray(self):
-        # TODO I want this to fail mypy but it doesn't
+
+        # This should raise a mypy error, which is then ignored
         @as_grid_ufunc()
         def ufunc1(a: Annotated[str, "X:center"]) -> Annotated[np.ndarray, "X:center"]:
-            ...
+            # np.ndarray has a .strides method but str doesn't (and nor does xr.DataArray)
+            print(a.strides)  # type: ignore
+            return a  # type: ignore
 
-        # This should pass mypy
+        # This should pass mypy without raising any errors
         @as_grid_ufunc()
         def ufunc3(
             a: Annotated[np.ndarray, "X:center"]
         ) -> Annotated[np.ndarray, "X:center"]:
-            # np.ndarray has a .strides method but str doesn't (and nor does xr.DataArray)
             print(a.strides)
             return a
 
