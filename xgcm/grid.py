@@ -1817,7 +1817,9 @@ class Grid:
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
-    def _create_1d_grid_ufunc_signatures(self, da, axis, to) -> List[_GridUFuncSignature]:
+    def _create_1d_grid_ufunc_signatures(
+        self, da, axis, to
+    ) -> List[_GridUFuncSignature]:
         """
         Create a list of signatures to pass to apply_grid_ufunc.
 
@@ -1835,7 +1837,9 @@ class Grid:
                 to_pos = ax._default_shifts[from_pos]
 
             # TODO build this more directly?
-            signature_1d = _GridUFuncSignature.from_string(f"({ax_name}:{from_pos})->({ax_name}:{to_pos})")
+            signature_1d = _GridUFuncSignature.from_string(
+                f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
+            )
             signatures.append(signature_1d)
 
         return signatures

@@ -2,7 +2,6 @@ import re
 import string
 from typing import (
     TYPE_CHECKING,
-    Annotated,
     Any,
     Callable,
     Dict,

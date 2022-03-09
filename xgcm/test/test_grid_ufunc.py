@@ -924,88 +924,93 @@ class TestSignaturesEquivalent:
         assert sig.equivalent(sig)
 
 
-# TODO convert this module to a fixure so that it doesn't run at test module import time
+# TODO Is there a way to prevent this running at test module import time?
 # TODO (test by adding a raise in here)
-# class GridOpsMockUp:
-#     """
-#     Container that stores some mocked-up grid ufuncs to look through.
-#     Intended to be used as if it were the gridops.py module file.
-#     """
-#
-#     @staticmethod
-#     @as_grid_ufunc()
-#     def diff_center_to_left(
-#         a: Annotated[np.ndarray, "X:center"]
-#     ) -> Annotated[np.ndarray, "X:left"]:
-#         return a - np.roll(a, -1)
-#
-#     @staticmethod
-#     @as_grid_ufunc()
-#     def diff_center_to_right_fill(
-#         a: Annotated[np.ndarray, "X:center"]
-#     ) -> Annotated[np.ndarray, "X:right"]:
-#         return np.roll(a, 1) - a
-#
-#     @staticmethod
-#     @as_grid_ufunc()
-#     def diff_center_to_right_extend(
-#         a: Annotated[np.ndarray, "X:center"]
-#     ) -> Annotated[np.ndarray, "X:right"]:
-#         return np.roll(a, 1) - a
-#
-#     @staticmethod
-#     @as_grid_ufunc()
-#     def pass_through_kwargs(**kwargs):
-#         return kwargs
-#
-#
-#
-# class TestGridUFuncDispatch:
-#     def test_select_ufunc(self):
-#         gridufunc, _ = _select_grid_ufunc(
-#             "diff", Signature("(X:center)->(X:left)"), module=GridOpsMockUp
-#         )
-#         assert gridufunc is GridOpsMockUp.diff_center_to_left
-#
-#     def test_select_ufunc_equivalent_signature(self):
-#         gridufunc, _ = _select_grid_ufunc(
-#             "diff", Signature("(Y:center)->(Y:left)"), module=GridOpsMockUp
-#         )
-#         assert gridufunc is GridOpsMockUp.diff_center_to_left
-#
-#         with pytest.raises(NotImplementedError):
-#             _select_grid_ufunc(
-#                 "diff", Signature("(X:center)->(Y:left)"), module=GridOpsMockUp
-#             )
-#
-#     def test_select_ufunc_wrong_signature(self):
-#         with pytest.raises(NotImplementedError):
-#             _select_grid_ufunc(
-#                 "diff", Signature("(X:center)->(X:center)"), module=GridOpsMockUp
-#             )
-#
-#     @pytest.mark.xfail(reason="currently no need for this")
-#     def test_select_ufunc_by_kwarg(self):
-#         gridufunc, _ = _select_grid_ufunc(
-#             "diff",
-#             Signature("(X:center)->(X:right)"),
-#             module=GridOpsMockUp,
-#             boundary="fill",
-#         )
-#         assert gridufunc is GridOpsMockUp.diff_center_to_right_fill
-#
-#         with pytest.raises(NotImplementedError):
-#             _select_grid_ufunc(
-#                 "diff",
-#                 Signature("(X:center)->(X:right)"),
-#                 module=GridOpsMockUp,
-#                 boundary="nonsense",
-#             )
-#
-#     @pytest.mark.xfail
-#     def test_pass_through_other_kwargs(self):
-#         # TODO put this in test_grid.py instead?
-#         gridufunc, _ = _select_grid_ufunc(
-#             "pass", Signature("()->()"), module=GridOpsMockUp, boundary="fill"
-#         )
-#         assert gridufunc(a=1) == {"a": 1}
+class GridOpsMockUp:
+    """
+    Container that stores some mocked-up grid ufuncs to look through.
+    Intended to be used as if it were the gridops.py module file.
+    """
+
+    @staticmethod
+    @as_grid_ufunc()
+    def diff_center_to_left(
+        a: Annotated[np.ndarray, "X:center"]
+    ) -> Annotated[np.ndarray, "X:left"]:
+        return a - np.roll(a, -1)
+
+    @staticmethod
+    @as_grid_ufunc()
+    def diff_center_to_right_fill(
+        a: Annotated[np.ndarray, "X:center"]
+    ) -> Annotated[np.ndarray, "X:right"]:
+        return np.roll(a, 1) - a
+
+    @staticmethod
+    @as_grid_ufunc()
+    def diff_center_to_right_extend(
+        a: Annotated[np.ndarray, "X:center"]
+    ) -> Annotated[np.ndarray, "X:right"]:
+        return np.roll(a, 1) - a
+
+
+class TestGridUFuncDispatch:
+    def test_select_ufunc(self):
+        gridufunc, _ = _select_grid_ufunc(
+            "diff",
+            _GridUFuncSignature.from_string("(X:center)->(X:left)"),
+            module=GridOpsMockUp,
+        )
+        assert gridufunc is GridOpsMockUp.diff_center_to_left
+
+    def test_select_ufunc_equivalent_signature(self):
+        gridufunc, _ = _select_grid_ufunc(
+            "diff",
+            _GridUFuncSignature.from_string("(Y:center)->(Y:left)"),
+            module=GridOpsMockUp,
+        )
+        assert gridufunc is GridOpsMockUp.diff_center_to_left
+
+        with pytest.raises(NotImplementedError):
+            _select_grid_ufunc(
+                "diff",
+                _GridUFuncSignature.from_string("(X:center)->(Y:left)"),
+                module=GridOpsMockUp,
+            )
+
+    def test_select_ufunc_wrong_signature(self):
+        with pytest.raises(NotImplementedError):
+            _select_grid_ufunc(
+                "diff",
+                _GridUFuncSignature.from_string("(X:center)->(X:center)"),
+                module=GridOpsMockUp,
+            )
+
+    @pytest.mark.xfail(reason="currently no need for this")
+    def test_select_ufunc_by_kwarg(self):
+        gridufunc, _ = _select_grid_ufunc(
+            "diff",
+            _GridUFuncSignature.from_string("(X:center)->(X:right)"),
+            module=GridOpsMockUp,
+            boundary="fill",
+        )
+        assert gridufunc is GridOpsMockUp.diff_center_to_right_fill
+
+        with pytest.raises(NotImplementedError):
+            _select_grid_ufunc(
+                "diff",
+                _GridUFuncSignature.from_string("(X:center)->(X:right)"),
+                module=GridOpsMockUp,
+                boundary="nonsense",
+            )
+
+    @pytest.mark.xfail
+    def test_pass_through_other_kwargs(self):
+        # TODO put this in test_grid.py instead?
+        gridufunc, _ = _select_grid_ufunc(
+            "pass",
+            _GridUFuncSignature.from_string("()->()"),
+            module=GridOpsMockUp,
+            boundary="fill",
+        )
+        assert gridufunc(a=1) == {"a": 1}
