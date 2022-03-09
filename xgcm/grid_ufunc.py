@@ -81,13 +81,13 @@ class _GridUFuncSignature:
         """The string representation of this signature object"""
 
         in_arg_sigs = [
-            f",".join(f"{ax}:{pos}" for ax, pos in zip(arg_in_names, arg_in_pos))
+            ",".join(f"{ax}:{pos}" for ax, pos in zip(arg_in_names, arg_in_pos))
             for arg_in_names, arg_in_pos in zip(self.in_ax_names, self.in_ax_positions)
         ]
         lhs = ",".join(f"({arg_sig})" for arg_sig in in_arg_sigs)
 
         out_arg_sigs = [
-            f",".join(f"{ax}:{pos}" for ax, pos in zip(arg_out_names, arg_out_pos))
+            ",".join(f"{ax}:{pos}" for ax, pos in zip(arg_out_names, arg_out_pos))
             for arg_out_names, arg_out_pos in zip(
                 self.out_ax_names, self.out_ax_positions
             )
@@ -225,8 +225,7 @@ def _parse_signature_from_type_hints(
     try:
         return_hint = hints.pop("return")
     except KeyError:
-        out_ax_names = []
-        out_ax_pos = []
+        raise ValueError("Grid UFunc signature must have output arguments")
     else:
         return_hints = _maybe_multiple_return_vals(return_hint)
 

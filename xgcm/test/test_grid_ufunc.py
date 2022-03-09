@@ -162,7 +162,7 @@ class TestParseSignatureFromTypeHints:
 
             @as_grid_ufunc()
             def ufunc(
-                a: Annotated[np.ndarray, "nonsense"]
+                a: Annotated[np.ndarray, "nonsense"]  # type: ignore
             ) -> Annotated[np.ndarray, "X:center"]:
                 ...
 
