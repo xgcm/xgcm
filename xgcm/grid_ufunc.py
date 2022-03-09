@@ -168,25 +168,6 @@ def _parse_signature_from_string(
 
     The way this parser works excludes using Axis names that match possible xgcm
     axis positions, i.e. ['center', 'left', 'right', 'inner', 'outer'].
-
-    Arguments
-    ---------
-    signature : string
-        Grid universal function signature. Specifies the xgcm.Axis names and
-        positions for each input and output variable, e.g.,
-
-        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
-
-    Returns
-    -------
-    input_axes_names : List[Tuple[str, ...]]
-        Input Axes names parsed from the signature
-    output_axes_names : List[Tuple[str, ...]]
-        Output Axes names parsed from the signature
-    input_axes_positions : List[Tuple[str, ...]]
-        Input Axes positions parsed from the signature
-    output_axes_positions : List[Tuple[str, ...]]
-        Output Axes positions parsed from the signature
     """
 
     signature = signature.replace(" ", "")
@@ -220,6 +201,12 @@ def _parse_signature_from_string(
 def _parse_signature_from_type_hints(
     hints: Dict[str, Any]
 ) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
+    """
+    Parse signatures from type annotations for a grid-aware universal function.
+
+    The way this parser works excludes using Axis names that match possible xgcm
+    axis positions, i.e. ['center', 'left', 'right', 'inner', 'outer'].
+    """
 
     # First do output args
     try:
