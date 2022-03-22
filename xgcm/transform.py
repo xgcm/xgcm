@@ -5,7 +5,7 @@ import functools
 
 import numpy as np
 import xarray as xr
-from numba import boolean, float32, float64, guvectorize
+from numba import boolean, float32, float64, guvectorize  # type: ignore
 
 """Low level functions (numba/numpy)"""
 

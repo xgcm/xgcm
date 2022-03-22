@@ -16,6 +16,7 @@ dependencies:
   - pytest-xdist
   - python
   - toolz
+  - typing_extensions
   - pip:
     - git+https://github.com/pydata/xarray.git
     - git+https://github.com/dask/dask.git

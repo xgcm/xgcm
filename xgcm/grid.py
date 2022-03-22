@@ -5,23 +5,35 @@ import operator
 import warnings
 from collections import OrderedDict
 
-import docrep
+import docrep  # type: ignore
 import numpy as np
 import xarray as xr
+from dask.array import Array as Dask_Array
 
 from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
-from .grid_ufunc import GridUFunc, _signatures_equivalent, apply_as_grid_ufunc
+from .grid_ufunc import (
+    GridUFunc,
+    Signature,
+    _has_chunked_core_dims,
+    apply_as_grid_ufunc,
+)
 from .metrics import iterate_axis_combinations
 
 try:
-    import numba
+    import numba  # type: ignore
 
     from .transform import conservative_interpolation, linear_interpolation
 except ImportError:
     numba = None
 
-from typing import Dict, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+
+# Only need this until python 3.8
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
@@ -1231,9 +1243,9 @@ class Grid:
 
     def _as_axis_kwarg_mapping(
         self,
-        kwargs: Union[str, float, int, Dict[str, Union[str, float, int]]],
-        axes: Optional[list] = None,
-    ) -> Dict[str, Union[str, float, int]]:
+        kwargs: Union[Any, Dict[str, Any]],
+        axes: Iterable[str] = None,
+    ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
@@ -1243,7 +1255,7 @@ class Grid:
         if axes is None:
             axes = self.axes
 
-        parsed_kwargs = dict()
+        parsed_kwargs: Dict[str, Any] = dict()
         if isinstance(kwargs, dict):
             parsed_kwargs = kwargs
         else:
@@ -1612,8 +1624,8 @@ class Grid:
         to=None,
         keep_coords=False,
         metric_weighted: Union[
-            str, list, tuple, Dict[str, Union[str, list, tuple]]
-        ] = False,
+            str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
+        ] = None,
         **kwargs,
     ):
         """
@@ -1634,7 +1646,7 @@ class Grid:
         if isinstance(axis, str):
             axis = [axis]
 
-        # convert inpug arguments into axes-kwarg mappings
+        # convert input arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)
 
         if isinstance(metric_weighted, str):
@@ -1685,6 +1697,12 @@ class Grid:
 
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
+        # if any dims are chunked then we need dask
+        if isinstance(da.data, Dask_Array):
+            dask = "parallelized"
+        else:
+            dask = "forbidden"
+
         array = da
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
@@ -1700,8 +1718,22 @@ class Grid:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array * metric
 
+            # if chunked along core dim then we need map_overlap
+            core_dim = self._get_dims_from_axis(da, ax_name)
+            if _has_chunked_core_dims(array, core_dim):
+                map_overlap = True
+                dask = "allowed"
+            else:
+                map_overlap = False
+
             array = grid_ufunc(
-                self, array, axis=[ax_name], keep_coords=keep_coords, **remaining_kwargs
+                self,
+                array,
+                axis=[(ax_name,)],
+                keep_coords=keep_coords,
+                dask=dask,
+                map_overlap=map_overlap,
+                **remaining_kwargs,
             )
 
             if ax_metric_weighted:
@@ -1710,7 +1742,7 @@ class Grid:
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
-    def _create_1d_grid_ufunc_signatures(self, da, axis, to):
+    def _create_1d_grid_ufunc_signatures(self, da, axis, to) -> List[Signature]:
         """
         Create a list of signatures to pass to apply_grid_ufunc.
 
@@ -1727,7 +1759,7 @@ class Grid:
             if to_pos is None:
                 to_pos = ax._default_shifts[from_pos]
 
-            signature_1d = f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
+            signature_1d = Signature(f"({ax_name}:{from_pos})->({ax_name}:{to_pos})")
             signatures.append(signature_1d)
 
         return signatures
@@ -1753,13 +1785,15 @@ class Grid:
 
     def apply_as_grid_ufunc(
         self,
-        func,
-        *args,
-        signature="",
-        boundary_width=None,
-        boundary=None,
-        fill_value=None,
-        dask="forbidden",
+        func: Callable,
+        *args: xr.DataArray,
+        axis: Sequence[Sequence[str]] = None,
+        signature: Union[str, Signature] = "",
+        boundary_width: Mapping[str, Tuple[int, int]] = None,
+        boundary: Union[str, Mapping[str, str]] = None,
+        fill_value: Union[float, Mapping[str, float]] = None,
+        dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
+        map_overlap: bool = False,
         **kwargs,
     ):
         """
@@ -1776,6 +1810,11 @@ class Grid:
             arrays (`.data`).
 
             Passed directly on to `xarray.apply_ufunc`.
+        *args : xarray.DataArray
+            One or more xarray DataArray objects to apply the function to.
+        axis : Sequence[Sequence[str]], optional
+            Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
+            Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
         signature : string
             Grid universal function signature. Specifies the xgcm.Axis names and
             positions for each input and output variable, e.g.,
@@ -1803,6 +1842,9 @@ class Grid:
         dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
             How to handle applying to objects containing lazy data in the form of
             dask arrays. Passed directly on to `xarray.apply_ufunc`.
+        map_overlap : bool, optional
+            Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
+            Default is False. If True, will need to be accompanied by dask='allowed'.
 
         Returns
         -------
@@ -1819,12 +1861,14 @@ class Grid:
         return apply_as_grid_ufunc(
             func,
             *args,
+            axis=axis,
             grid=self,
             signature=signature,
             boundary_width=boundary_width,
             boundary=boundary,
             fill_value=fill_value,
             dask=dask,
+            map_overlap=map_overlap,
             **kwargs,
         )
 
@@ -1974,7 +2018,6 @@ class Grid:
         """
         return self._grid_func("cumsum", da, axis, **kwargs)
 
-    @docstrings.dedent
     def _apply_vector_function(self, function, vector, **kwargs):
         # the keys, should be axis names
         assert len(vector) == 2
@@ -2248,7 +2291,7 @@ class Grid:
         return self._apply_vector_function(Axis.diff, vector, **kwargs)
 
 
-def _select_grid_ufunc(funcname, signature, module, **kwargs):
+def _select_grid_ufunc(funcname, signature: Signature, module, **kwargs):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
     def is_grid_ufunc(obj):
@@ -2266,9 +2309,7 @@ def _select_grid_ufunc(funcname, signature, module, **kwargs):
         )
 
     signature_matching_ufuncs = [
-        f
-        for f in name_matching_ufuncs
-        if _signatures_equivalent(f.signature, signature)
+        f for f in name_matching_ufuncs if f.signature.equivalent(signature)
     ]
     if len(signature_matching_ufuncs) == 0:
         raise NotImplementedError(
