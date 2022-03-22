@@ -30,7 +30,26 @@ def _maybe_swap_dimension_names(da, from_name, to_name):
     return da
 
 
-def _pad_face_connections(da, grid, padding_width, **kwargs):
+def _pad_face_connections(
+    da, grid, padding_width, padding, other_component, fill_value
+):
+
+    # i made some alterations to the grid init to store the
+    # following info on the grid level. We can discuss if that makes more sense
+    # TODO: Do we need that information on the axis still?
+    facedim = grid._facedim
+    connections = grid._connections
+
+    if isinstance(da, dict):
+        assert len(da) == 1  # TODO raise a better error here
+        isvector = True
+        vectoraxis, da = da.popitem()
+    else:
+        isvector = False
+
+    if isvector:
+        assert other_component is not None  # TODO raise a better error here
+        vectorpartneraxis, da_partner = other_component.popitem()
 
     # Can I get rid of all the mess with the coordinates by stripping them here?
     # The output of the padding will not fit any coordinates anymore anyways and
@@ -40,120 +59,144 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
         [di for di in da.dims if di in da.coords], drop=True
     )
 
-    # This method works really nicely if all the boundary widths have the same size.
+    # This method below works really nicely if all the boundary widths have the same size.
     # This is however not very common. We often have boundary_width with (0,1).
-    # I had a ton of trouble accomodating with convoluted logic. The new approach
+    # I had a ton of trouble accomodating with convoluted logic. The new approach:
     # we find the largest boundary width value, and pad every boundary/axis with this max
     # value. As a final step we trim the padded dataset according to the original boundary
     # widths.
 
-    def _expand_boundary_width(padding_width):
+    def _max_boundary_width(padding_width):
         all_widths = []
         for widths in padding_width.values():
             all_widths.extend(list(widths))
-        max_width = max(all_widths)
-        expanded_padding_width = {
-            k: (max_width, max_width) for k in padding_width.keys()
-        }
-        return expanded_padding_width
+        return max(all_widths)
 
-    # !!! Hacky. This fixes the cubed-sphere test. I am not quite sure yet what the underlying cause is.
     # TODO: Why is this problem not caught in the padding tests?
-    # I am concerned that we are really hardcoding the axes in here. Is there a way to make this more general?
-    padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in ["X", "Y"]}
-    padding_width_original = {k: v for k, v in padding_width.items()}
+    # I am concerned that we are really hardcoding the axes in here.
+    # The issue is that for the methodology I developed below we need to pad all arrays with a common width.
+    # That way we make sure that we can just rotate faces and connect them together.
+    # Basically I need to detect the two horizontal axes here.
+    # Is there a way to make this more general?
+    # we could scan the connections dict, I guess
+    pad_axes = ["X", "Y"]
 
-    padding_width = _expand_boundary_width(padding_width)
+    padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in pad_axes}
+
+    width = _max_boundary_width(padding_width)
+    # should i just return da if width is 0 here? I have a check further down, that I could eliminate that way.
+    max_padding_width = {k: (width, width) for k in padding_width.keys()}
 
     # The edges of the array which are not connected, need to be padded with the
     # legacy padding. This also ensures that the resulting padded faces result in
     # the same shape. We will pad everything now and then replace the connections.
     # That might however not be the most computational efficient way to do it.
 
-    da_prepadded = _pad_basic(da, grid, padding_width, **kwargs)
+    da_prepadded = _pad_basic(
+        da,
+        grid,
+        max_padding_width,
+        padding,
+        fill_value,
+    )
 
-    pad_axes = padding_width.keys()
-
-    # i made some alterations to the grid init to store the
-    # following info on the grid level. We can discuss if that makes more sense
-    # TODO: Do we need that information on the axis still?
-    facedim = grid._facedim
-    connections = grid._connections
+    if isvector:
+        da_partner_prepadded = _pad_basic(
+            da_partner,
+            grid,
+            max_padding_width,
+            padding,
+            fill_value,
+        )
 
     # TODO: I will have to modify this when using vector partners?
     n_facedim = len(da[facedim])
-    da_split = []
+    faces = []
 
     # Iterate over each face and pad accordingly
     for i in range(n_facedim):
-        da_single = da_prepadded.isel({facedim: i})
+        target_da = da_prepadded.isel({facedim: i})
         connection_single = connections[facedim][i]
-
-        da_single_padded = da_single
-        for axname in pad_axes:
+        for axname in pad_axes:  # TODO this damn hardcoded piece here!
             # get any connections relevant to the current axis, default to None.
             (left_connection, right_connection) = connection_single.get(
                 axname, (None, None)
             )
-            _, target_dim = grid.axes[axname]._get_position_name(da_single_padded)
-            widths = padding_width[axname]
+            _, target_dim = grid.axes[axname]._get_position_name(target_da)
 
-            for connection, width, is_right in [
-                (left_connection, widths[0], False),
-                (right_connection, widths[1], True),
+            for connection, is_right in [
+                (left_connection, False),
+                (right_connection, True),
             ]:
                 if width > 0:
                     if connection:
                         # apply face connection logic #
                         source_face, source_axis, reverse = connection
+
+                        # is the connection along the same axis or not
+                        swap_axis = False
+                        if axname != source_axis:
+                            swap_axis = True
+
+                        # choose the source for padding
                         source_da = da_prepadded.isel({facedim: source_face})
+                        if isvector:
+                            if swap_axis:
+                                source_da = da_partner_prepadded.isel(
+                                    {facedim: source_face}
+                                )
+                                # for tdim in tar
+                                # #TODO: Some clever renaming logic, because the other component is most likely going to be on other grid positions
+                                # #We do however not want to actually interpolate or similar, just rename.
+
                         _, source_dim = grid.axes[source_axis]._get_position_name(
                             source_da
                         )
+
+                        # I guess this could be more elegant. Basically I only want to replace the
+                        # unpadded part of the source/target, since padding methods could be different for
+                        # different axes...
+                        # I am thinking about how to make this easier later
                         if is_right:
                             # the right connection should be padded with the leftmost index
                             # of the source unless reverse is true
                             if reverse:
-                                source_slice_index = slice(
-                                    -widths[1] - widths[0], -widths[1]
-                                )
+                                source_slice_index = slice(-2 * width, -width)
                             else:
-                                source_slice_index = slice(
-                                    widths[0], widths[0] + widths[1]
-                                )
+                                source_slice_index = slice(width, 2 * width)
 
-                            target_slice_index = slice(0, -widths[1])
+                            target_slice_index = slice(0, -width)
 
                         else:
                             # the left connection should be padded with the rightmost index
                             # of the source unless reverse is true
                             if reverse:
-                                source_slice_index = slice(
-                                    widths[0], widths[0] + widths[1]
-                                )
+                                source_slice_index = slice(width, 2 * width)
                             else:
-                                source_slice_index = slice(
-                                    -widths[1] - widths[0], -widths[1]
-                                )
+                                source_slice_index = slice(-2 * width, -width)
 
-                            target_slice_index = slice(widths[0], None)
+                            target_slice_index = slice(width, None)
 
                         # after all this logic, start slicing
                         # we get the appropriate slice to add and
                         # remove the previously padded values from the target
                         source_slice = source_da.isel({source_dim: source_slice_index})
 
-                        target_slice = da_single_padded.isel(
-                            {target_dim: target_slice_index}
-                        )
+                        target_slice = target_da.isel({target_dim: target_slice_index})
 
-                        # rename dimension if different
-                        if source_dim != target_dim:
+                        # rename dimension when axis is swapped
+                        if swap_axis:
                             if not reverse:
                                 # Flip along the orthogonal axis
                                 source_slice = source_slice.isel(
                                     {target_dim: slice(None, None, -1)}
                                 )
+                                # If the input is a tangential vector this flip needs
+                                # to be accompanied by a sign change
+                                if isvector:
+                                    if vectoraxis != axname:
+                                        source_slice = -source_slice
+                            # Change sign if vector and orthogonal
                             source_slice = _maybe_swap_dimension_names(
                                 source_slice,
                                 source_dim,
@@ -165,6 +208,11 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
                             source_slice = source_slice.isel(
                                 {target_dim: slice(None, None, -1)}
                             )
+                            if isvector:
+                                if vectoraxis == axname:
+                                    source_slice = -source_slice
+                            # TODO: Flip sign if vector and tangential
+
                         source_slice = source_slice.squeeze()
 
                         # assemble the padded array
@@ -173,15 +221,15 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
                         else:
                             concat_list = [source_slice, target_slice]
 
-                        da_single_padded = xr.concat(
+                        target_da = xr.concat(
                             concat_list,
                             dim=target_dim,
                             coords="minimal",
                         )
                         # TODO: Can we do this with an assignment in xarray? Maybe not important yet.
-        da_split.append(da_single_padded)
+        faces.append(target_da)
 
-    da_padded = xr.concat(da_split, dim=facedim)
+    da_padded = xr.concat(faces, dim=facedim)
 
     # trim back to original shape
     def _trim_expanded_padding_width(da, grid, padding_width, padding_width_expanded):
@@ -198,11 +246,11 @@ def _pad_face_connections(da, grid, padding_width, **kwargs):
         return da
 
     return _trim_expanded_padding_width(
-        da_padded, grid, padding_width_original, padding_width
+        da_padded, grid, padding_width, max_padding_width
     )
 
 
-def _pad_basic(da, grid, padding_width, padding="fill", fill_value=None):
+def _pad_basic(da, grid, padding_width, padding, fill_value):
     """Implement basic xarray/numpy padding methods"""
 
     # legacy default fill value is 0, instead of xarrays nan.
@@ -251,16 +299,18 @@ def pad(
     da: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
     boundary_width: Optional[Dict[str, Tuple[int, int]]] = None,
-    boundary: Optional[str] = None,
-    # fill_value: Optional[Union[float, Dict[str, float]]] = None,
-    **kwargs
+    boundary: Optional[str] = "periodic",
+    fill_value: Optional[str] = 0.0,
+    other_component: Optional[Dict[str, xr.DataArray]] = None,
 ):
     """
     Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
     Parameters
     ----------
-    arrays :
-        Arrays to pad according to boundary and boundary_width.
+    da :
+        Array to pad according to boundary and boundary_width.
+        If a dictionary is passed the input is assumed to be a vector component
+        (with the direction of that component identified by the dict key, matching one of the grid axes)
     boundary_width :
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
@@ -280,27 +330,28 @@ def pad(
         The value to use in boundary conditions with `boundary='fill'`.
         Optionally a dict mapping axis name to separate values for each axis
         can be passed. Default is 0.
+    other_component :
+        If passing a vector some padding operations require the orthogonal vector component for padding.
+        This needs to be passed as a dictionary (with the direction of that component identified by the
+        dict key, matching one of the grid axes)
     """
-    # TODO accept a general padding function like numpy.pad does as an argument to boundary
-
-    # TODO: boundary width should not really be optional here I think?
-    if not boundary_width:
-        raise ValueError("Must provide the widths of the boundaries")
-
     # TODO rename this globally
     padding = boundary
     padding_width = boundary_width
 
-    padding_args = (da, grid, padding_width)
-    # Brute force approach for now. If any axis has connections use
-    # face connection method, this dispatches the simple pad stuff internally if needed.
+    # TODO: Refactor, if the max value is 0, complain.
+    # Maybe move this check upstream, so that either none or 0 everywhere does not even call pad
+    if not boundary_width:
+        raise ValueError("Must provide the widths of the boundaries")
+
+    # If any axis has connections we need to use the complex padding
     if any([any(grid.axes[ax]._connections.keys()) for ax in grid.axes]):
-        da_padded = _pad_face_connections(*padding_args, padding=padding, **kwargs)
+        da_padded = _pad_face_connections(
+            da, grid, padding_width, padding, other_component, fill_value
+        )
     else:
         # TODO: we need to have a better detection and checking here. For now just pipe everything else into the
-        # legacy cases
-
         # Legacy cases
-        da_padded = _pad_basic(*padding_args, padding=padding, **kwargs)
+        da_padded = _pad_basic(da, grid, padding_width, padding, fill_value)
 
     return da_padded
