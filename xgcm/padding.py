@@ -18,6 +18,24 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
 }
 
 
+def _maybe_rename_grid_positions(grid, arr_source, arr_target):
+    # Checks and renames all dimensions in arr_source to the grid
+    # position in arr_target (only if dims are valid axis positions)
+    rename_dict = {}
+    for di in arr_target.dims:
+        # in case the dimension is already in the source, do nothing.
+        if di not in arr_source:
+            # find associated axis
+            for axname in grid.axes:
+                all_positions = grid.axes[axname].coords.values()
+                if di in all_positions:
+                    source_dim = [p for p in all_positions if p in arr_source.dims][
+                        0
+                    ]  # TODO: there must be a more elegant way?
+                    rename_dict[source_dim] = di
+    return arr_source.rename(rename_dict)
+
+
 def _maybe_swap_dimension_names(da, from_name, to_name):
     # renames 1D slices and swaps dimension names for higher dimensional slices
     if to_name in da.dims:
@@ -145,9 +163,10 @@ def _pad_face_connections(
                                 source_da = da_partner_prepadded.isel(
                                     {facedim: source_face}
                                 )
-                                # for tdim in tar
-                                # #TODO: Some clever renaming logic, because the other component is most likely going to be on other grid positions
-                                # #We do however not want to actually interpolate or similar, just rename.
+                                # adjust the dimension naming (only ever needed when swapping variables)
+                                source_da = _maybe_rename_grid_positions(
+                                    grid, source_da, target_da
+                                )
 
                         _, source_dim = grid.axes[source_axis]._get_position_name(
                             source_da
@@ -181,37 +200,43 @@ def _pad_face_connections(
                         # we get the appropriate slice to add and
                         # remove the previously padded values from the target
                         source_slice = source_da.isel({source_dim: source_slice_index})
-
                         target_slice = target_da.isel({target_dim: target_slice_index})
 
-                        # rename dimension when axis is swapped
+                        # swap dimension names to target when axis is swapped
                         if swap_axis:
-                            if not reverse:
-                                # Flip along the orthogonal axis
-                                source_slice = source_slice.isel(
-                                    {target_dim: slice(None, None, -1)}
-                                )
-                                # If the input is a tangential vector this flip needs
-                                # to be accompanied by a sign change
-                                if isvector:
-                                    if vectoraxis != axname:
-                                        source_slice = -source_slice
-                            # Change sign if vector and orthogonal
                             source_slice = _maybe_swap_dimension_names(
                                 source_slice,
                                 source_dim,
                                 target_dim,
                             )
+                        # At this point any addition should have a fixed set of orthogonal/tangential dimensions
+                        ortho_dim = target_dim
+                        tangential_dim = (
+                            source_dim  # TODO: I think this is not general enough.
+                        )
+                        # TODO: This goes together with the hardcoded axes. Do we need to identify 'other' axes?
 
-                        # Apply parallel flip if reverse
+                        # Orthogonal flip
                         if reverse:
                             source_slice = source_slice.isel(
-                                {target_dim: slice(None, None, -1)}
+                                {ortho_dim: slice(None, None, -1)}
                             )
                             if isvector:
                                 if vectoraxis == axname:
                                     source_slice = -source_slice
-                            # TODO: Flip sign if vector and tangential
+                            # TODO: Flip sign if vector is tangential
+
+                        # Tangential flip
+                        if swap_axis and not reverse:
+                            # Tangential
+                            source_slice = source_slice.isel(
+                                {tangential_dim: slice(None, None, -1)}
+                            )
+                            # If the input is a tangential vector this flip needs
+                            # to be accompanied by a sign change
+                            if isvector:
+                                if vectoraxis != axname:
+                                    source_slice = -source_slice
 
                         source_slice = source_slice.squeeze()
 
@@ -278,7 +303,6 @@ def _pad_basic(da, grid, padding_width, padding, fill_value):
                 axis.boundary
             )  # TODO: rename the axis property, or are we not keeping this on the axis level?
 
-    print(padding)
     da_padded = da
 
     for ax, widths in padding_width.items():
