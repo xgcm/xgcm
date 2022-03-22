@@ -7,11 +7,15 @@ from xgcm.grid import Grid
 
 @pytest.fixture(scope="module")
 def ds():
-    N = 25
+    # N = 25
+    N = 4
     return xr.Dataset(
         {
             "data_c": (["face", "y", "x"], np.random.rand(2, N, N)),
-            "u": (["face", "xl", "y"], np.random.rand(2, N, N)),
+            "u": (
+                ["face", "xl", "y"],
+                np.random.rand(2, N, N),
+            ),  # TODO: Will it make testing easier if I make these not random?
             "v": (["face", "x", "yl"], np.random.rand(2, N, N)),
         },
         coords={
