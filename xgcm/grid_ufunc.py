@@ -531,11 +531,15 @@ def apply_as_grid_ufunc(
     }
 
     # Perform operation via xarray.apply_ufunc
+    set_in_core_dims = set(d for arg in in_core_dims for d in arg)
+    set_out_core_dims = set(d for arg in out_core_dims for d in arg)
+    common_dims = set_in_core_dims.union(set_out_core_dims)
     results = xr.apply_ufunc(
         mapped_func,
         *rechunked_padded_args,
         input_core_dims=in_core_dims,
         output_core_dims=out_core_dims,
+        exclude_dims=common_dims,
         dask=dask,
         **kwargs,
         dask_gufunc_kwargs={"output_sizes": out_sizes},

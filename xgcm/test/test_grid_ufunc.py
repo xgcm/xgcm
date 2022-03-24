@@ -452,7 +452,6 @@ class TestGridUFuncNoPadding:
         assert_equal(v, expected_v)
 
 
-@pytest.mark.xfail
 class TestGridUfuncWithPadding:
     def test_1d_padded_but_no_change_in_grid_position(self):
         def diff_center_to_center_second_order(a):
@@ -462,7 +461,7 @@ class TestGridUfuncWithPadding:
         da = np.sin(grid._ds.depth_c * 2 * np.pi / 9)
         da.coords["depth_c"] = grid._ds.depth_c
 
-        diffed = (da - da.roll(depth_c=2, roll_coords=False)).data
+        diffed = 0.5 * (da - da.roll(depth_c=2, roll_coords=False)).data
         expected = xr.DataArray(
             diffed, dims=["depth_c"], coords={"depth_c": grid._ds.depth_c}
         )
