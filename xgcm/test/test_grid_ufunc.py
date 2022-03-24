@@ -555,7 +555,15 @@ class TestGridUfuncWithPadding:
         U = grid._ds.lon_g ** 2 + grid._ds.lat_c ** 3
         V = grid._ds.lon_c ** 3 + grid._ds.lat_g ** 2
 
-        grid.apply_as_grid_ufunc(
+        diffed_v = (V - V.roll(lon_c=1, roll_coords=False)).data
+        diffed_u = (U - U.roll(lat_c=1, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed_v - diffed_u,
+            dims=["lon_g", "lat_g"],
+            coords={"lon_g": grid._ds.lon_g, "lat_g": grid._ds.lat_g},
+        ).compute()
+
+        result = grid.apply_as_grid_ufunc(
             vort,
             U,
             V,
@@ -564,8 +572,7 @@ class TestGridUfuncWithPadding:
             boundary_width={"lon": (1, 0), "lat": (1, 0)},
             dask="parallelized",  # data isn't chunked along lat/lon
         )
-
-        # TODO asserts
+        assert_equal(result, expected)
 
 
 class TestPadManuallyInsideUfunc:
