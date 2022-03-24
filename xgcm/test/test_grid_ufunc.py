@@ -569,39 +569,29 @@ class TestGridUfuncWithPadding:
 
 
 class TestPadManuallyInsideUfunc:
+    """Tests that we can set boundary_wdith=None and instead manually pad inside the applied ufunc."""
+
     def test_1d_padded_but_no_change_in_grid_position(self):
         def diff_center_to_center_second_order(a):
-            print(f"size within ufunc = {a.shape}")
             b = a[..., 2:]
             c = a[..., :-2]
-            print(b)
-            print(c)
             return 0.5 * (b - c)
 
         grid = create_1d_test_grid("depth")
         da = grid._ds.depth_c ** 2
         da.coords["depth_c"] = grid._ds.depth_c
 
-        print(da)
-
         diffed = 0.5 * (da - da.roll(depth_c=2, roll_coords=False)).data
         expected = xr.DataArray(
             diffed, dims=["depth_c"], coords={"depth_c": grid._ds.depth_c}
         )
 
-        print(f"initial size = {da.shape}")
-
         def pad_args(func, pad_width):
             def padding_version_of_func(*args):
-                print(f"size within padding func = {args[0].shape}")
                 padded_args = [
                     np.pad(a, pad_width=pad_width, mode="wrap") for a in args
                 ]
-
-                print(f"size after padding func = {padded_args[0].shape}")
-                res = func(*padded_args)
-                print(f"result after applying func = {res}")
-                return res
+                return func(*padded_args)
 
             return padding_version_of_func
 
