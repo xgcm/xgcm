@@ -544,11 +544,12 @@ class TestGridUfuncWithPadding:
         def vort(u, v):
             """This needs to return an array 1 element smaller along both axis -1 & -2."""
 
-            u_trimmed = u[..., 1:]
-            v_trimmed = v[..., 1:, :]
+            u_trimmed = u[..., 1:, :]
+            v_trimmed = v[..., 1:]
 
-            result = diff(v_trimmed, axis=-1) - diff(u_trimmed, axis=-2)
-            return result
+            v_diff = diff(v_trimmed, axis=-2)
+            u_diff = diff(u_trimmed, axis=-1)
+            return v_diff - u_diff
 
         grid = create_2d_test_grid("lon", "lat")
 
