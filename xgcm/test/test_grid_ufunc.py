@@ -162,7 +162,7 @@ def create_2d_test_grid(ax_name_1, ax_name_2, length1=9, length2=11):
     )
 
 
-class TestGridUFunc:
+class TestGridUFuncNoPadding:
     def test_stores_ufunc_kwarg_info(self):
         signature = "(X:center)->(X:left)"
 
@@ -235,63 +235,6 @@ class TestGridUFunc:
             return a - np.roll(a, shift=-1)
 
         result = diff_center_to_left(grid, da, axis=[("depth",)])
-        assert_equal(result, expected)
-
-    def test_1d_unchanging_size_but_padded_dask_parallelized(self):
-        """
-        This test checks that the process of padding a non-chunked core dimension doesn't turn it into a chunked core
-        dimension. See GH #430.
-        """
-
-        def diff_center_to_left(a):
-            return a[..., 1:] - a[..., :-1]
-
-        grid = create_1d_test_grid("depth")
-        da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk()
-        da.coords["depth_c"] = grid._ds.depth_c
-
-        diffed = (da - da.roll(depth_c=1, roll_coords=False)).data
-        expected = xr.DataArray(
-            diffed, dims=["depth_g"], coords={"depth_g": grid._ds.depth_g}
-        ).compute()
-
-        # Test direct application
-        result = apply_as_grid_ufunc(
-            diff_center_to_left,
-            da,
-            axis=[("depth",)],
-            grid=grid,
-            signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
-            dask="parallelized",
-        ).compute()
-        assert_equal(result, expected)
-
-        # Test Grid method
-        result = grid.apply_as_grid_ufunc(
-            diff_center_to_left,
-            da,
-            axis=[("depth",)],
-            signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
-            dask="parallelized",
-        )
-        assert_equal(result, expected)
-
-        # Test decorator
-        @as_grid_ufunc(
-            "(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
-            dask="parallelized",
-        )
-        def diff_center_to_left(a):
-            return a[..., 1:] - a[..., :-1]
-
-        result = diff_center_to_left(
-            grid,
-            da,
-            axis=[("depth",)],
-        ).compute()
         assert_equal(result, expected)
 
     def test_1d_changing_size_dask_parallelized(self):
@@ -420,8 +363,6 @@ class TestGridUFunc:
         result = diff_center_to_left(grid, da, axis=[("lon",)])
         assert_equal(result, expected)
 
-    # TODO test a function with padding
-
     def test_multiple_inputs(self):
         def inner_product_left_right(a, b):
             return np.inner(a, b)
@@ -509,6 +450,169 @@ class TestGridUFunc:
         u, v = grad_to_inner(grid, a, axis=[("lon", "lat")])
         assert_equal(u.T, expected_u)
         assert_equal(v, expected_v)
+
+
+class TestGridUfuncWithPadding:
+    def test_1d_padded_but_no_change_in_grid_position(self):
+        def diff_center_to_center_second_order(a):
+            return 0.5 * (a[..., 2:] - a[..., :-2])
+
+        grid = create_1d_test_grid("depth")
+        da = np.sin(grid._ds.depth_c * 2 * np.pi / 9)
+        da.coords["depth_c"] = grid._ds.depth_c
+
+        diffed = 0.5 * (da - da.roll(depth_c=2, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed, dims=["depth_c"], coords={"depth_c": grid._ds.depth_c}
+        )
+
+        # Test direct application
+        result = apply_as_grid_ufunc(
+            diff_center_to_center_second_order,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:center)",
+            boundary_width={"X": (2, 0)},
+        )
+        assert_equal(result, expected)
+
+    def test_1d_unchanging_size_but_padded_dask_parallelized(self):
+        """
+        This test checks that the process of padding a non-chunked core dimension doesn't turn it into a chunked core
+        dimension. See GH #430.
+        """
+
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+        da = np.sin(grid._ds.depth_c * 2 * np.pi / 9).chunk()
+        da.coords["depth_c"] = grid._ds.depth_c
+
+        diffed = (da - da.roll(depth_c=1, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed, dims=["depth_g"], coords={"depth_g": grid._ds.depth_g}
+        ).compute()
+
+        # Test direct application
+        result = apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="parallelized",
+        ).compute()
+        assert_equal(result, expected)
+
+        # Test Grid method
+        result = grid.apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="parallelized",
+        )
+        assert_equal(result, expected)
+
+        # Test decorator
+        @as_grid_ufunc(
+            "(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="parallelized",
+        )
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        result = diff_center_to_left(
+            grid,
+            da,
+            axis=[("depth",)],
+        ).compute()
+        assert_equal(result, expected)
+
+    def test_2d_padding(self):
+        def diff(a, axis):
+            def _diff(a):
+                return a[..., 1:] - a[..., :-1]
+
+            return np.apply_along_axis(_diff, axis, a)
+
+        def vort(u, v):
+            """This needs to return an array 1 element smaller along both axis -1 & -2."""
+
+            u_trimmed = u[..., 1:, :]
+            v_trimmed = v[..., 1:]
+
+            v_diff = diff(v_trimmed, axis=-2)
+            u_diff = diff(u_trimmed, axis=-1)
+            return v_diff - u_diff
+
+        grid = create_2d_test_grid("lon", "lat")
+
+        U = grid._ds.lon_g ** 2 + grid._ds.lat_c ** 3
+        V = grid._ds.lon_c ** 3 + grid._ds.lat_g ** 2
+
+        diffed_v = (V - V.roll(lon_c=1, roll_coords=False)).data
+        diffed_u = (U - U.roll(lat_c=1, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed_v - diffed_u,
+            dims=["lon_g", "lat_g"],
+            coords={"lon_g": grid._ds.lon_g, "lat_g": grid._ds.lat_g},
+        ).compute()
+
+        result = grid.apply_as_grid_ufunc(
+            vort,
+            U,
+            V,
+            axis=2 * [("lon", "lat")],
+            signature="(lon:left,lat:center),(lon:center,lat:left)->(lon:left,lat:left)",
+            boundary_width={"lon": (1, 0), "lat": (1, 0)},
+            dask="parallelized",  # data isn't chunked along lat/lon
+        )
+        assert_equal(result, expected)
+
+
+class TestPadManuallyInsideUfunc:
+    """Tests that we can set boundary_wdith=None and instead manually pad inside the applied ufunc."""
+
+    def test_1d_padded_but_no_change_in_grid_position(self):
+        def diff_center_to_center_second_order(a):
+            b = a[..., 2:]
+            c = a[..., :-2]
+            return 0.5 * (b - c)
+
+        grid = create_1d_test_grid("depth")
+        da = grid._ds.depth_c ** 2
+        da.coords["depth_c"] = grid._ds.depth_c
+
+        diffed = 0.5 * (da - da.roll(depth_c=2, roll_coords=False)).data
+        expected = xr.DataArray(
+            diffed, dims=["depth_c"], coords={"depth_c": grid._ds.depth_c}
+        )
+
+        def pad_args(func, pad_width):
+            def padding_version_of_func(*args):
+                padded_args = [
+                    np.pad(a, pad_width=pad_width, mode="wrap") for a in args
+                ]
+                return func(*padded_args)
+
+            return padding_version_of_func
+
+        # Test direct application
+        result = apply_as_grid_ufunc(
+            pad_args(diff_center_to_center_second_order, pad_width=[(2, 0)]),
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:center)",
+            boundary_width=None,
+        )
+        assert_equal(result, expected)
 
 
 class TestDaskNoOverlap:
