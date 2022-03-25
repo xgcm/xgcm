@@ -46,6 +46,8 @@ Internal Changes
 
 - Fixed metrics tests so some tests that previously did not run now do run, and refactored the metrics tests.
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
+- Enabled type checking on the repository with mypy.
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
 
 
