@@ -66,16 +66,17 @@ class _GridUFuncSignature:
         """Construct the grid signature directly from its internal attributes."""
 
         if not in_ax_names or not in_ax_positions:
-            raise ValueError("Grid UFunc signature must have input arguments")
+            raise ValueError(
+                "At least one input argument of the Grid UFunc signature must have "
+                "axis names and positions"
+            )
         else:
             self.in_ax_names = in_ax_names
             self.in_ax_positions = in_ax_positions
 
-        if not out_ax_names or not out_ax_positions:
-            raise ValueError("Grid UFunc signature must have output arguments")
-        else:
-            self.out_ax_names = out_ax_names
-            self.out_ax_positions = out_ax_positions
+        # Can imagine grid ufuncs where outputs have no core dimensions (e.g. result of inner product)
+        self.out_ax_names = out_ax_names
+        self.out_ax_positions = out_ax_positions
 
     def __str__(self):
         """The string representation of this signature object"""
@@ -212,7 +213,9 @@ def _parse_signature_from_type_hints(
     try:
         return_hint = hints.pop("return")
     except KeyError:
-        raise ValueError("Grid UFunc signature must have output arguments")
+        # TODO does this cause a problem if the output has >1 return arguments none of which have grid positions?
+        out_ax_names: T_AX_POS_LIST = [()]
+        out_ax_pos: T_AX_POS_LIST = [()]
     else:
         return_hints = _maybe_multiple_return_vals(return_hint)
 
@@ -669,11 +672,15 @@ def apply_as_grid_ufunc(
     }
 
     # Perform operation via xarray.apply_ufunc
+    set_in_core_dims = set(d for arg in in_core_dims for d in arg)
+    set_out_core_dims = set(d for arg in out_core_dims for d in arg)
+    common_dims = set_in_core_dims.union(set_out_core_dims)
     results = xr.apply_ufunc(
         mapped_func,
         *rechunked_padded_args,
         input_core_dims=in_core_dims,
         output_core_dims=out_core_dims,
+        exclude_dims=common_dims,
         dask=dask,
         **kwargs,
         dask_gufunc_kwargs={"output_sizes": out_sizes},
