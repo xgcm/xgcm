@@ -11,6 +11,7 @@ env/
 build/
 develop-eggs/
 dist/
+xgcm/_version.py
 downloads/
 eggs/
 .eggs/
@@ -58,7 +59,21 @@ target/
 
 # notebook
 */.ipynb_checkpoints/*
+
+# vscode stuff
 .vscode/settings.json
+.vscode/launch.json
+
+# temporary dask stuff
+dask-worker-space/purge.lock
+dask-worker-space/global.lock
 dask-worker-space/dask-worker-space/global.lock
 dask-worker-space/dask-worker-space/purge.lock
-.vscode/launch.json
+
+# CI/Linting
+.mypy_cache
+.vscode
+02_Testing xgcm metrics.ipynb
+Testing xgcm.ipynb
+.ipynb_checkpoints/02_Testing xgcm metrics-checkpoint.ipynb
+xgcm/test/sample.py

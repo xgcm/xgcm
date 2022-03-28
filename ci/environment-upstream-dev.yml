@@ -1,18 +1,21 @@
 name: test_env_xgcm
+channels:
+  # Get the latest numba from numba/label/dev
+  - numba/label/dev
+  - conda-forge
 dependencies:
-  - python
+  - codecov
+  - numba
   - numpy
-  - pytest
-  - future
   - pip
-  - black # we should perhaps move this one back to pip in the future to catch issues related to new black versions
+  - pre-commit
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - python
+  - toolz
+  - typing_extensions
   - pip:
-    - docrep<=0.2.7
-    - codecov
-    - pytest-cov
-    - pytest-xdist
     - git+https://github.com/pydata/xarray.git
     - git+https://github.com/dask/dask.git
     - git+https://github.com/dask/distributed.git
-    - toolz
-    - git+https://github.com/numba/numba.git

@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-      - "*"
+      - "master"
   pull_request:
     branches:
       - "*"
@@ -12,40 +12,46 @@ on:
 jobs:
   build:
     name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.6", "3.7", "3.8"]
+        python-version: ["3.7", "3.8", "3.9"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Cache conda
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         env:
           # Increase this value to reset cache if ci/environment.yml has not changed
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment-py${{ matrix.python-version }}.yml') }}
-      - uses: goanpeca/setup-miniconda@v1
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment.yml') }}
+      - uses: conda-incubator/setup-miniconda@v2
         with:
-          activate-environment: test_env_xgcm # Defined in ci/environment*.yml
+          channels: conda-forge
+          mamba-version: '*'
+          channel-priority: strict
+          activate-environment: test_env_xgcm # Defined in ci/environment.yml
           auto-update-conda: false
           python-version: ${{ matrix.python-version }}
-          environment-file: ci/environment-py${{ matrix.python-version }}.yml
+          environment-file: ci/environment.yml
           use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
       - name: Set up conda environment
-        shell: bash -l {0}
         run: |
-          python -m pip install -e .
+          python -m pip install -e . --no-deps
           conda list
       - name: Run Tests
-        shell: bash -l {0}
         run: |
           pytest -n auto --cov=./ --cov-report=xml
       - name: Upload code coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2.1.0
         with:
           file: ./coverage.xml
           flags: unittests
@@ -55,60 +61,72 @@ jobs:
 
   core-deps-dev:
     name: Build (core-dependencies)
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Cache conda
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       env:
         # Increase this value to reset cache if ci/environment-core-deps.yml has not changed
         CACHE_NUMBER: 0
       with:
         path: ~/conda_pkgs_dir
         key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment-core-deps.yml') }}
-    - uses: goanpeca/setup-miniconda@v1
+    - uses: conda-incubator/setup-miniconda@v2
       with:
-        activate-environment: test_env_xgcm # Defined in ci/environment-core-deps.yml
+        channels: conda-forge
+        mamba-version: '*'
+        channel-priority: strict
+        activate-environment: test_env_xgcm # Defined in ci/environment.yml
         auto-update-conda: false
-        python-version: 3.8
+        python-version: ${{ matrix.python-version }}
         environment-file: ci/environment-core-deps.yml
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
     - name: Set up conda environment
-      shell: bash -l {0}
       run: |
-        python -m pip install -e .
+        python -m pip install -e . --no-deps
         conda list
     - name: Run Tests
-      shell: bash -l {0}
       run: |
         pytest -n auto
 
   upstream-dev:
     name: Build (upstream-dev)
+    if: github.repository == 'xgcm/xgcm'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Cache conda
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       env:
         # Increase this value to reset cache if ci/environment-upstream-dev.yml has not changed
         CACHE_NUMBER: 0
       with:
         path: ~/conda_pkgs_dir
         key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/environment-upstream-dev.yml') }}
-    - uses: goanpeca/setup-miniconda@v1
+    - uses: conda-incubator/setup-miniconda@v2
       with:
-        activate-environment: test_env_xgcm # Defined in ci/environment-upstream-dev.yml
+        channels: conda-forge
+        mamba-version: '*'
+        channel-priority: strict
+        activate-environment: test_env_xgcm # Defined in ci/environment.yml
         auto-update-conda: false
-        python-version: 3.8
+        python-version: ${{ matrix.python-version }}
         environment-file: ci/environment-upstream-dev.yml
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
     - name: Set up conda environment
-      shell: bash -l {0}
       run: |
-        python -m pip install -e .
+        python -m pip install -e . --no-deps
         conda list
     - name: Run Tests
-      shell: bash -l {0}
       run: |
         pytest -n auto

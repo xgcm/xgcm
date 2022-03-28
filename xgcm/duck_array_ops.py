@@ -2,9 +2,6 @@
 
 Shamelessly copied from xarray."""
 
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 
 try:
@@ -58,14 +55,13 @@ def _apply_boundary_condition(da, dim, left, boundary=None, fill_value=0.0):
         A flag indicating how the boundary values are determined.
 
         * 'fill':  All values outside the array set to fill_value
-          (i.e. a Neumann boundary condition.)
+          (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Dirichlet boundary condition.)
+          value. (i.e. a limited form of Neumann boundary condition.)
         * 'extrapolate': Set values by extrapolating linearly from the two
           points nearest to the edge
-
     fill_value : float, optional
-         The value to use in the boundary condition with `boundary='fill'`.
+        The value to use in the boundary condition with `boundary='fill'`.
     """
 
     if boundary not in ["fill", "extend", "extrapolate"]:
@@ -126,12 +122,11 @@ def _pad_array(da, dim, left=False, boundary=None, fill_value=0.0):
         * None:  Do not apply any boundary conditions. Raise an error if
           boundary conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
-          (i.e. a Neumann boundary condition.)
+          (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Dirichlet boundary condition.)
-
+          value. (i.e. a limited form of Neumann boundary condition.)
     fill_value : float, optional
-         The value to use in the boundary condition with `boundary='fill'`.
+        The value to use in the boundary condition with `boundary='fill'`.
     """
 
     if boundary not in ["fill", "extend"]:

@@ -12,10 +12,10 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+
 import sys
-import os
+
 import xgcm
-import sphinx_pangeo_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -55,6 +55,8 @@ extensions = [
 exclude_patterns = ["_build", ".ipynb_checkpoints"]
 
 # http://stackoverflow.com/questions/5599254/how-to-use-sphinxs-autodoc-to-document-a-classs-init-self-method
+
+
 def skip(app, what, name, obj, skip, options):
     if name == "__init__":
         return False
@@ -66,7 +68,11 @@ def setup(app):
 
 
 # link to github issues
-extlinks = {"issue": ("https://github.com/xgcm/xgcm/issues/%s", "GH")}
+extlinks = {
+    "issue": ("https://github.com/xgcm/xgcm/issues/%s", "GH#"),
+    "pull": ("https://github.com/xgcm/xgcm/issues/%s", "GH#"),
+}
+
 
 autosummary_generate = True
 numpydoc_class_members_toctree = True

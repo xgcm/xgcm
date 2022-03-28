@@ -1,7 +1,6 @@
-from __future__ import print_function
-
-import numpy as np
 import dask as dsk
+import numpy as np
+
 from xgcm.duck_array_ops import concatenate
 
 

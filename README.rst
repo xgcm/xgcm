@@ -41,13 +41,16 @@ evolving, open-source, python-based framework for GCM analysis will enhance
 the productivity of the field as a whole, accelerating the rate of discovery in
 climate science. xgcm is part of the Pangeo_ initiative.
 
-For more information, including installation instructions, read the full
-`xgcm documentation`_.
+Getting Started
+---------------
 
-.. _Pangeo: http://pangeo-data.github.io
+To learn how to install and use xgcm for your dataset, visit the `xgcm documentation`_.
+
+
+.. _Pangeo: http://pangeo.io
 .. _dask: http://dask.pydata.org
 .. _xarray: http://xarray.pydata.org
-.. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grid
+.. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
 .. _xgcm documentation: https://xgcm.readthedocs.io/
 
 .. |conda forge| image:: https://img.shields.io/conda/vn/conda-forge/xgcm

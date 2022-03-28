@@ -8,19 +8,21 @@ high level: API implementations in the grid object (located in grid.py)
 # TODO:
 # - performance test? It would be nice to have these right after so we can track the performance as this feature evolves
 
-import pytest
 import dask
 import numpy as np
+import pytest
 import xarray as xr
-from xgcm.grid import Grid, Axis
+
+from xgcm.grid import Grid
 
 try:
     import numba
+
     from ..transform import (
-        interp_1d_linear,
-        interp_1d_conservative,
-        linear_interpolation,
         conservative_interpolation,
+        interp_1d_conservative,
+        interp_1d_linear,
+        linear_interpolation,
     )
 except ImportError:
     numba = None
@@ -117,7 +119,7 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -125,8 +127,6 @@ cases = {
         },
     },
     # example of interpolating onto a tracer that descreases with depth
-    # This fails due to the temp not increasing. We should implement a heuristic
-    # to switch the direction...
     "linear_depth_temp": {
         "source_coord": ("depth", [20, 40, 60, 80, 100, 120]),
         "source_data": ("data", [-3, 0, 2, 6, 4, 1]),
@@ -139,7 +139,28 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
+        # "error": True,  # this currently fails but shouldnt
+        "transform_kwargs": {
+            "method": "linear",
+            "target_data": "temp",
+            "mask_edges": False,
+        },
+    },
+    # example of interpolating onto a tracer that descreases with depth
+    "linear_depth_temp_missing_values": {
+        "source_coord": ("depth", [20, 40, 60, 80, 100, 120]),
+        "source_data": ("data", [-3, 0, 2, 6, 4, 1]),
+        "source_additional_data_coord": ("depth", [20, 40, 60, 80, 100, 120]),
+        "source_additional_data": ("temp", [np.nan, 24, 20, 10, 5, 1]),
+        "target_coord": ("something", [0, 5, 10, 11, 15, 20]),
+        "target_data": ("something", [0, 5, 10, 11, 15, 20]),
+        "expected_coord": ("something", [0, 5, 10, 11, 15, 20]),
+        "expected_data": (
+            "data",
+            [1.0, 4.0, 6.0, 5.6, 4.0, 2.0],
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         # "error": True,  # this currently fails but shouldnt
         "transform_kwargs": {
             "method": "linear",
@@ -159,7 +180,7 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -180,7 +201,7 @@ cases = {
             "data",
             [np.nan, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -201,7 +222,7 @@ cases = {
             "data",
             [-0.818182, -0.272727, 2.0, 4.0, 5.6, 6.0, 4.0, 1.0],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -509,9 +530,6 @@ def construct_test_source_data(case_param_dict):
     )
 
 
-# TODO: I am not sure how we would handle periodic axes atm. Should we raise an error?
-
-
 @pytest.fixture(
     # scope="module",
     params=list(cases.keys()),
@@ -582,7 +600,6 @@ def test_interp_1d_linear():
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_interp_1d_conservative():
     nz = 30
-    k = np.arange(nz)
     dz = 10 + np.linspace(0, 90, nz - 1)
     z = np.concatenate([[0], np.cumsum(dz)])
     H = z.max()
@@ -605,14 +622,12 @@ def test_interp_1d_conservative():
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_conservative_nonmonotonic_target_error():
     nz = 30
-    k = np.arange(nz)
     dz = 10 + np.linspace(0, 90, nz - 1)
     z = np.concatenate([[0], np.cumsum(dz)])
     H = z.max()
     theta = z / H + 0.2 * np.cos(np.pi * z / H)
     # phi = np.sin(5 * np.pi * z/H)
 
-    nbins = 100
     theta_bins = np.array([0, -2, 4])
 
     # lazy way to check that it vectorizes: just copy the 1d array
@@ -620,7 +635,7 @@ def test_conservative_nonmonotonic_target_error():
     dz_2d = np.tile(dz, (nx, 1))
     theta_2d = np.tile(theta, (nx, 1))
     with pytest.raises(ValueError):
-        dz_theta = interp_1d_conservative(dz_2d, theta_2d, theta_bins)
+        _ = interp_1d_conservative(dz_2d, theta_2d, theta_bins)
 
 
 """Mid level tests"""
@@ -631,36 +646,32 @@ def test_linear_interpolation_target_value_error():
     """Test that linear_interpolation/conservative_interpolation throws an error when `target` is a np array"""
     (
         source,
-        grid_kwargs,
+        _,
         target,
-        transform_kwargs,
-        expected,
-        error_flag,
+        _,
+        _,
+        _,
     ) = construct_test_source_data(cases["linear_depth_depth"])
 
     with pytest.raises(ValueError):
-        interpolated = linear_interpolation(
-            source.data, source.z, target.data, "z", "z"
-        )
+        _ = linear_interpolation(source.data, source.z, target.data, "z", "z")
 
     (
         source,
-        grid_kwargs,
+        _,
         target,
-        transform_kwargs,
-        expected,
-        error_flag,
+        _,
+        _,
+        _,
     ) = construct_test_source_data(cases["conservative_depth_depth"])
     with pytest.raises(ValueError):
-        interpolated = conservative_interpolation(
-            source.data, source.z, target.data, "z", "z"
-        )
+        _ = conservative_interpolation(source.data, source.z, target.data, "z", "z")
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_mid_level_linear(linear_cases):
     """Test the linear interpolations on the xarray wrapper level"""
-    source, grid_kwargs, target, transform_kwargs, expected, error_flag = linear_cases
+    source, _, target, transform_kwargs, expected, error_flag = linear_cases
 
     # construct output name
     transform_kwargs.setdefault("suffix", "")
@@ -783,20 +794,21 @@ def test_conservative_interp_warn():
         grid_kwargs,
         target,
         transform_kwargs,
-        expected,
-        error_flag,
+        _,
+        _,
     ) = construct_test_source_data(cases["conservative_depth_temp"])
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
     grid = Grid(source, periodic=False, **grid_kwargs)
     with pytest.warns(UserWarning):
-        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+        _ = grid.transform(source.data, axis, target, **transform_kwargs)
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_grid_transform_noname(multidim_cases):
-    source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
+def test_grid_transform_noname_data(multidim_cases):
+    """Check handling of a `da` input without name"""
+    source, grid_kwargs, target, transform_kwargs, _, _ = multidim_cases
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
@@ -811,6 +823,36 @@ def test_grid_transform_noname(multidim_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
+def test_grid_transform_noname_targetdata():
+    """Check handling of a `target_data` input without name"""
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        _,
+        _,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    source_da = source.data
+    target_data = transform_kwargs.pop("target_data")
+    target_data.name = None
+    # the name of target_data is only used if `target` is provided as numpy array
+    target = target.data
+
+    # the high level routines should be able to deal with all cases (no error flag exception like in the mid level)
+    with pytest.warns(UserWarning):
+        transformed = grid.transform(
+            source_da, axis, target, target_data=target_data, **transform_kwargs
+        )
+    "TRANSFORMED_DIMENSION" in transformed.dims
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_transform_error_periodic(multidim_cases):
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
@@ -819,7 +861,7 @@ def test_transform_error_periodic(multidim_cases):
     grid = Grid(source, **grid_kwargs)
 
     with pytest.raises(ValueError):
-        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+        _ = grid.transform(source.data, axis, target, **transform_kwargs)
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
@@ -847,6 +889,36 @@ def test_grid_transform_auto_naming(multidim_cases):  # only test a few cases
 
     transformed = grid.transform(source.data, axis, target, **transform_kwargs)
     assert expected_data_coord in transformed.coords
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+@pytest.mark.parametrize("bypass_checks", [True, False])
+def test_grid_transform_bypass_checks(bypass_checks):
+    """Check that the bypass checks option still delivers the right results for monotonically increasing data"""
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        _,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    target_data = transform_kwargs.pop("target_data", None)
+
+    transformed = grid.transform(
+        source.data,
+        axis,
+        target,
+        target_data=target_data,
+        bypass_checks=bypass_checks,
+        **transform_kwargs
+    )
+
+    xr.testing.assert_allclose(transformed, expected.data)
 
 
 """ Multidimensional tests with dask scheduler """
@@ -898,7 +970,7 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
     # broadcast the target_data manually
     target_data = transform_kwargs.pop("target_data", None)
-    if not target_data is None:
+    if target_data is not None:
         target_data = target_data.expand_dims(a=na).copy(deep=True)
         if client != "no_client":
             target_data = target_data.chunk({"a": 1})
@@ -922,7 +994,7 @@ def test_grid_transform_multidim(request, client, multidim_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_grid_transform_multidim_alignment_error(request, multidim_cases):
+def test_grid_transform_multidim_other_dims_error(request, multidim_cases):
     # broadcast the 1d column agains some other dims and make sure that the 1d results are still valid
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = multidim_cases
 
@@ -933,7 +1005,7 @@ def test_grid_transform_multidim_alignment_error(request, multidim_cases):
     # axis of transformation (this could be the case if e.g. temperature is on a different
     # x grid than velocity)
     target_data = transform_kwargs.pop("target_data", None)
-    if not target_data is None:
+    if target_data is not None:
         target_data = target_data * xr.DataArray(np.ones([na]), dims=["a_other"])
 
         # calculate the multidimensional result
@@ -941,7 +1013,7 @@ def test_grid_transform_multidim_alignment_error(request, multidim_cases):
 
         grid = Grid(source, periodic=False, **grid_kwargs)
         with pytest.raises(ValueError):
-            transformed = grid.transform(
+            _ = grid.transform(
                 source.data, axis, target, target_data=target_data, **transform_kwargs
             )
 
@@ -959,12 +1031,48 @@ def test_chunking_dim_error():
         grid_kwargs,
         target,
         transform_kwargs,
-        expected,
-        error_flag,
+        _,
+        _,
     ) = construct_test_source_data(cases["linear_depth_dens"])
 
     source = source.chunk({"depth": 1})
     axis = list(grid_kwargs["coords"].keys())[0]
     grid = Grid(source, periodic=False, **grid_kwargs)
     with pytest.raises(ValueError):
-        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+        _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_grid_transform_input_check():
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        _,
+        _,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    # construct output name
+    transform_kwargs.setdefault("suffix", "")
+
+    # Make sure that a sensible error is raised if xr.Dataset is provided
+    # for either one of `source`, `target` or `target_data` input arguments.
+    match_msg = r"needs to be a"
+    with pytest.raises(ValueError, match=r"`da` " + match_msg):
+        grid.transform(source, axis, target, **transform_kwargs)
+
+    with pytest.raises(ValueError, match=match_msg):
+        grid.transform(
+            source.data, axis, target.to_dataset(name="dummy"), **transform_kwargs
+        )
+
+    transform_kwargs["target_data"] = transform_kwargs["target_data"].to_dataset(
+        name="dummy"
+    )
+    with pytest.raises(ValueError, match=match_msg):
+        grid.transform(source.data, axis, target, **transform_kwargs)
