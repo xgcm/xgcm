@@ -1778,7 +1778,8 @@ class Grid:
         else:
             dask = "forbidden"
 
-        array = da
+        # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
+        array = da.copy()
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
         # TODO only actually need to call apply_ufunc once for those axes
