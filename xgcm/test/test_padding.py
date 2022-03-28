@@ -945,7 +945,7 @@ class TestPaddingFaceConnection:
             }
         }
         grid = Grid(ds_faces, face_connections=face_connections)
-        u = ds_faces.u * 10  # TODO: Remove
+        u = ds_faces.u
         v = ds_faces.v
 
         # fill in zeros for y boundary width if not given
@@ -1058,3 +1058,40 @@ class TestPaddingFaceConnection:
 
         xr.testing.assert_allclose(u_result, u_expected)
         xr.testing.assert_allclose(v_result, v_expected)
+
+    def test_vector_face_connections_coord_padding(
+        self, boundary_width, ds_faces, fill_value
+    ):
+        # make sure that the complex padding acts like xarray.pad when it comes to dimension coordinates
+        face_connections = {
+            "face": {
+                0: {"X": (None, (1, "Y", True))},
+                1: {"Y": (None, (0, "X", True))},
+            }
+        }
+        grid = Grid(ds_faces, face_connections=face_connections)
+        u = ds_faces.u
+        v = ds_faces.v
+
+        # fill in zeros for y boundary width if not given
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
+
+        padded_complex = pad(
+            {"X": u},
+            grid,
+            boundary_width=boundary_width,
+            boundary="fill",
+            fill_value=fill_value,
+            other_component={"Y": v},
+        )
+        padded_simple = u.pad(
+            {"xl": boundary_width["X"], "y": boundary_width["Y"]},
+            "constant",
+            constant_values=fill_value,
+        )
+        for di in u.dims:
+            assert (di in padded_simple.coords and di in padded_complex.coords) or (
+                di not in padded_simple.coords and di not in padded_complex.coords
+            )
+            if di in padded_simple.coords:
+                xr.testing.assert_allclose(padded_complex[di], padded_simple[di])

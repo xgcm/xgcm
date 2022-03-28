@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 
+import numpy as np
 import xarray as xr
 
 if TYPE_CHECKING:
@@ -48,6 +49,13 @@ def _maybe_swap_dimension_names(da, from_name, to_name):
     return da
 
 
+def _get_all_connection_axes(connections, facedim):
+    all_axes = []
+    for c in connections[facedim].values():
+        all_axes.extend(list(c.keys()))
+    return list(set(all_axes))
+
+
 def _pad_face_connections(
     da, grid, padding_width, padding, other_component, fill_value
 ):
@@ -69,13 +77,21 @@ def _pad_face_connections(
         assert other_component is not None  # TODO raise a better error here
         vectorpartneraxis, da_partner = other_component.popitem()
 
-    # Can I get rid of all the mess with the coordinates by stripping them here?
-    # The output of the padding will not fit any coordinates anymore anyways and
-    # after the ufunc is applied they will all be back on place. So lets make our
-    # lives easier here.
-    da = da.reset_coords(drop=True).reset_index(
-        [di for di in da.dims if di in da.coords], drop=True
+    # # Can I get rid of all the mess with the coordinates by stripping them here?
+    # # The output of the padding will not fit any coordinates anymore anyways and
+    # # after the ufunc is applied they will all be back on place. So lets make our
+    # # lives easier here.
+    # da = da.reset_coords(drop=True).reset_index(
+    #     [di for di in da.dims if di in da.coords], drop=True
+    # )
+
+    # Detect all the axes we have to deal with during padding
+    # all the axes defined in the connections + the axes of the padding width should give all axes we need to iterate over
+    pad_axes = list(
+        set(_get_all_connection_axes(connections, facedim) + list(padding_width.keys()))
     )
+
+    padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in pad_axes}
 
     # This method below works really nicely if all the boundary widths have the same size.
     # This is however not very common. We often have boundary_width with (0,1).
@@ -90,23 +106,13 @@ def _pad_face_connections(
             all_widths.extend(list(widths))
         return max(all_widths)
 
-    # TODO: Why is this problem not caught in the padding tests?
-    # I am concerned that we are really hardcoding the axes in here.
-    # The issue is that for the methodology I developed below we need to pad all arrays with a common width.
-    # That way we make sure that we can just rotate faces and connect them together.
-    # Basically I need to detect the two horizontal axes here.
-    # Is there a way to make this more general?
-    # we could scan the connections dict, I guess
-    pad_axes = ["X", "Y"]
-
-    padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in pad_axes}
-
     width = _max_boundary_width(padding_width)
-    # should i just return da if width is 0 here? I have a check further down, that I could eliminate that way.
+
+    # TODO should i just return da if width is 0 here? I have a check further down, that I could eliminate that way.
     max_padding_width = {k: (width, width) for k in padding_width.keys()}
 
     # The edges of the array which are not connected, need to be padded with the
-    # legacy padding. This also ensures that the resulting padded faces result in
+    # 'basic' padding. This also ensures that the resulting padded faces result in
     # the same shape. We will pad everything now and then replace the connections.
     # That might however not be the most computational efficient way to do it.
 
@@ -127,7 +133,6 @@ def _pad_face_connections(
             fill_value,
         )
 
-    # TODO: I will have to modify this when using vector partners?
     n_facedim = len(da[facedim])
     faces = []
 
@@ -135,7 +140,7 @@ def _pad_face_connections(
     for i in range(n_facedim):
         target_da = da_prepadded.isel({facedim: i})
         connection_single = connections[facedim][i]
-        for axname in pad_axes:  # TODO this damn hardcoded piece here!
+        for axname in pad_axes:
             # get any connections relevant to the current axis, default to None.
             (left_connection, right_connection) = connection_single.get(
                 axname, (None, None)
@@ -211,10 +216,7 @@ def _pad_face_connections(
                             )
                         # At this point any addition should have a fixed set of orthogonal/tangential dimensions
                         ortho_dim = target_dim
-                        tangential_dim = (
-                            source_dim  # TODO: I think this is not general enough.
-                        )
-                        # TODO: This goes together with the hardcoded axes. Do we need to identify 'other' axes?
+                        tangential_dim = source_dim
 
                         # Orthogonal flip
                         if reverse:
@@ -223,12 +225,13 @@ def _pad_face_connections(
                             )
                             if isvector:
                                 if vectoraxis == axname:
+                                    # If the input is an orthogonal vector this flip needs
+                                    # to be accompanied by a sign change
                                     source_slice = -source_slice
                             # TODO: Flip sign if vector is tangential
 
                         # Tangential flip
                         if swap_axis and not reverse:
-                            # Tangential
                             source_slice = source_slice.isel(
                                 {tangential_dim: slice(None, None, -1)}
                             )
@@ -240,6 +243,18 @@ def _pad_face_connections(
 
                         source_slice = source_slice.squeeze()
 
+                        # Here I am trying to emulate the way xarray.pad deals with dimension coordinates
+                        # I will set them to nan in any case. This might change later.
+                        if target_dim in target_slice.coords:
+                            if (
+                                target_dim not in source_slice.dims
+                            ):  # in case this a 1 element padding slice
+                                source_slice = source_slice.expand_dims([target_dim])
+
+                            source_slice[target_dim] = xr.full_like(
+                                source_slice[target_dim], np.nan
+                            )
+
                         # assemble the padded array
                         if is_right:
                             concat_list = [target_slice, source_slice]
@@ -250,6 +265,7 @@ def _pad_face_connections(
                             concat_list,
                             dim=target_dim,
                             coords="minimal",
+                            compat="override",
                         )
                         # TODO: Can we do this with an assignment in xarray? Maybe not important yet.
         faces.append(target_da)
