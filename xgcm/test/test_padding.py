@@ -989,7 +989,7 @@ class TestPaddingFaceConnection:
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"x": "xl", "yl": "y"})
-        u_face_1_addition = -u_face_1_addition.isel(xl=slice(None, None, -1))
+        u_face_1_addition = u_face_1_addition.isel(xl=slice(None, None, -1))
         u_face_1_addition = _maybe_swap_dimension_names(u_face_1_addition, "y", "xl")
 
         # now v (this one needs a sign change)
@@ -1013,7 +1013,7 @@ class TestPaddingFaceConnection:
                 # 0 I want nothing to be padded. but slice(0,None) pads the whole array...
             )
         ).rename({"xl": "x", "y": "yl"})
-        v_face_1_addition = v_face_1_addition.isel(x=slice(None, None, -1))
+        v_face_1_addition = -v_face_1_addition.isel(x=slice(None, None, -1))
         v_face_1_addition = _maybe_swap_dimension_names(v_face_1_addition, "yl", "x")
 
         # then simply add the corresponding slice to each face according to the connection
