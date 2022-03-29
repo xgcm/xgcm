@@ -6,18 +6,14 @@ from typing import (
     Callable,
     Dict,
     List,
+    Literal,
     Mapping,
     Optional,
     Sequence,
     Tuple,
     Union,
+    get_type_hints,
 )
-
-# Only need this until python 3.8
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
 
 import numpy as np
 import xarray as xr
@@ -31,6 +27,7 @@ if TYPE_CHECKING:
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
 #   - Specify xgcm.Axis name and "axis positions" instead of numpy axes as (ax_name:ax_pos)
+
 _AXIS_NAME = r"\w+"
 _AXIS_POSITION = "(?:center|left|right|inner|outer)"
 _AXIS_NAME_POSITION_PAIR = f"{_AXIS_NAME}:{_AXIS_POSITION}"
@@ -42,38 +39,136 @@ _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
 
-def _parse_grid_ufunc_signature(
+T_AX_POS_LIST = List[Tuple[str, ...]]
+
+
+class _GridUFuncSignature:
+    """
+    Core xGCM Axes and grid positions signature for a given function.
+
+    Based on the signature provided by generalized ufuncs in NumPy, and in xarray.
+    """
+
+    in_ax_names: T_AX_POS_LIST
+    in_ax_positions: T_AX_POS_LIST
+    out_ax_names: T_AX_POS_LIST
+    out_ax_positions: T_AX_POS_LIST
+
+    _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
+
+    def __init__(
+        self,
+        in_ax_names: T_AX_POS_LIST,
+        in_ax_positions: T_AX_POS_LIST,
+        out_ax_names: T_AX_POS_LIST,
+        out_ax_positions: T_AX_POS_LIST,
+    ):
+        """Construct the grid signature directly from its internal attributes."""
+
+        if not in_ax_names or not in_ax_positions:
+            raise ValueError(
+                "At least one input argument of the Grid UFunc signature must have "
+                "axis names and positions"
+            )
+        else:
+            self.in_ax_names = in_ax_names
+            self.in_ax_positions = in_ax_positions
+
+        # Can imagine grid ufuncs where outputs have no core dimensions (e.g. result of inner product)
+        self.out_ax_names = out_ax_names
+        self.out_ax_positions = out_ax_positions
+
+    def __str__(self):
+        """The string representation of this signature object"""
+
+        in_arg_sigs = [
+            ",".join(f"{ax}:{pos}" for ax, pos in zip(arg_in_names, arg_in_pos))
+            for arg_in_names, arg_in_pos in zip(self.in_ax_names, self.in_ax_positions)
+        ]
+        lhs = ",".join(f"({arg_sig})" for arg_sig in in_arg_sigs)
+
+        out_arg_sigs = [
+            ",".join(f"{ax}:{pos}" for ax, pos in zip(arg_out_names, arg_out_pos))
+            for arg_out_names, arg_out_pos in zip(
+                self.out_ax_names, self.out_ax_positions
+            )
+        ]
+        rhs = ",".join(f"({arg_sig})" for arg_sig in out_arg_sigs)
+
+        return f"{lhs}->{rhs}"
+
+    @classmethod
+    def from_string(cls, signature: str) -> "_GridUFuncSignature":
+        """Constructs the grid signature from its string representation."""
+        (
+            in_ax_names,
+            in_ax_positions,
+            out_ax_names,
+            out_ax_positions,
+        ) = _parse_signature_from_string(signature)
+
+        return cls(in_ax_names, in_ax_positions, out_ax_names, out_ax_positions)
+
+    @classmethod
+    def from_type_hints(cls, hints: Dict[str, Any]) -> "_GridUFuncSignature":
+        """
+        Constructs the grid signature from the type hints of a function, and returns it ready for parsing.
+
+        Type hints must first be obtained using `typing.get_type_hints(ufunc, include_extras=True)`.
+        """
+        (
+            in_ax_names,
+            in_ax_positions,
+            out_ax_names,
+            out_ax_positions,
+        ) = _parse_signature_from_type_hints(hints)
+
+        return cls(in_ax_names, in_ax_positions, out_ax_names, out_ax_positions)
+
+    def equivalent(self, other: "_GridUFuncSignature") -> bool:
+        """
+        Whether or not two signatures are equivalent.
+
+        Axes names in signatures are dummy variables, so an exact string match is not required.
+        Our comparison strategy is to instead work through both signatures left to right, replacing all occurrences
+        of each dummy index with names drawn from a common list. If after this process the replaced names are not
+        identical, the signatures must not be equivalent. Axes positions do have to match exactly.
+        """
+
+        def set_unique_inds(sig_part):
+            return set([i for arg in sig_part for i in arg])
+
+        all_unique_sig1_indices = set_unique_inds(self.in_ax_names) | set_unique_inds(
+            self.out_ax_names
+        )
+        all_unique_sig2_indices = set_unique_inds(other.in_ax_names) | set_unique_inds(
+            other.out_ax_names
+        )
+
+        if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
+            return False
+
+        sig1_replaced = str(self)
+        sig2_replaced = str(other)
+        for dummy1, dummy2, common_replacement in zip(
+            all_unique_sig1_indices,
+            all_unique_sig2_indices,
+            self._REPLACEMENT_DUMMY_INDEX_NAMES,
+        ):
+            sig1_replaced = sig1_replaced.replace(dummy1, common_replacement)
+            sig2_replaced = sig2_replaced.replace(dummy2, common_replacement)
+
+        return sig1_replaced == sig2_replaced
+
+
+def _parse_signature_from_string(
     signature: str,
-) -> Tuple[
-    List[Tuple[str, ...]],
-    List[Tuple[str, ...]],
-    List[Tuple[str, ...]],
-    List[Tuple[str, ...]],
-]:
+) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
     """
     Parse string signatures for a grid-aware universal function.
 
     The way this parser works excludes using Axis names that match possible xgcm
     axis positions, i.e. ['center', 'left', 'right', 'inner', 'outer'].
-
-    Arguments
-    ---------
-    signature : string
-        Grid universal function signature. Specifies the xgcm.Axis names and
-        positions for each input and output variable, e.g.,
-
-        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
-
-    Returns
-    -------
-    input_axes_names : List[Tuple[str, ...]]
-        Input Axes names parsed from the signature
-    output_axes_names : List[Tuple[str, ...]]
-        Output Axes names parsed from the signature
-    input_axes_positions : List[Tuple[str, ...]]
-        Input Axes positions parsed from the signature
-    output_axes_positions : List[Tuple[str, ...]]
-        Output Axes positions parsed from the signature
     """
 
     signature = signature.replace(" ", "")
@@ -101,67 +196,76 @@ def _parse_grid_ufunc_signature(
         tuple(re.findall(_AXIS_POSITION, arg)) for arg in re.findall(_ARGUMENT, out_txt)
     ]
 
-    return in_ax_names, out_ax_names, in_ax_pos, out_ax_pos
+    return in_ax_names, in_ax_pos, out_ax_names, out_ax_pos
 
 
-class Signature:
-    signature: str
-    in_ax_names: List[Tuple[str, ...]]
-    out_ax_names: List[Tuple[str, ...]]
-    in_ax_positions: List[Tuple[str, ...]]
-    out_ax_positions: List[Tuple[str, ...]]
+def _parse_signature_from_type_hints(
+    hints: Dict[str, Any]
+) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
+    """
+    Parse signatures from type annotations for a grid-aware universal function.
 
-    _REPLACEMENT_DUMMY_INDEX_NAMES = [f"__{char}" for char in string.ascii_letters]
+    The way this parser works excludes using Axis names that match possible xgcm
+    axis positions, i.e. ['center', 'left', 'right', 'inner', 'outer'].
+    """
 
-    def __init__(self, signature: str):
-        self.signature: str = signature
-        (
-            self.in_ax_names,
-            self.out_ax_names,
-            self.in_ax_positions,
-            self.out_ax_positions,
-        ) = _parse_grid_ufunc_signature(signature)
+    # First do output args
+    try:
+        return_hint = hints.pop("return")
+    except KeyError:
+        # TODO does this cause a problem if the output has >1 return arguments none of which have grid positions?
+        out_ax_names: T_AX_POS_LIST = [()]
+        out_ax_pos: T_AX_POS_LIST = [()]
+    else:
+        return_hints = _maybe_multiple_return_vals(return_hint)
 
-    def __str__(self):
-        return self.signature
+        return_annotations = [
+            hint.__metadata__[0]
+            for hint in return_hints
+            if hasattr(hint, "__metadata__")
+        ]
 
-    def __repr__(self):
-        return f"Signature({self.signature})"
+        out_ax_names = []
+        for arg in return_annotations:
+            # Delete the axis positions so they aren't matched as axis names
+            only_names = re.sub(_AXIS_POSITION, "", arg)
+            out_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
 
-    def equivalent(self, other: "Signature") -> bool:
-        """Whether or not two signatures are equivalent."""
+        out_ax_pos = [
+            tuple(re.findall(_AXIS_POSITION, arg)) for arg in return_annotations
+        ]
 
-        """
-        Axes names in signatures are dummy variables, so an exact string match is not required.
-        Our comparison strategy is to instead work through both signatures left to right, replacing all occurrences
-        of each dummy index with names drawn from a common list. If after this process the replaced names are not
-        identical, the signatures must not be equivalent. Axes positions do have to match exactly.
-        """
+    # Now do input args
+    arg_annotations = [
+        hint.__metadata__[0] for hint in hints.values() if hasattr(hint, "__metadata__")
+    ]
 
-        def set_unique_inds(sig_part):
-            return set([i for arg in sig_part for i in arg])
+    # TODO check number of annotations?
 
-        all_unique_sig1_indices = set_unique_inds(self.in_ax_names) | set_unique_inds(
-            self.out_ax_names
-        )
-        all_unique_sig2_indices = set_unique_inds(other.in_ax_names) | set_unique_inds(
-            other.out_ax_names
-        )
+    in_ax_names = []
+    for arg in arg_annotations:
+        # Delete the axis positions so they aren't matched as axis names
+        only_names = re.sub(_AXIS_POSITION, "", arg)
+        in_ax_names.append(tuple(re.findall(_AXIS_NAME, only_names)))
 
-        if len(all_unique_sig1_indices) != len(all_unique_sig2_indices):
-            return False
+    in_ax_pos = [tuple(re.findall(_AXIS_POSITION, arg)) for arg in arg_annotations]
 
-        sig1_replaced = self.signature
-        sig2_replaced = other.signature
-        for dummy1, dummy2, common_replacement in zip(
-            all_unique_sig1_indices,
-            all_unique_sig2_indices,
-            self._REPLACEMENT_DUMMY_INDEX_NAMES,
-        ):
-            sig1_replaced = sig1_replaced.replace(dummy1, common_replacement)
-            sig2_replaced = sig2_replaced.replace(dummy2, common_replacement)
+    # Do a sanity check before going any further
+    str_signature = str(
+        _GridUFuncSignature(in_ax_names, in_ax_pos, out_ax_names, out_ax_pos)
+    )
+    if not re.match(_SIGNATURE, str_signature):
+        raise ValueError(f"Not a valid grid ufunc signature: {str_signature}")
 
-        return sig1_replaced == sig2_replaced
+    return in_ax_names, in_ax_pos, out_ax_names, out_ax_pos
+
+
+def _maybe_multiple_return_vals(return_hint):
+    """if ufunc returns multiple values (each of which might be annotated) we must extract from Tuple first"""
+    return_hints = (
+        list(return_hint.__args__) if return_hint._name == "Tuple" else [return_hint]
+    )
+    return return_hints
 
 
 class GridUFunc:
@@ -210,20 +314,57 @@ class GridUFunc:
     """
 
     ufunc: Callable
-    signature: Signature
+    signature: _GridUFuncSignature
     boundary_width: Optional[Mapping[str, Tuple[int, int]]]
     dask: Literal["forbidden", "parallelized", "allowed"]
     map_overlap: bool
 
     def __init__(self, ufunc: Callable, **kwargs):
         self.ufunc = ufunc  # type: ignore  # see mypy issue 2427
-        signature = kwargs.pop("signature", "")
-        self.signature = Signature(signature)
+
+        str_sig = kwargs.pop("signature")
+        self.signature = self._get_signature_from_str_or_type_hints(ufunc, str_sig)
         self.boundary_width = kwargs.pop("boundary_width", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
         if kwargs:
             raise TypeError("Unsupported keyword argument(s) provided")
+
+    @staticmethod
+    def _get_signature_from_str_or_type_hints(
+        ufunc, str_sig: Optional[str]
+    ) -> _GridUFuncSignature:
+        """Get grid ufunc signature, either from type hints or from string signature kwarg"""
+
+        hints = get_type_hints(ufunc, include_extras=True)
+
+        def _has_annotations(hints):
+            try:
+                # TODO I want this to be .pop but then I get problems with variable scope
+                return_hint = hints["return"]
+            except KeyError:
+                pass
+            else:
+                return_hints = _maybe_multiple_return_vals(return_hint)
+                if any(hasattr(hint, "__metadata__") for hint in return_hints):
+                    return True
+
+            return any(hasattr(hint, "__metadata__") for hint in hints.values())
+
+        if str_sig:
+            if _has_annotations(hints):
+                raise ValueError(
+                    "Must specify axis positions through only one of either type hints or signature kwarg, not both."
+                )
+
+            return _GridUFuncSignature.from_string(str_sig)
+        else:
+            if not _has_annotations(hints):
+                raise ValueError(
+                    "Must specify axis positions through either type hints or signature kwarg"
+                )
+
+            return _GridUFuncSignature.from_type_hints(hints)
 
     def __repr__(self):
         return (
@@ -320,7 +461,7 @@ def apply_as_grid_ufunc(
     *args: xr.DataArray,
     axis: Sequence[Sequence[str]] = None,
     grid: "Grid" = None,
-    signature: Union[str, Signature] = "",
+    signature: Union[str, _GridUFuncSignature] = "",
     boundary_width: Mapping[str, Tuple[int, int]] = None,
     boundary: Union[str, Mapping[str, str]] = None,
     fill_value: Union[float, Mapping[str, float]] = None,
@@ -422,8 +563,8 @@ def apply_as_grid_ufunc(
         )
 
     # Extract Axes information from signature
-    if not isinstance(signature, Signature):
-        sig = Signature(signature)
+    if not isinstance(signature, _GridUFuncSignature):
+        sig = _GridUFuncSignature.from_string(signature)
     else:
         sig = signature
 
@@ -639,7 +780,7 @@ def _map_func_over_core_dims(
 DISALLOWED_OVERLAP_POSITIONS = ["inner", "outer"]
 
 
-def _check_if_length_would_change(signature: Signature):
+def _check_if_length_would_change(signature: _GridUFuncSignature):
     """Check if map_overlap can actually handle the complexity of this signature."""
 
     # TODO this restriction is because dask.array.map_overlap does not currently allow for multiple return arrays
