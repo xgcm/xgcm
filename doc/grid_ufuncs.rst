@@ -53,9 +53,10 @@ Each variable can be operated on along multiple axes, which are separated by a c
 
 The axis names used in the signature are dummy names: they do not have to be the same as the axis names used in your ``Grid`` object.
 This allows you to write a grid ufunc that can accept axis with any name.
-Therefore the signature ``"(ax1:center)->(ax1:left)"`` means all of
+Therefore the signature ``"(ax1:center)->(ax1:left)"`` means all of:
 
-`"This function accepts one data variable, which is one-dimensional and lies on the center grid positions of its singular axis.
+`"This function accepts one data variable and applies an operation over one core dimension.
+The input data lies on the center grid positions of the singular axis along which we will choose to apply the function.
 After performing its numerical operation the single return value from this function will have been shifted onto the left-hand grid positions of the same axis."`
 
 - Some simple examples, in a table
