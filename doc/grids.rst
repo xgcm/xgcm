@@ -61,6 +61,8 @@ The inverse of differentiation is integration. For finite volume grids, the
 inverse of the difference operator is a discrete cumulative sum. xgcm also
 provides a grid-aware version of the ``cumsum`` operator.
 
+.. _axis-positions:
+
 Axes and Positions
 ~~~~~~~~~~~~~~~~~~
 

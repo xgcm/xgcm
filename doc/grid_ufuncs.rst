@@ -66,13 +66,14 @@ Lets imagine we have a numpy function which does forward differencing along one 
 
     import numpy as np
 
+
     def diff_forward(a):
         return a - np.roll(a, -1, axis=-1)
 
 All this function does is subtract each element of the given array from the element immediately to its right,
 with the ends of the array wrapped around in a periodic fashion.
 If we imagine this function acting on a variable located at the cell centers,
-our axis position diagram suggests that the result would lie on the left-hand cell edges.
+our :ref:`axis-positions` diagram suggests that the result would lie on the left-hand cell edges.
 Therefore the signature of this function could be
 ``"(ax1:center)->(ax1:left)"``.
 
@@ -149,6 +150,7 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
 
     from xgcm import as_grid_ufunc
 
+
     @as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
     def diff_center_to_left(a):
         return diff_forward(a)
@@ -171,6 +173,7 @@ Finally you can use type hints to specify the grid positions of the variables in
     :okexcept:
 
     from xgcm import Gridded
+
 
     @as_grid_ufunc()
     def diff_center_to_left(
@@ -271,6 +274,7 @@ Now when we run our decorated function `interp_center_to_left`, xgcm will automa
 before applying the operation in the function we decorated.
 
 .. ipython:: python
+    :okexcept:
 
     da = xr.DataArray(arr)
 
@@ -279,6 +283,7 @@ before applying the operation in the function we decorated.
 It's used a periodic boundary condition as the default, but we can choose other boundary conditions using the ``boundary`` kwarg:
 
 .. ipython:: python
+    :okexcept:
 
     interp_center_to_left(grid, da, axis=[["X"]], boundary="constant", fill_value=0)
 
