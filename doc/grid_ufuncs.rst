@@ -20,6 +20,8 @@ then here is a quick primer.
 
     Content about numpy...
 
+You will also need to understand the `concept of "core dims"`_ used in ``xarray.apply_ufunc``.
+
 Grid ufuncs allow us to:
 
 - Avoid mistakes by stating that functions are only valid for data on specific grid positions,
@@ -28,6 +30,7 @@ Grid ufuncs allow us to:
 - Immediately parallelize our operations with dask (see :ref:`Parallelizing with Dask`).
 
 .. _numpy generalized universal function: https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
+.. _concept of "core dims": https://xarray.pydata.org/en/stable/generated/xarray.apply_ufunc.html
 
 The ``signature``
 ~~~~~~~~~~~~~~~~~
@@ -65,7 +68,6 @@ Lets imagine we have a numpy function which does forward differencing along one 
 .. ipython:: python
 
     import numpy as np
-
 
     def diff_forward(a):
         return a - np.roll(a, -1, axis=-1)
@@ -150,7 +152,6 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
 
     from xgcm import as_grid_ufunc
 
-
     @as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
     def diff_center_to_left(a):
         return diff_forward(a)
@@ -172,18 +173,13 @@ Finally you can use type hints to specify the grid positions of the variables in
 .. ipython:: python
     :okexcept:
 
-    from xgcm import Gridded
-
+    from typing import Annotated
 
     @as_grid_ufunc()
     def diff_center_to_left(
-        a: Gridded[np.ndarray, "ax1:center"]
-    ) -> Gridded[np.ndarray, "ax1:left"]:
+        a: Annotated[np.ndarray, "ax1:center"]
+    ) -> Annotated[np.ndarray, "ax1:left"]:
         return diff_forward(a)
-
-.. note::
-
-    ``Gridded`` here is really just an alias for ``typing.Annotated``.
 
 Again we call this decorated function, remembering to supply the grid and axis arguments
 
@@ -192,13 +188,13 @@ Again we call this decorated function, remembering to supply the grid and axis a
 
     diff_center_to_left(grid, da, axis=[["X"]])
 
-The signature argument is incompatible with using ``Gridded`` to annotate the types of any of the function arguments
+The signature argument is incompatible with using ``Annotated`` to annotate the types of any of the function arguments
 - i.e. you cannot mix the signature approach with the type hinting approach.
 
 .. note::
 
     If you want to use type hints to specify a signature with multiple return arguments, your return value should be type hinted as a tuple of annotated hints, e.g.
-    ``Tuple[Gridded[np.ndarray, "ax1:left"], Gridded[np.ndarray, "ax1:right"]]``.
+    ``Tuple[Annotated[np.ndarray, "ax1:left"], Annotated[np.ndarray, "ax1:right"]]``.
 
 Boundaries and Padding
 ~~~~~~~~~~~~~~~~~~~~~~
