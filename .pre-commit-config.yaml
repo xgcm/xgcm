@@ -34,7 +34,7 @@ repos:
             # Type stubs
             types-pkg_resources,
             types-PyYAML,
-            typing-extensions==3.10.0.0,
+            typing-extensions==4.0.1,
             # Dependencies that are typed
             numpy,
           ]
