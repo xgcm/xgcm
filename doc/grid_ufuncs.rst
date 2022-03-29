@@ -59,7 +59,47 @@ Therefore the signature ``"(ax1:center)->(ax1:left)"`` means all of:
 The input data lies on the center grid positions of the singular axis along which we will choose to apply the function.
 After performing its numerical operation the single return value from this function will have been shifted onto the left-hand grid positions of the same axis."`
 
-- Some simple examples, in a table
+To give you an idea of how we might use grid ufuncs here is a table of possible grid ufuncs and their corresponding signatures:
+
+.. list-table:: Example signatures for different grid ufuncs
+   :widths: 25 25 50
+   :header-rows: 1
+
+   * - Name
+     - Signature
+     - Description
+   * - ``diff_center_to_left(a)``
+     - ``"(X:center)->(X:left)"``
+     - Backward difference
+   * - ``interp_center_to_left(a)``
+     - ``"(X:center)->(X:left)"``
+     - Backward interpolation
+   * - ``diff_left_to_center(a)``
+     - ``"(X:left)->(X:center)"``
+     - Forward difference
+   * - ``interp_left_to_center(a)``
+     - ``"(X:left)->(X:center)"``
+     - Forward interpolation
+   * - ``diff_center_to_center(a)``
+     - ``"(X:center)->(X:center)"``
+     - Second order central difference
+   * - ``mean_depth(w)``
+     - ``"(depth:center)->()"``
+     - Reduction
+   * - ``inner_product_left_right(a, b)``
+     - ``"(X:left),(X:right)->()"``
+     - Reduction of two variables
+   * - ``u_grid_vorticity(u, v)``
+     - ``"(lon:left,lat:center),``
+       ``(lon:center,lat:left)``
+       ``->(lon:left,lat:left)"``
+     - Complex example calculating vorticity on an Arakawa U-grid in 2D
+
+.. note::
+
+    Remember the axis names in the signature are dummy names - you could apply ``mean_depth`` along an axis not called
+    ``"depth"`` if you wish.
+
 
 Defining New Grid Ufuncs
 ~~~~~~~~~~~~~~~~~~~~~~~~
