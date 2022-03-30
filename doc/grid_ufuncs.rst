@@ -326,14 +326,14 @@ Here a periodic boundary condition has been used as the default, but we can choo
     @as_grid_ufunc(
         signature="(X:center)->(X:left)",
         boundary_width={"X": (1, 0)},
-        boundary="constant",
+        boundary="fill",
         fill_value=0,
     )
     def interp_center_to_left_fill_with_zeros(a):
         return interp(a)
 
     interp_center_to_left_fill_with_zeros(
-        grid, da, axis=[["X"]], boundary="constant", fill_value=0
+        grid, da, axis=[["X"]], boundary="fill", fill_value=0
     )
 
 We can also choose a different default boundary condition at decorator definition time,
@@ -342,7 +342,7 @@ and then override it at function call time if we prefer.
 .. ipython:: python
     :okexcept:
 
-    interp_center_to_left(grid, da, axis=[["X"]], boundary="constant", fill_value=0)
+    interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=np.NaN)
 
 
 - Link to more specific docs?
