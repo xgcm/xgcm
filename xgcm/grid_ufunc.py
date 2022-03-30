@@ -285,6 +285,22 @@ class GridUFunc:
     boundary_width : Dict[str: Tuple[int, int], optional
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        A flag indicating how to handle boundaries:
+        * None: Do not apply any boundary conditions. Raise an error if
+          boundary conditions are required for the operation.
+        * 'fill':  Set values outside the array boundary to fill_value
+          (i.e. a Dirichlet boundary condition.)
+        * 'extend': Set values outside the array to the nearest array
+          value. (i.e. a limited form of Neumann boundary condition.)
+        * 'extrapolate': Set values by extrapolating linearly from the two
+          points nearest to the edge
+        Optionally a dict mapping axis name to separate values for each axis
+        can be passed.
+    fill_value : {float, dict}, optional
+        The value to use in boundary conditions with `boundary='fill'`.
+        Optionally a dict mapping axis name to separate values for each axis
+        can be passed. Default is 0.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -316,6 +332,8 @@ class GridUFunc:
     ufunc: Callable
     signature: _GridUFuncSignature
     boundary_width: Optional[Mapping[str, Tuple[int, int]]]
+    boundary: Optional[Union[str, Mapping[str, str]]]
+    fill_value: Optional[Union[float, Mapping[str, float]]]
     dask: Literal["forbidden", "parallelized", "allowed"]
     map_overlap: bool
 
@@ -325,10 +343,14 @@ class GridUFunc:
         str_sig = kwargs.pop("signature")
         self.signature = self._get_signature_from_str_or_type_hints(ufunc, str_sig)
         self.boundary_width = kwargs.pop("boundary_width", None)
+        self.boundary = kwargs.pop("boundary", None)
+        self.fill_value = kwargs.pop("fill_value", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
         if kwargs:
-            raise TypeError("Unsupported keyword argument(s) provided")
+            raise TypeError(
+                f"Unsupported keyword argument(s) provided: {list(kwargs.keys())}"
+            )
 
     @staticmethod
     def _get_signature_from_str_or_type_hints(
@@ -379,7 +401,7 @@ class GridUFunc:
         axis: Sequence[str],
         **kwargs,
     ):
-        boundary = kwargs.pop("boundary", None)
+        boundary = kwargs.pop("boundary", self.boundary)
         dask = kwargs.pop("dask", self.dask)
         map_overlap = kwargs.pop("map_overlap", self.map_overlap)
         return apply_as_grid_ufunc(
@@ -415,6 +437,22 @@ def as_grid_ufunc(
     boundary_width : Dict[str: Tuple[int, int], optional
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        A flag indicating how to handle boundaries:
+        * None: Do not apply any boundary conditions. Raise an error if
+          boundary conditions are required for the operation.
+        * 'fill':  Set values outside the array boundary to fill_value
+          (i.e. a Dirichlet boundary condition.)
+        * 'extend': Set values outside the array to the nearest array
+          value. (i.e. a limited form of Neumann boundary condition.)
+        * 'extrapolate': Set values by extrapolating linearly from the two
+          points nearest to the edge
+        Optionally a dict mapping axis name to separate values for each axis
+        can be passed.
+    fill_value : {float, dict}, optional
+        The value to use in boundary conditions with `boundary='fill'`.
+        Optionally a dict mapping axis name to separate values for each axis
+        can be passed. Default is 0.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
         How to handle applying to objects containing lazy data in the form of
         dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -442,11 +480,15 @@ def as_grid_ufunc(
     Grid.apply_as_grid_ufunc
     """
     _allowedkwargs = {
+        "boundary",
+        "fill_value",
         "dask",
         "map_overlap",
     }
     if kwargs.keys() - _allowedkwargs:
-        raise TypeError("Unsupported keyword argument(s) provided")
+        raise TypeError(
+            f"Unsupported keyword argument(s) provided: {list(kwargs.keys())}"
+        )
 
     def _as_grid_ufunc(ufunc):
         return GridUFunc(
