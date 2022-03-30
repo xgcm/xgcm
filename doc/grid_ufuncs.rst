@@ -225,7 +225,6 @@ Finally you can use type hints to specify the grid positions of the variables in
 Again we call this decorated function, remembering to supply the grid and axis arguments
 
 .. ipython:: python
-    :okexcept:
 
     diff_center_to_left(grid, da, axis=[["X"]])
 
@@ -311,7 +310,6 @@ Now when we run our decorated function `interp_center_to_left`, xgcm will automa
 before applying the operation in the function we decorated.
 
 .. ipython:: python
-    :okexcept:
 
     # Create new test data with same coordinates but linearly-spaced data
     da = da.copy(data=arr)
@@ -321,7 +319,6 @@ before applying the operation in the function we decorated.
 Here a periodic boundary condition has been used as the default, but we can choose other boundary conditions using the ``boundary`` kwarg:
 
 .. ipython:: python
-    :okexcept:
 
     @as_grid_ufunc(
         signature="(X:center)->(X:left)",
