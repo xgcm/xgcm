@@ -193,6 +193,8 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
 
     from xgcm import as_grid_ufunc
 
+.. ipython:: python
+
     @as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
     def diff_center_to_left(a):
         return diff_forward(a)
@@ -200,7 +202,6 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
 Now when we call the ``diff_center_to_left`` function, it will act as if we had applied it using ``apply_as_grid_ufunc``.
 
 .. ipython:: python
-    :okexcept:
 
     diff_center_to_left(grid, da, axis=[["X"]])
 
@@ -212,7 +213,6 @@ Decorator with type hints
 Finally you can use type hints to specify the grid positions of the variables instead of passing a ``signature`` argument.
 
 .. ipython:: python
-    :okexcept:
 
     from typing import Annotated
 
@@ -258,7 +258,7 @@ This function simply averages each element from the one on its right, but that m
 
 .. ipython:: python
 
-    arr = np.arange(10)
+    arr = np.arange(9)
     arr
     arr.shape
 
@@ -313,19 +313,37 @@ before applying the operation in the function we decorated.
 .. ipython:: python
     :okexcept:
 
-    da = xr.DataArray(arr)
+    # Create new test data with same coordinates but linearly-spaced data
+    da = da.copy(data=arr)
 
     interp_center_to_left(grid, da, axis=[["X"]])
 
-It's used a periodic boundary condition as the default, but we can choose other boundary conditions using the ``boundary`` kwarg:
+Here a periodic boundary condition has been used as the default, but we can choose other boundary conditions using the ``boundary`` kwarg:
+
+.. ipython:: python
+    :okexcept:
+
+    @as_grid_ufunc(
+        signature="(X:center)->(X:left)",
+        boundary_width={"X": (1, 0)},
+        boundary="constant",
+        fill_value=0,
+    )
+    def interp_center_to_left_fill_with_zeros(a):
+        return interp(a)
+
+    interp_center_to_left_fill_with_zeros(
+        grid, da, axis=[["X"]], boundary="constant", fill_value=0
+    )
+
+We can also choose a different default boundary condition at decorator definition time,
+and then override it at function call time if we prefer.
 
 .. ipython:: python
     :okexcept:
 
     interp_center_to_left(grid, da, axis=[["X"]], boundary="constant", fill_value=0)
 
-We can also choose a different default boundary condition at decorator definition time,
-and then override it at function call time if we prefer.
 
 - Link to more specific docs?
 - Link to more complex examples?
@@ -340,6 +358,8 @@ Metrics
 
 Parallelizing with Dask
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+
 
 Parallelizing Along Broadcast Dimensions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
