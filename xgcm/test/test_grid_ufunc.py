@@ -965,6 +965,39 @@ class TestDaskOverlap:
             )
 
 
+class TestBoundary:
+    def test_boundary_constant(self):
+        def interp(a):
+            return 0.5 * (a[..., :-1] + a[..., 1:])
+
+        @as_grid_ufunc(
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            boundary="fill",
+            fill_value=0,
+        )
+        def interp_center_to_left(a):
+            return interp(a)
+
+        grid = create_1d_test_grid("lat")
+        arr = np.arange(9)
+        da = grid._ds.lat_c.copy(data=arr)
+
+        # test that bound kwargs are used
+        result = interp_center_to_left(grid, da, axis=[["lat"]])
+        interped_arr_padded_with_zero = interp(np.concatenate([[0], arr]))
+        expected = grid._ds.lat_g.copy(data=interped_arr_padded_with_zero)
+        assert_equal(result, expected)
+
+        # test that bound kwargs can be overridden at call time
+        result = interp_center_to_left(
+            grid, da, axis=[["lat"]], boundary="fill", fill_value=1
+        )
+        interped_arr_padded_with_one = interp(np.concatenate([[1], arr]))
+        expected = grid._ds.lat_g.copy(data=interped_arr_padded_with_one)
+        assert_equal(result, expected)
+
+
 # TODO tests for handling dask in gri.diff etc. should eventually live in test_grid.py
 class TestMapOverlapGridops:
     def test_chunked_core_dims_unchanging_chunksize_center_to_right(self):

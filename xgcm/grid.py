@@ -1647,7 +1647,7 @@ class Grid:
             boundary = {ax_name: boundary for ax_name in self.axes.keys()}
         if fill_value is None:
             fill_value = 0.0
-        if isinstance(fill_value, float):
+        if isinstance(fill_value, (int, float)):
             fill_value = {ax_name: fill_value for ax_name in self.axes.keys()}
         # xgcm uses a default fill value of 0, while xarray uses nan.
         fill_value = {k: 0.0 if v is None else v for k, v in fill_value.items()}
