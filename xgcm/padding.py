@@ -358,7 +358,7 @@ def pad(
     grid: Grid,
     boundary_width: Optional[Dict[str, Tuple[int, int]]] = None,
     boundary: Optional[str] = "periodic",
-    fill_value: Optional[str] = 0.0,
+    fill_value: Optional[float] = 0.0,
     other_component: Optional[Dict[str, xr.DataArray]] = None,
 ):
     """

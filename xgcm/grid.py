@@ -1664,7 +1664,7 @@ class Grid:
         if isinstance(da, dict):
             if len(da) != 1:
                 raise ValueError(
-                    f"When providing vector components as input, the provided dictionary can only have one key/value pair. Found {len(dict)}"
+                    f"When providing vector components as input, the provided dictionary can only have one key/value pair. Found {len(da)}"
                 )
 
         # convert input arguments into axes-kwarg mappings
@@ -1729,10 +1729,9 @@ class Grid:
         if isinstance(da, dict):
             array = {k: v.copy(deep=False) for k, v in da.items()}
         else:
+            # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
             array = da.copy(deep=False)
 
-        # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
-        array = da.copy(deep=False)
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
         # TODO only actually need to call apply_ufunc once for those axes
@@ -2057,51 +2056,55 @@ class Grid:
         """
         return self._grid_func("cumsum", da, axis, **kwargs)
 
-    # def _apply_vector_function(self, function, vector, **kwargs):
-    #     # the keys, should be axis names
-    #     assert len(vector) == 2
+    def _apply_vector_function(self, function, vector, **kwargs):
+        # the keys, should be axis names
+        assert len(vector) == 2
+        assert isinstance(vector, dict)
 
-    #     # this is currently only tested for c-grid vectors defined on edges
-    #     # moving to cell centers. We need to detect if we got something else
-    #     to = kwargs.get("to", "center")
-    #     if to != "center":
-    #         raise NotImplementedError(
-    #             "Only vector interpolation to cell "
-    #             "center is implemented, but got "
-    #             "to=%r" % to
-    #         )
-    #     for axis_name, component in vector.items():
-    #         axis = self.axes[axis_name]
-    #         position, coord = axis._get_position_name(component)
-    #         if position == "center":
-    #             raise NotImplementedError(
-    #                 "Only vector interpolation to cell "
-    #                 "center is implemented, but vector "
-    #                 "%s component is defined at center "
-    #                 "(dims: %r)" % (axis_name, component.dims)
-    #             )
+        warnings.warn(
+            "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
+            "The same functionality will be available under the `xgcm.Grid` methods.",
+            category=DeprecationWarning,
+        )
 
-    #     x_axis_name, y_axis_name = list(vector)
-    #     # x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
+        # this is currently only tested for c-grid vectors defined on edges
+        # moving to cell centers. We need to detect if we got something else
+        to = kwargs.get("to", "center")
+        if to != "center":
+            raise NotImplementedError(
+                "Only vector interpolation to cell "
+                "center is implemented, but got "
+                "to=%r" % to
+            )
+        for axis_name, component in vector.items():
+            axis = self.axes[axis_name]
+            position, coord = axis._get_position_name(component)
+            if position == "center":
+                raise NotImplementedError(
+                    "Only vector interpolation to cell "
+                    "center is implemented, but vector "
+                    "%s component is defined at center "
+                    "(dims: %r)" % (axis_name, component.dims)
+                )
 
-    #     # apply for each component
-    #     x_component = function(
-    #         self,
-    #         vector[x_axis_name],
-    #         x_axis_name,
-    #         other_component={y_axis_name: vector[y_axis_name]},
-    #         **kwargs,
-    #     )
+        x_axis_name, y_axis_name = list(vector)
 
-    #     y_component = function(
-    #         self,
-    #         vector[y_axis_name],
-    #         y_axis_name,
-    #         other_component={x_axis_name: vector[x_axis_name]},
-    #         **kwargs,
-    #     )
+        # apply for each component
+        x_component = function(
+            {x_axis_name: vector[x_axis_name]},
+            x_axis_name,
+            other_component={y_axis_name: vector[y_axis_name]},
+            **kwargs,
+        )
 
-    #     return {x_axis_name: x_component, y_axis_name: y_component}
+        y_component = function(
+            {y_axis_name: vector[y_axis_name]},
+            y_axis_name,
+            other_component={x_axis_name: vector[x_axis_name]},
+            **kwargs,
+        )
+        return {x_axis_name: x_component, y_axis_name: y_component}
+
     @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
         """
@@ -2122,27 +2125,29 @@ class Grid:
             A dictionary with two entries. Keys are axis names, values
             are differenced vector components along each axis
         """
-        # the keys, should be axis names
-        assert len(vector) == 2
+        # # the keys, should be axis names
+        # assert len(vector) == 2
 
-        x_axis_name, y_axis_name = list(vector)
+        # x_axis_name, y_axis_name = list(vector)
 
-        # apply for each component
-        x_component = self.diff(
-            vector[x_axis_name],
-            x_axis_name,
-            other_component={y_axis_name: vector[y_axis_name]},
-            **kwargs,
-        )
+        # # apply for each component
+        # x_component = self.diff(
+        #     vector[x_axis_name],
+        #     x_axis_name,
+        #     other_component={y_axis_name: vector[y_axis_name]},
+        #     **kwargs,
+        # )
 
-        y_component = self.diff(
-            vector[y_axis_name],
-            y_axis_name,
-            other_component={x_axis_name: vector[x_axis_name]},
-            **kwargs,
-        )
+        # y_component = self.diff(
+        #     vector[y_axis_name],
+        #     y_axis_name,
+        #     other_component={x_axis_name: vector[x_axis_name]},
+        #     **kwargs,
+        # )
 
-        return {x_axis_name: x_component, y_axis_name: y_component}
+        # return {x_axis_name: x_component, y_axis_name: y_component}
+        # return self._apply_vector_function(Axis.diff, vector, **kwargs)
+        return self._apply_vector_function(self.diff, vector, **kwargs)
 
     @docstrings.dedent
     def interp_2d_vector(self, vector, **kwargs):
@@ -2166,27 +2171,29 @@ class Grid:
         """
         # ! I am implementing this here and remove _apply_vector_function, since these are going to get removed anywyas
 
-        # the keys, should be axis names
-        assert len(vector) == 2
+        # # the keys, should be axis names
+        # assert len(vector) == 2
 
-        x_axis_name, y_axis_name = list(vector)
+        # x_axis_name, y_axis_name = list(vector)
 
-        # apply for each component
-        x_component = self.interp(
-            vector[x_axis_name],
-            x_axis_name,
-            other_component={y_axis_name: vector[y_axis_name]},
-            **kwargs,
-        )
+        # # apply for each component
+        # x_component = self.interp(
+        #     vector[x_axis_name],
+        #     x_axis_name,
+        #     other_component={y_axis_name: vector[y_axis_name]},
+        #     **kwargs,
+        # )
 
-        y_component = self.interp(
-            vector[y_axis_name],
-            y_axis_name,
-            other_component={x_axis_name: vector[x_axis_name]},
-            **kwargs,
-        )
+        # y_component = self.interp(
+        #     vector[y_axis_name],
+        #     y_axis_name,
+        #     other_component={x_axis_name: vector[x_axis_name]},
+        #     **kwargs,
+        # )
 
-        return {x_axis_name: x_component, y_axis_name: y_component}
+        # return {x_axis_name: x_component, y_axis_name: y_component}
+        # return self._apply_vector_function(Axis.interp, vector, **kwargs)
+        return self._apply_vector_function(self.interp, vector, **kwargs)
 
     @docstrings.dedent
     def derivative(self, da, axis, **kwargs):

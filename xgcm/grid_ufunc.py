@@ -5,6 +5,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Literal,
     Mapping,
@@ -617,20 +618,30 @@ def apply_as_grid_ufunc(
         raise TypeError(
             "All data arguments must be of type DataArray or dict (for vector components"
         )
-    if other_component is None or (
-        len(args) == 1 and isinstance(other_component, dict)
-    ):
-        # this is necessary of the later zip call will rip apart the key/value
-        other_component = [other_component] * len(args)
 
-    if any(isinstance(a, dict) for a in args):
-        # if more than one input is provided check that we get the same number
-        # of other_component inputs as args
-        if not len(args) == len(other_component):
-            raise ValueError(
-                "When providing multiple input arguments, `other_component` needs to provide one element per input"
-            )
-        # TODO: Raise this error in tests
+    def _parse_and_check_other_component(
+        args: Union[xr.DataArray, Dict[str, xr.DataArray]],
+        other_component: Union[
+            None,
+            Dict[str, xr.DataArray],
+            Iterable[Union[None, Dict[str, xr.DataArray]]],
+        ],
+    ) -> Iterable[Union[None, Dict[str, xr.DataArray]]]:
+        if other_component is None or isinstance(other_component, dict):
+            # this is necessary of the later zip call will rip apart the key/value
+            other_component = [other_component] * len(args)
+
+        if any(isinstance(a, dict) for a in args):
+            # if more than one input is provided check that we get the same number
+            # of other_component inputs as args
+            if not len(args) == len(other_component):
+                raise ValueError(
+                    "When providing multiple input arguments, `other_component` needs to provide one dictionary per input"
+                )
+            # TODO: Raise this error in tests
+        return other_component
+
+    other_component = _parse_and_check_other_component(other_component)
 
     if axis is None:
         raise ValueError("Must provide an axis along which to apply the grid ufunc")
@@ -1014,13 +1025,13 @@ def _reattach_coords(results, grid, boundary_width, keep_coords):
                 )
             else:
                 raise
-        print("before keep_coords", res)
+
         if not keep_coords:
             # TODO I don't like the `keep_coords` argument in general and think it should be removed for clarity.
             # Drop any non-dimension coordinates on the output
             non_dim_coords = [coord for coord in res.coords if coord not in res.dims]
             res = res.drop_vars(non_dim_coords)
-        print("after keep_coords", res)
+
         results_with_coords.append(res)
 
     return results_with_coords

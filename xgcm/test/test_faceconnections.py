@@ -7,8 +7,7 @@ from xgcm.grid import Grid
 
 @pytest.fixture(scope="module")
 def ds():
-    # N = 25
-    N = 4
+    N = 25  # TODO: Reduce the size here. I think something like 4 or 5 is sufficient
     return xr.Dataset(
         {
             "data_c": (["face", "y", "x"], np.random.rand(2, N, N)),
@@ -267,31 +266,43 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
     # simplest scenario with one face connection
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
+    # switch input to something more easily detectable
+    u = ds.u * 0 + 30
+    v = ds.v * 0 - 2
+
     # interp u and v to cell center
     vector_center = grid.interp_2d_vector(
-        {"X": ds.u, "Y": ds.v}, to="center", boundary="fill"
+        {"X": u, "Y": v},
+        to="center",
+        boundary="fill",
+        # test
+        fill_value=100,
     )
     u_c_interp = vector_center["X"]
 
     vector_diff = grid.diff_2d_vector(
-        {"X": ds.u, "Y": ds.v}, to="center", boundary="fill"
+        {"X": u, "Y": v},
+        to="center",
+        boundary="fill",
+        # test
+        fill_value=100,
     )
     u_c_diff = vector_diff["X"]
 
     # first point should be normal
     np.testing.assert_allclose(
-        u_c_interp.data[0, 0, :], 0.5 * (ds.u.data[0, 0, :] + ds.u.data[0, 1, :])
+        u_c_interp.data[0, 0, :], 0.5 * (u.data[0, 0, :] + u.data[0, 1, :])
     )
     np.testing.assert_allclose(
-        u_c_diff.data[0, 0, :], ds.u.data[0, 1, :] - ds.u.data[0, 0, :]
+        u_c_diff.data[0, 0, :], u.data[0, 1, :] - u.data[0, 0, :]
     )
 
     # last point should be fancy
     np.testing.assert_allclose(
-        u_c_interp.data[0, -1, :], 0.5 * (ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0])
+        u_c_interp.data[0, -1, :], 0.5 * (u.data[0, -1, :] + v.data[1, ::-1, 0])
     )
     np.testing.assert_allclose(
-        u_c_diff.data[0, -1, :], -ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0]
+        u_c_diff.data[0, -1, :], -u.data[0, -1, :] + v.data[1, ::-1, 0]
     )
 
     # TODO: figure out tangent vectors
