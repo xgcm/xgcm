@@ -100,8 +100,12 @@ To give you an idea of how we might use grid ufuncs here is a table of possible 
 
 .. note::
 
-    Remember the axis names in the signature are dummy names - you could apply ``mean_depth`` along an axis not called
-    ``"depth"`` if you wish.
+    Remember the axis names in the signature are dummy names - in the example above you could apply ``mean_depth`` along
+    an axis not called ``"depth"`` if you wish.
+
+    The ``axis`` argument is the one which must correspond to an ``xgcm.Axis`` of the grid.
+    Therefore applying a grid ufunc with signature ``"(X:center)->()"`` or ``"(depth:center)->()"`` along ``axis='X'`` will
+    yield identical results in both cases.
 
 
 Defining New Grid Ufuncs
