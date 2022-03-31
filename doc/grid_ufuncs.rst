@@ -29,6 +29,7 @@ Grid ufuncs allow us to:
 - Avoid mistakes by stating that functions are only valid for data on specific grid positions,
 - Neatly promote numpy functions to grid-aware xarray functions,
 - Conveniently apply boundary conditions and grid topologies (see :ref:`Boundaries and Padding`),
+- Boost performance relative to chaining many `Grid.diff` or `Grid.interp` operations,
 - Immediately parallelize our operations with dask (see :ref:`Parallelizing with Dask`).
 
 .. _numpy generalized universal function: https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
