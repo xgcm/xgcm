@@ -29,7 +29,6 @@ if TYPE_CHECKING:
 
     from .grid import Grid
 
-
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
 #   - Specify xgcm.Axis name and "axis positions" instead of numpy axes as (ax_name:ax_pos)
@@ -42,6 +41,16 @@ _AXIS_NAME_POSITION_PAIR_LIST = (
 _ARGUMENT = rf"\({_AXIS_NAME_POSITION_PAIR_LIST}\)"
 _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
+
+
+def _maybe_unpack_vector_component(da):
+    if isinstance(da, dict):
+        da_component = da[
+            list(da.keys())[0]
+        ]  # we only allow len 1 dicts previously. Not sure if this is the most elegant way to do this
+    else:
+        da_component = da
+    return da_component
 
 
 def _parse_grid_ufunc_signature(
@@ -319,7 +328,7 @@ def as_grid_ufunc(
 
 def apply_as_grid_ufunc(
     func: Callable,
-    *args: xr.DataArray,
+    *args: Union[xr.DataArray, Dict[str, xr.DataArray]],
     axis: Sequence[Sequence[str]] = None,
     grid: "Grid" = None,
     signature: Union[str, Signature] = "",
@@ -329,6 +338,9 @@ def apply_as_grid_ufunc(
     keep_coords: bool = True,
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
+    other_component: Union[
+        None, Dict[str, xr.DataArray], Sequence[Dict[str, xr.DataArray]]
+    ] = None,
     **kwargs,
 ) -> List[Any]:
     """
@@ -346,7 +358,8 @@ def apply_as_grid_ufunc(
 
         Passed directly on to `xarray.apply_ufunc`.
     *args : xarray.DataArray
-        One or more xarray DataArray objects to apply the function to.
+        One or more xarray DataArray objects (for scalar fields) or dictonaries mapping the direction
+        to vector components to apply the function to.
     axis : Sequence[Sequence[str]], optional
         Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
         Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
@@ -390,6 +403,9 @@ def apply_as_grid_ufunc(
     map_overlap : bool, optional
         Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
         Default is False. If True, will need to be accompanied by dask='allowed'.
+    other_component : Union[None, Dict[str,xr.DataArray], Sequence[Dict[str,xr.DataArray]]], default: False
+        Matching vector component for input provided as dictionary. Needed for complex vector padding.
+        For multiple arguments, `other_components` needs to provide one element per input.
     **kwargs
         Keyword arguments are passed directly onto xarray.apply_ufunc.
         (As such then kwargs should not be xarray data objects, as they will not be subject to
@@ -412,8 +428,26 @@ def apply_as_grid_ufunc(
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
 
-    if any(not isinstance(arg, xr.DataArray) for arg in args):
-        raise TypeError("All data arguments must be of type DataArray")
+    # TODO: we need some more comprehensive tests that check proper padding with
+    # TODO: e.g. multiple vector components or mixed (tracer, vector components)
+    if not all(isinstance(a, xr.DataArray) or isinstance(a, dict) for a in args):
+        raise TypeError(
+            "All data arguments must be of type DataArray or dict (for vector components"
+        )
+    if other_component is None or (
+        len(args) == 1 and isinstance(other_component, dict)
+    ):
+        # this is necessary of the later zip call will rip apart the key/value
+        other_component = [other_component] * len(args)
+
+    if any(isinstance(a, dict) for a in args):
+        # if more than one input is provided check that we get the same number
+        # of other_component inputs as args
+        if not len(args) == len(other_component):
+            raise ValueError(
+                "When providing multiple input arguments, `other_component` needs to provide one element per input"
+            )
+        # TODO: Raise this error in tests
 
     if axis is None:
         raise ValueError("Must provide an axis along which to apply the grid ufunc")
@@ -447,6 +481,7 @@ def apply_as_grid_ufunc(
             except KeyError:
                 raise ValueError(f"Axis position ({n}:{p}) does not exist in grid")
 
+            arg = _maybe_unpack_vector_component(arg)
             if ax_pos not in arg.dims:
                 raise ValueError(
                     f"Mismatch between signature and input argument {i}: "
@@ -470,7 +505,9 @@ def apply_as_grid_ufunc(
 
     # TODO allow users to specify new output dtypes
     n_output_vars = len(sig.out_ax_names)
-    out_dtypes = [args[0].dtype] * n_output_vars  # assume uniformity of dtypes
+    out_dtypes = [
+        _maybe_unpack_vector_component(args[0]).dtype
+    ] * n_output_vars  # assume uniformity of dtypes
 
     # Pad arrays according to boundary condition information
     if boundary and not boundary_width:
@@ -491,8 +528,9 @@ def apply_as_grid_ufunc(
                 boundary_width=boundary_width_real_axes,
                 boundary=boundary,
                 fill_value=fill_value,
+                other_component=oc,
             )
-            for a in args
+            for a, oc in zip(args, other_component)
         ]
     else:
         # If the boundary_width kwarg was not specified assume that zero padding is required
@@ -561,7 +599,10 @@ def apply_as_grid_ufunc(
 
     # Restore any dimension coordinates associated with new output dims that are present in grid
     results_with_coords = _reattach_coords(
-        results, grid, out_core_dims, boundary_width, keep_coords
+        results,
+        grid,
+        boundary_width,
+        keep_coords,  # TODO: Do we still need all these inputs?
     )
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
@@ -767,20 +808,20 @@ def _identify_dummy_axes_with_real_axes(
     return dict(zip(unique_dummy_axes, unique_real_axes))
 
 
-def _reattach_coords(results, grid, out_core_dims, boundary_width, keep_coords):
+def _reattach_coords(results, grid, boundary_width, keep_coords):
     results_with_coords = []
-    for res, arg_out_core_dims in zip(results, out_core_dims):
+    for res in results:
 
-        # Only reconstruct coordinates that actually contain grid position info (i.e. not just integer values along a dim.)
-        # Therefore if input only had dimensions and no coordinates, the output should too.
-        new_core_dim_coords = {
-            dim: grid._ds.coords[dim]
-            for dim in arg_out_core_dims
-            if dim in grid._ds.coords and dim not in res.coords
+        # padding strips all coordinates (inlcuding dimension coordinates).
+        # Here we centrally restore them from the grid._ds.
+        all_matching_coords = {
+            coord: da_coord
+            for coord, da_coord in grid._ds.coords.items()
+            if all(dim in res.dims for dim in da_coord.dims)
         }
 
         try:
-            res = res.assign_coords(new_core_dim_coords)
+            res = res.assign_coords(all_matching_coords)
         except ValueError as err:
             if boundary_width and str(err).startswith("conflicting sizes"):
                 # TODO make this error more informative?
@@ -790,13 +831,13 @@ def _reattach_coords(results, grid, out_core_dims, boundary_width, keep_coords):
                 )
             else:
                 raise
-
+        print("before keep_coords", res)
         if not keep_coords:
             # TODO I don't like the `keep_coords` argument in general and think it should be removed for clarity.
             # Drop any non-dimension coordinates on the output
             non_dim_coords = [coord for coord in res.coords if coord not in res.dims]
             res = res.drop_vars(non_dim_coords)
-
+        print("after keep_coords", res)
         results_with_coords.append(res)
 
     return results_with_coords

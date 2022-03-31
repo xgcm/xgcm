@@ -16,6 +16,7 @@ from .grid_ufunc import (
     GridUFunc,
     Signature,
     _has_chunked_core_dims,
+    _maybe_unpack_vector_component,
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
@@ -27,7 +28,18 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 # Only need this until python 3.8
 try:
@@ -289,7 +301,6 @@ class Axis:
         da_i : xarray.DataArray
             The differenced data
         """
-
         position_from, dim = self._get_position_name(da)
         if to is None:
             to = self._default_shifts[position_from]
@@ -618,7 +629,6 @@ class Axis:
             The interpolated data
 
         """
-
         return self._neighbor_binary_func(
             da,
             raw_interp_function,
@@ -1382,6 +1392,7 @@ class Grid:
                 self._metrics[metric_axes].append(metric_var)
 
     def _get_dims_from_axis(self, da, axis):
+        da = _maybe_unpack_vector_component(da)
         dim = []
         axis = _maybe_promote_str_to_list(axis)
         for ax in axis:
@@ -1619,13 +1630,16 @@ class Grid:
     def _1d_grid_ufunc_dispatch(
         self,
         funcname,
-        da,
+        da: Union[
+            xr.DataArray, Dict[str, xr.DataArray]
+        ],  # ? @Tom: could this accept a list of dicts?
         axis,
         to=None,
         keep_coords=False,
         metric_weighted: Union[
             str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
         ] = None,
+        other_component: Optional[Dict[str, xr.DataArray]] = None,  # ? Same as above.
         **kwargs,
     ):
         """
@@ -1645,6 +1659,13 @@ class Grid:
 
         if isinstance(axis, str):
             axis = [axis]
+
+        # Check validity of vector
+        if isinstance(da, dict):
+            if len(da) != 1:
+                raise ValueError(
+                    f"When providing vector components as input, the provided dictionary can only have one key/value pair. Found {len(dict)}"
+                )
 
         # convert input arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)
@@ -1698,12 +1719,18 @@ class Grid:
         signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
 
         # if any dims are chunked then we need dask
-        if isinstance(da.data, Dask_Array):
+        da_dask_test = _maybe_unpack_vector_component(da)
+
+        if isinstance(da_dask_test.data, Dask_Array):
             dask = "parallelized"
         else:
             dask = "forbidden"
 
-        array = da
+        if isinstance(da, dict):
+            array = {k: v.copy(deep=False) for k, v in da.items()}
+        else:
+            array = da.copy(deep=False)
+
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
         # TODO only actually need to call apply_ufunc once for those axes
@@ -1720,7 +1747,8 @@ class Grid:
 
             # if chunked along core dim then we need map_overlap
             core_dim = self._get_dims_from_axis(da, ax_name)
-            if _has_chunked_core_dims(array, core_dim):
+            chunk_test_array = _maybe_unpack_vector_component(array)
+            if _has_chunked_core_dims(chunk_test_array, core_dim):
                 map_overlap = True
                 dask = "allowed"
             else:
@@ -1733,6 +1761,7 @@ class Grid:
                 keep_coords=keep_coords,
                 dask=dask,
                 map_overlap=map_overlap,
+                other_component=other_component,
                 **remaining_kwargs,
             )
 
@@ -1749,6 +1778,8 @@ class Grid:
         Created from data, list of input axes, and list of target axis positions.
         One separate signature is created for each axis the 1D ufunc is going to be applied over.
         """
+        da = _maybe_unpack_vector_component(da)
+
         signatures = []
         for ax_name in axis:
             ax = self.axes[ax_name]
@@ -1766,6 +1797,7 @@ class Grid:
 
     def _transpose_to_keep_same_dim_order(self, da, result, axis):
         """Reorder DataArray dimensions to match the original input."""
+        da = _maybe_unpack_vector_component(da)
 
         initial_dims = da.dims
 
@@ -2018,45 +2050,88 @@ class Grid:
         """
         return self._grid_func("cumsum", da, axis, **kwargs)
 
-    def _apply_vector_function(self, function, vector, **kwargs):
+    # def _apply_vector_function(self, function, vector, **kwargs):
+    #     # the keys, should be axis names
+    #     assert len(vector) == 2
+
+    #     # this is currently only tested for c-grid vectors defined on edges
+    #     # moving to cell centers. We need to detect if we got something else
+    #     to = kwargs.get("to", "center")
+    #     if to != "center":
+    #         raise NotImplementedError(
+    #             "Only vector interpolation to cell "
+    #             "center is implemented, but got "
+    #             "to=%r" % to
+    #         )
+    #     for axis_name, component in vector.items():
+    #         axis = self.axes[axis_name]
+    #         position, coord = axis._get_position_name(component)
+    #         if position == "center":
+    #             raise NotImplementedError(
+    #                 "Only vector interpolation to cell "
+    #                 "center is implemented, but vector "
+    #                 "%s component is defined at center "
+    #                 "(dims: %r)" % (axis_name, component.dims)
+    #             )
+
+    #     x_axis_name, y_axis_name = list(vector)
+    #     # x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
+
+    #     # apply for each component
+    #     x_component = function(
+    #         self,
+    #         vector[x_axis_name],
+    #         x_axis_name,
+    #         other_component={y_axis_name: vector[y_axis_name]},
+    #         **kwargs,
+    #     )
+
+    #     y_component = function(
+    #         self,
+    #         vector[y_axis_name],
+    #         y_axis_name,
+    #         other_component={x_axis_name: vector[x_axis_name]},
+    #         **kwargs,
+    #     )
+
+    #     return {x_axis_name: x_component, y_axis_name: y_component}
+    @docstrings.dedent
+    def diff_2d_vector(self, vector, **kwargs):
+        """
+        Difference a 2D vector to the intermediate grid point. This method is
+        only necessary for complex grid topologies.
+
+        Parameters
+        ----------
+        vector : dict
+            A dictionary with two entries. Keys are axis names, values are
+            vector components along each axis.
+
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        vector_diff : dict
+            A dictionary with two entries. Keys are axis names, values
+            are differenced vector components along each axis
+        """
         # the keys, should be axis names
         assert len(vector) == 2
 
-        # this is currently only tested for c-grid vectors defined on edges
-        # moving to cell centers. We need to detect if we got something else
-        to = kwargs.get("to", "center")
-        if to != "center":
-            raise NotImplementedError(
-                "Only vector interpolation to cell "
-                "center is implemented, but got "
-                "to=%r" % to
-            )
-        for axis_name, component in vector.items():
-            axis = self.axes[axis_name]
-            position, coord = axis._get_position_name(component)
-            if position == "center":
-                raise NotImplementedError(
-                    "Only vector interpolation to cell "
-                    "center is implemented, but vector "
-                    "%s component is defined at center "
-                    "(dims: %r)" % (axis_name, component.dims)
-                )
-
         x_axis_name, y_axis_name = list(vector)
-        x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
 
         # apply for each component
-        x_component = function(
-            x_axis,
+        x_component = self.diff(
             vector[x_axis_name],
-            vector_partner={y_axis_name: vector[y_axis_name]},
+            x_axis_name,
+            other_component={y_axis_name: vector[y_axis_name]},
             **kwargs,
         )
 
-        y_component = function(
-            y_axis,
+        y_component = self.diff(
             vector[y_axis_name],
-            vector_partner={x_axis_name: vector[x_axis_name]},
+            y_axis_name,
+            other_component={x_axis_name: vector[x_axis_name]},
             **kwargs,
         )
 
@@ -2082,8 +2157,29 @@ class Grid:
             A dictionary with two entries. Keys are axis names, values
             are interpolated vector components along each axis
         """
+        # ! I am implementing this here and remove _apply_vector_function, since these are going to get removed anywyas
 
-        return self._apply_vector_function(Axis.interp, vector, **kwargs)
+        # the keys, should be axis names
+        assert len(vector) == 2
+
+        x_axis_name, y_axis_name = list(vector)
+
+        # apply for each component
+        x_component = self.interp(
+            vector[x_axis_name],
+            x_axis_name,
+            other_component={y_axis_name: vector[y_axis_name]},
+            **kwargs,
+        )
+
+        y_component = self.interp(
+            vector[y_axis_name],
+            y_axis_name,
+            other_component={x_axis_name: vector[x_axis_name]},
+            **kwargs,
+        )
+
+        return {x_axis_name: x_component, y_axis_name: y_component}
 
     @docstrings.dedent
     def derivative(self, da, axis, **kwargs):
@@ -2266,29 +2362,6 @@ class Grid:
 
         ax = self.axes[axis]
         return ax.transform(da, target, **kwargs)
-
-    @docstrings.dedent
-    def diff_2d_vector(self, vector, **kwargs):
-        """
-        Difference a 2D vector to the intermediate grid point. This method is
-        only necessary for complex grid topologies.
-
-        Parameters
-        ----------
-        vector : dict
-            A dictionary with two entries. Keys are axis names, values are
-            vector components along each axis.
-
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        vector_diff : dict
-            A dictionary with two entries. Keys are axis names, values
-            are differenced vector components along each axis
-        """
-
-        return self._apply_vector_function(Axis.diff, vector, **kwargs)
 
 
 def _select_grid_ufunc(funcname, signature: Signature, module, **kwargs):

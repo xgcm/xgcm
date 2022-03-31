@@ -56,6 +56,16 @@ def _get_all_connection_axes(connections, facedim):
     return list(set(all_axes))
 
 
+def _strip_all_coords(obj: xr.DataArray):
+    if isinstance(obj, dict):
+        return {k: _strip_all_coords(v) for k, v in obj.items()}
+    else:
+        obj_stripped = obj.reset_coords(drop=True).reset_index(
+            [di for di in obj.dims if di in obj.coords], drop=True
+        )
+        return obj_stripped
+
+
 def _pad_face_connections(
     da, grid, padding_width, padding, other_component, fill_value
 ):
@@ -75,15 +85,7 @@ def _pad_face_connections(
 
     if isvector:
         assert other_component is not None  # TODO raise a better error here
-        vectorpartneraxis, da_partner = other_component.popitem()
-
-    # # Can I get rid of all the mess with the coordinates by stripping them here?
-    # # The output of the padding will not fit any coordinates anymore anyways and
-    # # after the ufunc is applied they will all be back on place. So lets make our
-    # # lives easier here.
-    # da = da.reset_coords(drop=True).reset_index(
-    #     [di for di in da.dims if di in da.coords], drop=True
-    # )
+        _, da_partner = other_component.popitem()
 
     # Detect all the axes we have to deal with during padding
     # all the axes defined in the connections + the axes of the padding width should give all axes we need to iterate over
@@ -243,6 +245,11 @@ def _pad_face_connections(
 
                         source_slice = source_slice.squeeze()
 
+                        # clean out everything on source_slice coordinates
+                        source_slice = source_slice.drop_vars(
+                            [co for co in source_slice.coords]
+                        )
+
                         # Here I am trying to emulate the way xarray.pad deals with dimension coordinates
                         # I will set them to nan in any case. This might change later.
                         if target_dim in target_slice.coords:
@@ -251,9 +258,19 @@ def _pad_face_connections(
                             ):  # in case this a 1 element padding slice
                                 source_slice = source_slice.expand_dims([target_dim])
 
-                            source_slice[target_dim] = xr.full_like(
-                                source_slice[target_dim], np.nan
+                            source_slice = source_slice.assign_coords(
+                                {
+                                    target_dim: np.full_like(
+                                        source_slice[target_dim].data,
+                                        np.nan,
+                                        dtype=float,  # Needed to properly convert int indicies to nan (super weird)
+                                    )
+                                }
                             )
+
+                        # # FUCK THIS: FOR NOW BRUTE FORCE THIS STUFF
+                        # target_slice = _strip_all_coords(target_slice)
+                        # source_slice = _strip_all_coords(source_slice)
 
                         # assemble the padded array
                         if is_right:
@@ -266,6 +283,7 @@ def _pad_face_connections(
                             dim=target_dim,
                             coords="minimal",
                             compat="override",
+                            join="override",
                         )
                         # TODO: Can we do this with an assignment in xarray? Maybe not important yet.
         faces.append(target_da)
@@ -319,7 +337,7 @@ def _pad_basic(da, grid, padding_width, padding, fill_value):
                 axis.boundary
             )  # TODO: rename the axis property, or are we not keeping this on the axis level?
 
-    da_padded = da
+    da_padded = da.copy()
 
     for ax, widths in padding_width.items():
         axis = grid.axes[ax]
@@ -383,6 +401,13 @@ def pad(
     # Maybe move this check upstream, so that either none or 0 everywhere does not even call pad
     if not boundary_width:
         raise ValueError("Must provide the widths of the boundaries")
+
+    # The problem of what values to pad coordinates with is hard to solve.
+    # Instead of attempting that we will strip all coordinates (including dimension coordinates)
+    # before dispatching to the utility pad functions.
+    # This ensures that any output from this function is stripped.
+    # TODO: The coordinate values need to be reattached as part of the `apply_as_grid_ufunc` logic
+    da = _strip_all_coords(da)
 
     # If any axis has connections we need to use the complex padding
     if any([any(grid.axes[ax]._connections.keys()) for ax in grid.axes]):

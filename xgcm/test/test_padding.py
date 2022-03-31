@@ -4,9 +4,9 @@ import pytest
 import xarray as xr
 
 from xgcm import Grid
-from xgcm.padding import _maybe_swap_dimension_names, pad
+from xgcm.padding import _maybe_swap_dimension_names, _strip_all_coords, pad
 from xgcm.test.datasets import datasets_grid_metric
-from xgcm.test.test_exchange import ds as ds_faces  # noqa: F401
+from xgcm.test.test_faceconnections import ds as ds_faces  # noqa: F401
 
 
 @pytest.mark.parametrize(
@@ -34,6 +34,10 @@ class TestPadding:
             expected = expected.pad(
                 {dim: widths}, "constant", constant_values=fill_value
             )
+
+        # we intentionally strip all coords from padded arrays
+        expected = _strip_all_coords(expected)
+
         result = pad(
             data,
             grid,
@@ -55,6 +59,10 @@ class TestPadding:
                 0
             ]  # ? not entirely sure why this is a list
             expected = expected.pad({dim: widths}, "edge")
+
+        # we intentionally strip all coords from padded arrays
+        expected = _strip_all_coords(expected)
+
         result = pad(
             data,
             grid,
@@ -75,6 +83,10 @@ class TestPadding:
                 0
             ]  # ? not entirely sure why this is a list
             expected = expected.pad({dim: widths}, "wrap")
+
+        # we intentionally strip all coords from padded arrays
+        expected = _strip_all_coords(expected)
+
         result = pad(
             data,
             grid,
@@ -103,6 +115,10 @@ class TestPadding:
             expected = expected.pad(
                 {dim: widths}, method_mapping[axis_padding_mapping[ax]]
             )
+
+        # we intentionally strip all coords from padded arrays
+        expected = _strip_all_coords(expected)
+
         result = pad(
             data,
             grid,
@@ -130,6 +146,10 @@ class TestPaddingDefaults:
         expected = data.pad(
             {"xt": (0, 1)}, "constant", constant_values=default_fill_value
         )
+
+        # we intentionally strip all coords from padded arrays
+        expected = _strip_all_coords(expected)
+
         result = pad(data, grid, boundary="fill", boundary_width={"X": (0, 1)})
         print(result)
         print(expected)
@@ -142,6 +162,10 @@ class TestPaddingDefaults:
         data = ds.tracer
 
         expected = data.pad({"xt": (0, 1)}, "wrap")
+
+        # we intentionally strip all coords from padded arrays
+        expected = _strip_all_coords(expected)
+
         result = pad(data, grid, boundary=None, boundary_width={"X": (0, 1)})
         print(result)
         print(expected)
@@ -1059,8 +1083,12 @@ class TestPaddingFaceConnection:
         xr.testing.assert_allclose(u_result, u_expected)
         xr.testing.assert_allclose(v_result, v_expected)
 
+    @pytest.mark.xfail(
+        reason="Figuring out how to preserve the indicies with padding is super hard."
+    )
+    @pytest.mark.parametrize("boundary", ["constant", "wrap"])
     def test_vector_face_connections_coord_padding(
-        self, boundary_width, ds_faces, fill_value
+        self, boundary_width, ds_faces, fill_value, boundary
     ):
         # make sure that the complex padding acts like xarray.pad when it comes to dimension coordinates
         face_connections = {
@@ -1088,7 +1116,7 @@ class TestPaddingFaceConnection:
             {"xl": boundary_width["X"], "y": boundary_width["Y"]},
             "constant",
             constant_values=fill_value,
-        )
+        )  # TODO: add constant coord padding here once implemented in xarray.
         for di in u.dims:
             assert (di in padded_simple.coords and di in padded_complex.coords) or (
                 di not in padded_simple.coords and di not in padded_complex.coords

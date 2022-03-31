@@ -60,6 +60,14 @@ def ds_face_connections_x_to_y():
     }
 
 
+# TODO: These should be reused in padding tests
+@pytest.fixture(scope="module")
+def ds_face_connections_x_to_y_reverse():
+    return {
+        "face": {0: {"X": (None, (1, "Y", True))}, 1: {"Y": ((0, "X", True), None)}}
+    }
+
+
 @pytest.fixture(scope="module")
 def cs():
     # cubed-sphere
@@ -134,6 +142,9 @@ def test_create_periodic_grid(ds):
         assert connect_right[2] is False
 
 
+@pytest.mark.xfail(
+    reason="Test is too low level. This functionality has been replaced by grid_ufunc internals"
+)
 def test_get_periodic_grid_edge(ds):
     ds = ds.isel(face=0)
     grid = Grid(ds, periodic=True)
@@ -191,12 +202,16 @@ def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     np.testing.assert_allclose(interp_x[0, :, 0], 0.5 * (ds.data_c[0, :, 0] + 0.0))
 
 
-# @pytest.mark.xfail(reason="connected grids not implemented for grid ufunc refactor yet")
+@pytest.mark.xfail(reason="xarray padding handling of coordinates")
 def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # one face connection, rotated
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
     diff_y = grid.diff(ds.data_c, "Y", boundary="fill")
+    # ! this will only apply `fill` to the Y axis, but for face
+    # ! connections across axes we need to currently pad along the other dimension too.
+    # ! This causes an issue with periodic (aka wrap padding) and the coordinates in xarray
+    # ! (see https://github.com/pydata/xarray/issues/6425)
     interp_y = grid.interp(ds.data_c, "Y", boundary="fill")
 
     # make sure the face connection got applied correctly
@@ -213,6 +228,39 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     )
 
     # TODO: checking all the other boundaries
+
+
+# TODO: Relaease the periodic test here once we unified the API with padding.
+@pytest.mark.parametrize(
+    "boundary", [pytest.param("periodic", marks=pytest.mark.xfail), "fill"]
+)
+def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
+    # one face connection, rotated
+    grid = Grid(
+        ds,
+        face_connections=ds_face_connections_x_to_y,
+        boundary=boundary,
+        fill_value=1,
+        periodic=False,
+    )
+    # TODO: Remove the periodic once that is deprecated.
+    # ! Set boundary on grid, so it is applied to all axes.
+    # TODO: modify the non velocity tests too (after release)
+
+    # modify the values of the dataset, so we know what to expect from the output
+    # TODO: Maybe change this in the dataset definition?
+    u_modifier = xr.DataArray([-2, -1], dims="face")
+    v_modifier = xr.DataArray([1, 1], dims="face")
+    u = ds.u * 0 + u_modifier
+    v = ds.v * 0 + v_modifier
+
+    # no need to check for diff vs interp. They all go through the same dispatch
+    # v is the interesting variable here because it involves a sign change for this
+    # connection (see https://github.com/xgcm/xgcm/issues/410#issue-1098348557)
+    v_out = grid.interp({"Y": v}, "X", other_component={"X": u})
+    # the test case is set up in a way that all interpolated values for u should be 1
+    # if the face connection is done properly
+    np.testing.assert_allclose(v_out.data, 1)
 
 
 def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
@@ -257,6 +305,7 @@ def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
     _ = Grid(cs, face_connections=cubed_sphere_connections)
 
 
+@pytest.mark.xfail(reason="xarray padding handling of coordinates")
 def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
     grid = Grid(cs, face_connections=cubed_sphere_connections)
     face, _ = xr.broadcast(cs.face, cs.data_c)

@@ -771,6 +771,8 @@ def test_invalid_fill_value_error():
         "cumsum",
         "cumint",
         "derivative",
+        # TODO: we can get rid of many of these after the release. With the grid_ufunc logic many of these go through the same codepath
+        # e.g. diff/interp/min/max all are the same, so we can probably reduce this to diff, cumsum, integrate, derivative, cumint
     ],
 )
 @pytest.mark.parametrize("gridtype", ["B", "C"])
@@ -783,13 +785,22 @@ def test_keep_coords(funcname, gridtype):
         result = func(ds.tracer, axis_name)
         base_coords = list(result.dims)
         augmented_coords = [
-            c for c in ds.tracer.coords if set(ds[c].dims).issubset(result.dims)
+            c
+            for c in ds.coords
+            if set(ds[c].dims).issubset(result.dims) and c not in result.dims
         ]
+
+        print(result)
+        print(list())
+        print("base", base_coords)
+        print("add", augmented_coords)
+
         if funcname in ["integrate", "average"]:
             assert set(result.coords) == set(base_coords + augmented_coords)
         else:
             assert set(result.coords) == set(base_coords)
 
+        # TODO: why is the behavior different for integrate and average?
         if funcname not in ["integrate", "average"]:
             result = func(ds.tracer, axis_name, keep_coords=False)
             assert set(result.coords) == set(base_coords)
