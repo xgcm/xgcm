@@ -14,7 +14,7 @@ dependencies:
   - matplotlib
   - sphinx_rtd_theme
   - ipykernel
-  - python-graphviz
+#  - python-graphviz
   - pip:
     - docrep<=0.2.7
     - nbsphinx
