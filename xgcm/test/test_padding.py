@@ -151,8 +151,6 @@ class TestPaddingDefaults:
         expected = _strip_all_coords(expected)
 
         result = pad(data, grid, boundary="fill", boundary_width={"X": (0, 1)})
-        print(result)
-        print(expected)
         xr.testing.assert_allclose(expected, result)
 
     def test_padding_None(self):
@@ -167,8 +165,6 @@ class TestPaddingDefaults:
         expected = _strip_all_coords(expected)
 
         result = pad(data, grid, boundary=None, boundary_width={"X": (0, 1)})
-        print(result)
-        print(expected)
         xr.testing.assert_allclose(expected, result)
 
 
@@ -634,7 +630,6 @@ class TestPaddingFaceConnection:
             boundary="fill",
             fill_value=fill_value,
         )
-        print(data)
         xr.testing.assert_allclose(result, expected)
 
     # TODO: Are there certain grid posisitions for u/v that need to be excluded?

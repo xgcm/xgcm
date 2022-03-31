@@ -641,7 +641,7 @@ def apply_as_grid_ufunc(
             # TODO: Raise this error in tests
         return other_component
 
-    other_component = _parse_and_check_other_component(other_component)
+    other_component = _parse_and_check_other_component(args, other_component)
 
     if axis is None:
         raise ValueError("Must provide an axis along which to apply the grid ufunc")

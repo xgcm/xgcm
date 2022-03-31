@@ -800,11 +800,6 @@ def test_keep_coords(funcname, gridtype):
             if set(ds[c].dims).issubset(result.dims) and c not in result.dims
         ]
 
-        print(result)
-        print(list())
-        print("base", base_coords)
-        print("add", augmented_coords)
-
         if funcname in ["integrate", "average"]:
             assert set(result.coords) == set(base_coords + augmented_coords)
         else:
