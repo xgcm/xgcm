@@ -355,8 +355,11 @@ and then override it at function call time if we prefer.
 Metrics
 ~~~~~~~
 
-- Specifying metrics
-- An example
+.. note::
+
+    Supplying metrics directly to grid ufuncs is not yet implemented, but will be soon!
+    To work with metrics outside of grid ufuncs see the documentation page on metrics.
+
 
 .. _Parallelizing with Dask:
 
