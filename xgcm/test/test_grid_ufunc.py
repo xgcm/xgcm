@@ -1,4 +1,5 @@
 import re
+from typing import Annotated, Tuple
 
 import dask.array  # type: ignore
 import numpy as np
@@ -9,16 +10,16 @@ from xarray.testing import assert_equal
 from xgcm.grid import Grid, _select_grid_ufunc
 from xgcm.grid_ufunc import (
     GridUFunc,
-    Signature,
-    _parse_grid_ufunc_signature,
+    _GridUFuncSignature,
+    _parse_signature_from_string,
     apply_as_grid_ufunc,
     as_grid_ufunc,
 )
 
 
-class TestParseGridUfuncSignature:
+class TestParseSignatureFromString:
     @pytest.mark.parametrize(
-        "signature, exp_in_ax_names, exp_out_ax_names, exp_in_ax_pos, exp_out_ax_pos",
+        "sig_str, exp_in_ax_names, exp_in_ax_pos, exp_out_ax_names, exp_out_ax_pos",
         [
             ("()->()", [()], [()], [()], [()]),
             ("(X:center)->()", [("X",)], [()], [("center",)], [()]),
@@ -51,18 +52,18 @@ class TestParseGridUfuncSignature:
     )
     def test_parse_valid_signatures(
         self,
-        signature,
+        sig_str,
         exp_in_ax_names,
         exp_out_ax_names,
         exp_in_ax_pos,
         exp_out_ax_pos,
     ):
-        in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_grid_ufunc_signature(
-            signature
+        in_ax_names, out_ax_names, in_ax_pos, out_ax_pos = _parse_signature_from_string(
+            sig_str
         )
         assert in_ax_names == exp_in_ax_names
-        assert out_ax_names == exp_out_ax_names
         assert in_ax_pos == exp_in_ax_pos
+        assert out_ax_names == exp_out_ax_names
         assert out_ax_pos == exp_out_ax_pos
 
     @pytest.mark.parametrize(
@@ -78,7 +79,140 @@ class TestParseGridUfuncSignature:
     )
     def test_invalid_signatures(self, signature):
         with pytest.raises(ValueError):
-            _parse_grid_ufunc_signature(signature)
+            _parse_signature_from_string(signature)
+
+    @pytest.mark.parametrize(
+        "sig_str",
+        [
+            "()->()",
+            "(X:center)->()",
+            "()->(X:left)",
+            "(X:center)->(X:left)",
+            "(X:left)->(Y:center)",
+            "(X:left)->(Y:center)",
+            "(X:left),(X:right)->(Y:center)",
+            "(X:center)->(Y:inner),(Y:outer)",
+            "(X:center,Y:center)->(Z:center)",
+        ],
+    )
+    def test_roundtrip_from_string(self, sig_str):
+        """Checks that the __str__ method of the signature class works"""
+        sig = _GridUFuncSignature.from_string(sig_str)
+        assert str(sig) == sig_str
+
+
+class TestParseSignatureFromTypeHints:
+    def test_no_args_to_annotate(self):
+        with pytest.raises(ValueError, match="Must specify axis positions"):
+
+            @as_grid_ufunc()
+            def ufunc():
+                ...
+
+    # TODO test hints without annotations
+    # TODO test hints with annotations that don't conform to Xgcm
+
+    def test_annotated_args(self):
+        @as_grid_ufunc()
+        def ufunc(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:center"]:
+            ...
+
+        assert str(ufunc.signature) == "(X:center)->(X:center)"
+
+        @as_grid_ufunc()
+        def ufunc(
+            a: Annotated[np.ndarray, "X:center,Y:center"]
+        ) -> Annotated[np.ndarray, "X:center"]:
+            ...
+
+        assert str(ufunc.signature) == "(X:center,Y:center)->(X:center)"
+
+        @as_grid_ufunc()
+        def ufunc(
+            a: Annotated[np.ndarray, "X:left"],
+            b: Annotated[np.ndarray, "Y:right"],
+        ) -> Annotated[np.ndarray, "X:center"]:
+            ...
+
+        assert str(ufunc.signature) == "(X:left),(Y:right)->(X:center)"
+
+        @as_grid_ufunc()
+        def ufunc(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:left,Y:right"]:
+            ...
+
+        assert str(ufunc.signature) == "(X:center)->(X:left,Y:right)"
+
+        @as_grid_ufunc()
+        def ufunc(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Tuple[Annotated[np.ndarray, "X:left"], Annotated[np.ndarray, "Y:right"]]:
+            ...
+
+        assert str(ufunc.signature) == "(X:center)->(X:left),(Y:right)"
+
+    @pytest.mark.xfail(reason="signature regex will assume nonsense==no inputs")
+    def test_invalid_arg_annotation(self):
+        # TODO how to get it to realise this is wrong?
+
+        with pytest.raises(ValueError, match="Not a valid grid ufunc signature"):
+
+            @as_grid_ufunc()
+            def ufunc(
+                a: Annotated[np.ndarray, "nonsense"]  # type: ignore
+            ) -> Annotated[np.ndarray, "X:center"]:
+                ...
+
+        with pytest.raises(ValueError, match="Not a valid grid ufunc signature"):
+
+            @as_grid_ufunc()
+            def ufunc(
+                a: Annotated[np.ndarray, "X:Mars"]
+            ) -> Annotated[np.ndarray, "X:center"]:
+                ...
+
+    @pytest.mark.xfail(reason="signature regex will assume nonsense==no inputs")
+    def test_invalid_return_arg_annotation(self):
+        # TODO how to get it to realise this is wrong?
+
+        with pytest.raises(ValueError, match="Not a valid grid ufunc signature"):
+
+            @as_grid_ufunc()
+            def ufunc(
+                a: Annotated[np.ndarray, "X:center"]
+            ) -> Annotated[np.ndarray, "X:Venus"]:
+                ...
+
+    def test_both_sig_kwarg_and_hints_given(self):
+        with pytest.raises(
+            ValueError, match="only one of either type hints or signature kwarg"
+        ):
+
+            @as_grid_ufunc(signature="(X:center)->(X:left)")
+            def ufunc(
+                a: Annotated[np.ndarray, "X:center"]
+            ) -> Annotated[np.ndarray, "X:left"]:
+                ...
+
+    def test_type_hint_as_numpy_ndarray(self):
+
+        # This should raise a mypy error, which is then ignored
+        @as_grid_ufunc()
+        def ufunc1(a: Annotated[str, "X:center"]) -> Annotated[np.ndarray, "X:center"]:
+            # np.ndarray has a .strides method but str doesn't (and nor does xr.DataArray)
+            print(a.strides)  # type: ignore
+            return a  # type: ignore
+
+        # This should pass mypy without raising any errors
+        @as_grid_ufunc()
+        def ufunc3(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:center"]:
+            print(a.strides)
+            return a
 
 
 def create_1d_test_grid_ds(ax_name, length):
@@ -166,8 +300,10 @@ class TestGridUFuncNoPadding:
     def test_stores_ufunc_kwarg_info(self):
         signature = "(X:center)->(X:left)"
 
-        @as_grid_ufunc(signature)
-        def diff_center_to_left(a):
+        @as_grid_ufunc()
+        def diff_center_to_left(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1)
 
         assert isinstance(diff_center_to_left, GridUFunc)
@@ -175,7 +311,7 @@ class TestGridUFuncNoPadding:
 
         with pytest.raises(TypeError, match="Unsupported keyword argument"):
 
-            @as_grid_ufunc(signature, junk="useless")
+            @as_grid_ufunc(junk="useless")
             def diff_center_to_left(a):
                 return a - np.roll(a, shift=-1)
 
@@ -186,12 +322,17 @@ class TestGridUFuncNoPadding:
         grid._ds.drop_vars("depth_o")
         da = np.sin(grid._ds.depth_g * 2 * np.pi / 9)
 
-        with pytest.raises(ValueError, match=re.escape("(depth:outer) does not exist")):
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Axis:positions pair depth:outer does not exist"),
+        ):
+            da: Annotated[np.ndarray, "X:outer"]
             apply_as_grid_ufunc(
                 lambda x: x, da, axis=[("depth",)], grid=grid, signature="(X:outer)->()"
             )
 
         with pytest.raises(ValueError, match="coordinate depth_c does not appear"):
+            da: Annotated[np.ndarray, "X:center"]
             apply_as_grid_ufunc(
                 lambda x: x,
                 da,
@@ -230,8 +371,10 @@ class TestGridUFuncNoPadding:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:left)")
-        def diff_center_to_left(a):
+        @as_grid_ufunc()
+        def diff_center_to_left(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1)
 
         result = diff_center_to_left(grid, da, axis=[("depth",)])
@@ -272,8 +415,10 @@ class TestGridUFuncNoPadding:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:inner)", dask="parallelized")
-        def interp_center_to_inner(a):
+        @as_grid_ufunc(dask="parallelized")
+        def interp_center_to_inner(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:inner"]:
             return 0.5 * (a[:-1] + a[1:])
 
         result = interp_center_to_inner(grid, da, axis=[("depth",)]).compute()
@@ -319,8 +464,10 @@ class TestGridUFuncNoPadding:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:left)", dask="allowed")
-        def diff_overlap(a):
+        @as_grid_ufunc(dask="allowed")
+        def diff_overlap(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:left"]:
             return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
         result = diff_overlap(
@@ -356,8 +503,10 @@ class TestGridUFuncNoPadding:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:center)->(X:left)")
-        def diff_center_to_left(a):
+        @as_grid_ufunc()
+        def diff_center_to_left(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1, axis=-1)
 
         result = diff_center_to_left(grid, da, axis=[("lon",)])
@@ -397,8 +546,10 @@ class TestGridUFuncNoPadding:
         assert_equal(result, expected)
 
         # Test decorator
-        @as_grid_ufunc("(X:left),(X:right)->()")
-        def inner_product_left_right(a, b):
+        @as_grid_ufunc()
+        def inner_product_left_right(
+            a: Annotated[np.ndarray, "X:left"], b: Annotated[np.ndarray, "X:right"]
+        ):
             return np.inner(a, b)
 
         result = inner_product_left_right(grid, a, b, axis=[("depth",), ("depth",)])
@@ -443,8 +594,13 @@ class TestGridUFuncNoPadding:
         assert_equal(v, expected_v)
 
         # Test decorator
-        @as_grid_ufunc("(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)")
-        def grad_to_inner(a):
+        @as_grid_ufunc()
+        def grad_to_inner(
+            a: Annotated[np.ndarray, "X:center,Y:center"]
+        ) -> Tuple[
+            Annotated[np.ndarray, "X:inner,Y:center"],
+            Annotated[np.ndarray, "X:center,Y:inner"],
+        ]:
             return diff_center_to_inner(a, axis=0), diff_center_to_inner(a, axis=1)
 
         u, v = grad_to_inner(grid, a, axis=[("lon", "lat")])
@@ -665,12 +821,13 @@ class TestDaskOverlap:
 
         # Test decorator
         @as_grid_ufunc(
-            "(X:center)->(X:left)",
             boundary_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )
-        def diff_center_to_left(a):
+        def diff_center_to_left(
+            a: Annotated[np.ndarray, "X:center"]
+        ) -> Annotated[np.ndarray, "X:left"]:
             return a[..., 1:] - a[..., :-1]
 
         result = diff_center_to_left(
@@ -726,12 +883,13 @@ class TestDaskOverlap:
 
     def test_raise_when_ufunc_changes_chunksize(self):
         @as_grid_ufunc(
-            "(X:outer)->(X:center)",
             boundary_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )
-        def diff_outer_to_center(a):
+        def diff_outer_to_center(
+            a: Annotated[np.ndarray, "X:outer"]
+        ) -> Annotated[np.ndarray, "X:center"]:
             """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
             if isinstance(a, np.ndarray):
                 return a[..., 1:] - a[..., :-1]
@@ -753,12 +911,13 @@ class TestDaskOverlap:
 
     def test_multiple_inputs(self):
         @as_grid_ufunc(
-            "(X:left),(X:right)->(X:center)",
             boundary_width=None,
             map_overlap=True,
             dask="allowed",
         )
-        def multiply_left_right(a, b):
+        def multiply_left_right(
+            a: Annotated[np.ndarray, "X:left"], b: Annotated[np.ndarray, "X:right"]
+        ) -> Annotated[np.ndarray, "X:center"]:
             """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
             if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
                 return np.multiply(a, b)
@@ -806,6 +965,39 @@ class TestDaskOverlap:
             )
 
 
+class TestBoundary:
+    def test_boundary_constant(self):
+        def interp(a):
+            return 0.5 * (a[..., :-1] + a[..., 1:])
+
+        @as_grid_ufunc(
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            boundary="fill",
+            fill_value=0,
+        )
+        def interp_center_to_left(a):
+            return interp(a)
+
+        grid = create_1d_test_grid("lat")
+        arr = np.arange(9)
+        da = grid._ds.lat_c.copy(data=arr)
+
+        # test that bound kwargs are used
+        result = interp_center_to_left(grid, da, axis=[["lat"]])
+        interped_arr_padded_with_zero = interp(np.concatenate([[0], arr]))
+        expected = grid._ds.lat_g.copy(data=interped_arr_padded_with_zero)
+        assert_equal(result, expected)
+
+        # test that bound kwargs can be overridden at call time
+        result = interp_center_to_left(
+            grid, da, axis=[["lat"]], boundary="fill", fill_value=1
+        )
+        interped_arr_padded_with_one = interp(np.concatenate([[1], arr]))
+        expected = grid._ds.lat_g.copy(data=interped_arr_padded_with_one)
+        assert_equal(result, expected)
+
+
 # TODO tests for handling dask in gri.diff etc. should eventually live in test_grid.py
 class TestMapOverlapGridops:
     def test_chunked_core_dims_unchanging_chunksize_center_to_right(self):
@@ -845,29 +1037,31 @@ class TestMapOverlapGridops:
 
 class TestSignaturesEquivalent:
     def test_equivalent(self):
-        sig1 = Signature("(X:center)->(X:left)")
-        sig2 = Signature("(X:center)->(X:left)")
+        sig1 = _GridUFuncSignature.from_string("(X:center)->(X:left)")
+        sig2 = _GridUFuncSignature.from_string("(X:center)->(X:left)")
         assert sig1.equivalent(sig2)
 
-        sig3 = Signature("(Y:center)->(Y:left)")
+        sig3 = _GridUFuncSignature.from_string("(Y:center)->(Y:left)")
         assert sig1.equivalent(sig3)
 
     def test_not_equivalent(self):
-        sig1 = Signature("(X:center)->(X:left)")
-        sig2 = Signature("(X:center)->(X:center)")
+        sig1 = _GridUFuncSignature.from_string("(X:center)->(X:left)")
+        sig2 = _GridUFuncSignature.from_string("(X:center)->(X:center)")
         assert not sig1.equivalent(sig2)
 
-        sig3 = Signature("(X:center)->(Y:left)")
+        sig3 = _GridUFuncSignature.from_string("(X:center)->(Y:left)")
         assert not sig1.equivalent(sig3)
 
-        sig4 = Signature("(X:center,X:center)->(X:left)")
+        sig4 = _GridUFuncSignature.from_string("(X:center,X:center)->(X:left)")
         assert not sig1.equivalent(sig4)
 
     def test_no_indices(self):
-        sig = Signature("()->()")
+        sig = _GridUFuncSignature.from_string("()->()")
         assert sig.equivalent(sig)
 
 
+# TODO Is there a way to prevent this running at test module import time?
+# TODO (test by adding a raise in here)
 class GridOpsMockUp:
     """
     Container that stores some mocked-up grid ufuncs to look through.
@@ -889,41 +1083,44 @@ class GridOpsMockUp:
     def diff_center_to_right_extend(a):
         return np.roll(a, 1) - a
 
-    @staticmethod
-    @as_grid_ufunc(signature="()->()")
-    def pass_through_kwargs(**kwargs):
-        return kwargs
-
 
 class TestGridUFuncDispatch:
     def test_select_ufunc(self):
         gridufunc, _ = _select_grid_ufunc(
-            "diff", Signature("(X:center)->(X:left)"), module=GridOpsMockUp
+            "diff",
+            _GridUFuncSignature.from_string("(X:center)->(X:left)"),
+            module=GridOpsMockUp,
         )
         assert gridufunc is GridOpsMockUp.diff_center_to_left
 
     def test_select_ufunc_equivalent_signature(self):
         gridufunc, _ = _select_grid_ufunc(
-            "diff", Signature("(Y:center)->(Y:left)"), module=GridOpsMockUp
+            "diff",
+            _GridUFuncSignature.from_string("(Y:center)->(Y:left)"),
+            module=GridOpsMockUp,
         )
         assert gridufunc is GridOpsMockUp.diff_center_to_left
 
         with pytest.raises(NotImplementedError):
             _select_grid_ufunc(
-                "diff", Signature("(X:center)->(Y:left)"), module=GridOpsMockUp
+                "diff",
+                _GridUFuncSignature.from_string("(X:center)->(Y:left)"),
+                module=GridOpsMockUp,
             )
 
     def test_select_ufunc_wrong_signature(self):
         with pytest.raises(NotImplementedError):
             _select_grid_ufunc(
-                "diff", Signature("(X:center)->(X:center)"), module=GridOpsMockUp
+                "diff",
+                _GridUFuncSignature.from_string("(X:center)->(X:center)"),
+                module=GridOpsMockUp,
             )
 
     @pytest.mark.xfail(reason="currently no need for this")
     def test_select_ufunc_by_kwarg(self):
         gridufunc, _ = _select_grid_ufunc(
             "diff",
-            Signature("(X:center)->(X:right)"),
+            _GridUFuncSignature.from_string("(X:center)->(X:right)"),
             module=GridOpsMockUp,
             boundary="fill",
         )
@@ -932,7 +1129,7 @@ class TestGridUFuncDispatch:
         with pytest.raises(NotImplementedError):
             _select_grid_ufunc(
                 "diff",
-                Signature("(X:center)->(X:right)"),
+                _GridUFuncSignature.from_string("(X:center)->(X:right)"),
                 module=GridOpsMockUp,
                 boundary="nonsense",
             )
@@ -941,6 +1138,9 @@ class TestGridUFuncDispatch:
     def test_pass_through_other_kwargs(self):
         # TODO put this in test_grid.py instead?
         gridufunc, _ = _select_grid_ufunc(
-            "pass", Signature("()->()"), module=GridOpsMockUp, boundary="fill"
+            "pass",
+            _GridUFuncSignature.from_string("()->()"),
+            module=GridOpsMockUp,
+            boundary="fill",
         )
         assert gridufunc(a=1) == {"a": 1}

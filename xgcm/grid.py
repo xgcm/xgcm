@@ -14,7 +14,7 @@ from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 from .grid_ufunc import (
     GridUFunc,
-    Signature,
+    _GridUFuncSignature,
     _has_chunked_core_dims,
     _maybe_unpack_vector_component,
     apply_as_grid_ufunc,
@@ -1731,6 +1731,8 @@ class Grid:
         else:
             array = da.copy(deep=False)
 
+        # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
+        array = da.copy(deep=False)
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
         # TODO only actually need to call apply_ufunc once for those axes
@@ -1771,7 +1773,9 @@ class Grid:
 
         return self._transpose_to_keep_same_dim_order(da, array, axis)
 
-    def _create_1d_grid_ufunc_signatures(self, da, axis, to) -> List[Signature]:
+    def _create_1d_grid_ufunc_signatures(
+        self, da, axis, to
+    ) -> List[_GridUFuncSignature]:
         """
         Create a list of signatures to pass to apply_grid_ufunc.
 
@@ -1790,7 +1794,10 @@ class Grid:
             if to_pos is None:
                 to_pos = ax._default_shifts[from_pos]
 
-            signature_1d = Signature(f"({ax_name}:{from_pos})->({ax_name}:{to_pos})")
+            # TODO build this more directly?
+            signature_1d = _GridUFuncSignature.from_string(
+                f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
+            )
             signatures.append(signature_1d)
 
         return signatures
@@ -1820,7 +1827,7 @@ class Grid:
         func: Callable,
         *args: xr.DataArray,
         axis: Sequence[Sequence[str]] = None,
-        signature: Union[str, Signature] = "",
+        signature: Union[str, _GridUFuncSignature] = "",
         boundary_width: Mapping[str, Tuple[int, int]] = None,
         boundary: Union[str, Mapping[str, str]] = None,
         fill_value: Union[float, Mapping[str, float]] = None,
@@ -2197,9 +2204,7 @@ class Grid:
         da_i : xarray.DataArray
             The differentiated data
         """
-
-        ax = self.axes[axis]
-        diff = ax.diff(da, **kwargs)
+        diff = self.diff(da, axis, **kwargs)
         dx = self.get_metric(diff, (axis,))
         return diff / dx
 
@@ -2364,7 +2369,7 @@ class Grid:
         return ax.transform(da, target, **kwargs)
 
 
-def _select_grid_ufunc(funcname, signature: Signature, module, **kwargs):
+def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwargs):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
     def is_grid_ufunc(obj):
