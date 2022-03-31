@@ -2182,9 +2182,7 @@ class Grid:
         da_i : xarray.DataArray
             The differentiated data
         """
-
-        ax = self.axes[axis]
-        diff = ax.diff(da, **kwargs)
+        diff = self.diff(da, axis, **kwargs)
         dx = self.get_metric(diff, (axis,))
         return diff / dx
 
