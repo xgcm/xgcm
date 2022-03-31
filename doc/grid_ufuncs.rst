@@ -336,6 +336,7 @@ Here a periodic boundary condition has been used as the default, but we can choo
     def interp_center_to_left_fill_with_zeros(a):
         return interp(a)
 
+
     interp_center_to_left_fill_with_zeros(
         grid, da, axis=[["X"]], boundary="fill", fill_value=0
     )
@@ -366,22 +367,82 @@ Metrics
 Parallelizing with Dask
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+The grid ufunc apparatus is designed so that if your data is chunked, it will apply your ufunc operation in a dask-efficient manner.
+There are two cases of interest to understand: parallelizing an operation over data chunked along a "broadcast" dimension, and
+over data chunked along a "core" dimension.
+
+If you don't know what that means then read about the `concept of "core dims"`_ used in ``xarray.apply_ufunc``.
+
+.. _concept of "core dims": https://xarray.pydata.org/en/stable/generated/xarray.apply_ufunc.html
 
 
 Parallelizing Along Broadcast Dimensions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Under the hood we first call ``xarray.apply_ufunc``
-- Primer on ``xarray.apply_ufunc``
-- The ``dask`` kwarg
-- Showing off the dask graph
+This case is for when your data is chunked along the dim corresponding to the axis along which you want to apply the grid ufunc.
+The numpy ufunc you are wrapping must be able to act on each element along that axis independently.
+
+This case is parallelized under the hood by calling ``xarray.apply_ufunc``.
+In order to enable working with chunked arrays you must pass the kwarg ``dask='parallelized'`` to ``apply_as_grid_ufunc``.
+
+.. ipython:: python
+
+    # Let's create some 2D data, so we have a dimension over which to broadcast
+    da_2d = da.expand_dims(y=4)
+
+    # Let's also chunk it along the new "broadcast" dimension
+    chunked_y = da_2d.chunk({"y": 1})
+    chunked_y
+
+    result = interp_center_to_left(grid, chunked_y, axis=[["X"]], dask="parallelized")
+
+
+(We could also have passed the ``dask`` kwarg to the ``@as_grid_ufunc`` decorator, and it would have been bound
+to the new function in the same way that the boundary kwargs work.)
+
+The dask graph in this case is simple, because this is an "embarrasingly parallel" problem.
+
+.. ipython:: python
+    :okexcept:
+
+    result.data.visualize(optimise=True)
+
+The result is as expected from padding each row independently.
+
+.. ipython:: python
+
+    result.compute()
 
 Parallelizing Along Core Dimensions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- We also optionally call ``dask.map_blocks``
-- Primer on ``dask.map_overlap``
-- The ``map_overlap`` kwarg
-- Restriction that you can't do this with grid ufuncs that change length (e.g. center to outer)
-- Rechunking that occurs when padding?
-- Showing off the dask graph
+The other case is for when your data is chunked along the axis over which you want to apply your ufunc (a "core" dimension").
+
+.. ipython:: python
+
+    chunked_x = da_2d.chunk({"x_c": 2})
+    chunked_x
+
+XGCM can also parallelize this case, by calling ``dask.map_overlap``.
+You tell it to invoke ``dask.map_overlap`` by passing ``dask="parallelized"`` and ``map_overlap=True``.
+
+.. ipython:: python
+
+    result = interp_center_to_left(
+        grid, chunked_x, axis=[["X"]], dask="allowed", map_overlap=True
+    )
+
+If your ufunc operates on individual chunks independently, then ``dask.map_blocks`` would have been sufficient,
+but the possibility of padding boundaries means that ``dask.map_overlap`` is required.
+The dask graph is more complicated, because each chunk along the core dim needs to communicate its ``boundary_width`` elements to adjacent chunks.
+
+.. ipython:: python
+    :okexcept:
+
+    result.data.visualize(optimise=True)
+
+    result.compute()
+
+There is one limitation of this feature: you cannot use ``map_overlap`` with grid ufuncs that change length along a core dimension
+(e.g. by shifting axis positions from ``center`` to ``outer``).
+XGCM will error if you try to do this.
