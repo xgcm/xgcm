@@ -7,11 +7,6 @@ Concept of a Grid Ufunc
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 In short, a "grid ufunc" is a generalisation of a `numpy generalized universal function`_ to include the xGCM Axes and Positions of input and output variables.
-We tell a function about the axes information through a ``signature``,
-which for a function which accepts data located at the center grid positions and returns
-data located on the same axis but now at the left-hand grid positions would look like:
-
-``"(ax1:center)->(ax1:left)"``.
 
 If you are not already familiar with numpy generalised universal functions (hereon referred to as "numpy ufuncs"),
 then here is a quick primer.
@@ -19,6 +14,13 @@ then here is a quick primer.
 .. dropdown:: **Primer on numpy generalized universal functions**
 
     Content about numpy...
+
+We tell a function about the axes information through a ``signature``.
+For example, imagine we have a function which accepts data located at the center grid positions and returns
+data located at the left-hand grid positions, on the same axis.
+The signature for this function would look like:
+
+``"(ax1:center)->(ax1:left)"``.
 
 You will also need to understand the `concept of "core dims"`_ used in ``xarray.apply_ufunc``.
 
