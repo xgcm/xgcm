@@ -2063,7 +2063,7 @@ class Grid:
 
         warnings.warn(
             "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
-            "The same functionality will be available under the `xgcm.Grid` methods.",
+            "The same functionality will be accessible under the `xgcm.Grid.diff` and `xgcm.Grid.interp` methods, please see those docstrings for details.",
             category=DeprecationWarning,
         )
 
