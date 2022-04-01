@@ -523,7 +523,7 @@ def apply_as_grid_ufunc(
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
     other_component: Union[
-        None, Dict[str, xr.DataArray], Sequence[Dict[str, xr.DataArray]]
+        Dict[str, xr.DataArray], Sequence[Dict[str, xr.DataArray]]
     ] = None,
     **kwargs,
 ) -> List[Any]:
