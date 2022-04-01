@@ -614,7 +614,7 @@ def apply_as_grid_ufunc(
 
     # TODO: we need some more comprehensive tests that check proper padding with
     # TODO: e.g. multiple vector components or mixed (tracer, vector components)
-    if not all(isinstance(a, xr.DataArray) or isinstance(a, dict) for a in args):
+    if not all(isinstance(a, (xr.DataArray, dict)) for a in args):
         raise TypeError(
             "All data arguments must be of type DataArray or dict (for vector components"
         )
