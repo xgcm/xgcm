@@ -796,7 +796,7 @@ def apply_as_grid_ufunc(
         results,
         grid,
         boundary_width,
-        keep_coords,  # TODO: Do we still need all these inputs?
+        keep_coords,
     )
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does

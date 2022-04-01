@@ -354,7 +354,7 @@ def _pad_basic(da, grid, padding_width, padding, fill_value):
 
 
 def pad(
-    da: Union[xr.DataArray, Dict[str, xr.DataArray]],
+    data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
     boundary_width: Optional[Dict[str, Tuple[int, int]]] = None,
     boundary: Optional[str] = "periodic",
@@ -407,16 +407,16 @@ def pad(
     # before dispatching to the utility pad functions.
     # This ensures that any output from this function is stripped.
     # TODO: The coordinate values need to be reattached as part of the `apply_as_grid_ufunc` logic
-    da = _strip_all_coords(da)
+    data = _strip_all_coords(data)
 
     # If any axis has connections we need to use the complex padding
     if any([any(grid.axes[ax]._connections.keys()) for ax in grid.axes]):
         da_padded = _pad_face_connections(
-            da, grid, padding_width, padding, other_component, fill_value
+            data, grid, padding_width, padding, other_component, fill_value
         )
     else:
         # TODO: we need to have a better detection and checking here. For now just pipe everything else into the
         # Legacy cases
-        da_padded = _pad_basic(da, grid, padding_width, padding, fill_value)
+        da_padded = _pad_basic(data, grid, padding_width, padding, fill_value)
 
     return da_padded

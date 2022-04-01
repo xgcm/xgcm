@@ -1630,7 +1630,7 @@ class Grid:
     def _1d_grid_ufunc_dispatch(
         self,
         funcname,
-        da: Union[
+        data: Union[
             xr.DataArray, Dict[str, xr.DataArray]
         ],  # ? @Tom: could this accept a list of dicts?
         axis,
@@ -1661,10 +1661,10 @@ class Grid:
             axis = [axis]
 
         # Check validity of vector
-        if isinstance(da, dict):
-            if len(da) != 1:
+        if isinstance(data, dict):
+            if len(data) != 1:
                 raise ValueError(
-                    f"When providing vector components as input, the provided dictionary can only have one key/value pair. Found {len(da)}"
+                    f"When providing vector components as input, the provided dictionary can only have one key/value pair. Found {len(data)}"
                 )
 
         # convert input arguments into axes-kwarg mappings
@@ -1716,21 +1716,21 @@ class Grid:
         # remove the periodic input
         kwargs = {k: v for k, v in kwargs.items() if k != "periodic"}
 
-        signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
+        signatures = self._create_1d_grid_ufunc_signatures(data, axis=axis, to=to)
 
         # if any dims are chunked then we need dask
-        da_dask_test = _maybe_unpack_vector_component(da)
+        da_dask_test = _maybe_unpack_vector_component(data)
 
         if isinstance(da_dask_test.data, Dask_Array):
             dask = "parallelized"
         else:
             dask = "forbidden"
 
-        if isinstance(da, dict):
-            array = {k: v.copy(deep=False) for k, v in da.items()}
+        if isinstance(data, dict):
+            array = {k: v.copy(deep=False) for k, v in data.items()}
         else:
             # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
-            array = da.copy(deep=False)
+            array = data.copy(deep=False)
 
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
@@ -1747,7 +1747,7 @@ class Grid:
                 array = array * metric
 
             # if chunked along core dim then we need map_overlap
-            core_dim = self._get_dims_from_axis(da, ax_name)
+            core_dim = self._get_dims_from_axis(data, ax_name)
             chunk_test_array = _maybe_unpack_vector_component(array)
             if _has_chunked_core_dims(chunk_test_array, core_dim):
                 map_overlap = True
@@ -1770,7 +1770,7 @@ class Grid:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array / metric
 
-        return self._transpose_to_keep_same_dim_order(da, array, axis)
+        return self._transpose_to_keep_same_dim_order(data, array, axis)
 
     def _create_1d_grid_ufunc_signatures(
         self, da, axis, to
@@ -2125,28 +2125,6 @@ class Grid:
             A dictionary with two entries. Keys are axis names, values
             are differenced vector components along each axis
         """
-        # # the keys, should be axis names
-        # assert len(vector) == 2
-
-        # x_axis_name, y_axis_name = list(vector)
-
-        # # apply for each component
-        # x_component = self.diff(
-        #     vector[x_axis_name],
-        #     x_axis_name,
-        #     other_component={y_axis_name: vector[y_axis_name]},
-        #     **kwargs,
-        # )
-
-        # y_component = self.diff(
-        #     vector[y_axis_name],
-        #     y_axis_name,
-        #     other_component={x_axis_name: vector[x_axis_name]},
-        #     **kwargs,
-        # )
-
-        # return {x_axis_name: x_component, y_axis_name: y_component}
-        # return self._apply_vector_function(Axis.diff, vector, **kwargs)
         return self._apply_vector_function(self.diff, vector, **kwargs)
 
     @docstrings.dedent
@@ -2169,30 +2147,7 @@ class Grid:
             A dictionary with two entries. Keys are axis names, values
             are interpolated vector components along each axis
         """
-        # ! I am implementing this here and remove _apply_vector_function, since these are going to get removed anywyas
 
-        # # the keys, should be axis names
-        # assert len(vector) == 2
-
-        # x_axis_name, y_axis_name = list(vector)
-
-        # # apply for each component
-        # x_component = self.interp(
-        #     vector[x_axis_name],
-        #     x_axis_name,
-        #     other_component={y_axis_name: vector[y_axis_name]},
-        #     **kwargs,
-        # )
-
-        # y_component = self.interp(
-        #     vector[y_axis_name],
-        #     y_axis_name,
-        #     other_component={x_axis_name: vector[x_axis_name]},
-        #     **kwargs,
-        # )
-
-        # return {x_axis_name: x_component, y_axis_name: y_component}
-        # return self._apply_vector_function(Axis.interp, vector, **kwargs)
         return self._apply_vector_function(self.interp, vector, **kwargs)
 
     @docstrings.dedent
