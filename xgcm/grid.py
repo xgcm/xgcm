@@ -17,6 +17,7 @@ from .grid_ufunc import (
     _GridUFuncSignature,
     _has_chunked_core_dims,
     _maybe_unpack_vector_component,
+    _check_data_input,
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
@@ -1193,12 +1194,11 @@ class Grid:
         self.boundary: Dict[str, Union[str, float, int]] = boundary
         self.fill_value: Dict[str, Union[str, float, int]] = fill_value
         self.periodic: Dict[str, Union[str, float, int]] = periodic
-        if face_connections is not None:
-            self._connections = face_connections
-            self._facedim = list(face_connections.keys())[0]
-
-        # TODO we probably want to properly define these as class properties with setter/getter?
-        # TODO: This also needs to check valid inputs for each one.
+        self._facedim = list(face_connections.keys())[0] if face_connections else None
+        self._connections = face_connections if face_connections else None
+        # TODO: I think of the face connection data as grid not axes properties, since they almost by defintion
+        # TODO: involve multiple axes. In a future PR we should remove this info from the axes
+        # TODO: but make sure to properly port the checking functionality!
 
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
@@ -1630,16 +1630,14 @@ class Grid:
     def _1d_grid_ufunc_dispatch(
         self,
         funcname,
-        data: Union[
-            xr.DataArray, Dict[str, xr.DataArray]
-        ],  # ? @Tom: could this accept a list of dicts?
+        data: Union[xr.DataArray, Dict[str, xr.DataArray]],
         axis,
         to=None,
         keep_coords=False,
         metric_weighted: Union[
             str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
         ] = None,
-        other_component: Optional[Dict[str, xr.DataArray]] = None,  # ? Same as above.
+        other_component: Optional[Dict[str, xr.DataArray]] = None,
         **kwargs,
     ):
         """
@@ -1660,12 +1658,11 @@ class Grid:
         if isinstance(axis, str):
             axis = [axis]
 
-        # Check validity of vector
-        if isinstance(data, dict):
-            if len(data) != 1:
-                raise ValueError(
-                    f"When providing vector components as input, the provided dictionary can only have one key/value pair. Found {len(data)}"
-                )
+        # This function is restricted to a single data input, so we need to check the input validity
+        # here early.
+        # TODO: This will fail if a sequence of inputs is passed, but not with a very helpful error
+        # TODO: message. @TOM do you think it is worth to check the type and raise another error in that case?
+        data = _check_data_input(data)
 
         # convert input arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)

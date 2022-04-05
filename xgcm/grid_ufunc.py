@@ -41,14 +41,42 @@ _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
 
-def _maybe_unpack_vector_component(da):
-    if isinstance(da, dict):
-        da_component = da[
-            list(da.keys())[0]
+def _maybe_unpack_vector_component(
+    data: Union[xr.DataArray, Dict[str, xr.DataArray]]
+) -> xr.DataArray:
+    if isinstance(data, dict):
+        da_component = data[
+            list(data.keys())[0]
         ]  # we only allow len 1 dicts previously. Not sure if this is the most elegant way to do this
     else:
-        da_component = da
+        da_component = data
     return da_component
+
+
+def _check_data_input(
+    data: Union[xr.DataArray, Dict[str, xr.DataArray]]
+) -> Union[xr.DataArray, Dict[str, xr.DataArray]]:
+    if data:
+        if not isinstance(data, (xr.DataArray, dict)):
+            raise TypeError(
+                "All data arguments must be either a DataArray or Dictionary"
+                " (with axis as key and DataArray as value for vector components)."
+                f" Got {type(data)}."
+            )
+
+        if isinstance(data, dict):
+            if len(data.keys()) == 1:
+                _check_data_input(_maybe_unpack_vector_component(data))
+            else:
+                # ? @Tom, I am never sure which type of error to raise in these cases?
+                # Any general tips on that?
+
+                raise ValueError(
+                    "Vector components provided as dictionaries"
+                    " should contain exactly one key/value pair."
+                    f" Found {len(data)}. Full input:{data}"
+                )
+    return data
 
 
 T_AX_POS_LIST = List[Tuple[str, ...]]
@@ -587,7 +615,7 @@ def apply_as_grid_ufunc(
     map_overlap : bool, optional
         Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
         Default is False. If True, will need to be accompanied by dask='allowed'.
-    other_component : Union[None, Dict[str,xr.DataArray], Sequence[Dict[str,xr.DataArray]]], default: False
+    other_component : Union[None, Dict[str,xr.DataArray], Sequence[Dict[str,xr.DataArray]]], default: None
         Matching vector component for input provided as dictionary. Needed for complex vector padding.
         For multiple arguments, `other_components` needs to provide one element per input.
     **kwargs
@@ -611,37 +639,32 @@ def apply_as_grid_ufunc(
 
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
+    # ? Why is this actually an optional input?
 
     # TODO: we need some more comprehensive tests that check proper padding with
     # TODO: e.g. multiple vector components or mixed (tracer, vector components)
-    if not all(isinstance(a, xr.DataArray) or isinstance(a, dict) for a in args):
-        raise TypeError(
-            "All data arguments must be of type DataArray or dict (for vector components"
-        )
 
-    def _parse_and_check_other_component(
-        args: Union[xr.DataArray, Dict[str, xr.DataArray]],
-        other_component: Union[
-            None,
+    def _maybe_promote_to_sequence_and_check(
+        data: Union[
+            xr.DataArray,
             Dict[str, xr.DataArray],
-            Iterable[Union[None, Dict[str, xr.DataArray]]],
-        ],
-    ) -> Iterable[Union[None, Dict[str, xr.DataArray]]]:
-        if other_component is None or isinstance(other_component, dict):
-            # this is necessary of the later zip call will rip apart the key/value
-            other_component = [other_component] * len(args)
+            Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]],
+        ]
+    ) -> Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]]:
+        if not isinstance(data, Sequence):
+            data = [data]
+        # Check individual data inputs for validity
+        data = (_check_data_input(d) for d in data)
+        return data
 
-        if any(isinstance(a, dict) for a in args):
-            # if more than one input is provided check that we get the same number
-            # of other_component inputs as args
-            if not len(args) == len(other_component):
-                raise ValueError(
-                    "When providing multiple input arguments, `other_component` needs to provide one dictionary per input"
-                )
-            # TODO: Raise this error in tests
-        return other_component
+    args = _maybe_promote_to_sequence_and_check(args)
+    other_component = _maybe_promote_to_sequence_and_check(other_component)
 
-    other_component = _parse_and_check_other_component(args, other_component)
+    if not len(args) == len(other_component):
+        raise ValueError(
+            "When providing multiple input arguments, `other_component`"
+            " needs to provide one dictionary per input"
+        )
 
     if axis is None:
         raise ValueError("Must provide an axis along which to apply the grid ufunc")
