@@ -1643,6 +1643,10 @@ class Grid:
         if not boundary_width:
             raise ValueError("Must provide the widths of the boundaries")
 
+        # Exit without padding if all widths are zero
+        if all(width == (0, 0) for width in boundary_width.values()):
+            return arrays
+
         if boundary and isinstance(boundary, str):
             boundary = {ax_name: boundary for ax_name in self.axes.keys()}
         if fill_value is None:
