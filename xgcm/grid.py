@@ -1801,8 +1801,14 @@ class Grid:
             # if chunked along core dim then we need map_overlap
             core_dim = self._get_dims_from_axis(da, ax_name)
             if _has_chunked_core_dims(array, core_dim):
-                map_overlap = True
-                dask = "allowed"
+                if funcname == "cumum":
+                    # cumsum is a special case because it can't be correctly applied chunk-wise with map_overlap (it would need blockwise instead)
+                    # TODO double check that this dispatches to the dask version of cumsum?
+                    # TODO could we use the same approach with the diff etc?
+                    map_overlap = False
+                else:
+                    map_overlap = True
+                    dask = "allowed"
             else:
                 map_overlap = False
 
@@ -2101,7 +2107,7 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("cumsum", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("cumsum", da, axis, **kwargs)
 
     def _apply_vector_function(self, function, vector, **kwargs):
         # the keys, should be axis names
