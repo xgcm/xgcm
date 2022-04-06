@@ -21,28 +21,28 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
                 [
                     "x_c",
                 ],
-                np.arange(1, 10),
+                np.arange(1, 20),
                 {"axis": "X"},
             ),
             "x_g": (
                 [
                     "x_g",
                 ],
-                np.arange(0.5, 9),
+                np.arange(0.5, 19),
                 {"axis": "X", "c_grid_axis_shift": -0.5},
             ),
             "y_c": (
                 [
                     "y_c",
                 ],
-                np.arange(1, 10),
+                np.arange(1, 20),
                 {"axis": "Y"},
             ),
             "y_g": (
                 [
                     "y_g",
                 ],
-                np.arange(0.5, 9),
+                np.arange(0.5, 19),
                 {"axis": "Y", "c_grid_axis_shift": -0.5},
             ),
         }
@@ -69,8 +69,8 @@ We will create a 2D vector field, with components ``U`` and ``V``.
 
 .. ipython:: python
 
-    U = np.sin(grid_ds.y_c * 2 * np.pi / 9).expand_dims(x_c=9)
-    V = np.sin(grid_ds.x_c * 2 * np.pi / 9).expand_dims(y_c=9)
+    U = np.sin(grid_ds.x_c * 2 * np.pi / 19) * np.cos(grid_ds.y_c * 2 * np.pi / 19)
+    V = np.cos(grid_ds.x_c * 2 * np.pi / 19) * np.sin(grid_ds.y_c * 2 * np.pi / 19)
 
     ds = xr.Dataset({"V": V, "U": U})
     ds
@@ -123,7 +123,10 @@ Now we can compute the divergence of our example vector field
 
 .. ipython:: python
 
-    divergence(grid, ds['U'], ds['V'], axis=[('X', 'Y'), ('X', 'Y')])
+    div = divergence(grid, ds['U'], ds['V'], axis=[('X', 'Y'), ('X', 'Y')])
+
+    @savefig div_vector_field.png width=4in
+    div.plot(x='x_c')
 
 
 
