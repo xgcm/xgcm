@@ -125,17 +125,62 @@ Now we can compute the divergence of our example vector field
 
     div = divergence(grid, ds['U'], ds['V'], axis=[('X', 'Y'), ('X', 'Y')])
 
+We can see the result lies on the expected coordinate positions
+
+.. ipython:: python
+
+    div.coords
+
+and the resulting divergence looks like it corresponds with the arrows of the vector field above
+
+.. ipython:: python
+
     @savefig div_vector_field.png width=4in
-    div.plot(x='x_c')
+    div.plot(x='x_c', y='y_c')
 
 
 
 Gradient
 ~~~~~~~~
 
-The gradient is almost like the opposite of divergence in the sense that it accepts one scalar and returns multiple vectors
+The gradient is almost like the opposite of divergence in the sense that it accepts one scalar and returns multiple vectors.
 
-``"(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)"``
+For this lets first create a scalar field by computing the magnitude of our vector field
+
+.. ipython:: python
+
+    a = U**2 + V**2
+    ds['a'] = a
+
+    @savefig scalar_field.png width=4in
+    a.plot(x='x_c')
+
+
+The signature for this ufunc will look like this ``"(X:center,Y:center)->(X:center,Y:center),(X:center,Y:center)"``,
+and our definition is similar to the derivative case.
+
+.. ipython:: python
+    :okexcept:
+
+    @as_grid_ufunc("(X:center,Y:center)->(X:center,Y:center),(X:center,Y:center)", boundary_width={'X': (2, 0), 'Y': (2, 0)})
+    def gradient(a):
+        a_diff_x = diff_center_to_center_second_order(a, axis=-2)
+        a_diff_y = diff_center_to_center_second_order(a, axis=-1)
+        # Need to trim off elements so that the two arrays have same shape
+        return a_diff_x[..., :-2], a_diff_y[..., :-2, :]
+
+Now we can compute the gradient of our example scalar field
+
+.. ipython:: python
+
+    ds['grad_x'], ds['grad_y'] = gradient(grid, ds['a'], axis=[('X', 'Y')])
+
+and plot the gradient of the magnitude as a vector field
+
+.. ipython:: python
+
+    @savefig gradient_scalar_field.png width=4in
+    ds.plot.quiver("x_c", "y_c", u="grad_x", v="grad_y")
 
 
 Curl/Vorticity
