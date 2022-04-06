@@ -15,7 +15,7 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
     import numpy as np
     import xarray as xr
 
-    ds = xr.Dataset(
+    grid_ds = xr.Dataset(
         coords={
             "x_c": (
                 [
@@ -47,7 +47,7 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
             ),
         }
     )
-    ds
+    grid_ds
 
 
 .. ipython:: python
@@ -55,13 +55,33 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
     from xgcm import Grid
 
     grid = Grid(
-        ds,
+        grid_ds,
         coords={
             "X": {"center": "x_c", "left": "x_g"},
             "Y": {"center": "y_c", "left": "y_g"},
         },
     )
     grid
+
+
+Now we need some data.
+We will create a 2D vector field, with components ``U`` and ``V``.
+
+.. ipython:: python
+
+    U = np.sin(grid_ds.y_c * 2 * np.pi / 9).expand_dims(x_c=9)
+    V = np.sin(grid_ds.x_c * 2 * np.pi / 9).expand_dims(y_c=9)
+
+    ds = xr.Dataset({"V": V, "U": U})
+    ds
+
+
+.. ipython:: python
+
+    @savefig example_vector_field.png width=4in
+    ds.plot.quiver("x_c", "y_c", u="U", v="V")
+
+
 
 
 Divergence
