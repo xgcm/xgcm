@@ -82,13 +82,48 @@ We will create a 2D vector field, with components ``U`` and ``V``.
     ds.plot.quiver("x_c", "y_c", u="U", v="V")
 
 
-
-
 Divergence
 ~~~~~~~~~~
 
-In two dimensions, the divergence operator accepts two vector components and returns one scalar result
+Let's first import the decorator.
 
+.. ipython:: python
+
+    from xgcm import as_grid_ufunc
+
+
+In two dimensions, the divergence operator accepts two vector components and returns one scalar result.
+Each vector component will be differentiated along one axis, and doing so with a first order forward difference would
+shift the data's position along that axis.
+Therefore our signature should look something like this ``"(X:center,Y:center),(X:center,Y:center)->(X:center,Y:center)"``.
+
+A divergence is the sum of multiple partial derivatives, so first let's define a derivative function like this
+
+.. ipython:: python
+
+    def diff_1d(a):
+        return 0.5 * (a[..., 2:] - a[..., :-2])
+
+    def diff_center_to_center_second_order(arr, axis):
+        return np.apply_along_axis(diff_1d, axis, arr)
+
+Now if we treat the components of the ``(U, V)`` vector as independent scalars, our grid ufunc could be defined like this
+
+.. ipython:: python
+
+    @as_grid_ufunc("(X:center,Y:center),(X:center,Y:center)->(X:center,Y:center)", boundary_width={'X': (2, 0), 'Y': (2, 0)})
+    def divergence(u, v):
+        u_diff_x = diff_center_to_center_second_order(u, axis=-2)
+        v_diff_y = diff_center_to_center_second_order(v, axis=-1)
+        # Need to trim off elements so that the two arrays have same shape
+        div = u_diff_x[..., :-2] + v_diff_y[..., :-2, :]
+        return div
+
+Now we can compute the divergence of our example vector field
+
+.. ipython:: python
+
+    divergence(grid, ds['U'], ds['V'], axis=[('X', 'Y'), ('X', 'Y')])
 
 
 
@@ -97,6 +132,7 @@ Gradient
 
 The gradient is almost like the opposite of divergence in the sense that it accepts one scalar and returns multiple vectors
 
+``"(X:center,Y:center)->(X:inner,Y:center),(X:center,Y:inner)"``
 
 
 Curl/Vorticity
