@@ -204,7 +204,7 @@ Again in order to plot this as a vector field we should first interpolate it
     colocated['grad_a_y'] = grid.interp(ds['grad_a_y'], axis="Y", to="center")
     colocated
 
-aand now we can plot the gradient of the magnitude of the velocities as a vector field
+and now we can plot the gradient of the magnitude of the velocities as a vector field
 
 .. ipython:: python
 
@@ -212,9 +212,25 @@ aand now we can plot the gradient of the magnitude of the velocities as a vector
     colocated.plot.quiver("x_c", "y_c", u="grad_a_x", v="grad_a_y")
 
 
-Curl/Vorticity
-~~~~~~~~~~~~~~
+Vorticity
+~~~~~~~~~
 
+We can compute vector fields from vector fields too, such as vorticity.
+
+.. ipython:: python
+
+    @as_grid_ufunc("(X:left,Y:center),(X:center,Y:left)->(X:left,Y:left)", boundary_width={'X': (1, 0), 'Y': (1, 0)})
+    def vorticity(u, v):
+        v_diff_x = diff(v, axis=-2)
+        u_diff_y = diff(u, axis=-1)
+        return v_diff_x[..., 1:] - u_diff_y[..., 1:, :]
+
+    vort = vorticity(grid, ds['U'], ds['V'], axis=[('X', 'Y'), ('X', 'Y')])
+
+.. ipython:: python
+
+    @savefig vort_vector_field.png width=4in
+    vort.plot(x='x_g', y='y_g')
 
 
 Advection
