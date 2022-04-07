@@ -157,8 +157,13 @@ and the resulting divergence looks like it corresponds with the arrows of the ve
 
 .. ipython:: python
 
-    @savefig div_vector_field.png width=4in
+    import matplotlib.pyplot as plt
+
     div.plot(x='x_c', y='y_c')
+    colocated.plot.quiver("x_c", "y_c", u="U", v="V")
+
+    @savefig div_vector_field.png width=4in
+    plt.gcf()
 
 
 
@@ -265,7 +270,7 @@ Let's first define a tracer field ``T``, which we imagine will start off localis
     ds['T'] = gaussian(grid_ds.x_c, grid_ds.y_c, x_pos=7.5, y_pos=7.5)
 
     @savefig tracer_field.png width=4in
-    ds['T'].plot.contourf(x='x_c')
+    ds['T'].plot.contourf(x='x_c', vmax=150)
 
 Now we can define a simple advection operator
 
@@ -290,12 +295,8 @@ Evaluating this operator on the tracer field allows us to compute what the trace
     old_T = ds['T']
     new_T = old_T - delta_t * divergence(grid, T_flux_x, T_flux_y, axis=[('X', 'Y')] * 2)
 
-    import matplotlib.pyplot as plt
-
-    def plot_both():
-        new_T.plot.contourf(x='x_c')
-        colocated.plot.quiver("x_c", "y_c", u="U", v="V")
-        return plt.gcf()
+    new_T.plot.contourf(x='x_c', vmin=0, vmax=150)
+    colocated.plot.quiver("x_c", "y_c", u="U", v="V")
 
     @savefig advected_field.png width=4in
-    plot_both()
+    plt.gcf()
