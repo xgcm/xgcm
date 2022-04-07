@@ -964,7 +964,7 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     xr.testing.assert_allclose(global_result, manual_result)
 
 
-class TestInputError:
+class TestInputErrorGridMethods:
     def test_multiple_keys_vector_input(self):
         ds, _, _ = datasets_grid_metric("C")
         grid = Grid(ds)
@@ -988,7 +988,7 @@ class TestInputError:
     def test_wrong_input_type_vector(self):
         ds, _, _ = datasets_grid_metric("C")
         grid = Grid(ds)
-        msg = "All data arguments must be either a DataArray or Dictionary .*?"
+        msg = "Dictionary inputs must have a DataArray as value. Got .*?"
         with pytest.raises(
             TypeError,
             match=msg,
@@ -996,33 +996,111 @@ class TestInputError:
             grid.diff({"X": "not_a_dataarray"}, "X")
 
     def test_wrong_axis_vector_input_axis(self):
-        # TODO: @Tom is this explicitly tested elsewhere?
-        # Then ill remove it here.
+        # TODO: @Tom is this explicitly tested elsewhere? Then ill remove it here.
         ds, _, _ = datasets_grid_metric("C")
         grid = Grid(ds)
-        msg = "None of the DataArray's dims .*? were found in axis coords."
+        msg = "Vector component with unknown axis provided. Grid has axes .*?"
         with pytest.raises(
-            KeyError,
+            ValueError,  # @Tom, can you check on the error types here? These totally confuse me each time.
             match=msg,
         ):
             grid.diff({"wrong": xr.DataArray()}, "X")
 
-    # @pytest.xfail(reason="This is not supported by 1d_dispatch.")
-    # # TODO: Migrate to test .apply_as_ufunc
-    # def test_wrong_axis_vector_input_data_other_mismatch(self):
-    #     ds, _, _ = datasets_grid_metric("C")
-    #     grid = Grid(ds)
-    #     msg = (
-    #         "When providing multiple input arguments, `other_component`"
-    #         " needs to provide one dictionary per input"
-    #     )
-    #     with pytest.raises(
-    #         ValueError,
-    #         match=msg,
-    #     ):
-    #         # Passing 3 args and 2 other components should fail.
-    #         grid.diff(
-    #             [{"X": xr.DataArray()}, {"Y": xr.DataArray()}, {"Z": xr.DataArray()}],
-    #             "X",
-    #             other_component=[{"X": xr.DataArray()}, {"Y": xr.DataArray()}],
-    #         )
+
+class TestInputErrorApplyAsGridUfunc:
+    def test_multiple_keys_vector_input(self):
+        ds, _, _ = datasets_grid_metric("C")
+        grid = Grid(ds)
+        msg = "Vector components provided as dictionaries should contain exactly one key/value pair. .*?"
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            grid.apply_as_grid_ufunc(
+                lambda x: x, {"X": xr.DataArray(), "Y": xr.DataArray()}, "X"
+            )
+
+    def test_wrong_input_type_scalar(self):
+        ds, _, _ = datasets_grid_metric("C")
+        grid = Grid(ds)
+        msg = "All data arguments must be either a DataArray or Dictionary .*?"
+        with pytest.raises(
+            TypeError,
+            match=msg,
+        ):
+            grid.apply_as_grid_ufunc(lambda x: x, "not_a_dataarray", "X")
+
+    def test_wrong_input_type_vector(self):
+        ds, _, _ = datasets_grid_metric("C")
+        grid = Grid(ds)
+        msg = "Dictionary inputs must have a DataArray as value. Got .*?"
+        with pytest.raises(
+            TypeError,
+            match=msg,
+        ):
+            grid.apply_as_grid_ufunc(lambda x: x, {"X": "not_a_dataarray"}, "X")
+
+    def test_wrong_axis_vector_input_axis(self):
+        ds, _, _ = datasets_grid_metric("C")
+        grid = Grid(ds)
+        msg = "Vector component with unknown axis provided. Grid has axes .*?"
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            grid.apply_as_grid_ufunc(lambda x: x, {"wrong": xr.DataArray()}, "X")
+
+    def test_vector_input_data_other_mismatch(self):
+        ds, _, _ = datasets_grid_metric("C")
+        grid = Grid(ds)
+        msg = (
+            "When providing multiple input arguments, `other_component`"
+            " needs to provide one dictionary per input"
+        )
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            # Passing 3 args and 2 other components should fail.
+            grid.apply_as_grid_ufunc(
+                lambda x: x,
+                {"X": xr.DataArray()},
+                {"Y": xr.DataArray()},
+                {"Z": xr.DataArray()},
+                axis="X",
+                other_component=[{"X": xr.DataArray()}, {"Y": xr.DataArray()}],
+            )
+
+    def test_wrong_input_type_vector_multi_input(self):
+        ds, _, _ = datasets_grid_metric("C")
+        grid = Grid(ds)
+        msg = "Dictionary inputs must have a DataArray as value. Got .*?"
+        with pytest.raises(
+            TypeError,
+            match=msg,
+        ):
+            # Passing 3 args and 2 other components should fail.
+            grid.apply_as_grid_ufunc(
+                lambda x: x,
+                {"X": xr.DataArray()},
+                {"Y": "not_a_data_array"},
+                axis="X",
+                other_component=[{"X": xr.DataArray()}, {"Y": xr.DataArray()}],
+            )
+
+    def test_wrong_axis_vector_input_axis_multi_input(self):
+        ds, _, _ = datasets_grid_metric("C")
+        grid = Grid(ds)
+        msg = "Vector component with unknown axis provided. Grid has axes .*?"
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            # Passing 3 args and 2 other components should fail.
+            grid.apply_as_grid_ufunc(
+                lambda x: x,
+                {"X": xr.DataArray()},
+                {"Y": xr.DataArray()},
+                axis="X",
+                other_component=[{"wrong": xr.DataArray()}, {"Y": xr.DataArray()}],
+            )

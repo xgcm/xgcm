@@ -5,7 +5,6 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     List,
     Literal,
     Mapping,
@@ -45,37 +44,45 @@ def _maybe_unpack_vector_component(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]]
 ) -> xr.DataArray:
     if isinstance(data, dict):
-        da_component = data[
-            list(data.keys())[0]
-        ]  # we only allow len 1 dicts previously. Not sure if this is the most elegant way to do this
+        [da] = list(data.values())  # this will raise if more than one element
     else:
-        da_component = data
-    return da_component
+        da = data
+    return da
 
 
 def _check_data_input(
-    data: Union[xr.DataArray, Dict[str, xr.DataArray]]
+    data: Union[xr.DataArray, Dict[str, xr.DataArray]],
+    grid: "Grid",
 ) -> Union[xr.DataArray, Dict[str, xr.DataArray]]:
-    if data:
+
+    if data is not None:
         if not isinstance(data, (xr.DataArray, dict)):
             raise TypeError(
                 "All data arguments must be either a DataArray or Dictionary"
-                " (with axis as key and DataArray as value for vector components)."
                 f" Got {type(data)}."
             )
 
         if isinstance(data, dict):
-            if len(data.keys()) == 1:
-                _check_data_input(_maybe_unpack_vector_component(data))
-            else:
-                # ? @Tom, I am never sure which type of error to raise in these cases?
-                # Any general tips on that?
-
+            if len(data.keys()) != 1:
                 raise ValueError(
                     "Vector components provided as dictionaries"
                     " should contain exactly one key/value pair."
                     f" Found {len(data)}. Full input:{data}"
                 )
+            else:
+                [key] = list(data.keys())
+                value = data[key]
+                # Check that axis is in grid object
+                if key not in grid.axes:
+                    raise ValueError(
+                        f"Vector component with unknown axis provided. Grid has axes ({list(grid.axes)}), got  ({key})"
+                    )
+                # Check that component is dataarray
+                if not isinstance(value, xr.DataArray):
+                    raise TypeError(
+                        f"Dictionary inputs must have a DataArray as value. Got {type(value)}."
+                    )
+
     return data
 
 
@@ -641,10 +648,7 @@ def apply_as_grid_ufunc(
         raise ValueError("Must provide a grid object to describe the Axes")
     # ? Why is this actually an optional input?
 
-    # TODO: we need some more comprehensive tests that check proper padding with
-    # TODO: e.g. multiple vector components or mixed (tracer, vector components)
-
-    def _maybe_promote_to_sequence_and_check(
+    def _promote_to_sequence_and_check(
         data: Union[
             xr.DataArray,
             Dict[str, xr.DataArray],
@@ -654,16 +658,21 @@ def apply_as_grid_ufunc(
         if not isinstance(data, Sequence):
             data = [data]
         # Check individual data inputs for validity
-        data = (_check_data_input(d) for d in data)
+        data = [_check_data_input(d, grid) for d in data]
         return data
 
-    args = _maybe_promote_to_sequence_and_check(args)
-    other_component = _maybe_promote_to_sequence_and_check(other_component)
+    args = _promote_to_sequence_and_check(args)
+    other_component = _promote_to_sequence_and_check(other_component)
+
+    if len(other_component) == 1:
+        # Make sure that the default (None) for other_component is properly broadcasted
+        # TODO: Do we want to 'broadcast' any type of input like this or just a None?
+        other_component = other_component * len(args)
 
     if not len(args) == len(other_component):
         raise ValueError(
             "When providing multiple input arguments, `other_component`"
-            " needs to provide one dictionary per input"
+            " needs to provide one dictionary per input."
         )
 
     if axis is None:

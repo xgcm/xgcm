@@ -14,10 +14,10 @@ from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 from .grid_ufunc import (
     GridUFunc,
+    _check_data_input,
     _GridUFuncSignature,
     _has_chunked_core_dims,
     _maybe_unpack_vector_component,
-    _check_data_input,
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
@@ -1662,7 +1662,10 @@ class Grid:
         # here early.
         # TODO: This will fail if a sequence of inputs is passed, but not with a very helpful error
         # TODO: message. @TOM do you think it is worth to check the type and raise another error in that case?
-        data = _check_data_input(data)
+        data = _check_data_input(data, self)
+
+        # Unpack data for various steps below
+        data_unpacked = _maybe_unpack_vector_component(data)
 
         # convert input arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)
@@ -1713,12 +1716,13 @@ class Grid:
         # remove the periodic input
         kwargs = {k: v for k, v in kwargs.items() if k != "periodic"}
 
-        signatures = self._create_1d_grid_ufunc_signatures(data, axis=axis, to=to)
+        signatures = self._create_1d_grid_ufunc_signatures(
+            data_unpacked, axis=axis, to=to
+        )
 
         # if any dims are chunked then we need dask
-        da_dask_test = _maybe_unpack_vector_component(data)
 
-        if isinstance(da_dask_test.data, Dask_Array):
+        if isinstance(data_unpacked.data, Dask_Array):
             dask = "parallelized"
         else:
             dask = "forbidden"
@@ -1745,8 +1749,8 @@ class Grid:
 
             # if chunked along core dim then we need map_overlap
             core_dim = self._get_dims_from_axis(data, ax_name)
-            chunk_test_array = _maybe_unpack_vector_component(array)
-            if _has_chunked_core_dims(chunk_test_array, core_dim):
+
+            if _has_chunked_core_dims(data_unpacked, core_dim):
                 map_overlap = True
                 dask = "allowed"
             else:
@@ -1767,7 +1771,7 @@ class Grid:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array / metric
 
-        return self._transpose_to_keep_same_dim_order(data, array, axis)
+        return self._transpose_to_keep_same_dim_order(data_unpacked, array, axis)
 
     def _create_1d_grid_ufunc_signatures(
         self, da, axis, to
@@ -1778,7 +1782,6 @@ class Grid:
         Created from data, list of input axes, and list of target axis positions.
         One separate signature is created for each axis the 1D ufunc is going to be applied over.
         """
-        da = _maybe_unpack_vector_component(da)
 
         signatures = []
         for ax_name in axis:
@@ -1800,7 +1803,6 @@ class Grid:
 
     def _transpose_to_keep_same_dim_order(self, da, result, axis):
         """Reorder DataArray dimensions to match the original input."""
-        da = _maybe_unpack_vector_component(da)
 
         initial_dims = da.dims
 
@@ -2054,9 +2056,10 @@ class Grid:
         return self._grid_func("cumsum", da, axis, **kwargs)
 
     def _apply_vector_function(self, function, vector, **kwargs):
-        # the keys, should be axis names
-        assert len(vector) == 2
-        assert isinstance(vector, dict)
+        if not (len(vector) == 2 and isinstance(vector, dict)):
+            raise ValueError(
+                "Input is expected to be a dictionary with two key/value pairs which map grid axis to the vector component parallel to that axis"
+            )
 
         warnings.warn(
             "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
