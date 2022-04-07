@@ -271,7 +271,6 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
         {"X": ds.u, "Y": ds.v},
         to="center",
         boundary="fill",
-        # test
         fill_value=100,
     )
     u_c_interp = vector_center["X"]
@@ -280,7 +279,6 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
         {"X": ds.u, "Y": ds.v},
         to="center",
         boundary="fill",
-        # test
         fill_value=100,
     )
     u_c_diff = vector_diff["X"]

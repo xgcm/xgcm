@@ -577,8 +577,9 @@ def apply_as_grid_ufunc(
 
         Passed directly on to `xarray.apply_ufunc`.
     *args : xarray.DataArray
-        One or more xarray DataArray objects (for scalar fields) or dictonaries mapping the direction
-        to vector components to apply the function to.
+        One or more input argument to apply the function to. Inputs can be either scalar fields (xr.Dataarray)
+        Or vector components (Dictionaries mapping the axis parallel to the vector direction to an xr.Dataarray).
+        If vector components are provided, complex grids may require input to `other_component` (see below).
     axis : Sequence[Sequence[str]], optional
         Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
         Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
