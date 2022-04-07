@@ -67,24 +67,33 @@ def _strip_all_coords(obj: xr.DataArray):
 
 
 def _pad_face_connections(
-    da, grid, padding_width, padding, other_component, fill_value
+    da: Union[xr.DataArray, Dict[str, xr.DataArray]],
+    grid: Grid,
+    padding_width: Dict[str, Tuple[int, int]],
+    padding: Dict[str, str],
+    fill_value: Dict[str, float],
+    other_component: Dict[str, xr.DataArray] = None,
 ):
-
-    # i made some alterations to the grid init to store the
-    # following info on the grid level. We can discuss if that makes more sense
-    # TODO: Do we need that information on the axis still?
     facedim = grid._facedim
     connections = grid._connections
 
     if isinstance(da, dict):
-        assert len(da) == 1  # TODO raise a better error here
         isvector = True
         vectoraxis, da = da.popitem()
     else:
         isvector = False
 
     if isvector:
-        assert other_component is not None  # TODO raise a better error here
+
+        # TODO: This is actually too strict. In cases where we do only have face connections on
+        # TODO: the same axis, this should work without other_component input.
+        # TODO: We could save a bunch of operations that way below too...
+
+        if any(a for a in connections) and other_component is None:
+            # TODO: cover with a test.
+            raise ValueError(
+                "Padding vector components across different axes (in a complex grid with face connections) requires `other_component` input."
+            )
         _, da_partner = other_component.popitem()
 
     # Detect all the axes we have to deal with during padding
@@ -309,7 +318,13 @@ def _pad_face_connections(
     )
 
 
-def _pad_basic(da, grid, padding_width, padding, fill_value):
+def _pad_basic(
+    da: xr.DataArray,
+    grid: Grid,
+    padding_width: Dict[str, Tuple[int, int]],
+    padding: Dict[str, str],
+    fill_value: Dict[str, float],
+):
     """Implement basic xarray/numpy padding methods"""
 
     # legacy default fill value is 0, instead of xarrays nan.
@@ -321,10 +336,6 @@ def _pad_basic(da, grid, padding_width, padding, fill_value):
     elif isinstance(fill_value, dict):
         fill_value = {k: 0.0 if v is None else v for k, v in fill_value.items()}
     fill_value = grid._as_axis_kwarg_mapping(fill_value)
-
-    # Always promote the padding to a dict? For now this is the only input type
-    # TODO: Refactor this with grid logic that creates a per axis mapping, checks values in grid object and sets defaults.
-    padding = grid._as_axis_kwarg_mapping(padding)
 
     # TODO: We should set all defaults on the grid init and avoid this here.
     # # set defaults
@@ -356,10 +367,10 @@ def _pad_basic(da, grid, padding_width, padding, fill_value):
 def pad(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
-    boundary_width: Optional[Dict[str, Tuple[int, int]]] = None,
-    boundary: Optional[str] = "periodic",
-    fill_value: Optional[float] = 0.0,
-    other_component: Optional[Dict[str, xr.DataArray]] = None,
+    boundary_width: Optional[Dict[str, Tuple[int, int]]],
+    boundary: Union[str, Dict[str, str]],
+    fill_value: Union[float, Dict[str, float]],
+    other_component: Optional[Dict[str, xr.DataArray]],
 ):
     """
     Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
@@ -397,9 +408,13 @@ def pad(
     padding = boundary
     padding_width = boundary_width
 
+    # Always promote the padding/fill_value to a axed dict.
+    padding = grid._as_axis_kwarg_mapping(padding)
+    fill_value = grid._as_axis_kwarg_mapping(fill_value)
+
     # TODO: Refactor, if the max value is 0, complain.
     # Maybe move this check upstream, so that either none or 0 everywhere does not even call pad
-    if not boundary_width:
+    if padding_width is None:
         raise ValueError("Must provide the widths of the boundaries")
 
     # The problem of what values to pad coordinates with is hard to solve.
@@ -412,11 +427,14 @@ def pad(
     # If any axis has connections we need to use the complex padding
     if any([any(grid.axes[ax]._connections.keys()) for ax in grid.axes]):
         da_padded = _pad_face_connections(
-            data, grid, padding_width, padding, other_component, fill_value
+            data,
+            grid,
+            padding_width,
+            padding,
+            fill_value,
+            other_component=other_component,
         )
     else:
-        # TODO: we need to have a better detection and checking here. For now just pipe everything else into the
-        # Legacy cases
-        da_padded = _pad_basic(data, grid, padding_width, padding, fill_value)
+        da_padded = _pad_basic(data, grid, padding_width, padding, fill_value)  # type: ignore
 
     return da_padded

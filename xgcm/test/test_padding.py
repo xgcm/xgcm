@@ -1,4 +1,5 @@
 # TODO: Swap this out for some of our fixtures?
+from email.policy import strict
 import numpy as np
 import pytest
 import xarray as xr
@@ -44,6 +45,7 @@ class TestPadding:
             boundary="fill",
             boundary_width=boundary_width,
             fill_value=fill_value,
+            other_component=None,
         )
         xr.testing.assert_allclose(expected, result)
 
@@ -68,6 +70,8 @@ class TestPadding:
             grid,
             boundary="extend",
             boundary_width=boundary_width,
+            fill_value=None,
+            other_component=None,
         )
         xr.testing.assert_allclose(expected, result)
 
@@ -92,6 +96,8 @@ class TestPadding:
             grid,
             boundary="periodic",
             boundary_width=boundary_width,
+            fill_value=None,
+            other_component=None,
         )
         xr.testing.assert_allclose(expected, result)
 
@@ -124,51 +130,16 @@ class TestPadding:
             grid,
             boundary=axis_padding_mapping,
             boundary_width=boundary_width,
+            fill_value=None,
+            other_component=None,
         )
         xr.testing.assert_allclose(expected, result)
 
 
 # TODO: Add extrapolate, once we support it? Unless we do not support it anymore.
+# TODO: Make sure that we cannot specify mixed methods for padding if the input is something like `cube-sphere` or `tripolar`
 
 
-class TestPaddingDefaults:
-    """Testing the behavior with default values for methods with additional input arguments"""
-
-    def test_padding_fill(self):
-
-        default_fill_value = 0
-        # TODO: Change this to a fixed value (nan?) in future releases.
-
-        ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
-        data = ds.tracer
-
-        expected = data.pad(
-            {"xt": (0, 1)}, "constant", constant_values=default_fill_value
-        )
-
-        # we intentionally strip all coords from padded arrays
-        expected = _strip_all_coords(expected)
-
-        result = pad(data, grid, boundary="fill", boundary_width={"X": (0, 1)})
-        xr.testing.assert_allclose(expected, result)
-
-    def test_padding_None(self):
-        "we currently expect the default padding to be periodic"
-        ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
-        data = ds.tracer
-
-        expected = data.pad({"xt": (0, 1)}, "wrap")
-
-        # we intentionally strip all coords from padded arrays
-        expected = _strip_all_coords(expected)
-
-        result = pad(data, grid, boundary=None, boundary_width={"X": (0, 1)})
-        xr.testing.assert_allclose(expected, result)
-
-
-# TODO: We should make both boundary and boundary width positional arguments. Then this class can be deleted.
 class TestPaddingErrors:
     def test_padding_no_width(self):
         ds, coords, _ = datasets_grid_metric("C")
@@ -180,7 +151,9 @@ class TestPaddingErrors:
         ):
             pad(data, grid, boundary="fill")
 
-    @pytest.mark.xfail(reason="This currently defaults to boundary='periodic'")
+    @pytest.mark.xfail(
+        reason="This currently defaults to boundary='periodic'", strict=True
+    )
     def test_padding_no_boundary(self):
         ds, coords, _ = datasets_grid_metric("C")
         grid = Grid(ds, coords=coords)
@@ -190,9 +163,6 @@ class TestPaddingErrors:
             ValueError, match="Must provide the widths of the boundaries"
         ):
             pad(data, grid, boundary_width={"X": (0, 1)})
-
-
-# TODO: Make sure that we cannot specify mixed methods for padding if the input is something like `cube-sphere` or `tripolar`
 
 
 # Some helper functions for the connections padding
@@ -366,6 +336,7 @@ def _prepad_right_right_swap_axis(da, boundary_width, fill_value, x="x", y="y"):
     ],
 )
 class TestPaddingFaceConnection:
+    # TODO: Test that an error is raised if the boundary width exceeds the array shape.
     def test_face_connections_right_left_same_axis(
         self, boundary_width, ds_faces, fill_value
     ):
@@ -551,6 +522,7 @@ class TestPaddingFaceConnection:
             boundary_width=boundary_width,
             boundary="fill",
             fill_value=fill_value,
+            other_component=None,
         )
         xr.testing.assert_allclose(result, expected)
 
@@ -629,6 +601,7 @@ class TestPaddingFaceConnection:
             boundary_width=boundary_width,
             boundary="fill",
             fill_value=fill_value,
+            other_component=None,
         )
         xr.testing.assert_allclose(result, expected)
 
@@ -1079,7 +1052,8 @@ class TestPaddingFaceConnection:
         xr.testing.assert_allclose(v_result, v_expected)
 
     @pytest.mark.xfail(
-        reason="Figuring out how to preserve the indicies with padding is super hard."
+        reason="Figuring out how to preserve the indicies with padding is super hard.",
+        strict=True,
     )
     @pytest.mark.parametrize("boundary", ["constant", "wrap"])
     def test_vector_face_connections_coord_padding(

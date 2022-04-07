@@ -771,13 +771,15 @@ def test_invalid_fill_value_error():
         pytest.param(
             "cumsum",
             marks=pytest.mark.xfail(
-                reason="cumsum is not yet goint through grid ufunc logic TODO"
+                reason="cumsum is not yet goint through grid ufunc logic TODO",
+                strict=True,
             ),
         ),
         pytest.param(
             "cumint",
             marks=pytest.mark.xfail(
-                reason="cumsum is not yet goint through grid ufunc logic TODO"
+                reason=" TODO cumsum is not yet goint through grid ufunc logic",
+                strict=True,
             ),
         ),
         "derivative",

@@ -552,8 +552,8 @@ def apply_as_grid_ufunc(
     grid: "Grid" = None,
     signature: Union[str, _GridUFuncSignature] = "",
     boundary_width: Mapping[str, Tuple[int, int]] = None,
-    boundary: Union[str, Mapping[str, str]] = None,
-    fill_value: Union[float, Mapping[str, float]] = None,
+    boundary: Union[str, Mapping[str, str]] = "periodic",
+    fill_value: Union[float, Mapping[str, float]] = 0.0,
     keep_coords: bool = True,
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
@@ -647,28 +647,15 @@ def apply_as_grid_ufunc(
 
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
-    # ? Why is this actually an optional input?
+    # ? Why is this actually an optional input? This causes some mypy issues on pre-commit too.
 
-    def _promote_to_sequence_and_check(
-        data: Union[
-            xr.DataArray,
-            Dict[str, xr.DataArray],
-            Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]],
-        ]
-    ) -> Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]]:
-        if not isinstance(data, Sequence):
-            data = [data]
-        # Check individual data inputs for validity
-        data = [_check_data_input(d, grid) for d in data]
-        return data
-
-    args = _promote_to_sequence_and_check(args)
-    other_component = _promote_to_sequence_and_check(other_component)
+    args = _promote_to_sequence_and_check(args, grid)  # type: ignore
+    other_component = _promote_to_sequence_and_check(other_component, grid)
 
     if len(other_component) == 1:
         # Make sure that the default (None) for other_component is properly broadcasted
         # TODO: Do we want to 'broadcast' any type of input like this or just a None?
-        other_component = other_component * len(args)
+        other_component = [other_component[0] for i in range(len(args))]
 
     if not len(args) == len(other_component):
         raise ValueError(
@@ -736,11 +723,10 @@ def apply_as_grid_ufunc(
         _maybe_unpack_vector_component(args[0]).dtype
     ] * n_output_vars  # assume uniformity of dtypes
 
+    # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
+    # TODO: No padding would occur in that situation. Should we warn the user?
+
     # Pad arrays according to boundary condition information
-    if boundary and not boundary_width:
-        raise ValueError(
-            "To apply a boundary condition you must provide the widths of the boundaries"
-        )
     if boundary_width:
         # convert dummy axes names in boundary_width to match real names of given axes
         boundary_width_real_axes = {
@@ -754,7 +740,9 @@ def apply_as_grid_ufunc(
                 grid,
                 boundary_width=boundary_width_real_axes,
                 boundary=boundary,
+                # type: ignore
                 fill_value=fill_value,
+                # type: ignore
                 other_component=oc,
             )
             for a, oc in zip(args, other_component)
@@ -764,7 +752,7 @@ def apply_as_grid_ufunc(
         boundary_width_real_axes = {
             real_ax: (0, 0) for real_ax in dummy_to_real_axes_mapping.values()
         }
-        padded_args = args
+        padded_args = args  # type: ignore
 
     if any(
         _has_chunked_core_dims(padded_arg, core_dims)
@@ -1068,3 +1056,18 @@ def _reattach_coords(results, grid, boundary_width, keep_coords):
         results_with_coords.append(res)
 
     return results_with_coords
+
+
+def _promote_to_sequence_and_check(
+    data: Union[
+        xr.DataArray,
+        Dict[str, xr.DataArray],
+        Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]],
+    ],
+    grid: "Grid",
+) -> Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]]:
+    if not isinstance(data, Sequence):
+        data = [data]
+    # Check individual data inputs for validity
+    data = [_check_data_input(d, grid) for d in data]
+    return data
