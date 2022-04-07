@@ -66,6 +66,7 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
 
 Now we need some data.
 We will create a 2D vector field, with components ``U`` and ``V``.
+We will treat these velocities as if they lie on a vector C-grid, so as velocities they will lie at the cell faces.
 
 .. ipython:: python
 
@@ -76,10 +77,28 @@ We will create a 2D vector field, with components ``U`` and ``V``.
     ds
 
 
+Interpolation
+~~~~~~~~~~~~~
+
+It would be nice to see what our vector field looks like before we start doing calculus with it,
+but the ``U`` and ``V`` velocities are defined on different points,
+so plotting the vectors as arrows originating from a common point would technically be incorrect for our C-grid data.
+We can fix this by interpolating the vectors onto co-located points.
+
+.. ipython:: python
+
+    colocated_velocities = xr.Dataset()
+    colocated_velocities['U'] = grid.interp(U, axis="X", to="center")
+    colocated_velocities['V'] = grid.interp(V, axis="Y", to="center")
+    colocated_velocities
+
+
+We can now show what this co-located vector field looks like
+
 .. ipython:: python
 
     @savefig example_vector_field.png width=4in
-    ds.plot.quiver("x_c", "y_c", u="U", v="V")
+    colocated_velocities.plot.quiver("x_c", "y_c", u="U", v="V")
 
 
 Divergence
@@ -101,22 +120,23 @@ A divergence is the sum of multiple partial derivatives, so first let's define a
 
 .. ipython:: python
 
-    def diff_1d(a):
-        return 0.5 * (a[..., 2:] - a[..., :-2])
+    def diff_forward_1d(a):
+        return a[..., 1:] - a[..., :-1]
 
-    def diff_center_to_center_second_order(arr, axis):
-        return np.apply_along_axis(diff_1d, axis, arr)
+    def diff(arr, axis):
+        """First order forward difference along any axis"""
+        return np.apply_along_axis(diff_forward_1d, axis, arr)
 
 Now if we treat the components of the ``(U, V)`` vector as independent scalars, our grid ufunc could be defined like this
 
 .. ipython:: python
 
-    @as_grid_ufunc("(X:center,Y:center),(X:center,Y:center)->(X:center,Y:center)", boundary_width={'X': (2, 0), 'Y': (2, 0)})
+    @as_grid_ufunc("(X:left,Y:center),(X:center,Y:left)->(X:center,Y:center)", boundary_width={'X': (0, 1), 'Y': (0, 1)})
     def divergence(u, v):
-        u_diff_x = diff_center_to_center_second_order(u, axis=-2)
-        v_diff_y = diff_center_to_center_second_order(v, axis=-1)
+        u_diff_x = diff(u, axis=-2)
+        v_diff_y = diff(v, axis=-1)
         # Need to trim off elements so that the two arrays have same shape
-        div = u_diff_x[..., :-2] + v_diff_y[..., :-2, :]
+        div = u_diff_x[..., :-1] + v_diff_y[..., :-1, :]
         return div
 
 Now we can compute the divergence of our example vector field
@@ -148,6 +168,7 @@ The gradient is almost like the opposite of divergence in the sense that it acce
 For this lets first create a scalar field by computing the magnitude of our vector field
 
 .. ipython:: python
+    :okexcept:
 
     a = U**2 + V**2
     ds['a'] = a
@@ -172,12 +193,14 @@ and our definition is similar to the derivative case.
 Now we can compute the gradient of our example scalar field
 
 .. ipython:: python
+    :okexcept:
 
     ds['grad_x'], ds['grad_y'] = gradient(grid, ds['a'], axis=[('X', 'Y')])
 
 and plot the gradient of the magnitude as a vector field
 
 .. ipython:: python
+    :okexcept:
 
     @savefig gradient_scalar_field.png width=4in
     ds.plot.quiver("x_c", "y_c", u="grad_x", v="grad_y")
