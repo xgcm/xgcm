@@ -183,7 +183,6 @@ and our definition is similar to the derivative case.
 
 .. ipython:: python
 
-    @as_grid_ufunc("(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)", boundary_width={'X': (1, 0), 'Y': (1, 0)})
     def gradient(a):
         a_diff_x = diff(a, axis=-2)
         a_diff_y = diff(a, axis=-1)
@@ -194,7 +193,13 @@ Now we can compute the gradient of our example scalar field
 
 .. ipython:: python
 
-    ds['grad_a_x'], ds['grad_a_y'] = gradient(grid, a, axis=[('X', 'Y')])
+    ds['grad_a_x'], ds['grad_a_y'] = grid.apply_as_grid_ufunc(
+        gradient,
+        a,
+        axis=[('X', 'Y')],
+        signature="(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
+        boundary_width={'X': (1, 0), 'Y': (1, 0)}
+    )
 
 Again in order to plot this as a vector field we should first interpolate it
 
@@ -232,6 +237,65 @@ We can compute vector fields from vector fields too, such as vorticity.
     @savefig vort_vector_field.png width=4in
     vort.plot(x='x_g', y='y_g')
 
+DEBUG
+
+.. ipython:: python
+
+    v_diff_x = grid.diff(V, axis='X', to="left")
+    u_diff_y = grid.diff(U, axis='Y', to="left")
+    vort = v_diff_x - u_diff_y
+
+    @savefig vort_vector_field_debug.png width=4in
+    vort.plot(x='x_g', y='y_g')
+
 
 Advection
 ~~~~~~~~~
+
+We can also do "mixed" operations that involve both vectors and scalars,
+such as calculating the advective flux of a scalar tracer field due to a vector flow field.
+
+Let's first define a tracer field ``T``, which we imagine will start off localised in the center of the domian.
+
+.. ipython:: python
+
+    def gaussian(x_coord, y_coord, x_pos, y_pos, A=100, w=2):
+        return A * np.exp(-0.5 * ((x_coord - x_pos)**2 + (y_coord - y_pos)**2) / w**2)
+
+    ds['T'] = gaussian(grid_ds.x_c, grid_ds.y_c, x_pos=7.5, y_pos=7.5)
+
+    @savefig tracer_field.png width=4in
+    ds['T'].plot.contourf(x='x_c')
+
+Now we can define a simple advection operator
+
+.. ipython:: python
+
+    @as_grid_ufunc(
+        "(X:left,Y:center),(X:center,Y:left),(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
+        boundary_width={'X': (1, 0), 'Y': (1, 0)},
+    )
+    def flux(U, V, T):
+        T_grad_x, T_grad_y = gradient(T)
+        return U[..., :-1, :-1] * -T_grad_x, V[..., :-1, :-1] * -T_grad_y
+
+
+Evaluating this operator on the tracer field allows us to compute what the tracer field might look like one timestep later
+
+.. ipython:: python
+
+    T_flux_x, T_flux_y = flux(grid, ds['U'], ds['V'], ds['T'], axis=[('X', 'Y')] * 3)
+
+    delta_t = 3
+    old_T = ds['T']
+    new_T = old_T - delta_t * divergence(grid, T_flux_x, T_flux_y, axis=[('X', 'Y')] * 2)
+
+    import matplotlib.pyplot as plt
+
+    def plot_both():
+        new_T.plot.contourf(x='x_c')
+        colocated.plot.quiver("x_c", "y_c", u="U", v="V")
+        return plt.gcf()
+
+    @savefig advected_field.png width=4in
+    plot_both()
