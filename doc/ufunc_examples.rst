@@ -87,18 +87,17 @@ We can fix this by interpolating the vectors onto co-located points.
 
 .. ipython:: python
 
-    colocated_velocities = xr.Dataset()
-    colocated_velocities['U'] = grid.interp(U, axis="X", to="center")
-    colocated_velocities['V'] = grid.interp(V, axis="Y", to="center")
-    colocated_velocities
-
+    colocated = xr.Dataset()
+    colocated['U'] = grid.interp(U, axis="X", to="center")
+    colocated['V'] = grid.interp(V, axis="Y", to="center")
+    colocated
 
 We can now show what this co-located vector field looks like
 
 .. ipython:: python
 
     @savefig example_vector_field.png width=4in
-    colocated_velocities.plot.quiver("x_c", "y_c", u="U", v="V")
+    colocated.plot.quiver("x_c", "y_c", u="U", v="V")
 
 
 Divergence
@@ -112,10 +111,6 @@ Let's first import the decorator.
 
 
 In two dimensions, the divergence operator accepts two vector components and returns one scalar result.
-Each vector component will be differentiated along one axis, and doing so with a first order forward difference would
-shift the data's position along that axis.
-Therefore our signature should look something like this ``"(X:center,Y:center),(X:center,Y:center)->(X:center,Y:center)"``.
-
 A divergence is the sum of multiple partial derivatives, so first let's define a derivative function like this
 
 .. ipython:: python
@@ -127,7 +122,12 @@ A divergence is the sum of multiple partial derivatives, so first let's define a
         """First order forward difference along any axis"""
         return np.apply_along_axis(diff_forward_1d, axis, arr)
 
-Now if we treat the components of the ``(U, V)`` vector as independent scalars, our grid ufunc could be defined like this
+Each vector component will be differentiated along one axis, and doing so with a first order forward difference would
+shift the data's position along that axis.
+Therefore our signature should look something like this ``"(X:left,Y:center),(X:center,Y:left)->(X:center,Y:center)"``.
+
+We also need to pad the data to replace the elements that will be removed by the `diff` function, so
+our grid ufunc can be defined like this
 
 .. ipython:: python
 
@@ -138,6 +138,8 @@ Now if we treat the components of the ``(U, V)`` vector as independent scalars, 
         # Need to trim off elements so that the two arrays have same shape
         div = u_diff_x[..., :-1] + v_diff_y[..., :-1, :]
         return div
+
+Here we have treated the components of the ``(U, V)`` vector as independent scalars.
 
 Now we can compute the divergence of our example vector field
 
@@ -168,42 +170,46 @@ The gradient is almost like the opposite of divergence in the sense that it acce
 For this lets first create a scalar field by computing the magnitude of our vector field
 
 .. ipython:: python
-    :okexcept:
 
-    a = U**2 + V**2
-    ds['a'] = a
+    a = colocated['U']**2 + colocated['V']**2
 
     @savefig scalar_field.png width=4in
     a.plot(x='x_c')
 
 
-The signature for this ufunc will look like this ``"(X:center,Y:center)->(X:center,Y:center),(X:center,Y:center)"``,
+Computing the first-order gradient will again move the data onto different grid positions,
+so the signature for a gradient ufunc will need to reflect this
 and our definition is similar to the derivative case.
 
 .. ipython:: python
-    :okexcept:
 
-    @as_grid_ufunc("(X:center,Y:center)->(X:center,Y:center),(X:center,Y:center)", boundary_width={'X': (2, 0), 'Y': (2, 0)})
+    @as_grid_ufunc("(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)", boundary_width={'X': (1, 0), 'Y': (1, 0)})
     def gradient(a):
-        a_diff_x = diff_center_to_center_second_order(a, axis=-2)
-        a_diff_y = diff_center_to_center_second_order(a, axis=-1)
+        a_diff_x = diff(a, axis=-2)
+        a_diff_y = diff(a, axis=-1)
         # Need to trim off elements so that the two arrays have same shape
-        return a_diff_x[..., :-2], a_diff_y[..., :-2, :]
+        return a_diff_x[..., :-1], a_diff_y[..., :-1, :]
 
 Now we can compute the gradient of our example scalar field
 
 .. ipython:: python
-    :okexcept:
 
-    ds['grad_x'], ds['grad_y'] = gradient(grid, ds['a'], axis=[('X', 'Y')])
+    ds['grad_a_x'], ds['grad_a_y'] = gradient(grid, a, axis=[('X', 'Y')])
 
-and plot the gradient of the magnitude as a vector field
+Again in order to plot this as a vector field we should first interpolate it
 
 .. ipython:: python
-    :okexcept:
+
+    colocated['grad_a_x'] = grid.interp(ds['grad_a_x'], axis="X", to="center")
+    colocated['grad_a_y'] = grid.interp(ds['grad_a_y'], axis="Y", to="center")
+    colocated
+
+aand now we can plot the gradient of the magnitude of the velocities as a vector field
+
+.. ipython:: python
 
     @savefig gradient_scalar_field.png width=4in
-    ds.plot.quiver("x_c", "y_c", u="grad_x", v="grad_y")
+    colocated.plot.quiver("x_c", "y_c", u="grad_a_x", v="grad_a_y")
 
 
 Curl/Vorticity
