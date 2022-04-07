@@ -798,6 +798,15 @@ def test_keep_coords(funcname, gridtype):
             assert set(result.coords) == set(base_coords + augmented_coords)
 
 
+def test_keep_coords_deprecation():
+    ds, coords, metrics = datasets_grid_metric("B")
+    ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
+    grid = Grid(ds, coords=coords, metrics=metrics)
+    for axis_name in grid.axes.keys():
+        with pytest.warns(DeprecationWarning):
+            grid.diff(ds.tracer, axis_name, keep_coords=False)
+
+
 def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     ds = datasets["2d_left"]
     grid1 = Grid(ds, periodic=False)

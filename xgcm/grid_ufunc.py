@@ -1,5 +1,6 @@
 import re
 import string
+import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1079,6 +1080,12 @@ def _reattach_coords(results, grid, out_core_dims, boundary_width, keep_coords):
 
         if not keep_coords:
             # TODO I don't like the `keep_coords` argument in general and think it should be removed for clarity.
+            warnings.warn(
+                "The keep_coords keyword argument is being deprecated - in future it will be removed "
+                "entirely, and the behaviour will always be that currently given by keep_coords=True.",
+                category=DeprecationWarning,
+            )
+
             # Drop any non-dimension coordinates on the output
             non_dim_coords = [coord for coord in res.coords if coord not in res.dims]
             res = res.drop_vars(non_dim_coords)
