@@ -142,7 +142,8 @@ def test_create_periodic_grid(ds):
 
 
 @pytest.mark.xfail(
-    reason="Test is too low level. This functionality has been replaced by grid_ufunc internals"
+    reason="Test is too low level. This functionality has been replaced by grid_ufunc internals",
+    strict=True
 )
 def test_get_periodic_grid_edge(ds):
     ds = ds.isel(face=0)
@@ -205,10 +206,6 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
     diff_y = grid.diff(ds.data_c, "Y", boundary="fill")
-    # ! this will only apply `fill` to the Y axis, but for face
-    # ! connections across axes we need to currently pad along the other dimension too.
-    # ! This causes an issue with periodic (aka wrap padding) and the coordinates in xarray
-    # ! (see https://github.com/pydata/xarray/issues/6425)
     interp_y = grid.interp(ds.data_c, "Y", boundary="fill")
 
     # make sure the face connection got applied correctly
@@ -226,7 +223,6 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # TODO: checking all the other boundaries
 
 
-# TODO: Relaease the periodic test here once we unified the API with padding.
 @pytest.mark.parametrize("boundary", ["periodic", "fill"])
 def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
     # one face connection, rotated

@@ -55,7 +55,9 @@ def _check_data_input(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: "Grid",
 ) -> Union[xr.DataArray, Dict[str, xr.DataArray]]:
-
+"""
+Checks for valid data input (either a scalar or a single vector component). Checks types and that vector component axes actually exist
+"""
     if data is not None:
         if not isinstance(data, (xr.DataArray, dict)):
             raise TypeError(
@@ -654,10 +656,9 @@ def apply_as_grid_ufunc(
     args = _promote_to_sequence_and_check(args, grid)  # type: ignore
     other_component = _promote_to_sequence_and_check(other_component, grid)
 
-    if len(other_component) == 1:
+    if len(other_component) == 1 and other_component[0] is None:
         # Make sure that the default (None) for other_component is properly broadcasted
-        # TODO: Do we want to 'broadcast' any type of input like this or just a None?
-        other_component = [other_component[0] for i in range(len(args))]
+        other_component = other_component * len(args)
 
     if not len(args) == len(other_component):
         raise ValueError(

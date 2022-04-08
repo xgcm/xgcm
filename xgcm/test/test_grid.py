@@ -1007,12 +1007,11 @@ class TestInputErrorGridMethods:
             grid.diff({"X": "not_a_dataarray"}, "X")
 
     def test_wrong_axis_vector_input_axis(self):
-        # TODO: @Tom is this explicitly tested elsewhere? Then ill remove it here.
         ds, _, _ = datasets_grid_metric("C")
         grid = Grid(ds)
         msg = "Vector component with unknown axis provided. Grid has axes .*?"
         with pytest.raises(
-            ValueError,  # @Tom, can you check on the error types here? These totally confuse me each time.
+            ValueError, 
             match=msg,
         ):
             grid.diff({"wrong": xr.DataArray()}, "X")

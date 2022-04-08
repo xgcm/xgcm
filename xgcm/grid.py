@@ -1765,14 +1765,10 @@ class Grid:
 
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
             axis = [axis]
-        # # parse multi axis kwargs like e.g. `boundary`
-        # multi_kwargs = {k: self._as_axis_kwarg_mapping(v) for k, v in kwargs.items()}
 
         out = da
         for axx in axis:
-            # kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
             ax = self.axes[axx]
-            # kwargs.setdefault("boundary", ax.boundary)
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
 
