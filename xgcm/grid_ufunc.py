@@ -55,9 +55,9 @@ def _check_data_input(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: "Grid",
 ) -> Union[xr.DataArray, Dict[str, xr.DataArray]]:
-"""
-Checks for valid data input (either a scalar or a single vector component). Checks types and that vector component axes actually exist
-"""
+    """
+    Checks for valid data input (either a scalar or a single vector component). Checks types and that vector component axes actually exist
+    """
     if data is not None:
         if not isinstance(data, (xr.DataArray, dict)):
             raise TypeError(
