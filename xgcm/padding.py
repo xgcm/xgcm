@@ -241,7 +241,6 @@ def _pad_face_connections(
                                     # If the input is an orthogonal vector this flip needs
                                     # to be accompanied by a sign change
                                     source_slice = -source_slice
-                            # TODO: Flip sign if vector is tangential
 
                         # Tangential flip
                         if swap_axis and not reverse:
@@ -415,7 +414,6 @@ def pad(
     # Instead of attempting that we will strip all coordinates (including dimension coordinates)
     # before dispatching to the utility pad functions.
     # This ensures that any output from this function is stripped.
-    # TODO: The coordinate values need to be reattached as part of the `apply_as_grid_ufunc` logic
     data = _strip_all_coords(data)
 
     # If any axis has connections we need to use the complex padding
