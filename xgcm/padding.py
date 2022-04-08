@@ -328,7 +328,7 @@ def _pad_basic(
 ):
     """Implement basic xarray/numpy padding methods"""
 
-    da_padded = da.copy()
+    da_padded = da.copy(deep=False)
 
     for ax, widths in padding_width.items():
         axis = grid.axes[ax]
