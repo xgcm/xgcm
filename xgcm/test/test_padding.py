@@ -135,7 +135,6 @@ class TestPadding:
         xr.testing.assert_allclose(expected, result)
 
 
-# TODO: Add extrapolate, once we support it? Unless we do not support it anymore.
 # TODO: Make sure that we cannot specify mixed methods for padding if the input is something like `cube-sphere` or `tripolar`
 
 
@@ -581,7 +580,6 @@ class TestPaddingFaceConnection:
         )
         xr.testing.assert_allclose(result, expected)
 
-    # TODO: Are there certain grid posisitions for u/v that need to be excluded?
     def test_vector_face_connections_right_left_same_axis(
         self, boundary_width, ds_faces, fill_value
     ):
