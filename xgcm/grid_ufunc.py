@@ -553,8 +553,8 @@ def apply_as_grid_ufunc(
     grid: "Grid" = None,
     signature: Union[str, _GridUFuncSignature] = "",
     boundary_width: Mapping[str, Tuple[int, int]] = None,
-    boundary: Union[str, Mapping[str, str]] = "periodic",
-    fill_value: Union[float, Mapping[str, float]] = 0.0,
+    boundary: Union[str, Mapping[str, str]] = None,
+    fill_value: Union[float, Mapping[str, float]] = None,
     keep_coords: bool = True,
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
@@ -650,6 +650,7 @@ def apply_as_grid_ufunc(
         raise ValueError("Must provide a grid object to describe the Axes")
     # ? Why is this actually an optional input? This causes some mypy issues on pre-commit too.
 
+    # Check data input arguments
     args = _promote_to_sequence_and_check(args, grid)  # type: ignore
     other_component = _promote_to_sequence_and_check(other_component, grid)
 
@@ -741,9 +742,7 @@ def apply_as_grid_ufunc(
                 grid,
                 boundary_width=boundary_width_real_axes,
                 boundary=boundary,
-                # type: ignore
                 fill_value=fill_value,
-                # type: ignore
                 other_component=oc,
             )
             for a, oc in zip(args, other_component)

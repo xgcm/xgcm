@@ -56,7 +56,7 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
-_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
+_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate", "periodic"]
 
 
 class Axis:
@@ -120,7 +120,7 @@ class Axis:
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
         boundary : str or dict, optional,
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -131,6 +131,7 @@ class Axis:
               the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+            * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
         fill_value : float, optional
@@ -744,7 +745,13 @@ class Axis:
         # first use xarray's cumsum method
         da_cum = da.cumsum(dim=dim)
 
-        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value)
+        # _maybe_get_axis_kwarg_from_mapping is needed to ensure backwards compatibility
+        # axis methods cannot deal with a dict input for e.g. boundary etc.
+
+        boundary_kwargs = dict(
+            boundary=_maybe_get_axis_kwarg_from_mapping(boundary, self.name),
+            fill_value=_maybe_get_axis_kwarg_from_mapping(fill_value, self.name),
+        )
 
         # now pad / trim the data as necessary
         # here we enumerate all the valid possible shifts
@@ -1309,9 +1316,12 @@ class Grid:
                     )
 
         # Convert all inputs to axes-kwarg mappings
+        # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
         boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
         fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+        # TODO: In the future we want this the only place where we store these.
+        # TODO: This info needs to then be accessible to e.g. pad()
 
         # Parse list input. This case does only apply to periodic.
         # Since we plan on deprecating it soon handle it here, so we can easily
@@ -1320,28 +1330,31 @@ class Grid:
             periodic = {axname: True for axname in periodic}
         periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
 
-        # Set properties on grid object. I think we are better of
-        # getting completely rid of the axis object and storing/getting info from the grid object properties
-        # (all of which need to be supplied/converted to axis-value mapping).
-        self.boundary: Dict[str, Union[str, float, int]] = boundary
-        self.fill_value: Dict[str, Union[str, float, int]] = fill_value
-        self.periodic: Dict[str, Union[str, float, int]] = periodic
+        # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
         self._connections = face_connections if face_connections else None
         # TODO: I think of the face connection data as grid not axes properties, since they almost by defintion
         # TODO: involve multiple axes. In a future PR we should remove this info from the axes
         # TODO: but make sure to properly port the checking functionality!
 
+        # TODO: jb: I have changed my mind on boundary/fill_value though. I think these should be living in the axis.
+        # self.boundary: Dict[str, Union[str, float, int]] = boundary
+        # self.fill_value: Dict[str, Union[str, float, int]] = fill_value
+        # self.periodic: Dict[str, Union[str, float, int]] = periodic
+
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
+            # periodic
             is_periodic = periodic.get(axis_name, False)
 
+            # default_shifts
             if axis_name in default_shifts:
                 axis_default_shifts = default_shifts[axis_name]
             else:
                 axis_default_shifts = {}
 
+            # boundary
             if isinstance(boundary, dict):
                 axis_boundary = boundary.get(axis_name, None)
             elif isinstance(boundary, str) or boundary is None:
@@ -1351,9 +1364,11 @@ class Grid:
                     f"boundary={boundary} is invalid. Please specify a dictionary "
                     "mapping axis name to a boundary option; a string or None."
                 )
-            # TODO Reimplement value checking on grid properties. See comment above
+
             if isinstance(fill_value, dict):
-                axis_fillvalue = fill_value.get(axis_name, None)
+                axis_fillvalue = fill_value.get(
+                    axis_name, None
+                )  # TODO: This again sets defaults. Dont do that here.
             elif isinstance(fill_value, (int, float)) or fill_value is None:
                 axis_fillvalue = fill_value
             else:
@@ -1387,6 +1402,8 @@ class Grid:
         self,
         kwargs: Union[Any, Dict[str, Any]],
         axes: Iterable[str] = None,
+        ax_property_name=None,
+        default_value: Any = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
@@ -1398,12 +1415,35 @@ class Grid:
             axes = self.axes
 
         parsed_kwargs: Dict[str, Any] = dict()
+
         if isinstance(kwargs, dict):
             parsed_kwargs = kwargs
         else:
-            for axis in axes:
-                parsed_kwargs[axis] = kwargs
-        return parsed_kwargs
+            for axname in axes:
+                parsed_kwargs[axname] = kwargs
+
+        # Check axis properties for values that were not provided (before using the default)
+        if ax_property_name is not None:
+            for axname in axes:
+                if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
+                    ax_property = getattr(self.axes[axname], ax_property_name)
+                    parsed_kwargs[axname] = ax_property
+
+        # if None set to default value.
+        parsed_kwargs_w_defaults = {
+            k: default_value if v is None else v for k, v in parsed_kwargs.items()
+        }
+        # At this point the output should be guaranteed to have an entry per existing axis.
+        # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
+
+        # temporary hack to get periodic conditions from axis
+        if ax_property_name == "boundary":
+            for axname in axes:
+                if self.axes[axname]._periodic:
+                    if axname not in parsed_kwargs_w_defaults.keys():
+                        parsed_kwargs_w_defaults[axname] = "periodic"
+
+        return parsed_kwargs_w_defaults
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -1729,14 +1769,14 @@ class Grid:
 
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
             axis = [axis]
-        # parse multi axis kwargs like e.g. `boundary`
-        multi_kwargs = {k: self._as_axis_kwarg_mapping(v) for k, v in kwargs.items()}
+        # # parse multi axis kwargs like e.g. `boundary`
+        # multi_kwargs = {k: self._as_axis_kwarg_mapping(v) for k, v in kwargs.items()}
 
         out = da
         for axx in axis:
-            kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
+            # kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
             ax = self.axes[axx]
-            kwargs.setdefault("boundary", ax.boundary)
+            # kwargs.setdefault("boundary", ax.boundary)
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
 
@@ -1802,54 +1842,11 @@ class Grid:
             metric_weighted = (metric_weighted,)
         metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
 
-        # If I understand correctly, this could contain some other kwargs, which are not appropriate to convert
-        # Note that the option to pass boundary (actually padding) options on the method will be deprecated,
-        # so for now I will just store everything I need here.
-        VALID_BOUNDARY_KWARGS = ["boundary", "periodic", "fill_value"]
-        kwargs = {
-            k: self._as_axis_kwarg_mapping(v) if k in VALID_BOUNDARY_KWARGS else v
-            for k, v in kwargs.items()
-        }
-
-        # Now check if some of the values not provided in the kwargs are set as grid properties
-        # In the future grid object properties should be the only way to access that information
-        # and we can remove this.
-        kwargs_with_defaults = {}
-
-        for k in set(
-            list(kwargs.keys()) + VALID_BOUNDARY_KWARGS
-        ):  # iterate over all axis properties and any additional keys of `kwarg`
-            if k in VALID_BOUNDARY_KWARGS:
-                defaults = getattr(self, k, {})
-                kwargs_input = kwargs.get(k, {})
-                # overwrite if given as input
-                defaults.update(kwargs_input)
-                kwargs_with_defaults[k] = defaults
-            else:
-                kwargs_with_defaults[k] = kwargs[k]
-        kwargs = kwargs_with_defaults
-
-        # Lastly go through the inputs axis by axis, and replace
-        # boundary with 'periodic' if periodic is True
-        # (again this is temporary until `periodic` is deprecated)
-        if "periodic" in kwargs.keys():
-            boundary = kwargs.get("boundary", {})
-            new_boundary = {
-                k: "periodic"
-                for k in kwargs["periodic"].keys()
-                if kwargs["periodic"].get(k, False)
-            }
-            boundary.update(new_boundary)
-            kwargs["boundary"] = boundary
-        # remove the periodic input
-        kwargs = {k: v for k, v in kwargs.items() if k != "periodic"}
-
         signatures = self._create_1d_grid_ufunc_signatures(
             data_unpacked, axis=axis, to=to
         )
 
         # if any dims are chunked then we need dask
-
         if isinstance(data_unpacked.data, Dask_Array):
             dask = "parallelized"
         else:
@@ -2356,7 +2353,6 @@ class Grid:
         )
         return {x_axis_name: x_component, y_axis_name: y_component}
 
-    @docstrings.dedent
     def diff_2d_vector(self, vector, **kwargs):
         """
         Difference a 2D vector to the intermediate grid point. This method is
@@ -2378,7 +2374,6 @@ class Grid:
         """
         return self._apply_vector_function(self.diff, vector, **kwargs)
 
-    @docstrings.dedent
     def interp_2d_vector(self, vector, **kwargs):
         """
         Interpolate a 2D vector to the intermediate grid point. This method is
@@ -2709,6 +2704,15 @@ def raw_min_function(data_left, data_right):
 
 def raw_max_function(data_left, data_right):
     return np.maximum(data_right, data_left)
+
+
+def _maybe_get_axis_kwarg_from_mapping(
+    kwargs: Union[str, float, Dict[str, Union[str, float]]], axname: str
+) -> Union[str, float]:
+    if isinstance(kwargs, dict):
+        return kwargs[axname]
+    else:
+        return kwargs
 
 
 _other_docstring_options = """

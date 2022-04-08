@@ -1,5 +1,4 @@
 # TODO: Swap this out for some of our fixtures?
-from email.policy import strict
 import numpy as np
 import pytest
 import xarray as xr
@@ -138,31 +137,6 @@ class TestPadding:
 
 # TODO: Add extrapolate, once we support it? Unless we do not support it anymore.
 # TODO: Make sure that we cannot specify mixed methods for padding if the input is something like `cube-sphere` or `tripolar`
-
-
-class TestPaddingErrors:
-    def test_padding_no_width(self):
-        ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
-        data = ds.tracer
-
-        with pytest.raises(
-            ValueError, match="Must provide the widths of the boundaries"
-        ):
-            pad(data, grid, boundary="fill")
-
-    @pytest.mark.xfail(
-        reason="This currently defaults to boundary='periodic'", strict=True
-    )
-    def test_padding_no_boundary(self):
-        ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
-        data = ds.tracer
-
-        with pytest.raises(
-            ValueError, match="Must provide the widths of the boundaries"
-        ):
-            pad(data, grid, boundary_width={"X": (0, 1)})
 
 
 # Some helper functions for the connections padding
@@ -388,6 +362,7 @@ class TestPaddingFaceConnection:
             boundary_width=boundary_width,
             boundary="fill",
             fill_value=fill_value,
+            other_component=None,
         )
         xr.testing.assert_allclose(result, expected)
 
@@ -451,6 +426,7 @@ class TestPaddingFaceConnection:
             boundary_width=boundary_width,
             boundary="fill",
             fill_value=fill_value,
+            other_component=None,
         )
         xr.testing.assert_allclose(result, expected)
 

@@ -227,9 +227,7 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
 
 
 # TODO: Relaease the periodic test here once we unified the API with padding.
-@pytest.mark.parametrize(
-    "boundary", [pytest.param("periodic", marks=pytest.mark.xfail(strict=True)), "fill"]
-)
+@pytest.mark.parametrize("boundary", ["periodic", "fill"])
 def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
     # one face connection, rotated
     grid = Grid(
@@ -318,3 +316,15 @@ def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
     face_diff_y = grid.diff(face, "Y")
     np.testing.assert_allclose(face_diff_y[:, 0, 0], [-4, -3, -2, -1, 2, 5])
     np.testing.assert_allclose(face_diff_y[:, 0, -1], [-4, -3, -2, -1, 2, 5])
+
+
+class TestErrors:
+    def test_vector_missing_other_component(self, ds, ds_face_connections_x_to_y):
+        grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+        msg = "Padding vector components across different axes .*?"
+        with pytest.raises(ValueError, match=msg):
+            grid.diff(
+                {"X": ds.u},
+                "X",
+                other_component=None,
+            )

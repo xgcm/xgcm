@@ -84,16 +84,18 @@ def _pad_face_connections(
         isvector = False
 
     if isvector:
-
-        # TODO: This is actually too strict. In cases where we do only have face connections on
-        # TODO: the same axis, this should work without other_component input.
-        # TODO: We could save a bunch of operations that way below too...
-
-        if any(a for a in connections) and other_component is None:
+        if (
+            len(_get_all_connection_axes(connections, facedim)) > 1
+            and other_component is None
+        ):
             # TODO: cover with a test.
             raise ValueError(
                 "Padding vector components across different axes (in a complex grid with face connections) requires `other_component` input."
             )
+        # TODO: Using the logic above I could save a bunch of operations below. If we are never swapping axes (_get_all_connection_axes(connections, facedim)) = 1)
+        # TODO: We do not need to deal with other components
+        # TODO: Need to integrate that choice deeper in the loop\.
+
         _, da_partner = other_component.popitem()
 
     # Detect all the axes we have to deal with during padding
@@ -327,27 +329,6 @@ def _pad_basic(
 ):
     """Implement basic xarray/numpy padding methods"""
 
-    # legacy default fill value is 0, instead of xarrays nan.
-    # TODO: I think nan makes more sense as a default.
-    # this should not accept anything else than an axis-kwarg mapping
-    # Currently some of the map_blocks tests seem to pass None?
-    if fill_value is None:
-        fill_value = 0.0
-    elif isinstance(fill_value, dict):
-        fill_value = {k: 0.0 if v is None else v for k, v in fill_value.items()}
-    fill_value = grid._as_axis_kwarg_mapping(fill_value)
-
-    # TODO: We should set all defaults on the grid init and avoid this here.
-    # # set defaults
-    for axname, axis in grid.axes.items():
-        if axname not in padding.keys():
-            # Use default axis boundary for axis unless overridden
-            padding[
-                axname
-            ] = (
-                axis.boundary
-            )  # TODO: rename the axis property, or are we not keeping this on the axis level?
-
     da_padded = da.copy()
 
     for ax, widths in padding_width.items():
@@ -409,8 +390,21 @@ def pad(
     padding_width = boundary_width
 
     # Always promote the padding/fill_value to a axed dict.
-    padding = grid._as_axis_kwarg_mapping(padding)
-    fill_value = grid._as_axis_kwarg_mapping(fill_value)
+    padding = grid._as_axis_kwarg_mapping(
+        padding, ax_property_name="boundary", default_value="periodic"
+    )
+    fill_value = grid._as_axis_kwarg_mapping(
+        fill_value, ax_property_name="fill_value", default_value=0.0
+    )
+
+    # Check axis properties for padding/fill_value, but do not overwrite
+    for axname, axis in grid.axes.items():
+        if axname not in padding.keys():
+            # Use default axis boundary for axis unless overridden
+            padding[axname] = axis.boundary
+        if axname not in fill_value.keys():
+            # Use default axis boundary for axis unless overridden
+            fill_value[axname] = axis.fill_value
 
     # TODO: Refactor, if the max value is 0, complain.
     # Maybe move this check upstream, so that either none or 0 everywhere does not even call pad
