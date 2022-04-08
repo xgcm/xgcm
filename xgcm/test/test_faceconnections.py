@@ -141,10 +141,6 @@ def test_create_periodic_grid(ds):
         assert connect_right[2] is False
 
 
-@pytest.mark.xfail(
-    reason="Test is too low level. This functionality has been replaced by grid_ufunc internals",
-    strict=True
-)
 def test_get_periodic_grid_edge(ds):
     ds = ds.isel(face=0)
     grid = Grid(ds, periodic=True)
