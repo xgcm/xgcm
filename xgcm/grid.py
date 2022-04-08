@@ -1337,10 +1337,6 @@ class Grid:
         # TODO: involve multiple axes. In a future PR we should remove this info from the axes
         # TODO: but make sure to properly port the checking functionality!
 
-        # TODO: jb: I have changed my mind on boundary/fill_value though. I think these should be living in the axis.
-        # self.boundary: Dict[str, Union[str, float, int]] = boundary
-        # self.fill_value: Dict[str, Union[str, float, int]] = fill_value
-        # self.periodic: Dict[str, Union[str, float, int]] = periodic
 
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
