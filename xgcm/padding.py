@@ -278,10 +278,6 @@ def _pad_face_connections(
                                 }
                             )
 
-                        # # FUCK THIS: FOR NOW BRUTE FORCE THIS STUFF
-                        # target_slice = _strip_all_coords(target_slice)
-                        # source_slice = _strip_all_coords(source_slice)
-
                         # assemble the padded array
                         if is_right:
                             concat_list = [target_slice, source_slice]
