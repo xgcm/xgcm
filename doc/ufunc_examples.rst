@@ -189,7 +189,7 @@ Let's first define a tracer field ``T``, which we imagine will start off localis
     ds["T"] = gaussian(grid_ds.x_c, grid_ds.y_c, x_pos=7.5, y_pos=7.5, A=50, w=2)
 
     @savefig tracer_field.png width=4in
-    ds["T"].plot.contourf(x="x_c", vmax=80)
+    ds["T"].plot.contourf(x="x_c", vmax=60)
 
 Computing the first-order gradient will again move the data onto different grid positions,
 so the signature for a gradient ufunc will need to reflect this
@@ -241,20 +241,33 @@ Now we can define a simple flux operator (which internally calls our previous gr
 
 .. ipython:: python
 
+    def interp_forward_1d(a):
+        return (a[..., :-1] + a[..., 1:]) / 2.0
+
+
+    def interp_forward(arr, axis):
+        """First order forward interpolation along any axis"""
+        return np.apply_along_axis(diff_forward_1d, axis, arr)
+
+
     @as_grid_ufunc(
         "(X:left,Y:center),(X:center,Y:left),(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
         boundary_width={"X": (1, 0), "Y": (1, 0)},
     )
-    def flux(U, V, T):
-        T_grad_x, T_grad_y = gradient(T)
-        return U[..., :-1, :-1] * -T_grad_x, V[..., :-1, :-1] * -T_grad_y
+    def flux(u, v, T):
+        """First order flux"""
+        T_at_U_position = interp_forward(T, axis=-2)
+        T_at_V_position = interp_forward(T, axis=-1)
+        T_flux_x = u[..., :-1, :-1] * T_at_U_position[..., :-1]
+        T_flux_y = v[..., :-1, :-1] * T_at_V_position[..., :-1, :]
+        return T_flux_x, T_flux_y
 
 We can use this operator in conjunction with our divergence operator in order to build an advection operator,
 with which we can solve the basic continuity equation
 
 .. math::
 
-   \frac{\partial T}{\partial t} + \mathbf{u} \cdot \nabla T = 0
+   \frac{\partial T}{\partial t} + \nabla  \cdot ( \mathbf{u} T ) = 0
 
 
 .. ipython:: python
@@ -273,7 +286,7 @@ Evaluating this function updates our tracer to what the tracer field might look 
 
     new_T = advect(ds["T"], ds["U"], ds["V"], delta_t=3)
 
-    new_T.plot.contourf(x="x_c", vmin=0, vmax=80)
+    new_T.plot.contourf(x="x_c", vmin=0, vmax=60)
     colocated.plot.quiver("x_c", "y_c", u="U", v="V")
 
     @savefig advected_field.png width=4in
