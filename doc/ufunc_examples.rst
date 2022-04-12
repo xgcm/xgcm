@@ -70,7 +70,7 @@ We will treat these velocities as if they lie on a vector C-grid, so as velociti
 
 .. ipython:: python
 
-    U = np.sin(grid_ds.x_g * 2 * np.pi / 19) * np.cos(grid_ds.y_c * 2 * np.pi / 19)
+    U = np.sin(grid_ds.x_g * 2 * np.pi / 9.5) * np.cos(grid_ds.y_c * 2 * np.pi / 19)
     V = np.cos(grid_ds.x_c * 2 * np.pi / 19) * np.sin(grid_ds.y_g * 2 * np.pi / 19)
 
     ds = xr.Dataset({"V": V, "U": U})
@@ -309,21 +309,9 @@ We can compute vector fields from vector fields too, such as vorticity.
         u_diff_y = diff(u, axis=-1)
         return v_diff_x[..., 1:] - u_diff_y[..., 1:, :]
 
-
     vort = vorticity(grid, ds["U"], ds["V"], axis=[("X", "Y"), ("X", "Y")])
 
 .. ipython:: python
 
     @savefig vort_vector_field.png width=4in
-    vort.plot(x="x_g", y="y_g")
-
-DEBUG
-
-.. ipython:: python
-
-    v_diff_x = grid.diff(V, axis="X", to="left")
-    u_diff_y = grid.diff(U, axis="Y", to="left")
-    vort = v_diff_x - u_diff_y
-
-    @savefig vort_vector_field_debug.png width=4in
     vort.plot(x="x_g", y="y_g")
