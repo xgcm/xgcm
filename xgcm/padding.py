@@ -3,7 +3,7 @@ Handle all padding.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Mapping, Optional, Tuple, Union
 
 import numpy as np
 import xarray as xr
@@ -84,19 +84,16 @@ def _pad_face_connections(
         isvector = False
 
     if isvector:
-        if (
-            len(_get_all_connection_axes(connections, facedim)) > 1
-            and other_component is None
-        ):
-            # TODO: cover with a test.
-            raise ValueError(
-                "Padding vector components across different axes (in a complex grid with face connections) requires `other_component` input."
-            )
         # TODO: Using the logic above I could save a bunch of operations below. If we are never swapping axes (_get_all_connection_axes(connections, facedim)) = 1)
         # TODO: We do not need to deal with other components
         # TODO: Need to integrate that choice deeper in the loop\.
-
-        _, da_partner = other_component.popitem()
+        if other_component:
+            _, da_partner = other_component.popitem()
+        else:
+            # TODO: cover with a test.
+            raise ValueError(
+                "Padding vector components requires `other_component` input."
+            )
 
     # Detect all the axes we have to deal with during padding
     # all the axes defined in the connections + the axes of the padding width should give all axes we need to iterate over
@@ -344,9 +341,9 @@ def pad(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
     boundary_width: Optional[Dict[str, Tuple[int, int]]],
-    boundary: Union[str, Dict[str, str]],
-    fill_value: Union[float, Dict[str, float]],
-    other_component: Optional[Dict[str, xr.DataArray]],
+    boundary: Union[str, Mapping[str, str], None] = None,
+    fill_value: Union[float, Mapping[str, float]] = None,
+    other_component: Dict[str, xr.DataArray] = None,
 ):
     """
     Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.

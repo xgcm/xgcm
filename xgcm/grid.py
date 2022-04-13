@@ -1337,7 +1337,6 @@ class Grid:
         # TODO: involve multiple axes. In a future PR we should remove this info from the axes
         # TODO: but make sure to properly port the checking functionality!
 
-
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
