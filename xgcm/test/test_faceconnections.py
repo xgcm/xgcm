@@ -313,7 +313,7 @@ def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
 class TestErrors:
     def test_vector_missing_other_component(self, ds, ds_face_connections_x_to_y):
         grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
-        msg = "Padding vector components across different axes .*?"
+        msg = "Padding vector components requires `other_component` input"
         with pytest.raises(ValueError, match=msg):
             grid.diff(
                 {"X": ds.u},
