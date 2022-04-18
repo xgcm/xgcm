@@ -91,8 +91,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"xgcm"
-copyright = u"2016-2019, xgcm developers"
+project = "xgcm"
+copyright = "2016-2019, xgcm developers"
 
 html_show_sourcelink = True
 srclink_project = "https://github.com/xgcm/xgcm"
@@ -254,7 +254,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ("index", "xgcm.tex", u"xgcm Documentation", u"xgcm developers", "manual")
+    ("index", "xgcm.tex", "xgcm Documentation", "xgcm developers", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -282,7 +282,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "xgcm", u"xgcm Documentation", [u"xgcm developers"], 1)]
+man_pages = [("index", "xgcm", "xgcm Documentation", ["xgcm developers"], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -297,8 +297,8 @@ texinfo_documents = [
     (
         "index",
         "xgcm",
-        u"xgcm Documentation",
-        u"xgcm developers",
+        "xgcm Documentation",
+        "xgcm developers",
         "xgcm",
         "One line description of project.",
         "Miscellaneous",
