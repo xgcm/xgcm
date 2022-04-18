@@ -19,11 +19,12 @@ from typing import (
 import numpy as np
 import xarray as xr
 
+from .padding import pad
+
 if TYPE_CHECKING:
     # Avoids circular references when type checking
 
     from .grid import Grid
-
 
 # Modified version of `numpy.lib.function_base._parse_gufunc_signature`
 # Modifications:
@@ -38,6 +39,54 @@ _AXIS_NAME_POSITION_PAIR_LIST = (
 _ARGUMENT = rf"\({_AXIS_NAME_POSITION_PAIR_LIST}\)"
 _ARGUMENT_LIST = f"{_ARGUMENT}(?:,{_ARGUMENT})*"
 _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
+
+
+def _maybe_unpack_vector_component(
+    data: Union[xr.DataArray, Dict[str, xr.DataArray]]
+) -> xr.DataArray:
+    if isinstance(data, dict):
+        [da] = list(data.values())  # this will raise if more than one element
+    else:
+        da = data
+    return da
+
+
+def _check_data_input(
+    data: Union[xr.DataArray, Dict[str, xr.DataArray]],
+    grid: "Grid",
+) -> Union[xr.DataArray, Dict[str, xr.DataArray]]:
+    """
+    Checks for valid data input (either a scalar or a single vector component). Checks types and that vector component axes actually exist
+    """
+    if data is not None:
+        if not isinstance(data, (xr.DataArray, dict)):
+            raise TypeError(
+                "All data arguments must be either a DataArray or Dictionary"
+                f" Got {type(data)}."
+            )
+
+        if isinstance(data, dict):
+            if len(data.keys()) != 1:
+                raise ValueError(
+                    "Vector components provided as dictionaries"
+                    " should contain exactly one key/value pair."
+                    f" Found {len(data)}. Full input:{data}"
+                )
+            else:
+                [key] = list(data.keys())
+                value = data[key]
+                # Check that axis is in grid object
+                if key not in grid.axes:
+                    raise ValueError(
+                        f"Vector component with unknown axis provided. Grid has axes ({list(grid.axes)}), got  ({key})"
+                    )
+                # Check that component is dataarray
+                if not isinstance(value, xr.DataArray):
+                    raise TypeError(
+                        f"Dictionary inputs must have a DataArray as value. Got {type(value)}."
+                    )
+
+    return data
 
 
 T_AX_POS_LIST = List[Tuple[str, ...]]
@@ -505,7 +554,7 @@ def as_grid_ufunc(
 
 def apply_as_grid_ufunc(
     func: Callable,
-    *args: xr.DataArray,
+    *args: Union[xr.DataArray, Dict[str, xr.DataArray]],
     axis: Sequence[Sequence[str]] = None,
     grid: "Grid" = None,
     signature: Union[str, _GridUFuncSignature] = "",
@@ -516,6 +565,9 @@ def apply_as_grid_ufunc(
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
     pad_before_func: bool = True,
+    other_component: Union[
+        Dict[str, xr.DataArray], Sequence[Dict[str, xr.DataArray]]
+    ] = None,
     **kwargs,
 ) -> List[Any]:
     """
@@ -533,7 +585,9 @@ def apply_as_grid_ufunc(
 
         Passed directly on to `xarray.apply_ufunc`.
     *args : xarray.DataArray
-        One or more xarray DataArray objects to apply the function to.
+        One or more input argument to apply the function to. Inputs can be either scalar fields (xr.Dataarray)
+        Or vector components (Dictionaries mapping the axis parallel to the vector direction to an xr.Dataarray).
+        If vector components are provided, complex grids may require input to `other_component` (see below).
     axis : Sequence[Sequence[str]], optional
         Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
         Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
@@ -580,6 +634,9 @@ def apply_as_grid_ufunc(
     pad_before_func : bool, optional
         Whether padding should occur before applying func or after it. Default is True.
         (For no padding at all pass `boundary_width=None`).
+    other_component : Union[None, Dict[str,xr.DataArray], Sequence[Dict[str,xr.DataArray]]], default: None
+        Matching vector component for input provided as dictionary. Needed for complex vector padding.
+        For multiple arguments, `other_components` needs to provide one element per input.
     **kwargs
         Keyword arguments are passed directly onto xarray.apply_ufunc.
         (As such then kwargs should not be xarray data objects, as they will not be subject to
@@ -601,9 +658,21 @@ def apply_as_grid_ufunc(
 
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
+    # ? Why is this actually an optional input? This causes some mypy issues on pre-commit too.
 
-    if any(not isinstance(arg, xr.DataArray) for arg in args):
-        raise TypeError("All data arguments must be of type DataArray")
+    # Check data input arguments
+    args = _promote_to_sequence_and_check(args, grid)  # type: ignore
+    other_component = _promote_to_sequence_and_check(other_component, grid)
+
+    if len(other_component) == 1 and other_component[0] is None:
+        # Make sure that the default (None) for other_component is properly broadcasted
+        other_component = other_component * len(args)
+
+    if not len(args) == len(other_component):
+        raise ValueError(
+            "When providing multiple input arguments, `other_component`"
+            " needs to provide one dictionary per input."
+        )
 
     if axis is None:
         raise ValueError("Must provide an axis along which to apply the grid ufunc")
@@ -637,6 +706,7 @@ def apply_as_grid_ufunc(
             except KeyError:
                 raise ValueError(f"Axis position ({n}:{p}) does not exist in grid")
 
+            arg = _maybe_unpack_vector_component(arg)
             if ax_pos not in arg.dims:
                 raise ValueError(
                     f"Mismatch between signature and input argument {i}: "
@@ -660,13 +730,11 @@ def apply_as_grid_ufunc(
 
     # TODO allow users to specify new output dtypes
     n_output_vars = len(sig.out_ax_names)
-    out_dtypes = [args[0].dtype] * n_output_vars  # assume uniformity of dtypes
+    out_dtypes = [
+        _maybe_unpack_vector_component(args[0]).dtype
+    ] * n_output_vars  # assume uniformity of dtypes
 
     # Pad arrays according to boundary condition information
-    if boundary and not boundary_width:
-        raise ValueError(
-            "To apply a boundary condition you must provide the widths of the boundaries"
-        )
     boundary_width_real_axes = _substitute_dummy_axis_names(
         boundary_width, dummy_to_real_axes_mapping
     )
@@ -675,7 +743,7 @@ def apply_as_grid_ufunc(
     # TODO could we bind a bunch of these arguments into a namedtuple/dataclass or something to save space?
     if pad_before_func:
         rechunked_padded_args = _pad_then_rechunk(
-            args, grid, in_core_dims, boundary_width_real_axes, boundary, fill_value
+            args, grid, in_core_dims, boundary_width_real_axes, boundary, fill_value, other_component,
         )
         mapped_func = _maybe_map_func(
             func,
@@ -725,6 +793,7 @@ def apply_as_grid_ufunc(
             boundary_width_real_axes,
             boundary,
             fill_value,
+            other_component,
         )
 
     # TODO add option to trim result if not done in ufunc
@@ -736,7 +805,7 @@ def apply_as_grid_ufunc(
 
     # Restore any dimension coordinates associated with new output dims that are present in grid
     results_with_coords = _reattach_coords(
-        results, grid, out_core_dims, boundary_width, keep_coords
+        results, grid, boundary_width, keep_coords
     )
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
@@ -829,15 +898,20 @@ def _substitute_dummy_axis_names(boundary_width, dummy_to_real_axes_mapping):
 
 
 def _pad_then_rechunk(
-    args, grid, in_core_dims, boundary_width_real_axes, boundary, fill_value
+    args, grid, in_core_dims, boundary_width_real_axes, boundary, fill_value, other_component,
 ):
 
-    padded_args = grid.pad(
-        *args,
-        boundary_width=boundary_width_real_axes,
-        boundary=boundary,
-        fill_value=fill_value,
-    )
+    padded_args = [
+        pad(
+            a,
+            grid=grid,
+            boundary_width=boundary_width_real_axes,
+            boundary=boundary,
+            fill_value=fill_value,
+            other_component=oc,
+        )
+        for a, oc in zip(args, other_component)
+    ]
 
     if any(
         _has_chunked_core_dims(padded_arg, core_dims)
@@ -1054,20 +1128,20 @@ def _identify_dummy_axes_with_real_axes(
     return dict(zip(unique_dummy_axes, unique_real_axes))
 
 
-def _reattach_coords(results, grid, out_core_dims, boundary_width, keep_coords):
+def _reattach_coords(results, grid, boundary_width, keep_coords):
     results_with_coords = []
-    for res, arg_out_core_dims in zip(results, out_core_dims):
+    for res in results:
 
-        # Only reconstruct coordinates that actually contain grid position info (i.e. not just integer values along a dim.)
-        # Therefore if input only had dimensions and no coordinates, the output should too.
-        new_core_dim_coords = {
-            dim: grid._ds.coords[dim]
-            for dim in arg_out_core_dims
-            if dim in grid._ds.coords and dim not in res.coords
+        # padding strips all coordinates (inlcuding dimension coordinates).
+        # Here we centrally restore them from the grid._ds.
+        all_matching_coords = {
+            coord: da_coord
+            for coord, da_coord in grid._ds.coords.items()
+            if all(dim in res.dims for dim in da_coord.dims)
         }
 
         try:
-            res = res.assign_coords(new_core_dim_coords)
+            res = res.assign_coords(all_matching_coords)
         except ValueError as err:
             if boundary_width and str(err).startswith("conflicting sizes"):
                 # TODO make this error more informative?
@@ -1093,3 +1167,18 @@ def _reattach_coords(results, grid, out_core_dims, boundary_width, keep_coords):
         results_with_coords.append(res)
 
     return results_with_coords
+
+
+def _promote_to_sequence_and_check(
+    data: Union[
+        xr.DataArray,
+        Dict[str, xr.DataArray],
+        Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]],
+    ],
+    grid: "Grid",
+) -> Sequence[Union[xr.DataArray, Dict[str, xr.DataArray]]]:
+    if not isinstance(data, Sequence):
+        data = [data]
+    # Check individual data inputs for validity
+    data = [_check_data_input(d, grid) for d in data]
+    return data
