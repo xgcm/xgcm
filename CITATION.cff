@@ -22,7 +22,6 @@ authors:
 - family-names: "Fernandes"
   given-names: "Filipe"
   orcid: "https://orcid.org/0000-0003-4165-2913"
-# - jrbourbeau
 - family-names: "Dussin"
   given-names: "Raphael"
   orcid: "https://orcid.org/0000-0003-4004-4553"
@@ -41,7 +40,6 @@ authors:
 - family-names: "Rath"
   given-names: "Willi"
   orcid: "https://orcid.org/0000-0003-1951-8494"
-# - bradyrx
 - family-names: "Balwada"
   given-names: "Dhruv"
   orcid: "https://orcid.org/0000-0001-6632-0187"
