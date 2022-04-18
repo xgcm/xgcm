@@ -14,7 +14,7 @@ jobs:
     name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
     if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash -l {0}
