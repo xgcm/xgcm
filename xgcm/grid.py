@@ -1200,8 +1200,6 @@ class Grid:
             The value to use in boundary conditions with `boundary='fill'`.
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         REFERENCES
         ----------
