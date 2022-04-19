@@ -1,3 +1,5 @@
+# type: ignore
+
 # -*- coding: utf-8 -*-
 #
 # xgcm documentation build configuration file, created by

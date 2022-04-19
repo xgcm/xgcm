@@ -5,7 +5,7 @@ Shamelessly copied from xarray."""
 import numpy as np
 
 try:
-    import dask.array as dsa
+    import dask.array as dsa  # type: ignore
 
     has_dask = True
 except ImportError:
@@ -26,7 +26,7 @@ def _dask_or_eager_func(name, eager_module=np, list_of_args=False, n_array_args=
 
     else:
 
-        def f(data, *args, **kwargs):
+        def f(data, *args, **kwargs):  # type: ignore
             return getattr(eager_module, name)(data, *args, **kwargs)
 
     return f

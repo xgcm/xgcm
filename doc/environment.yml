@@ -1,6 +1,6 @@
 name: test_env_xgcm_docs
 dependencies:
-  - python
+  - python=3.9
   - xarray
   - netcdf4
   - cartopy

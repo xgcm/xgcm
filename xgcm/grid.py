@@ -1,4 +1,5 @@
 import functools
+import inspect
 import itertools
 import operator
 import warnings
@@ -6,17 +7,45 @@ from collections import OrderedDict
 
 import numpy as np
 import xarray as xr
+from dask.array import Array as Dask_Array
 
-from . import comodo
+from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
+from .grid_ufunc import (
+    GridUFunc,
+    _check_data_input,
+    _GridUFuncSignature,
+    _has_chunked_core_dims,
+    _maybe_unpack_vector_component,
+    apply_as_grid_ufunc,
+)
 from .metrics import iterate_axis_combinations
 
 try:
-    import numba
+    import numba  # type: ignore
 
     from .transform import conservative_interpolation, linear_interpolation
 except ImportError:
     numba = None
+
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
+
+# Only need this until python 3.8
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 
 def _maybe_promote_str_to_list(a):
@@ -27,7 +56,7 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
-_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
+_VALID_BOUNDARY = [None, "fill", "extend", "periodic"]
 
 
 class Axis:
@@ -91,7 +120,7 @@ class Axis:
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
         boundary : str or dict, optional,
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -102,6 +131,7 @@ class Axis:
               the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+            * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
         fill_value : float, optional
@@ -276,6 +306,7 @@ class Axis:
             boundary = self.boundary
         if fill_value is None:
             fill_value = self.fill_value
+
         data_new = self._neighbor_binary_func_raw(
             da,
             f,
@@ -610,7 +641,6 @@ class Axis:
             The interpolated data
 
         """
-
         return self._neighbor_binary_func(
             da,
             raw_interp_function,
@@ -715,7 +745,13 @@ class Axis:
         # first use xarray's cumsum method
         da_cum = da.cumsum(dim=dim)
 
-        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value)
+        # _maybe_get_axis_kwarg_from_mapping is needed to ensure backwards compatibility
+        # axis methods cannot deal with a dict input for e.g. boundary etc.
+
+        boundary_kwargs = dict(
+            boundary=_maybe_get_axis_kwarg_from_mapping(boundary, self.name),
+            fill_value=_maybe_get_axis_kwarg_from_mapping(fill_value, self.name),
+        )
 
         # now pad / trim the data as necessary
         # here we enumerate all the valid possible shifts
@@ -1128,6 +1164,13 @@ class Axis:
         return da.get_axis_num(coord_name)
 
 
+_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
+    "periodic": "wrap",
+    "fill": "constant",
+    "extend": "edge",
+}
+
+
 class Grid:
     """
     An object with multiple :class:`xgcm.Axis` objects representing different
@@ -1270,17 +1313,41 @@ class Grid:
                         f"Input `{dim}` (for the `{pos}` position on axis `{axis}`) is not a dimension in the input datasets `ds`."
                     )
 
+        # Convert all inputs to axes-kwarg mappings
+        # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
+        # Parse axis properties
+        boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
+        fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+        # TODO: In the future we want this the only place where we store these.
+        # TODO: This info needs to then be accessible to e.g. pad()
+
+        # Parse list input. This case does only apply to periodic.
+        # Since we plan on deprecating it soon handle it here, so we can easily
+        # remove it later
+        if isinstance(periodic, list):
+            periodic = {axname: True for axname in periodic}
+        periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
+
+        # Set properties on grid object.
+        self._facedim = list(face_connections.keys())[0] if face_connections else None
+        self._connections = face_connections if face_connections else None
+        # TODO: I think of the face connection data as grid not axes properties, since they almost by defintion
+        # TODO: involve multiple axes. In a future PR we should remove this info from the axes
+        # TODO: but make sure to properly port the checking functionality!
+
+        # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
-            try:
-                is_periodic = axis_name in periodic
-            except TypeError:
-                is_periodic = periodic
+            # periodic
+            is_periodic = periodic.get(axis_name, False)
+
+            # default_shifts
             if axis_name in default_shifts:
                 axis_default_shifts = default_shifts[axis_name]
             else:
                 axis_default_shifts = {}
 
+            # boundary
             if isinstance(boundary, dict):
                 axis_boundary = boundary.get(axis_name, None)
             elif isinstance(boundary, str) or boundary is None:
@@ -1292,7 +1359,9 @@ class Grid:
                 )
 
             if isinstance(fill_value, dict):
-                axis_fillvalue = fill_value.get(axis_name, None)
+                axis_fillvalue = fill_value.get(
+                    axis_name, None
+                )  # TODO: This again sets defaults. Dont do that here.
             elif isinstance(fill_value, (int, float)) or fill_value is None:
                 axis_fillvalue = fill_value
             else:
@@ -1320,20 +1389,54 @@ class Grid:
             for key, value in metrics.items():
                 self.set_metrics(key, value)
 
-    def _parse_axes_kwargs(self, kwargs):
-        """Convvert kwarg input into dict for each available axis
+        # Finish setup
+
+    def _as_axis_kwarg_mapping(
+        self,
+        kwargs: Union[Any, Dict[str, Any]],
+        axes: Iterable[str] = None,
+        ax_property_name=None,
+        default_value: Any = None,
+    ) -> Dict[str, Any]:
+        """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
         periodic = True --> periodic = {'X': True, 'Y':True}
         or if not all axes are provided, the other axes will be parsed as defaults (None)
         periodic = {'X':True} --> periodic={'X': True, 'Y':None}
         """
-        parsed_kwargs = dict()
+        if axes is None:
+            axes = self.axes
+
+        parsed_kwargs: Dict[str, Any] = dict()
+
         if isinstance(kwargs, dict):
             parsed_kwargs = kwargs
         else:
-            for axis in self.axes:
-                parsed_kwargs[axis] = kwargs
-        return parsed_kwargs
+            for axname in axes:
+                parsed_kwargs[axname] = kwargs
+
+        # Check axis properties for values that were not provided (before using the default)
+        if ax_property_name is not None:
+            for axname in axes:
+                if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
+                    ax_property = getattr(self.axes[axname], ax_property_name)
+                    parsed_kwargs[axname] = ax_property
+
+        # if None set to default value.
+        parsed_kwargs_w_defaults = {
+            k: default_value if v is None else v for k, v in parsed_kwargs.items()
+        }
+        # At this point the output should be guaranteed to have an entry per existing axis.
+        # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
+
+        # temporary hack to get periodic conditions from axis
+        if ax_property_name == "boundary":
+            for axname in axes:
+                if self.axes[axname]._periodic:
+                    if axname not in parsed_kwargs_w_defaults.keys():
+                        parsed_kwargs_w_defaults[axname] = "periodic"
+
+        return parsed_kwargs_w_defaults
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -1454,6 +1557,7 @@ class Grid:
                 self._metrics[metric_axes].append(metric_var)
 
     def _get_dims_from_axis(self, da, axis):
+        da = _maybe_unpack_vector_component(da)
         dim = []
         axis = _maybe_promote_str_to_list(axis)
         for ax in axis:
@@ -1631,6 +1735,7 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
+            Optionally a dict with seperate values for each axis can be passed (see example)
         boundary : None or str or dict, optional
             A flag indicating how to handle boundaries:
 
@@ -1657,14 +1762,10 @@ class Grid:
 
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
             axis = [axis]
-        # parse multi axis kwargs like e.g. `boundary`
-        multi_kwargs = {k: self._parse_axes_kwargs(v) for k, v in kwargs.items()}
 
         out = da
         for axx in axis:
-            kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
             ax = self.axes[axx]
-            kwargs.setdefault("boundary", ax.boundary)
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
 
@@ -1682,6 +1783,245 @@ class Grid:
                 out = out / metric_new
 
         return out
+
+    def _1d_grid_ufunc_dispatch(
+        self,
+        funcname,
+        data: Union[xr.DataArray, Dict[str, xr.DataArray]],
+        axis,
+        to=None,
+        keep_coords=False,
+        metric_weighted: Union[
+            str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
+        ] = None,
+        other_component: Optional[Dict[str, xr.DataArray]] = None,
+        **kwargs,
+    ):
+        """
+        Calls appropriate 1D grid ufuncs on data, along the specified axes, sequentially.
+
+        Parameters
+        ----------
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            Can be passed as a single str to use for all axis, or as a dict with separate values for each axis.
+            If not specified, the `default_shifts` stored in each Axis object will be used for that axis.
+        """
+
+        if isinstance(axis, str):
+            axis = [axis]
+
+        # This function is restricted to a single data input, so we need to check the input validity
+        # here early.
+        # TODO: This will fail if a sequence of inputs is passed, but not with a very helpful error
+        # TODO: message. @TOM do you think it is worth to check the type and raise another error in that case?
+        data = _check_data_input(data, self)
+
+        # Unpack data for various steps below
+        data_unpacked = _maybe_unpack_vector_component(data)
+
+        # convert input arguments into axes-kwarg mappings
+        to = self._as_axis_kwarg_mapping(to)
+
+        if isinstance(metric_weighted, str):
+            metric_weighted = (metric_weighted,)
+        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
+
+        signatures = self._create_1d_grid_ufunc_signatures(
+            data_unpacked, axis=axis, to=to
+        )
+
+        # if any dims are chunked then we need dask
+        if isinstance(data_unpacked.data, Dask_Array):
+            dask = "parallelized"
+        else:
+            dask = "forbidden"
+
+        if isinstance(data, dict):
+            array = {k: v.copy(deep=False) for k, v in data.items()}
+        else:
+            # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
+            array = data.copy(deep=False)
+
+        # Apply 1D function over multiple axes
+        # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
+        # TODO only actually need to call apply_ufunc once for those axes
+        for signature_1d, ax_name in zip(signatures, axis):
+
+            grid_ufunc, remaining_kwargs = _select_grid_ufunc(
+                funcname, signature_1d, module=gridops, **kwargs
+            )
+            ax_metric_weighted = metric_weighted[ax_name]
+
+            if ax_metric_weighted:
+                metric = self.get_metric(array, ax_metric_weighted)
+                array = array * metric
+
+            # if chunked along core dim then we need map_overlap
+            core_dim = self._get_dims_from_axis(data, ax_name)
+
+            if _has_chunked_core_dims(data_unpacked, core_dim):
+                map_overlap = True
+                dask = "allowed"
+            else:
+                map_overlap = False
+
+            array = grid_ufunc(
+                self,
+                array,
+                axis=[(ax_name,)],
+                keep_coords=keep_coords,
+                dask=dask,
+                map_overlap=map_overlap,
+                other_component=other_component,
+                **remaining_kwargs,
+            )
+
+            if ax_metric_weighted:
+                metric = self.get_metric(array, ax_metric_weighted)
+                array = array / metric
+
+        return self._transpose_to_keep_same_dim_order(data_unpacked, array, axis)
+
+    def _create_1d_grid_ufunc_signatures(
+        self, da, axis, to
+    ) -> List[_GridUFuncSignature]:
+        """
+        Create a list of signatures to pass to apply_grid_ufunc.
+
+        Created from data, list of input axes, and list of target axis positions.
+        One separate signature is created for each axis the 1D ufunc is going to be applied over.
+        """
+
+        signatures = []
+        for ax_name in axis:
+            ax = self.axes[ax_name]
+
+            from_pos, _ = ax._get_position_name(da)  # removed `dim` since it wasnt used
+
+            to_pos = to[ax_name]
+            if to_pos is None:
+                to_pos = ax._default_shifts[from_pos]
+
+            # TODO build this more directly?
+            signature_1d = _GridUFuncSignature.from_string(
+                f"({ax_name}:{from_pos})->({ax_name}:{to_pos})"
+            )
+            signatures.append(signature_1d)
+
+        return signatures
+
+    def _transpose_to_keep_same_dim_order(self, da, result, axis):
+        """Reorder DataArray dimensions to match the original input."""
+
+        initial_dims = da.dims
+
+        shifted_dims = {}
+        for ax_name in axis:
+            ax = self.axes[ax_name]
+
+            _, old_dim = ax._get_position_name(da)
+            _, new_dim = ax._get_position_name(result)
+            shifted_dims[old_dim] = new_dim
+
+        output_dims_but_in_original_order = [
+            shifted_dims[dim] if dim in shifted_dims else dim for dim in initial_dims
+        ]
+
+        return result.transpose(*output_dims_but_in_original_order)
+
+    def apply_as_grid_ufunc(
+        self,
+        func: Callable,
+        *args: xr.DataArray,
+        axis: Sequence[Sequence[str]] = None,
+        signature: Union[str, _GridUFuncSignature] = "",
+        boundary_width: Mapping[str, Tuple[int, int]] = None,
+        boundary: Union[str, Mapping[str, str]] = None,
+        fill_value: Union[float, Mapping[str, float]] = None,
+        dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
+        map_overlap: bool = False,
+        **kwargs,
+    ):
+        """
+        Apply a function to the given arguments in a grid-aware manner.
+
+        The relationship between xgcm axes on the input and output are specified by
+        `signature`. Wraps xarray.apply_ufunc, but determines the core dimensions
+        from the grid and signature passed.
+
+        Parameters
+        ----------
+        func : callable
+            Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
+            arrays (`.data`).
+
+            Passed directly on to `xarray.apply_ufunc`.
+        *args : xarray.DataArray
+            One or more xarray DataArray objects to apply the function to.
+        axis : Sequence[Sequence[str]], optional
+            Names of xgcm.Axes on which to act, for each array in args. Multiple axes can be passed as a sequence (e.g. ``['X', 'Y']``).
+            Function will be executed over all Axes simultaneously, and each Axis must be present in the Grid.
+        signature : string
+            Grid universal function signature. Specifies the xgcm.Axis names and
+            positions for each input and output variable, e.g.,
+
+            ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+        boundary_width : Dict[str: Tuple[int, int]
+            The widths of the boundaries at the edge of each array.
+            Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+            * None: Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed. Default is 0.
+        dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
+            How to handle applying to objects containing lazy data in the form of
+            dask arrays. Passed directly on to `xarray.apply_ufunc`.
+        map_overlap : bool, optional
+            Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
+            Default is False. If True, will need to be accompanied by dask='allowed'.
+
+        Returns
+        -------
+        results
+            The result of the call to `xarray.apply_ufunc`, but including the coordinates
+            given by the signature, which are read from the grid. Output is either a single
+            object or a tuple of such objects.
+
+        See Also
+        --------
+        apply_as_grid_ufunc
+        as_grid_ufunc
+        """
+        return apply_as_grid_ufunc(
+            func,
+            *args,
+            axis=axis,
+            grid=self,
+            signature=signature,
+            boundary_width=boundary_width,
+            boundary=boundary,
+            fill_value=fill_value,
+            dask=dask,
+            map_overlap=map_overlap,
+            **kwargs,
+        )
 
     def interp(self, da, axis, **kwargs):
         """
@@ -1735,7 +2075,7 @@ class Grid:
 
         >>> grid.interp(da, ["X", "Y"], periodic={"X": True, "Y": False})
         """
-        return self._grid_func("interp", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("interp", da, axis, **kwargs)
 
     def diff(self, da, axis, **kwargs):
         """
@@ -1787,7 +2127,7 @@ class Grid:
 
         >>> grid.diff(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("diff", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("diff", da, axis, **kwargs)
 
     def min(self, da, axis, **kwargs):
         """
@@ -1840,7 +2180,7 @@ class Grid:
 
         >>> grid.min(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("min", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("min", da, axis, **kwargs)
 
     def max(self, da, axis, **kwargs):
         """
@@ -1893,7 +2233,7 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("max", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
     def cumsum(self, da, axis, **kwargs):
         """
@@ -1947,8 +2287,16 @@ class Grid:
         return self._grid_func("cumsum", da, axis, **kwargs)
 
     def _apply_vector_function(self, function, vector, **kwargs):
-        # the keys, should be axis names
-        assert len(vector) == 2
+        if not (len(vector) == 2 and isinstance(vector, dict)):
+            raise ValueError(
+                "Input is expected to be a dictionary with two key/value pairs which map grid axis to the vector component parallel to that axis"
+            )
+
+        warnings.warn(
+            "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
+            "The same functionality will be accessible under the `xgcm.Grid.diff` and `xgcm.Grid.interp` methods, please see those docstrings for details.",
+            category=DeprecationWarning,
+        )
 
         warnings.warn(
             "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
@@ -1977,24 +2325,43 @@ class Grid:
                 )
 
         x_axis_name, y_axis_name = list(vector)
-        x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
 
         # apply for each component
         x_component = function(
-            x_axis,
-            vector[x_axis_name],
-            vector_partner={y_axis_name: vector[y_axis_name]},
+            {x_axis_name: vector[x_axis_name]},
+            x_axis_name,
+            other_component={y_axis_name: vector[y_axis_name]},
             **kwargs,
         )
 
         y_component = function(
-            y_axis,
-            vector[y_axis_name],
-            vector_partner={x_axis_name: vector[x_axis_name]},
+            {y_axis_name: vector[y_axis_name]},
+            y_axis_name,
+            other_component={x_axis_name: vector[x_axis_name]},
             **kwargs,
         )
-
         return {x_axis_name: x_component, y_axis_name: y_component}
+
+    def diff_2d_vector(self, vector, **kwargs):
+        """
+        Difference a 2D vector to the intermediate grid point. This method is
+        only necessary for complex grid topologies.
+
+        Parameters
+        ----------
+        vector : dict
+            A dictionary with two entries. Keys are axis names, values are
+            vector components along each axis.
+
+        %(neighbor_binary_func.parameters.no_f)s
+
+        Returns
+        -------
+        vector_diff : dict
+            A dictionary with two entries. Keys are axis names, values
+            are differenced vector components along each axis
+        """
+        return self._apply_vector_function(self.diff, vector, **kwargs)
 
     def interp_2d_vector(self, vector, **kwargs):
         """
@@ -2032,7 +2399,7 @@ class Grid:
             are interpolated vector components along each axis
         """
 
-        return self._apply_vector_function(Axis.interp, vector, **kwargs)
+        return self._apply_vector_function(self.interp, vector, **kwargs)
 
     def derivative(self, da, axis, **kwargs):
         """
@@ -2076,9 +2443,7 @@ class Grid:
         da_i : xarray.DataArray
             The differentiated data
         """
-
-        ax = self.axes[axis]
-        diff = ax.diff(da, **kwargs)
+        diff = self.diff(da, axis, **kwargs)
         dx = self.get_metric(diff, (axis,))
         return diff / dx
 
@@ -2263,42 +2628,53 @@ class Grid:
         ax = self.axes[axis]
         return ax.transform(da, target, **kwargs)
 
-    def diff_2d_vector(self, vector, **kwargs):
-        """
-        Difference a 2D vector to the intermediate grid point. This method is
-        only necessary for complex grid topologies.
 
-        Parameters
-        ----------
-        vector : dict
-            A dictionary with two entries. Keys are axis names, values are
-            vector components along each axis.
-        to : {'center', 'left', 'right', 'inner', 'outer'}
-            The direction in which to shift the array. If not specified,
-            default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
+def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwargs):
+    # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-        vector_partner : dict, optional
-            A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
-        Returns
-        -------
-        vector_diff : dict
-            A dictionary with two entries. Keys are axis names, values
-            are differenced vector components along each axis
-        """
+    def is_grid_ufunc(obj):
+        return isinstance(obj, GridUFunc)
 
-        return self._apply_vector_function(Axis.diff, vector, **kwargs)
+    # This avoids defining a list of functions in gridops.py
+    all_predefined_ufuncs = inspect.getmembers(module, is_grid_ufunc)
+
+    name_matching_ufuncs = [
+        f for name, f in all_predefined_ufuncs if name.startswith(funcname)
+    ]
+    if len(name_matching_ufuncs) == 0:
+        raise NotImplementedError(
+            f"Could not find any pre-defined {funcname} grid ufuncs"
+        )
+
+    signature_matching_ufuncs = [
+        f for f in name_matching_ufuncs if f.signature.equivalent(signature)
+    ]
+    if len(signature_matching_ufuncs) == 0:
+        raise NotImplementedError(
+            f"Could not find any pre-defined {funcname} grid ufuncs with signature {signature}"
+        )
+
+    matching_ufuncs = signature_matching_ufuncs
+
+    # TODO select via any other kwargs (such as boundary? metrics?) once implemented
+    all_kwargs = kwargs.copy()
+    # boundary = kwargs.pop("boundary", None)
+    # if boundary:
+    #    matching_ufuncs = [uf for uf in matching_ufuncs if uf.boundary == boundary]
+
+    if len(matching_ufuncs) > 1:
+        # TODO include kwargs used to match in this error message
+        raise ValueError(
+            f"Function {funcname} with signature='{signature}' and kwargs={all_kwargs} is an ambiguous selection"
+        )
+    elif len(matching_ufuncs) == 0:
+        raise NotImplementedError(
+            f"Could not find any pre-defined {funcname} grid ufuncs with signature='{signature}' and kwargs"
+            f"={all_kwargs}"
+        )
+    else:
+        # Exactly 1 matching function
+        return matching_ufuncs[0], kwargs
 
 
 def raw_interp_function(data_left, data_right):
@@ -2317,6 +2693,15 @@ def raw_min_function(data_left, data_right):
 
 def raw_max_function(data_left, data_right):
     return np.maximum(data_right, data_left)
+
+
+def _maybe_get_axis_kwarg_from_mapping(
+    kwargs: Union[str, float, Dict[str, Union[str, float]]], axname: str
+) -> Union[str, float]:
+    if isinstance(kwargs, dict):
+        return kwargs[axname]
+    else:
+        return kwargs
 
 
 _other_docstring_options = """

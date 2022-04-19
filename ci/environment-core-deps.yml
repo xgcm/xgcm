@@ -7,10 +7,12 @@ dependencies:
   - codecov
   - dask
   - numpy
+  - scipy
   - pip
   - pre-commit
   - pytest
   - pytest-cov
   - pytest-xdist
-  - python=3.8
+  - python=3.9
   - xarray
+  - typing_extensions

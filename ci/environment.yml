@@ -6,6 +6,7 @@ dependencies:
   - dask
   - numba
   - numpy
+  - scipy
   - pip
   - pre-commit
   - pytest
@@ -13,3 +14,4 @@ dependencies:
   - pytest-xdist
   - python
   - xarray
+  - typing_extensions

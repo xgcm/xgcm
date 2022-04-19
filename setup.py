@@ -7,7 +7,7 @@ with open(os.path.join(here, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
 install_requires = [
-    "xarray>=0.17.0",
+    "xarray>=0.20.0",
     "dask",
     "numpy",
     "future",
@@ -28,7 +28,7 @@ extras_require = {
 extras_require["dev"] = extras_require["complete"] + [
     "pytest",
     "pytest-cov",
-    "flake8",
+    "scipy" "flake8",
     "black",
     "codecov",
 ]
@@ -46,14 +46,12 @@ setup(
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     install_requires=install_requires,
     extras_require=extras_require,
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     long_description=long_description,
     long_description_content_type="text/x-rst",
     setup_requires="setuptools_scm",
