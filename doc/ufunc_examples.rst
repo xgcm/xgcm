@@ -167,7 +167,7 @@ Gradient
 
 The gradient is almost like the opposite of divergence in the sense that it accepts one scalar and returns multiple vectors.
 
-Let's first define a tracer field ``T``, which we imagine will start off localised in the center of the domain.
+Let's first define a tracer field ``T``, which we imagine will start off localised near the center of the domain.
 
 .. ipython:: python
 
@@ -205,6 +205,11 @@ Now we can compute the gradient of our example scalar field
         boundary_width={"X": (1, 0), "Y": (1, 0)},
     )
 
+.. note::
+
+    Notice we used the ``apply_as_grid_ufunc`` syntax here instead of the ``as_grid_ufunc`` decorator.
+    The result is the same.
+
 Again in order to plot this as a vector field we should first interpolate it
 
 .. ipython:: python
@@ -213,7 +218,7 @@ Again in order to plot this as a vector field we should first interpolate it
     colocated["grad_T_y"] = grid.interp(ds["grad_T_y"], axis="Y", to="center")
     colocated
 
-and now we can plot the gradient of the tracer field as a vector field
+Now we can plot the gradient of the tracer field as a vector field
 
 .. ipython:: python
 
