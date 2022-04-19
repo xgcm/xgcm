@@ -15,6 +15,7 @@ dependencies:
   - matplotlib
   - sphinx_rtd_theme
   - ipykernel
+  - pandoc
   - pip:
     - nbsphinx
     - jupyter_client
