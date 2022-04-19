@@ -1,7 +1,7 @@
 .. _ufunc_examples:
 
-Ufunc Examples
---------------
+Grid Ufunc Examples
+-------------------
 
 This page contains examples of different Grid Ufuncs that you might find useful.
 They are intended to be more advanced or realistic cases than the simple differencing operations we showed in the introduction to :ref:`grid_ufuncs`.
