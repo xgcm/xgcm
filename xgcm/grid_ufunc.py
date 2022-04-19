@@ -809,8 +809,6 @@ def apply_as_grid_ufunc(
     if not isinstance(results, tuple):
         results = (results,)
 
-    print(results)
-
     # Restore any dimension coordinates associated with new output dims that are present in grid
     results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
 
