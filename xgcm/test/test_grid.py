@@ -45,7 +45,9 @@ def test_extend_right_left(discontinuity, right):
 
 
 @pytest.mark.parametrize("fill_value", [0, 10, 20])
-@pytest.mark.parametrize("boundary", ["fill", "extend", "extrapolate"])
+@pytest.mark.parametrize(
+    "boundary", ["fill", "extend", pytest.param("extrapolate", marks=pytest.mark.xfail)]
+)
 @pytest.mark.parametrize("periodic", [True, False])
 @pytest.mark.parametrize("is_left_edge", [True, False])
 @pytest.mark.parametrize("boundary_discontinuity", [None, 360])
@@ -579,7 +581,14 @@ def test_axis_errors():
 
 
 @pytest.mark.parametrize(
-    "boundary", [None, "fill", "extend", "extrapolate", {"X": "fill", "Y": "extend"}]
+    "boundary",
+    [
+        None,
+        "fill",
+        "extend",
+        pytest.param("extrapolate", marks=pytest.mark.xfail(strict=True)),
+        {"X": "fill", "Y": "extend"},
+    ],
 )
 @pytest.mark.parametrize("fill_value", [None, 0, 1.0])
 def test_grid_create(all_datasets, boundary, fill_value):
@@ -680,7 +689,7 @@ def test_grid_ops(all_datasets):
     "boundary",
     [
         "fill",
-        # "extrapolate", # do we not support extrapolation anymore?
+        pytest.param("extrapolate", marks=pytest.mark.xfail(strict=True)),
         "extend",
         {"X": "fill", "Y": "extend"},
         {"X": "extend", "Y": "fill"},
@@ -701,29 +710,32 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
         xr.testing.assert_allclose(serial, full)
 
 
-@pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
-@pytest.mark.parametrize("periodic", ["True", "False", ["X"], ["Y"], ["X", "Y"]])
+@pytest.mark.parametrize(
+    "func",
+    ["interp", "max", "min", "diff", pytest.param("cumsum", marks=pytest.mark.xfail)],
+)
 @pytest.mark.parametrize(
     "boundary",
     [
         "fill",
-        # "extrapolate", # do we not support extrapolation anymore?
+        pytest.param("extrapolate", marks=pytest.mark.xfail),
         "extend",
         {"X": "fill", "Y": "extend"},
         {"X": "extend", "Y": "fill"},
     ],
 )
-def test_dask_vs_eager(all_datasets, func, periodic, boundary):
+def test_dask_vs_eager(all_datasets, func, boundary):
     ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords)
-
-    eager_result = grid.diff(ds.tracer, "X")
+    grid_method = getattr(grid, func)
+    eager_result = grid_method(ds.tracer, "X", boundary=boundary)
 
     ds = ds.chunk({"xt": 1, "yt": 1, "time": 1, "zt": 1})
     grid = Grid(ds, coords=coords)
-    dask_result = grid.diff(ds.tracer, "X").compute()
+    grid_method = getattr(grid, func)
+    dask_result = grid_method(ds.tracer, "X", boundary=boundary).compute()
 
-    xr.testing.assert_identical(dask_result, eager_result)
+    xr.testing.assert_allclose(dask_result, eager_result)
 
 
 def test_grid_dict_input_boundary_fill(nonperiodic_1d):

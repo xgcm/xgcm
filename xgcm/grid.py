@@ -56,7 +56,7 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
-_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate", "periodic"]
+_VALID_BOUNDARY = [None, "fill", "extend", "periodic"]
 
 
 class Axis:
