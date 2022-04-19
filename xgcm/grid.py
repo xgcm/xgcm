@@ -5,7 +5,6 @@ import operator
 import warnings
 from collections import OrderedDict
 
-import docrep  # type: ignore
 import numpy as np
 import xarray as xr
 from dask.array import Array as Dask_Array
@@ -14,8 +13,10 @@ from . import comodo, gridops
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 from .grid_ufunc import (
     GridUFunc,
+    _check_data_input,
     _GridUFuncSignature,
     _has_chunked_core_dims,
+    _maybe_unpack_vector_component,
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
@@ -27,15 +28,24 @@ try:
 except ImportError:
     numba = None
 
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 # Only need this until python 3.8
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
-
-docstrings = docrep.DocstringProcessor(doc_key="My doc string")
 
 
 def _maybe_promote_str_to_list(a):
@@ -46,7 +56,7 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
-_VALID_BOUNDARY = [None, "fill", "extend", "extrapolate"]
+_VALID_BOUNDARY = [None, "fill", "extend", "periodic"]
 
 
 class Axis:
@@ -110,7 +120,7 @@ class Axis:
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
         boundary : str or dict, optional,
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+            boundary can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -121,6 +131,7 @@ class Axis:
               the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+            * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
         fill_value : float, optional
@@ -243,8 +254,6 @@ class Axis:
             summary.append(coord_info)
         return summary
 
-    @docstrings.get_sectionsf("neighbor_binary_func")
-    @docstrings.dedent
     def _neighbor_binary_func(
         self,
         da,
@@ -297,6 +306,7 @@ class Axis:
             boundary = self.boundary
         if fill_value is None:
             fill_value = self.fill_value
+
         data_new = self._neighbor_binary_func_raw(
             da,
             f,
@@ -310,8 +320,6 @@ class Axis:
         da_new = self._wrap_and_replace_coords(da, data_new, to, keep_coords)
 
         return da_new
-
-    docstrings.delete_params("neighbor_binary_func.parameters", "f")
 
     def _neighbor_binary_func_raw(
         self,
@@ -590,7 +598,6 @@ class Axis:
 
         return left, right
 
-    @docstrings.dedent
     def interp(
         self,
         da,
@@ -607,8 +614,26 @@ class Axis:
 
         Parameters
         ----------
-        %(neighbor_binary_func.parameters.no_f)s
+        da : xarray.DataArray
+            The data on which to operate
+        to : {'center', 'left', 'right', 'inner', 'outer'}
+            The direction in which to shift the array. If not specified,
+            default will be used.
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
 
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+        fill_value : float, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+        vector_partner : dict, optional
+            A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -616,7 +641,6 @@ class Axis:
             The interpolated data
 
         """
-
         return self._neighbor_binary_func(
             da,
             raw_interp_function,
@@ -628,7 +652,6 @@ class Axis:
             keep_coords=keep_coords,
         )
 
-    @docstrings.dedent
     def diff(
         self,
         da,
@@ -644,7 +667,26 @@ class Axis:
 
         Parameters
         ----------
-        %(neighbor_binary_func.parameters.no_f)s
+        da : xarray.DataArray
+            The data on which to operate
+        to : {'center', 'left', 'right', 'inner', 'outer'}
+            The direction in which to shift the array. If not specified,
+            default will be used.
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+        fill_value : float, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+        vector_partner : dict, optional
+            A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -663,7 +705,6 @@ class Axis:
             keep_coords=keep_coords,
         )
 
-    @docstrings.dedent
     def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
@@ -671,7 +712,24 @@ class Axis:
 
         Parameters
         ----------
-        %(neighbor_binary_func.parameters.no_f)s
+        da : xarray.DataArray
+            The data on which to operate
+        to : {'center', 'left', 'right', 'inner', 'outer'}
+            The direction in which to shift the array. If not specified,
+            default will be used.
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+        fill_value : float, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -687,7 +745,13 @@ class Axis:
         # first use xarray's cumsum method
         da_cum = da.cumsum(dim=dim)
 
-        boundary_kwargs = dict(boundary=boundary, fill_value=fill_value)
+        # _maybe_get_axis_kwarg_from_mapping is needed to ensure backwards compatibility
+        # axis methods cannot deal with a dict input for e.g. boundary etc.
+
+        boundary_kwargs = dict(
+            boundary=_maybe_get_axis_kwarg_from_mapping(boundary, self.name),
+            fill_value=_maybe_get_axis_kwarg_from_mapping(fill_value, self.name),
+        )
 
         # now pad / trim the data as necessary
         # here we enumerate all the valid possible shifts
@@ -711,7 +775,6 @@ class Axis:
         da_cum_newcoord = self._wrap_and_replace_coords(da, data, to, keep_coords)
         return da_cum_newcoord
 
-    @docstrings.dedent
     def min(
         self,
         da,
@@ -727,7 +790,26 @@ class Axis:
 
         Parameters
         ----------
-        %(neighbor_binary_func.parameters.no_f)s
+        da : xarray.DataArray
+            The data on which to operate
+        to : {'center', 'left', 'right', 'inner', 'outer'}
+            The direction in which to shift the array. If not specified,
+            default will be used.
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+        fill_value : float, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+        vector_partner : dict, optional
+            A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -746,7 +828,6 @@ class Axis:
             keep_coords,
         )
 
-    @docstrings.dedent
     def max(
         self,
         da,
@@ -762,7 +843,26 @@ class Axis:
 
         Parameters
         ----------
-        %(neighbor_binary_func.parameters.no_f)s
+        da : xarray.DataArray
+            The data on which to operate
+        to : {'center', 'left', 'right', 'inner', 'outer'}
+            The direction in which to shift the array. If not specified,
+            default will be used.
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+        fill_value : float, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+        vector_partner : dict, optional
+            A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -1006,6 +1106,14 @@ class Axis:
         Take the base coords from da, the data from data_new, and return
         a new DataArray with a coordinate on position_to.
         """
+
+        if not keep_coords:
+            warnings.warn(
+                "The keep_coords keyword argument is being deprecated - in future it will be removed "
+                "entirely, and the behaviour will always be that currently given by keep_coords=True.",
+                category=DeprecationWarning,
+            )
+
         position_from, old_dim = self._get_position_name(da)
         try:
             new_dim = self.coords[position_to]
@@ -1145,6 +1253,50 @@ class Grid:
         self._ds = ds
         self._check_dims = check_dims
 
+        # Deprecation Warnigns
+        warnings.warn(
+            "The `xgcm.Axis` class will be deprecated in the future. "
+            "Please make sure to use the `xgcm.Grid` methods for your work instead.",
+            category=DeprecationWarning,
+        )
+        # This will show up every time, but I think that is fine
+
+        if boundary:
+            warnings.warn(
+                "The `boundary` argument will be renamed "
+                "to `padding` to better reflect the process "
+                "of array padding and avoid confusion with "
+                "physical boundary conditions (e.g. ocean land boundary).",
+                category=DeprecationWarning,
+            )
+
+        # Deprecation Warnigns
+        if periodic:
+            warnings.warn(
+                "The `periodic` argument will be deprecated. "
+                "To preserve previous behavior supply `boundary = 'periodic'.",
+                category=DeprecationWarning,
+            )
+
+        if fill_value:
+            warnings.warn(
+                "The default fill_value will be changed to nan (from 0.0 previously) "
+                "in future versions. Provide `fill_value=0.0` to preserve previous behavior.",
+                category=DeprecationWarning,
+            )
+
+        extrapolate_warning = False
+        if boundary == "extrapolate":
+            extrapolate_warning = True
+        if isinstance(boundary, dict):
+            if any([k == "extrapolate" for k in boundary.keys()]):
+                extrapolate_warning = True
+        if extrapolate_warning:
+            warnings.warn(
+                "The `boundary='extrapolate'` option will no longer be supported in future releases.",
+                category=DeprecationWarning,
+            )
+
         if coords:
             all_axes = coords.keys()
         else:
@@ -1164,9 +1316,12 @@ class Grid:
                     )
 
         # Convert all inputs to axes-kwarg mappings
+        # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
         boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
         fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+        # TODO: In the future we want this the only place where we store these.
+        # TODO: This info needs to then be accessible to e.g. pad()
 
         # Parse list input. This case does only apply to periodic.
         # Since we plan on deprecating it soon handle it here, so we can easily
@@ -1175,25 +1330,26 @@ class Grid:
             periodic = {axname: True for axname in periodic}
         periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
 
-        # Set properties on grid object. I think we are better of
-        # getting completely rid of the axis object and storing/getting info from the grid object properties
-        # (all of which need to be supplied/converted to axis-value mapping).
-        self.boundary: Dict[str, Union[str, float, int]] = boundary
-        self.fill_value: Dict[str, Union[str, float, int]] = fill_value
-        self.periodic: Dict[str, Union[str, float, int]] = periodic
-        # TODO we probably want to properly define these as class properties with setter/getter?
-        # TODO: This also needs to check valid inputs for each one.
+        # Set properties on grid object.
+        self._facedim = list(face_connections.keys())[0] if face_connections else None
+        self._connections = face_connections if face_connections else None
+        # TODO: I think of the face connection data as grid not axes properties, since they almost by defintion
+        # TODO: involve multiple axes. In a future PR we should remove this info from the axes
+        # TODO: but make sure to properly port the checking functionality!
 
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
+            # periodic
             is_periodic = periodic.get(axis_name, False)
 
+            # default_shifts
             if axis_name in default_shifts:
                 axis_default_shifts = default_shifts[axis_name]
             else:
                 axis_default_shifts = {}
 
+            # boundary
             if isinstance(boundary, dict):
                 axis_boundary = boundary.get(axis_name, None)
             elif isinstance(boundary, str) or boundary is None:
@@ -1203,9 +1359,11 @@ class Grid:
                     f"boundary={boundary} is invalid. Please specify a dictionary "
                     "mapping axis name to a boundary option; a string or None."
                 )
-            # TODO Reimplement value checking on grid properties. See comment above
+
             if isinstance(fill_value, dict):
-                axis_fillvalue = fill_value.get(axis_name, None)
+                axis_fillvalue = fill_value.get(
+                    axis_name, None
+                )  # TODO: This again sets defaults. Dont do that here.
             elif isinstance(fill_value, (int, float)) or fill_value is None:
                 axis_fillvalue = fill_value
             else:
@@ -1239,6 +1397,8 @@ class Grid:
         self,
         kwargs: Union[Any, Dict[str, Any]],
         axes: Iterable[str] = None,
+        ax_property_name=None,
+        default_value: Any = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
@@ -1250,12 +1410,35 @@ class Grid:
             axes = self.axes
 
         parsed_kwargs: Dict[str, Any] = dict()
+
         if isinstance(kwargs, dict):
             parsed_kwargs = kwargs
         else:
-            for axis in axes:
-                parsed_kwargs[axis] = kwargs
-        return parsed_kwargs
+            for axname in axes:
+                parsed_kwargs[axname] = kwargs
+
+        # Check axis properties for values that were not provided (before using the default)
+        if ax_property_name is not None:
+            for axname in axes:
+                if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
+                    ax_property = getattr(self.axes[axname], ax_property_name)
+                    parsed_kwargs[axname] = ax_property
+
+        # if None set to default value.
+        parsed_kwargs_w_defaults = {
+            k: default_value if v is None else v for k, v in parsed_kwargs.items()
+        }
+        # At this point the output should be guaranteed to have an entry per existing axis.
+        # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
+
+        # temporary hack to get periodic conditions from axis
+        if ax_property_name == "boundary":
+            for axname in axes:
+                if self.axes[axname]._periodic:
+                    if axname not in parsed_kwargs_w_defaults.keys():
+                        parsed_kwargs_w_defaults[axname] = "periodic"
+
+        return parsed_kwargs_w_defaults
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -1376,6 +1559,7 @@ class Grid:
                 self._metrics[metric_axes].append(metric_var)
 
     def _get_dims_from_axis(self, da, axis):
+        da = _maybe_unpack_vector_component(da)
         dim = []
         axis = _maybe_promote_str_to_list(axis)
         for ax in axis:
@@ -1475,7 +1659,6 @@ class Grid:
             )
         return metric_vars
 
-    @docstrings.dedent
     def interp_like(self, array, like, boundary=None, fill_value=None):
         """Compares positions between two data arrays and interpolates array to the position of like if necessary
 
@@ -1539,10 +1722,9 @@ class Grid:
             summary += axis._coord_desc()
         return "\n".join(summary)
 
-    @docstrings.get_sectionsf("grid_func", sections=["Parameters", "Examples"])
-    @docstrings.dedent
     def _grid_func(self, funcname, da, axis, **kwargs):
-        """this function calls appropriate functions from `Axis` objects.
+        """
+        This function calls appropriate functions from `Axis` objects.
         It handles multiple axis input and weighting with metrics
 
         Parameters
@@ -1574,24 +1756,18 @@ class Grid:
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
         metric_weighted : str or tuple of str or dict, optional
-            If an axis or list of axes is specified,
-            the appropriate grid metrics will be used to determined the weight for interpolation.
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed (see example)
-
+            Optionally a dict with seperate values for each axis can be passed.
         """
 
         if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
             axis = [axis]
-        # parse multi axis kwargs like e.g. `boundary`
-        multi_kwargs = {k: self._as_axis_kwarg_mapping(v) for k, v in kwargs.items()}
 
         out = da
         for axx in axis:
-            kwargs = {k: v[axx] for k, v in multi_kwargs.items()}
             ax = self.axes[axx]
-            kwargs.setdefault("boundary", ax.boundary)
             func = getattr(ax, funcname)
             metric_weighted = kwargs.pop("metric_weighted", False)
 
@@ -1610,97 +1786,17 @@ class Grid:
 
         return out
 
-    def pad(self, *arrays, boundary_width=None, boundary=None, fill_value=None):
-        """
-        Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
-
-        Parameters
-        ----------
-        arrays : Sequence[xarray.DataArray]
-            Arrays to pad according to boundary and boundary_width.
-        boundary_width : Dict[str: Tuple[int, int]
-            The widths of the boundaries at the edge of each array.
-            Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
-            A flag indicating how to handle boundaries:
-            * None: Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-            * 'extrapolate': Set values by extrapolating linearly from the two
-              points nearest to the edge
-            Optionally a dict mapping axis name to separate values for each axis
-            can be passed.
-        fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
-            Optionally a dict mapping axis name to separate values for each axis
-            can be passed. Default is 0.
-        """
-        # TODO accept a general padding function like numpy.pad does as an argument to boundary
-
-        if not boundary_width:
-            raise ValueError("Must provide the widths of the boundaries")
-
-        if boundary and isinstance(boundary, str):
-            boundary = {ax_name: boundary for ax_name in self.axes.keys()}
-        if fill_value is None:
-            fill_value = 0.0
-        if isinstance(fill_value, (int, float)):
-            fill_value = {ax_name: fill_value for ax_name in self.axes.keys()}
-        # xgcm uses a default fill value of 0, while xarray uses nan.
-        fill_value = {k: 0.0 if v is None else v for k, v in fill_value.items()}
-
-        padded = []
-        for da in arrays:
-            new_da = da
-            for ax, widths in boundary_width.items():
-                axis = self.axes[ax]
-                _, dim = axis._get_position_name(da)
-
-                # Use default boundary for axis unless overridden
-                if boundary:
-                    ax_boundary = boundary[ax]
-                else:
-                    ax_boundary = axis.boundary
-
-                if ax_boundary == "extrapolate":
-                    # TODO implement extrapolation
-                    raise NotImplementedError
-                elif ax_boundary is None:
-                    # TODO this is necessary, but also seems inconsistent with the docstring, which says that None = "no boundary condition"
-                    ax_boundary = "periodic"
-
-                # TODO avoid repeatedly calling xarray pad
-                try:
-                    mode = _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG[ax_boundary]
-                except KeyError:
-                    raise ValueError(
-                        f"{ax_boundary} is not a supported type of boundary"
-                    )
-
-                if mode == "constant":
-                    new_da = new_da.pad(
-                        {dim: widths}, mode, constant_values=fill_value[ax]
-                    )
-                else:
-                    new_da = new_da.pad({dim: widths}, mode)
-
-            padded.append(new_da)
-
-        return padded
-
     def _1d_grid_ufunc_dispatch(
         self,
         funcname,
-        da,
+        data: Union[xr.DataArray, Dict[str, xr.DataArray]],
         axis,
         to=None,
         keep_coords=False,
         metric_weighted: Union[
             str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
         ] = None,
+        other_component: Optional[Dict[str, xr.DataArray]] = None,
         **kwargs,
     ):
         """
@@ -1721,6 +1817,15 @@ class Grid:
         if isinstance(axis, str):
             axis = [axis]
 
+        # This function is restricted to a single data input, so we need to check the input validity
+        # here early.
+        # TODO: This will fail if a sequence of inputs is passed, but not with a very helpful error
+        # TODO: message. @TOM do you think it is worth to check the type and raise another error in that case?
+        data = _check_data_input(data, self)
+
+        # Unpack data for various steps below
+        data_unpacked = _maybe_unpack_vector_component(data)
+
         # convert input arguments into axes-kwarg mappings
         to = self._as_axis_kwarg_mapping(to)
 
@@ -1728,58 +1833,22 @@ class Grid:
             metric_weighted = (metric_weighted,)
         metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
 
-        # If I understand correctly, this could contain some other kwargs, which are not appropriate to convert
-        # Note that the option to pass boundary (actually padding) options on the method will be deprecated,
-        # so for now I will just store everything I need here.
-        VALID_BOUNDARY_KWARGS = ["boundary", "periodic", "fill_value"]
-        kwargs = {
-            k: self._as_axis_kwarg_mapping(v) if k in VALID_BOUNDARY_KWARGS else v
-            for k, v in kwargs.items()
-        }
-
-        # Now check if some of the values not provided in the kwargs are set as grid properties
-        # In the future grid object properties should be the only way to access that information
-        # and we can remove this.
-        kwargs_with_defaults = {}
-
-        for k in set(
-            list(kwargs.keys()) + VALID_BOUNDARY_KWARGS
-        ):  # iterate over all axis properties and any additional keys of `kwarg`
-            if k in VALID_BOUNDARY_KWARGS:
-                defaults = getattr(self, k, {})
-                kwargs_input = kwargs.get(k, {})
-                # overwrite if given as input
-                defaults.update(kwargs_input)
-                kwargs_with_defaults[k] = defaults
-            else:
-                kwargs_with_defaults[k] = kwargs[k]
-        kwargs = kwargs_with_defaults
-
-        # Lastly go through the inputs axis by axis, and replace
-        # boundary with 'periodic' if periodic is True
-        # (again this is temporary until `periodic` is deprecated)
-        if "periodic" in kwargs.keys():
-            boundary = kwargs.get("boundary", {})
-            new_boundary = {
-                k: "periodic"
-                for k in kwargs["periodic"].keys()
-                if kwargs["periodic"].get(k, False)
-            }
-            boundary.update(new_boundary)
-            kwargs["boundary"] = boundary
-        # remove the periodic input
-        kwargs = {k: v for k, v in kwargs.items() if k != "periodic"}
-
-        signatures = self._create_1d_grid_ufunc_signatures(da, axis=axis, to=to)
+        signatures = self._create_1d_grid_ufunc_signatures(
+            data_unpacked, axis=axis, to=to
+        )
 
         # if any dims are chunked then we need dask
-        if isinstance(da.data, Dask_Array):
+        if isinstance(data_unpacked.data, Dask_Array):
             dask = "parallelized"
         else:
             dask = "forbidden"
 
-        # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
-        array = da.copy(deep=False)
+        if isinstance(data, dict):
+            array = {k: v.copy(deep=False) for k, v in data.items()}
+        else:
+            # Need to copy to avoid modifying in-place. Ideally we would test for this behaviour specifically
+            array = data.copy(deep=False)
+
         # Apply 1D function over multiple axes
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
         # TODO only actually need to call apply_ufunc once for those axes
@@ -1795,8 +1864,9 @@ class Grid:
                 array = array * metric
 
             # if chunked along core dim then we need map_overlap
-            core_dim = self._get_dims_from_axis(da, ax_name)
-            if _has_chunked_core_dims(array, core_dim):
+            core_dim = self._get_dims_from_axis(data, ax_name)
+
+            if _has_chunked_core_dims(data_unpacked, core_dim):
                 map_overlap = True
                 dask = "allowed"
             else:
@@ -1809,6 +1879,7 @@ class Grid:
                 keep_coords=keep_coords,
                 dask=dask,
                 map_overlap=map_overlap,
+                other_component=other_component,
                 **remaining_kwargs,
             )
 
@@ -1816,7 +1887,7 @@ class Grid:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array / metric
 
-        return self._transpose_to_keep_same_dim_order(da, array, axis)
+        return self._transpose_to_keep_same_dim_order(data_unpacked, array, axis)
 
     def _create_1d_grid_ufunc_signatures(
         self, da, axis, to
@@ -1827,6 +1898,7 @@ class Grid:
         Created from data, list of input axes, and list of target axis positions.
         One separate signature is created for each axis the 1D ufunc is going to be applied over.
         """
+
         signatures = []
         for ax_name in axis:
             ax = self.axes[ax_name]
@@ -1953,7 +2025,6 @@ class Grid:
             **kwargs,
         )
 
-    @docstrings.dedent
     def interp(self, da, axis, **kwargs):
         """
         Interpolate neighboring points to the intermediate grid point along
@@ -1962,11 +2033,36 @@ class Grid:
 
         Parameters
         ----------
-        %(grid_func.parameters)s
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
 
-        Examples
-        --------
-        %(grid_func.examples)s
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+
+            Optionally a dict with separate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        vector_partner : dict, optional
+            A single key (string), value (DataArray).
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -1983,18 +2079,42 @@ class Grid:
         """
         return self._1d_grid_ufunc_dispatch("interp", da, axis, **kwargs)
 
-    @docstrings.dedent
     def diff(self, da, axis, **kwargs):
         """
         Difference neighboring points to the intermediate grid point.
 
         Parameters
         ----------
-        %(grid_func.parameters)s
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
 
-        Examples
-        --------
-        %(grid_func.examples)s
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+
+            Optionally a dict with separate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        vector_partner : dict, optional
+            A single key (string), value (DataArray).
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -2011,18 +2131,42 @@ class Grid:
         """
         return self._1d_grid_ufunc_dispatch("diff", da, axis, **kwargs)
 
-    @docstrings.dedent
     def min(self, da, axis, **kwargs):
         """
         Minimum of neighboring points on the intermediate grid point.
 
-        Parameters
+                Parameters
         ----------
-        %(grid_func.parameters)s
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
 
-        Examples
-        --------
-        %(grid_func.examples)s
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+
+            Optionally a dict with separate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        vector_partner : dict, optional
+            A single key (string), value (DataArray).
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -2040,18 +2184,42 @@ class Grid:
         """
         return self._1d_grid_ufunc_dispatch("min", da, axis, **kwargs)
 
-    @docstrings.dedent
     def max(self, da, axis, **kwargs):
         """
         Maximum of neighboring points on the intermediate grid point.
 
         Parameters
         ----------
-        %(grid_func.parameters)s
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
 
-        Examples
-        --------
-        %(grid_func.examples)s
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+
+            Optionally a dict with separate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        vector_partner : dict, optional
+            A single key (string), value (DataArray).
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -2069,7 +2237,6 @@ class Grid:
         """
         return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
-    @docstrings.dedent
     def cumsum(self, da, axis, **kwargs):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
@@ -2077,11 +2244,33 @@ class Grid:
 
         Parameters
         ----------
-        %(grid_func.parameters)s
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
 
-        Examples
-        --------
-        %(grid_func.examples)s
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+
+            Optionally a dict with separate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -2100,8 +2289,22 @@ class Grid:
         return self._grid_func("cumsum", da, axis, **kwargs)
 
     def _apply_vector_function(self, function, vector, **kwargs):
-        # the keys, should be axis names
-        assert len(vector) == 2
+        if not (len(vector) == 2 and isinstance(vector, dict)):
+            raise ValueError(
+                "Input is expected to be a dictionary with two key/value pairs which map grid axis to the vector component parallel to that axis"
+            )
+
+        warnings.warn(
+            "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
+            "The same functionality will be accessible under the `xgcm.Grid.diff` and `xgcm.Grid.interp` methods, please see those docstrings for details.",
+            category=DeprecationWarning,
+        )
+
+        warnings.warn(
+            "`interp_2d_vector` and `diff_2d_vector` will be removed from future releases."
+            "The same functionality will be available under the `xgcm.Grid` methods.",
+            category=DeprecationWarning,
+        )
 
         # this is currently only tested for c-grid vectors defined on edges
         # moving to cell centers. We need to detect if we got something else
@@ -2124,29 +2327,26 @@ class Grid:
                 )
 
         x_axis_name, y_axis_name = list(vector)
-        x_axis, y_axis = self.axes[x_axis_name], self.axes[y_axis_name]
 
         # apply for each component
         x_component = function(
-            x_axis,
-            vector[x_axis_name],
-            vector_partner={y_axis_name: vector[y_axis_name]},
+            {x_axis_name: vector[x_axis_name]},
+            x_axis_name,
+            other_component={y_axis_name: vector[y_axis_name]},
             **kwargs,
         )
 
         y_component = function(
-            y_axis,
-            vector[y_axis_name],
-            vector_partner={x_axis_name: vector[x_axis_name]},
+            {y_axis_name: vector[y_axis_name]},
+            y_axis_name,
+            other_component={x_axis_name: vector[x_axis_name]},
             **kwargs,
         )
-
         return {x_axis_name: x_component, y_axis_name: y_component}
 
-    @docstrings.dedent
-    def interp_2d_vector(self, vector, **kwargs):
+    def diff_2d_vector(self, vector, **kwargs):
         """
-        Interpolate a 2D vector to the intermediate grid point. This method is
+        Difference a 2D vector to the intermediate grid point. This method is
         only necessary for complex grid topologies.
 
         Parameters
@@ -2159,36 +2359,96 @@ class Grid:
 
         Returns
         -------
+        vector_diff : dict
+            A dictionary with two entries. Keys are axis names, values
+            are differenced vector components along each axis
+        """
+        return self._apply_vector_function(self.diff, vector, **kwargs)
+
+    def interp_2d_vector(self, vector, **kwargs):
+        """
+        Interpolate a 2D vector to the intermediate grid point. This method is
+        only necessary for complex grid topologies.
+
+        Parameters
+        ----------
+        vector : dict
+            A dictionary with two entries. Keys are axis names, values are
+            vector components along each axis.
+        to : {'center', 'left', 'right', 'inner', 'outer'}
+            The direction in which to shift the array. If not specified,
+            default will be used.
+        boundary : {None, 'fill', 'extend'}
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+        fill_value : float, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+        vector_partner : dict, optional
+            A single key (string), value (DataArray)
+        keep_coords : boolean, optional
+            Preserves compatible coordinates. False by default.
+
+        Returns
+        -------
         vector_interp : dict
             A dictionary with two entries. Keys are axis names, values
             are interpolated vector components along each axis
         """
 
-        return self._apply_vector_function(Axis.interp, vector, **kwargs)
+        return self._apply_vector_function(self.interp, vector, **kwargs)
 
-    @docstrings.dedent
     def derivative(self, da, axis, **kwargs):
         """
         Take the centered-difference derivative along specified axis.
 
         Parameters
         ----------
-        axis : str
-            Name of the axis on which to act
-        %(grid_func.parameters)s
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+
+            Optionally a dict with separate values for each axis can be passed (see example)
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        vector_partner : dict, optional
+            A single key (string), value (DataArray).
+            Optionally a dict with seperate values for each axis can be passed (see example)
+        metric_weighted : str or tuple of str or dict, optional
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
         da_i : xarray.DataArray
             The differentiated data
         """
-
-        ax = self.axes[axis]
-        diff = ax.diff(da, **kwargs)
+        diff = self.diff(da, axis, **kwargs)
         dx = self.get_metric(diff, (axis,))
         return diff / dx
 
-    @docstrings.dedent
     def integrate(self, da, axis, **kwargs):
         """
         Perform finite volume integration along specified axis or axes,
@@ -2216,7 +2476,6 @@ class Grid:
 
         return weighted.sum(dim, **kwargs)
 
-    @docstrings.dedent
     def cumint(self, da, axis, **kwargs):
         """
         Perform cumulative integral along specified axis or axes,
@@ -2224,9 +2483,33 @@ class Grid:
 
         Parameters
         ----------
-        axis : str, list of str
-            Name of the axis on which to act
-        %(grid_func.parameters)s
+        axis : str or list or tuple
+            Name of the axis on which to act. Multiple axes can be passed as list or
+            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
+            given order.
+        to : str or dict, optional
+            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
+            If not specified, default will be used.
+            Optionally a dict with separate values for each axis can be passed (see example)
+        boundary : None or str or dict, optional
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+
+            Optionally a dict with separate values for each axis can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in the boundary condition with `boundary='fill'`.
+            Optionally a dict with separate values for each axis can be passed.
+        metric_weighted : str or tuple of str or dict, optional
+            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
+            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
+            If `False` (default), the points will be weighted equally.
+            Optionally a dict with seperate values for each axis can be passed.
 
         Returns
         -------
@@ -2240,7 +2523,6 @@ class Grid:
 
         return self.cumsum(weighted, axis, **kwargs)
 
-    @docstrings.dedent
     def average(self, da, axis, **kwargs):
         """
         Perform weighted mean reduction along specified axis or axes,
@@ -2348,29 +2630,6 @@ class Grid:
         ax = self.axes[axis]
         return ax.transform(da, target, **kwargs)
 
-    @docstrings.dedent
-    def diff_2d_vector(self, vector, **kwargs):
-        """
-        Difference a 2D vector to the intermediate grid point. This method is
-        only necessary for complex grid topologies.
-
-        Parameters
-        ----------
-        vector : dict
-            A dictionary with two entries. Keys are axis names, values are
-            vector components along each axis.
-
-        %(neighbor_binary_func.parameters.no_f)s
-
-        Returns
-        -------
-        vector_diff : dict
-            A dictionary with two entries. Keys are axis names, values
-            are differenced vector components along each axis
-        """
-
-        return self._apply_vector_function(Axis.diff, vector, **kwargs)
-
 
 def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwargs):
     # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
@@ -2436,6 +2695,15 @@ def raw_min_function(data_left, data_right):
 
 def raw_max_function(data_left, data_right):
     return np.maximum(data_right, data_left)
+
+
+def _maybe_get_axis_kwarg_from_mapping(
+    kwargs: Union[str, float, Dict[str, Union[str, float]]], axname: str
+) -> Union[str, float]:
+    if isinstance(kwargs, dict):
+        return kwargs[axname]
+    else:
+        return kwargs
 
 
 _other_docstring_options = """

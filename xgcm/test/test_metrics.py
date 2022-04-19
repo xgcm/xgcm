@@ -160,7 +160,6 @@ def test_get_metric_orig(axes, data_var, drop_vars, metric_expected_list):
     ds, coords, metrics = datasets_grid_metric("C")
     # drop metrics according to drop_vars input, and remove from metrics input
     if drop_vars:
-        print(drop_vars)
         ds = ds.drop_vars(drop_vars)
         metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
