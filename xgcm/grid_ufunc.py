@@ -743,7 +743,13 @@ def apply_as_grid_ufunc(
     # TODO could we bind a bunch of these arguments into a namedtuple/dataclass or something to save space?
     if pad_before_func:
         rechunked_padded_args = _pad_then_rechunk(
-            args, grid, in_core_dims, boundary_width_real_axes, boundary, fill_value, other_component,
+            args,
+            grid,
+            in_core_dims,
+            boundary_width_real_axes,
+            boundary,
+            fill_value,
+            other_component,
         )
         mapped_func = _maybe_map_func(
             func,
@@ -803,10 +809,10 @@ def apply_as_grid_ufunc(
     if not isinstance(results, tuple):
         results = (results,)
 
+    print(results)
+
     # Restore any dimension coordinates associated with new output dims that are present in grid
-    results_with_coords = _reattach_coords(
-        results, grid, boundary_width, keep_coords
-    )
+    results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
     if len(results_with_coords) == 1:
@@ -898,7 +904,13 @@ def _substitute_dummy_axis_names(boundary_width, dummy_to_real_axes_mapping):
 
 
 def _pad_then_rechunk(
-    args, grid, in_core_dims, boundary_width_real_axes, boundary, fill_value, other_component,
+    args,
+    grid,
+    in_core_dims,
+    boundary_width_real_axes,
+    boundary,
+    fill_value,
+    other_component,
 ):
 
     padded_args = [
@@ -1128,7 +1140,9 @@ def _identify_dummy_axes_with_real_axes(
     return dict(zip(unique_dummy_axes, unique_real_axes))
 
 
-def _reattach_coords(results, grid, boundary_width, keep_coords):
+def _reattach_coords(
+    results: List[xr.DataArray], grid: "Grid", boundary_width, keep_coords: bool
+) -> List[xr.DataArray]:
     results_with_coords = []
     for res in results:
 

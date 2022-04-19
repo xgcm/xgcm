@@ -1011,7 +1011,7 @@ class TestInputErrorGridMethods:
         grid = Grid(ds)
         msg = "Vector component with unknown axis provided. Grid has axes .*?"
         with pytest.raises(
-            ValueError, 
+            ValueError,
             match=msg,
         ):
             grid.diff({"wrong": xr.DataArray()}, "X")
