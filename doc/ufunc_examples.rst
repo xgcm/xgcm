@@ -222,8 +222,12 @@ Now we can plot the gradient of the tracer field as a vector field
 
 .. ipython:: python
 
-    @savefig gradient_scalar_field.png width=4in
+
+    ds["T"].plot.contourf(x="x_c", vmax=60)
     colocated.plot.quiver("x_c", "y_c", u="grad_T_x", v="grad_T_y", scale=200)
+
+    @savefig gradient_scalar_field.png width=4in
+    plt.gcf()
 
 
 Advection
