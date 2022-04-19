@@ -18,10 +18,7 @@ GRID_UFUNC_REFACTOR_ERR = (
         "diff",
         "min",
         "max",
-        pytest.param(
-            "cumsum",
-            marks=pytest.mark.xfail,
-        ),
+        "cumsum",
     ],
 )
 @pytest.mark.parametrize("grid_type", ["B", "C"])
@@ -237,7 +234,7 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     return expected
 
 
-@pytest.mark.parametrize("funcname", ["integrate", "average", pytest.param("cumint", marks=pytest.mark.xfail)])
+@pytest.mark.parametrize("funcname", ["integrate", "average", "cumint"])
 @pytest.mark.parametrize(
     "boundary", ["fill", "extend"]
 )  # we do not support extrapolate for cumsum?

@@ -678,15 +678,13 @@ def test_grid_ops(all_datasets):
                 assert da_diff.equals(da_diff_ax)
 
                 if boundary is not None:
-                    # pass
-                    # TODO re-enable these tests!!!
                     da_cumsum = grid.cumsum(ds[varname], axis_name, boundary=boundary)
                     da_cumsum_ax = axis.cumsum(ds[varname], boundary=boundary)
                     assert da_cumsum.equals(da_cumsum_ax)
 
 
 @pytest.mark.parametrize(
-    "func", ["interp", "max", "min", "diff", pytest.param("cumsum")]
+    "func", ["interp", "max", "min", "diff", "cumsum"]
 )
 @pytest.mark.parametrize("periodic", ["True", "False", ["X"], ["Y"], ["X", "Y"]])
 @pytest.mark.parametrize(
@@ -716,7 +714,7 @@ def test_multi_axis_input(all_datasets, func, periodic, boundary):
 
 @pytest.mark.parametrize(
     "func",
-    ["interp", "max", "min", "diff", pytest.param("cumsum", marks=pytest.mark.xfail)],
+    ["interp", "max", "min", "diff", "cumsum"],
 )
 @pytest.mark.parametrize(
     "boundary",
@@ -784,15 +782,8 @@ def test_invalid_fill_value_error():
         "max",
         "integrate",
         "average",
-        pytest.param(
-            "cumsum",
-        ),
-        pytest.param(
-            "cumint",
-            marks=pytest.mark.xfail(
-                reason=" TODO cumint is not yet going through grid ufunc logic",
-            ),
-        ),
+        "cumsum",
+        "cumint",
         "derivative",
         # TODO: we can get rid of many of these after the release. With the grid_ufunc logic many of these go through the same codepath
         # e.g. diff/interp/min/max all are the same, so we can probably reduce this to diff, cumsum, integrate, derivative, cumint
@@ -944,9 +935,9 @@ def test_input_dim_notfound():
         "diff",
         "min",
         "max",
-        pytest.param("cumsum"),
+        "cumsum",
         "derivative",
-        pytest.param("cumint", marks=pytest.mark.xfail),
+        "cumint",
     ],
 )
 @pytest.mark.parametrize(
