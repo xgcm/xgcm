@@ -801,10 +801,6 @@ def apply_as_grid_ufunc(
     # TODO add option to trim result if not done in ufunc
     # TODO loud warning if ufunc returns array of incorrect size
 
-    # apply_ufunc might return multiple objects
-    if not isinstance(results, tuple):
-        results = (results,)
-
     # Restore any dimension coordinates associated with new output dims that are present in grid
     results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
 
@@ -818,15 +814,15 @@ def apply_as_grid_ufunc(
 
 
 def _apply(
-    mapped_func,
-    rechunked_padded_args,
-    grid,
+    mapped_func: Callable,
+    rechunked_padded_args: Sequence[xr.DataArray],
+    grid: "Grid",
     in_core_dims,
     out_core_dims,
     out_dtypes,
     dask,
     **kwargs,
-):
+) -> Sequence[xr.DataArray]:
 
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
@@ -849,6 +845,10 @@ def _apply(
         dask_gufunc_kwargs={"output_sizes": out_sizes},
         output_dtypes=out_dtypes,
     )
+
+    # apply_ufunc might return multiple objects, but we temporarily promote them for internal consistency
+    if not isinstance(results, tuple):
+        results = (results,)
 
     return results
 
@@ -1106,7 +1106,7 @@ def _identify_dummy_axes_with_real_axes(
 
 
 def _reattach_coords(
-    results: List[xr.DataArray], grid: "Grid", boundary_width, keep_coords: bool
+    results: Sequence[xr.DataArray], grid: "Grid", boundary_width, keep_coords: bool
 ) -> List[xr.DataArray]:
     results_with_coords = []
     for res in results:
