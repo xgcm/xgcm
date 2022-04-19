@@ -345,9 +345,8 @@ We can also choose a different default boundary condition at decorator definitio
 and then override it at function call time if we prefer.
 
 .. ipython:: python
-    :okexcept:
 
-    interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=np.NaN)
+    interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=0)
 
 
 - Link to more specific docs?
