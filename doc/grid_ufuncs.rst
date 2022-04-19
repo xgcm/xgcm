@@ -45,7 +45,7 @@ A simple example would be
 The signature has two parts, one for the input variables, and one for the output variables.
 The output variables live on the right of the arrow (``->``).
 
-There needs to be one bracketed entry for each variable,
+There needs to be one entry in parentheses for each variable,
 so in this case the signature tells use that the function accepts one input data variable and returns one output data variable.
 (Functions which accept a data variable in the form of a keyword-only argument are not supported.)
 
@@ -55,7 +55,7 @@ This information is encoded in the format ``axis_name:position``.
 Each variable can be operated on along multiple axes, which are separated by a comma, e.g. ``(ax1:left, ax2:right)``.
 
 The axis names used in the signature are dummy names: they do not have to be the same as the axis names used in your ``Grid`` object.
-This allows you to write a grid ufunc that can accept axis with any name.
+This allows you to write a grid ufunc that can accept axes with any name.
 Therefore the signature ``"(ax1:center)->(ax1:left)"`` means all of:
 
 `"This function accepts one data variable and applies an operation over one core dimension.
@@ -111,7 +111,7 @@ To give you an idea of how we might use grid ufuncs here is a table of possible 
 Defining New Grid Ufuncs
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Lets imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
+Let's imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
 
 .. ipython:: python
 
@@ -353,7 +353,8 @@ Metrics
 
 .. note::
 
-    Supplying metrics directly to grid ufuncs is not yet implemented, but will be soon!
+    Automatically supplying metrics directly to grid ufuncs is not yet implemented, but will be soon!
+    For now, if you need a metric in your grid ufunc, simply include it as an input and pass it explicitly. 
     To work with metrics outside of grid ufuncs see the documentation page on metrics.
 
 
