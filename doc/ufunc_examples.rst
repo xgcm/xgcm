@@ -245,7 +245,7 @@ Now we can define a simple flux operator (which internally calls our previous gr
 
     def interp_forward(arr, axis):
         """First order forward interpolation along any axis"""
-        return np.apply_along_axis(diff_forward_1d, axis, arr)
+        return np.apply_along_axis(interp_forward_1d, axis, arr)
 
     @as_grid_ufunc(
         "(X:left,Y:center),(X:center,Y:left),(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
