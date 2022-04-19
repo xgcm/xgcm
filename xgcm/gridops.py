@@ -226,7 +226,6 @@ def max_inner_to_center(a):
     pad_before_func=False,
 )
 def cumsum_center_to_left(a):
-    # TODO will this dispatch to dask.array.cumsum if it encounters a dask array?
     return np.cumsum(a, axis=-1)[..., :-1]
 
 
