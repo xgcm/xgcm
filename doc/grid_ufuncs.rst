@@ -404,7 +404,7 @@ The dask graph in this case is simple, because this is an "embarrasingly paralle
 .. ipython:: python
     :okexcept:
 
-    result.data.visualize(optimise=True)
+    result.data.visualize(optimize_graph=True)
 
 The result is as expected from padding each row independently.
 
@@ -438,7 +438,7 @@ The dask graph is more complicated, because each chunk along the core dim needs 
 .. ipython:: python
     :okexcept:
 
-    result.data.visualize(optimise=True)
+    result.data.visualize(optimize_graph=True)
 
     result.compute()
 
