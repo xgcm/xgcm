@@ -18,10 +18,7 @@ GRID_UFUNC_REFACTOR_ERR = (
         "diff",
         "min",
         "max",
-        pytest.param(
-            "cumsum",
-            marks=pytest.mark.xfail,
-        ),
+        "cumsum",
     ],
 )
 @pytest.mark.parametrize("grid_type", ["B", "C"])

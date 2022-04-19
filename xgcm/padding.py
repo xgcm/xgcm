@@ -349,10 +349,12 @@ def pad(
     Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
     Parameters
     ----------
-    da :
+    data :
         Array to pad according to boundary and boundary_width.
         If a dictionary is passed the input is assumed to be a vector component
-        (with the direction of that component identified by the dict key, matching one of the grid axes)
+        (with the directionof that component identified by the dict key, matching one of the grid axes)
+    grid : xgcm.Grid
+        Grid object specifiying the topology and default boundary conditions to use for padding.
     boundary_width :
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
@@ -388,6 +390,12 @@ def pad(
     fill_value = grid._as_axis_kwarg_mapping(
         fill_value, ax_property_name="fill_value", default_value=0.0
     )
+
+    # Exit without padding if all widths are zero
+    if all(width == (0, 0) for width in padding_width.values()):
+        # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
+        # TODO: No padding would occur in that situation. Should we warn the user?
+        return data
 
     # Check axis properties for padding/fill_value, but do not overwrite
     for axname, axis in grid.axes.items():

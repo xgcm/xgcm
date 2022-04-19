@@ -1722,70 +1722,6 @@ class Grid:
             summary += axis._coord_desc()
         return "\n".join(summary)
 
-    def _grid_func(self, funcname, da, axis, **kwargs):
-        """
-        This function calls appropriate functions from `Axis` objects.
-        It handles multiple axis input and weighting with metrics
-
-        Parameters
-        ----------
-        axis : str or list or tuple
-            Name of the axis on which to act. Multiple axes can be passed as list or
-            tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
-            given order.
-        to : str or dict, optional
-            The direction in which to shift the array (can be ['center','left','right','inner','outer']).
-            If not specified, default will be used.
-            Optionally a dict with seperate values for each axis can be passed (see example)
-            Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
-            A flag indicating how to handle boundaries:
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed (see example)
-        fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-            Optionally a dict with seperate values for each axis can be passed (see example)
-        vector_partner : dict, optional
-            A single key (string), value (DataArray).
-            Optionally a dict with seperate values for each axis can be passed (see example)
-        metric_weighted : str or tuple of str or dict, optional
-            Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
-            E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
-            If `False` (default), the points will be weighted equally.
-            Optionally a dict with seperate values for each axis can be passed.
-        """
-
-        if (not isinstance(axis, list)) and (not isinstance(axis, tuple)):
-            axis = [axis]
-
-        out = da
-        for axx in axis:
-            ax = self.axes[axx]
-            func = getattr(ax, funcname)
-            metric_weighted = kwargs.pop("metric_weighted", False)
-
-            if isinstance(metric_weighted, str):
-                metric_weighted = (metric_weighted,)
-
-            if metric_weighted:
-                metric = self.get_metric(out, metric_weighted)
-                out = out * metric
-
-            out = func(out, **kwargs)
-
-            if metric_weighted:
-                metric_new = self.get_metric(out, metric_weighted)
-                out = out / metric_new
-
-        return out
-
     def _1d_grid_ufunc_dispatch(
         self,
         funcname,
@@ -1865,9 +1801,11 @@ class Grid:
 
             # if chunked along core dim then we need map_overlap
             core_dim = self._get_dims_from_axis(data, ax_name)
-
             if _has_chunked_core_dims(data_unpacked, core_dim):
-                map_overlap = True
+                # cumsum is a special case because it can't be correctly applied chunk-wise with map_overlap (it would need blockwise instead)
+                # TODO double check that this dispatches to the dask version of cumsum?
+                # TODO could we use the same approach with the diff etc?
+                map_overlap = True if funcname != "cumsum" else False
                 dask = "allowed"
             else:
                 map_overlap = False
@@ -2286,7 +2224,7 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._grid_func("cumsum", da, axis, **kwargs)
+        return self._1d_grid_ufunc_dispatch("cumsum", da, axis, **kwargs)
 
     def _apply_vector_function(self, function, vector, **kwargs):
         if not (len(vector) == 2 and isinstance(vector, dict)):
