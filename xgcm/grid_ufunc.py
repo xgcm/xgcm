@@ -739,6 +739,22 @@ def apply_as_grid_ufunc(
         boundary_width, dummy_to_real_axes_mapping
     )
 
+    # Maybe map function over chunked core dims using dask.array.map_overlap
+    if map_overlap:
+        # Disallow situations where shifting axis position would cause chunk size to change
+        _check_if_length_would_change(sig)
+
+        mapped_func = _map_func_over_core_dims(
+            func,
+            args,
+            grid,
+            in_core_dims,
+            boundary_width_real_axes,
+            out_dtypes,
+        )
+    else:
+        mapped_func = func
+
     # For most ufuncs we want to pad before applying, but for some (especially cumsum) we must apply then pad
     # TODO could we bind a bunch of these arguments into a namedtuple/dataclass or something to save space?
     if pad_before_func:
@@ -751,16 +767,6 @@ def apply_as_grid_ufunc(
             fill_value,
             other_component,
         )
-        mapped_func = _maybe_map_func(
-            func,
-            args,
-            grid,
-            sig,
-            in_core_dims,
-            boundary_width_real_axes,
-            out_dtypes,
-            map_overlap,
-        )
         results = _apply(
             mapped_func,
             rechunked_padded_args,
@@ -772,16 +778,6 @@ def apply_as_grid_ufunc(
             **kwargs,
         )
     else:  # pad after func
-        mapped_func = _maybe_map_func(
-            func,
-            args,
-            grid,
-            sig,
-            in_core_dims,
-            boundary_width_real_axes,
-            out_dtypes,
-            map_overlap,
-        )
         unpadded_results = _apply(
             mapped_func,
             args,
@@ -819,35 +815,6 @@ def apply_as_grid_ufunc(
     # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
 
     return results_with_coords
-
-
-def _maybe_map_func(
-    func,
-    args,
-    grid,
-    sig,
-    in_core_dims,
-    boundary_width_real_axes,
-    out_dtypes,
-    map_overlap,
-):
-
-    if map_overlap:
-        # Disallow situations where shifting axis position would cause chunk size to change
-        _check_if_length_would_change(sig)
-
-        mapped_func = _map_func_over_core_dims(
-            func,
-            args,
-            grid,
-            in_core_dims,
-            boundary_width_real_axes,
-            out_dtypes,
-        )
-    else:
-        mapped_func = func
-
-    return mapped_func
 
 
 def _apply(
