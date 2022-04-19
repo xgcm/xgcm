@@ -310,5 +310,8 @@ We can compute vector fields from vector fields too, such as vorticity.
 
 .. ipython:: python
 
-    @savefig vort_vector_field.png width=4in
     vort.plot(x="x_g", y="y_g")
+    colocated.plot.quiver("x_c", "y_c", u="U", v="V")
+
+    @savefig vort_vector_field.png width=4in
+    plt.gcf()
