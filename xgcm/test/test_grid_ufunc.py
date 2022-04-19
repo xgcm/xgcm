@@ -771,6 +771,35 @@ class TestPadManuallyInsideUfunc:
         assert_equal(result, expected)
 
 
+class TestPadAfterUFunc:
+    def test_cumsum(self):
+        def cumsum_center_to_left(a):
+            return np.cumsum(a, axis=-1)[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+        da = grid._ds.depth_c ** 2
+        da.coords["depth_c"] = grid._ds.depth_c
+
+        cum = da.cumsum(dim="depth_c").roll(depth_c=1, roll_coords=False)
+        cum[0] = 0
+        expected = xr.DataArray(
+            cum.data, dims=["depth_g"], coords={"depth_g": grid._ds.depth_g}
+        )
+
+        result = apply_as_grid_ufunc(
+            cumsum_center_to_left,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            boundary="fill",
+            fill_value=0,
+            pad_before_func=False,
+        )
+        assert_equal(result, expected)
+
+
 class TestDaskNoOverlap:
     def test_chunked_non_core_dims(self):
         # Create 2D test data

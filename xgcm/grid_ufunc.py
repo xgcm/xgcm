@@ -386,6 +386,7 @@ class GridUFunc:
     fill_value: Optional[Union[float, Mapping[str, float]]]
     dask: Literal["forbidden", "parallelized", "allowed"]
     map_overlap: bool
+    pad_before_func: bool
 
     def __init__(self, ufunc: Callable, **kwargs):
         self.ufunc = ufunc  # type: ignore  # see mypy issue 2427
@@ -397,6 +398,7 @@ class GridUFunc:
         self.fill_value = kwargs.pop("fill_value", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
+        self.pad_before_func = kwargs.pop("pad_before_func", True)
         if kwargs:
             raise TypeError(
                 f"Unsupported keyword argument(s) provided: {list(kwargs.keys())}"
@@ -441,7 +443,7 @@ class GridUFunc:
     def __repr__(self):
         return (
             f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', "
-            f"          dask='{self.dask})', map_overlap={self.map_overlap})"
+            f"          dask='{self.dask})', map_overlap={self.map_overlap}, pad_before_func={self.pad_before_func})"
         )
 
     def __call__(
@@ -454,6 +456,7 @@ class GridUFunc:
         boundary = kwargs.pop("boundary", self.boundary)
         dask = kwargs.pop("dask", self.dask)
         map_overlap = kwargs.pop("map_overlap", self.map_overlap)
+        pad_before_func = kwargs.pop("pad_before_func", self.pad_before_func)
         return apply_as_grid_ufunc(
             self.ufunc,
             *args,
@@ -464,6 +467,7 @@ class GridUFunc:
             boundary=boundary,
             dask=dask,
             map_overlap=map_overlap,
+            pad_before_func=pad_before_func,
             **kwargs,
         )
 
@@ -534,11 +538,11 @@ def as_grid_ufunc(
         "fill_value",
         "dask",
         "map_overlap",
+        "pad_before_func",
     }
-    if kwargs.keys() - _allowedkwargs:
-        raise TypeError(
-            f"Unsupported keyword argument(s) provided: {list(kwargs.keys())}"
-        )
+    forbidden_kwargs = list(kwargs.keys() - _allowedkwargs)
+    if forbidden_kwargs:
+        raise TypeError(f"Unsupported keyword argument(s) provided: {forbidden_kwargs}")
 
     def _as_grid_ufunc(ufunc):
         return GridUFunc(
@@ -560,6 +564,7 @@ def apply_as_grid_ufunc(
     keep_coords: bool = True,
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
+    pad_before_func: bool = True,
     other_component: Union[
         Dict[str, xr.DataArray], Sequence[Dict[str, xr.DataArray]]
     ] = None,
@@ -626,6 +631,9 @@ def apply_as_grid_ufunc(
     map_overlap : bool, optional
         Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
         Default is False. If True, will need to be accompanied by dask='allowed'.
+    pad_before_func : bool, optional
+        Whether padding should occur before applying func or after it. Default is True.
+        (For no padding at all pass `boundary_width=None`).
     other_component : Union[None, Dict[str,xr.DataArray], Sequence[Dict[str,xr.DataArray]]], default: None
         Matching vector component for input provided as dictionary. Needed for complex vector padding.
         For multiple arguments, `other_components` needs to provide one element per input.
@@ -726,49 +734,12 @@ def apply_as_grid_ufunc(
         _maybe_unpack_vector_component(args[0]).dtype
     ] * n_output_vars  # assume uniformity of dtypes
 
-    # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
-    # TODO: No padding would occur in that situation. Should we warn the user?
-
     # Pad arrays according to boundary condition information
-    if boundary_width:
-        # convert dummy axes names in boundary_width to match real names of given axes
-        boundary_width_real_axes = {
-            dummy_to_real_axes_mapping[ax]: width
-            for ax, width in boundary_width.items()
-        }
+    boundary_width_real_axes = _substitute_dummy_axis_names(
+        boundary_width, dummy_to_real_axes_mapping
+    )
 
-        padded_args = [
-            pad(
-                a,
-                grid,
-                boundary_width=boundary_width_real_axes,
-                boundary=boundary,
-                fill_value=fill_value,
-                other_component=oc,
-            )
-            for a, oc in zip(args, other_component)
-        ]
-    else:
-        # If the boundary_width kwarg was not specified assume that zero padding is required
-        boundary_width_real_axes = {
-            real_ax: (0, 0) for real_ax in dummy_to_real_axes_mapping.values()
-        }
-        padded_args = args  # type: ignore
-
-    if any(
-        _has_chunked_core_dims(padded_arg, core_dims)
-        for padded_arg, core_dims in zip(padded_args, in_core_dims)
-    ):
-        # merge any lonely chunks on either end created by padding
-        rechunked_padded_args = _rechunk_to_merge_in_boundary_chunks(
-            padded_args,
-            args,
-            boundary_width_real_axes,
-            grid,
-        )
-    else:
-        rechunked_padded_args = padded_args
-
+    # Maybe map function over chunked core dims using dask.array.map_overlap
     if map_overlap:
         # Disallow situations where shifting axis position would cause chunk size to change
         _check_if_length_would_change(sig)
@@ -783,6 +754,75 @@ def apply_as_grid_ufunc(
         )
     else:
         mapped_func = func
+
+    # For most ufuncs we want to pad before applying, but for some (especially cumsum) we must apply then pad
+    # TODO could we bind a bunch of these arguments into a namedtuple/dataclass or something to save space?
+    if pad_before_func:
+        rechunked_padded_args = _pad_then_rechunk(
+            args,
+            grid,
+            in_core_dims,
+            boundary_width_real_axes,
+            boundary,
+            fill_value,
+            other_component,
+        )
+        results = _apply(
+            mapped_func,
+            rechunked_padded_args,
+            grid,
+            in_core_dims,
+            out_core_dims,
+            out_dtypes,
+            dask,
+            **kwargs,
+        )
+    else:  # pad after func
+        unpadded_results = _apply(
+            mapped_func,
+            args,
+            grid,
+            in_core_dims,
+            out_core_dims,
+            out_dtypes,
+            dask,
+            **kwargs,
+        )
+        results = _pad_then_rechunk(
+            unpadded_results,
+            grid,
+            in_core_dims,
+            boundary_width_real_axes,
+            boundary,
+            fill_value,
+            other_component,
+        )
+
+    # TODO add option to trim result if not done in ufunc
+    # TODO loud warning if ufunc returns array of incorrect size
+
+    # Restore any dimension coordinates associated with new output dims that are present in grid
+    results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
+
+    # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
+    if len(results_with_coords) == 1:
+        (results_with_coords,) = results_with_coords
+
+    # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
+
+    return results_with_coords
+
+
+def _apply(
+    mapped_func: Callable,
+    rechunked_padded_args: Sequence[xr.DataArray],
+    grid: "Grid",
+    in_core_dims,
+    out_core_dims,
+    out_dtypes,
+    dask,
+    **kwargs,
+) -> Sequence[xr.DataArray]:
 
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
@@ -806,28 +846,65 @@ def apply_as_grid_ufunc(
         output_dtypes=out_dtypes,
     )
 
-    # TODO add option to trim result if not done in ufunc
-    # TODO loud warning if ufunc returns array of incorrect size
-
-    # apply_ufunc might return multiple objects
+    # apply_ufunc might return multiple objects, but we temporarily promote them for internal consistency
     if not isinstance(results, tuple):
         results = (results,)
 
-    # Restore any dimension coordinates associated with new output dims that are present in grid
-    results_with_coords = _reattach_coords(
-        results,
-        grid,
-        boundary_width,
-        keep_coords,
-    )
+    return results
 
-    # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
-    if len(results_with_coords) == 1:
-        (results_with_coords,) = results_with_coords
 
-    # TODO handle metrics and boundary? Or should that happen in the ufuncs themselves?
+def _substitute_dummy_axis_names(boundary_width, dummy_to_real_axes_mapping):
+    if boundary_width:
+        # convert dummy axes names in boundary_width to match real names of given axes
+        boundary_width_real_axes = {
+            dummy_to_real_axes_mapping[ax]: width
+            for ax, width in boundary_width.items()
+        }
+    else:
+        # If the boundary_width kwarg was not specified assume that zero padding is required
+        boundary_width_real_axes = {
+            real_ax: (0, 0) for real_ax in dummy_to_real_axes_mapping.values()
+        }
+    return boundary_width_real_axes
 
-    return results_with_coords
+
+def _pad_then_rechunk(
+    args,
+    grid,
+    in_core_dims,
+    boundary_width_real_axes,
+    boundary,
+    fill_value,
+    other_component,
+):
+
+    padded_args = [
+        pad(
+            a,
+            grid=grid,
+            boundary_width=boundary_width_real_axes,
+            boundary=boundary,
+            fill_value=fill_value,
+            other_component=oc,
+        )
+        for a, oc in zip(args, other_component)
+    ]
+
+    if any(
+        _has_chunked_core_dims(padded_arg, core_dims)
+        for padded_arg, core_dims in zip(padded_args, in_core_dims)
+    ):
+        # merge any lonely chunks on either end created by padding
+        rechunked_padded_args = _rechunk_to_merge_in_boundary_chunks(
+            padded_args,
+            args,
+            boundary_width_real_axes,
+            grid,
+        )
+    else:
+        rechunked_padded_args = padded_args
+
+    return rechunked_padded_args
 
 
 def _is_dim_chunked(a, dim):
@@ -844,20 +921,24 @@ def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:
 
 def _map_func_over_core_dims(
     func,
-    args,
+    original_args,
     grid,
     in_core_dims,
     boundary_width_real_axes,
     out_dtypes,
 ):
-    """Map operation over dask chunks along core dimensions"""
+    """
+    Map operation over dask chunks along core dimensions.
+
+    Must accept original (unpadded) args in order to get depth of overlap correct.
+    """
 
     from dask.array import map_overlap as dask_map_overlap  # type: ignore
 
     # Need to transpose the numpy axis arguments to leave core dims at end
     # else they won't match up inside mapped_func after xr.apply_ufunc does its transposition
     transposed_original_args = [
-        arg.transpose(..., *in_core_dims[i]) for i, arg in enumerate(args)
+        arg.transpose(..., *in_core_dims[i]) for i, arg in enumerate(original_args)
     ]
 
     boundary_width_per_numpy_axis = {
@@ -1024,7 +1105,9 @@ def _identify_dummy_axes_with_real_axes(
     return dict(zip(unique_dummy_axes, unique_real_axes))
 
 
-def _reattach_coords(results, grid, boundary_width, keep_coords):
+def _reattach_coords(
+    results: Sequence[xr.DataArray], grid: "Grid", boundary_width, keep_coords: bool
+) -> List[xr.DataArray]:
     results_with_coords = []
     for res in results:
 
