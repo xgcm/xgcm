@@ -122,7 +122,7 @@ topology for a cubed sphere grid is shown in the figure below:
 .. figure:: images/cubed_sphere_face_connections.png
   :alt: cubed sphere face connections
 
-This geomtry has six faces. We can generate an xarray Dataset that has two
+This geometry has six faces. We can generate an xarray Dataset that has two
 spatial dimensions and a face dimension as follows:
 
 .. ipython:: python
@@ -240,6 +240,9 @@ some special care is needed.
 Why is that the case? Lets consider a subset of the faces introduced above.
 Specifically lets focus on the connection between faces 1 and 4:
 
+.. figure:: images/example_face_connections.png
+  :alt: simplified face connections
+
 You can see that they are connected across different axes (the 'left' side of the Y axis on
 face 1 is connected to the right side of the X axis on face 4). In order to perform any operation
 that needs data to the 'right' of face 4 along the X axis, internally xgcm takes the bottom row
@@ -267,17 +270,47 @@ vector component.
 
 !!! EXAMPLE show fail of padding naively
 
-In order to remedy this situation the user needs to provide vector components as a dictionary input, where the
-key encodes the axis parallel to the vector component (e.g. `X` for ``U``) and the value is the component
-dataarray itself. Additionally the user needs to specify the ``other_component`` input in the same syntax, so
-that xgcm can automatically figure out which vector component should be used for padding:
+In order to remedy this situation the user needs to instruct xgcm that the provided input is in fact a vector component
+with a scalar data field but additionally containing a direction along one of the grid axes.
+
+This can be achieved by providing input in the `vector syntax` instead of the `scalar syntax`
+
+Syntax for vector component input
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+In xgcm scalar fields are passed to methods as xarray.Dataarray. To identify a vector component, the input needs to
+be provided as dictionary where the key encodes the axis parallel to the vector component and the value
+is the component dataarray itself.
+
+.. code-block:: python
+
+    data_scalar = xr.Dataarray()  # scalar syntax
+    data_vector_component = {axis: xarray.Dataarray()}  # vector syntax
+
+So for our example:
+
+.. code-block:: python
+
+    data_u = {"X": ds.u}  # U velocity is parallel to the x axis
+
+This enables xgcm to recognize the input as vector component, but as you can see from our example above, xgcm also needs
+to know about the 'other' components which make up the full vector field in order to automatically figure out which vector
+component should be used for padding.
+This can be done by specifying the ``other_component`` input (in our case this is the vector component parallel to the
+`Y` axis).
 
 !!! Example. proper padding with vector components
 
+By providing the input data and other components in the proper syntax, you make sure that the padding of arrays
+is handled properly across all types of face connections introduced above.
+
+!!! Example with an actual grid method like interp or diff
 
 
+Of course this does not just work in the simplified example, but also in globally connected setups. For an example see:
 
+!!!Link to vector ECCO example TBW
 
-
-!!! Note: for other padding methods it doesnt matter id you use the scalar or vector syntax, but we consider it
-good practice to always specify vector components with the dict syntax for clarity. !!! Not sure about this.
+.. note::
+    If your grid setup does not involve face connections providing vector components via scalar syntax (xarray.Dataarray) and
+    vector syntax (as a dictionary) are equivalent. We however consider it best practice to always specify vector components
+    with the vector syntax, both for clarity and possible future features that require this syntax.
