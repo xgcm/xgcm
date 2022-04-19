@@ -227,3 +227,57 @@ left to left, or right to right.
   models (e.g. MITgcm, GEOS, etc.) as a convenience within xgcm. If you would
   like to pursue this, please open a
   `github issue <https://github.com/xgcm/xgcm/issues>`_.
+
+
+Working with Vectors and Connections
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once the complex grid topology is set up with the proper ``face_connections`` dictionary
+you can operate on it like any of the simpler grids if you are dealing with scalar fields
+(e.g. any tracer). If you want to operate on vector fields, like velocities or transports,
+some special care is needed.
+
+Why is that the case? Lets consider a subset of the faces introduced above.
+Specifically lets focus on the connection between faces 1 and 4:
+
+You can see that they are connected across different axes (the 'left' side of the Y axis on
+face 1 is connected to the right side of the X axis on face 4). In order to perform any operation
+that needs data to the 'right' of face 4 along the X axis, internally xgcm takes the bottom row
+of face 1, renames and concatenates it to the right side of face 4 (padding step), and then computes
+the operation of your choice.
+
+EXAMPLE: Set up linearly increasing tracer on both faces and do an interp/diff
+
+It is instructive to understand the padding step in more detail. We can investigate what happens before
+the grid operation by applying the ``pad`` function:
+
+EXAMPLE: show the raw padding
+
+!!! Padding along x, increases the array size, point out what happens to the right side of face 1,
+since we did not specify the connections
+
+Now what happens when you deal with vectors instead of scalars? On each face the direction and naming of
+e.g. velocity vector components is consistent with the structure of the array and the corresponding axes.
+This means that the component along the X axis is always called the same (lets use ``U`` here), and the
+other component's (``V`` here) is directed along the Y axis. If one would just treat one of the components
+as a scalar, there is a problem: Consider padding ``U`` to the right on face 4. If flow would be towards the
+right (more specifically positive along the X axis), we would expect that this flow would continue as upward
+(positive along the Y axis) on face 1! But such upward flow on that connected face is captured by a different
+vector component.
+
+!!! EXAMPLE show fail of padding naively
+
+In order to remedy this situation the user needs to provide vector components as a dictionary input, where the
+key encodes the axis parallel to the vector component (e.g. `X` for ``U``) and the value is the component
+dataarray itself. Additionally the user needs to specify the ``other_component`` input in the same syntax, so
+that xgcm can automatically figure out which vector component should be used for padding:
+
+!!! Example. proper padding with vector components
+
+
+
+
+
+
+!!! Note: for other padding methods it doesnt matter id you use the scalar or vector syntax, but we consider it
+good practice to always specify vector components with the dict syntax for clarity. !!! Not sure about this.
