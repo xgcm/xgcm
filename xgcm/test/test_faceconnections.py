@@ -7,11 +7,14 @@ from xgcm.grid import Grid
 
 @pytest.fixture(scope="module")
 def ds():
-    N = 25
+    N = 25  # TODO: Reduce the size here. I think something like 4 or 5 is sufficient
     return xr.Dataset(
         {
             "data_c": (["face", "y", "x"], np.random.rand(2, N, N)),
-            "u": (["face", "xl", "y"], np.random.rand(2, N, N)),
+            "u": (
+                ["face", "xl", "y"],
+                np.random.rand(2, N, N),
+            ),  # TODO: Will it make testing easier if I make these not random?
             "v": (["face", "x", "yl"], np.random.rand(2, N, N)),
         },
         coords={
@@ -53,6 +56,14 @@ def ds_face_connections_x_to_x():
 def ds_face_connections_x_to_y():
     return {
         "face": {0: {"X": (None, (1, "Y", False))}, 1: {"Y": ((0, "X", False), None)}}
+    }
+
+
+# TODO: These should be reused in padding tests
+@pytest.fixture(scope="module")
+def ds_face_connections_x_to_y_reverse():
+    return {
+        "face": {0: {"X": (None, (1, "Y", True))}, 1: {"Y": ((0, "X", True), None)}}
     }
 
 
@@ -167,10 +178,9 @@ def test_create_connected_grid(ds, ds_face_connections_x_to_x):
     assert xaxis._connections[1][0][1] is xaxis
 
 
-@pytest.mark.xfail(reason="connected grids not implemented for grid ufunc refactor yet")
 def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     # simplest scenario with one face connection
-    grid = Grid(ds, face_connections=ds_face_connections_x_to_x)
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_x, periodic=False)
     diff_x = grid.diff(ds.data_c, "X", boundary="fill")
     interp_x = grid.interp(ds.data_c, "X", boundary="fill")
 
@@ -187,7 +197,6 @@ def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     np.testing.assert_allclose(interp_x[0, :, 0], 0.5 * (ds.data_c[0, :, 0] + 0.0))
 
 
-@pytest.mark.xfail(reason="connected grids not implemented for grid ufunc refactor yet")
 def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # one face connection, rotated
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
@@ -207,23 +216,57 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
         interp_y.data[1, 0, :].ravel(),
         0.5 * (ds.data_c.data[1, 0, :].ravel() + ds.data_c.data[0, ::-1, -1].ravel()),
     )
-
     # TODO: checking all the other boundaries
 
 
-@pytest.mark.xfail(reason="connected grids not implemented for grid ufunc refactor yet")
+@pytest.mark.parametrize("boundary", ["periodic", "fill"])
+def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
+    # one face connection, rotated
+    grid = Grid(
+        ds,
+        face_connections=ds_face_connections_x_to_y,
+        boundary=boundary,
+        fill_value=1,
+        periodic=False,
+    )
+    # TODO: Remove the periodic once that is deprecated.
+    # ! Set boundary on grid, so it is applied to all axes.
+    # TODO: modify the non velocity tests too (after release)
+
+    # modify the values of the dataset, so we know what to expect from the output
+    # TODO: Maybe change this in the dataset definition?
+    u_modifier = xr.DataArray([-2, -1], dims="face")
+    v_modifier = xr.DataArray([1, 1], dims="face")
+    u = ds.u * 0 + u_modifier
+    v = ds.v * 0 + v_modifier
+
+    # no need to check for diff vs interp. They all go through the same dispatch
+    # v is the interesting variable here because it involves a sign change for this
+    # connection (see https://github.com/xgcm/xgcm/issues/410#issue-1098348557)
+    v_out = grid.interp({"Y": v}, "X", other_component={"X": u})
+    # the test case is set up in a way that all interpolated values for u should be 1
+    # if the face connection is done properly
+    np.testing.assert_allclose(v_out.data, 1)
+
+
 def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # simplest scenario with one face connection
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
     # interp u and v to cell center
     vector_center = grid.interp_2d_vector(
-        {"X": ds.u, "Y": ds.v}, to="center", boundary="fill"
+        {"X": ds.u, "Y": ds.v},
+        to="center",
+        boundary="fill",
+        fill_value=100,
     )
     u_c_interp = vector_center["X"]
 
     vector_diff = grid.diff_2d_vector(
-        {"X": ds.u, "Y": ds.v}, to="center", boundary="fill"
+        {"X": ds.u, "Y": ds.v},
+        to="center",
+        boundary="fill",
+        fill_value=100,
     )
     u_c_diff = vector_diff["X"]
 
@@ -254,7 +297,6 @@ def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
     _ = Grid(cs, face_connections=cubed_sphere_connections)
 
 
-@pytest.mark.xfail(reason="connected grids not implemented for grid ufunc refactor yet")
 def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
     grid = Grid(cs, face_connections=cubed_sphere_connections)
     face, _ = xr.broadcast(cs.face, cs.data_c)
@@ -266,3 +308,15 @@ def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
     face_diff_y = grid.diff(face, "Y")
     np.testing.assert_allclose(face_diff_y[:, 0, 0], [-4, -3, -2, -1, 2, 5])
     np.testing.assert_allclose(face_diff_y[:, 0, -1], [-4, -3, -2, -1, 2, 5])
+
+
+class TestErrors:
+    def test_vector_missing_other_component(self, ds, ds_face_connections_x_to_y):
+        grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+        msg = "Padding vector components requires `other_component` input"
+        with pytest.raises(ValueError, match=msg):
+            grid.diff(
+                {"X": ds.u},
+                "X",
+                other_component=None,
+            )

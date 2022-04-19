@@ -3,7 +3,32 @@
 What's New
 ===========
 
-v0.6.0 (unreleased)
+v0.6.1 (unreleased)
+-------------------
+
+.. _whats-new.0.6.1:
+
+New Features
+~~~~~~~~~~~~
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+Documentation
+~~~~~~~~~~~~~
+- Switch RTD build to use mamba for increased speed and reduced memory useage (:pull:`401`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+- Switch CI to use mamba (:pull:`412`, :issue:`398`).
+ By `Julius Busecke <https://github.com/jbusecke>`_.
+
+- Add deprecation warnings for future changes in the API (:issue:`409`,:pull:`411`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+
+v0.6.0 (2021/11/03)
 -------------------
 
 .. _whats-new.0.6.0:
@@ -38,6 +63,8 @@ Breaking Changes
 
 Documentation
 ~~~~~~~~~~~~~
+- Added documentation on boundary conditions (:issue:`273`, :pull: `325`)
+  By `Romain Caneill <https://github.com/rcaneill>`_.
 - Updated metrics documentation for new methods in `Grid Metrics <https://xgcm.readthedocs.io/en/latest/grid_metrics.html>`_.
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
@@ -47,6 +74,17 @@ Internal Changes
 - Fixed metrics tests so some tests that previously did not run now do run, and refactored the metrics tests.
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 - Enabled type checking on the repository with mypy.
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
+
+- Removed dependency on docrep, which as docrep 2.7 used a GPL licence, implicitly changed the license of xGCM.
+  Therefore xGCM now has a valid MIT license, instead of accidentally being a GPL licence as it was before.
+  (:issue:`308`, :pull:`384`)
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
+
+Deprecations
+~~~~~~~~~~~~~
+
+- The `keep_coords` kwarg is now deprecated, and will be removed in the next version. (:issue:`382`)
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
 

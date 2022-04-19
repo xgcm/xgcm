@@ -55,7 +55,7 @@ boundary conditions.
 xgcm currently supports periodic,
 `Dirichlet <https://en.wikipedia.org/wiki/Dirichlet_boundary_condition>`_, and
 `Neumann <https://en.wikipedia.org/wiki/Neumann_boundary_condition>`_ boundary
-conditions, although the latter two are limited to simple cases.
+conditions, although the latter two are limited to simple cases, see :ref:`Boundary conditions`.
 
 The inverse of differentiation is integration. For finite volume grids, the
 inverse of the difference operator is a discrete cumulative sum. xgcm also
@@ -285,9 +285,13 @@ interpolate or take differences along the axis. First we create some test data:
 
 .. ipython:: python
 
-    da = np.sin(ds.x_c * 2 * np.pi / 9)
+    import matplotlib.pyplot as plt
+
+    da = np.sin(ds.x_c * 2 * np.pi / 9).rename("f")
     print(da)
+    @savefig grid_test_data.png
     da.plot()
+    plt.close()
 
 We interpolate as follows:
 
@@ -296,7 +300,7 @@ We interpolate as follows:
     da_interp = grid.interp(da, axis="X")
     da_interp
 
-We see that the output is on the ``x_g`` points rather than the original ``xc``
+We see that the output is on the ``x_g`` points rather than the original ``x_c``
 points.
 
 .. warning::
@@ -336,9 +340,3 @@ face).
 Xgcm can also deal with complex topologies such as cubed-sphere and
 lat-lon-cap.
 This is described in the :ref:`grid_topology` page.
-
-.. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
-.. _xarray: http://xarray.pydata.org
-.. _MITgcm notation: http://mitgcm.org/public/r2_manual/latest/online_documents/node31.html
-.. _CF Conventions: http://cfconventions.org/
-.. _COMODO Conventions: https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
