@@ -1866,14 +1866,11 @@ class Grid:
             # if chunked along core dim then we need map_overlap
             core_dim = self._get_dims_from_axis(data, ax_name)
             if _has_chunked_core_dims(data_unpacked, core_dim):
-                if funcname == "cumsum":
-                    # cumsum is a special case because it can't be correctly applied chunk-wise with map_overlap (it would need blockwise instead)
-                    # TODO double check that this dispatches to the dask version of cumsum?
-                    # TODO could we use the same approach with the diff etc?
-                    map_overlap = False
-                else:
-                    map_overlap = True
-                    dask = "allowed"
+                # cumsum is a special case because it can't be correctly applied chunk-wise with map_overlap (it would need blockwise instead)
+                # TODO double check that this dispatches to the dask version of cumsum?
+                # TODO could we use the same approach with the diff etc?
+                map_overlap = True if funcname != "cumsum" else False
+                dask = "allowed"
             else:
                 map_overlap = False
 

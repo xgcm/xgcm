@@ -237,7 +237,7 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
     return expected
 
 
-@pytest.mark.parametrize("funcname", ["integrate", "average", pytest.param("cumint", marks=pytest.mark.xfail(strict=True))])
+@pytest.mark.parametrize("funcname", ["integrate", "average", pytest.param("cumint", marks=pytest.mark.xfail)])
 @pytest.mark.parametrize(
     "boundary", ["fill", "extend"]
 )  # we do not support extrapolate for cumsum?
