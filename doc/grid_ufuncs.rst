@@ -145,15 +145,11 @@ Our grid object has one Axis (``"X"``), which has two coordinates, on positions 
     ds = xr.Dataset(
         coords={
             "x_c": (
-                [
-                    "x_c",
-                ],
+                ["x_c"],
                 np.arange(1, 10),
             ),
             "x_g": (
-                [
-                    "x_g",
-                ],
+                ["x_g"],
                 np.arange(0.5, 9),
             ),
         }
@@ -335,7 +331,6 @@ Here a periodic boundary condition has been used as the default, but we can choo
     )
     def interp_center_to_left_fill_with_zeros(a):
         return interp(a)
-
 
     interp_center_to_left_fill_with_zeros(
         grid, da, axis=[["X"]], boundary="fill", fill_value=0

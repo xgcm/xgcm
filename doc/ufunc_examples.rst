@@ -18,30 +18,22 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
     grid_ds = xr.Dataset(
         coords={
             "x_c": (
-                [
-                    "x_c",
-                ],
+                ["x_c"],
                 np.arange(1, 20),
                 {"axis": "X"},
             ),
             "x_g": (
-                [
-                    "x_g",
-                ],
+                ["x_g"],
                 np.arange(0.5, 19),
                 {"axis": "X", "c_grid_axis_shift": -0.5},
             ),
             "y_c": (
-                [
-                    "y_c",
-                ],
+                ["y_c"],
                 np.arange(1, 20),
                 {"axis": "Y"},
             ),
             "y_g": (
-                [
-                    "y_g",
-                ],
+                ["y_g"],
                 np.arange(0.5, 19),
                 {"axis": "Y", "c_grid_axis_shift": -0.5},
             ),
@@ -118,7 +110,6 @@ A divergence is the sum of multiple partial derivatives, so first let's define a
     def diff_forward_1d(a):
         return a[..., 1:] - a[..., :-1]
 
-
     def diff(arr, axis):
         """First order forward difference along any axis"""
         return np.apply_along_axis(diff_forward_1d, axis, arr)
@@ -185,7 +176,6 @@ Let's first define a tracer field ``T``, which we imagine will start off localis
             -0.5 * ((x_coord - x_pos) ** 2 + (y_coord - y_pos) ** 2) / w ** 2
         )
 
-
     ds["T"] = gaussian(grid_ds.x_c, grid_ds.y_c, x_pos=7.5, y_pos=7.5, A=50, w=2)
 
     @savefig tracer_field.png width=4in
@@ -244,11 +234,9 @@ Now we can define a simple flux operator (which internally calls our previous gr
     def interp_forward_1d(a):
         return (a[..., :-1] + a[..., 1:]) / 2.0
 
-
     def interp_forward(arr, axis):
         """First order forward interpolation along any axis"""
         return np.apply_along_axis(diff_forward_1d, axis, arr)
-
 
     @as_grid_ufunc(
         "(X:left,Y:center),(X:center,Y:left),(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
