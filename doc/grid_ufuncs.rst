@@ -400,7 +400,7 @@ The dask graph in this case is simple, because this is an "embarrasingly paralle
 
     result.data.visualize(optimize_graph=True)
 
-.. image:: _static/parallelize_broadcast.png
+.. image:: images/parallelize_broadcast.png
    :height: 400px
    :alt: Dask task graph for parallelizing along a broadcast dimension
 
@@ -437,7 +437,7 @@ The dask graph is more complicated, because each chunk along the core dim needs 
 
     result.data.visualize(optimize_graph=True)
 
-.. image:: _static/parallelize_core.png
+.. image:: images/parallelize_core.png
    :height: 400px
    :alt: Dask task graph for parallelizing along a core dimension
 
