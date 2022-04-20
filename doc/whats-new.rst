@@ -49,6 +49,9 @@ Internal Changes
 Documentation
 ~~~~~~~~~~~~~
 
+- Switch to pangeo-book-scheme (:pull:`482`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
 - Add CITATION.cff file (:pull:`450`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
