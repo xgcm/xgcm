@@ -683,9 +683,7 @@ def test_grid_ops(all_datasets):
                     assert da_cumsum.equals(da_cumsum_ax)
 
 
-@pytest.mark.parametrize(
-    "func", ["interp", "max", "min", "diff", "cumsum"]
-)
+@pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
 @pytest.mark.parametrize("periodic", ["True", "False", ["X"], ["Y"], ["X", "Y"]])
 @pytest.mark.parametrize(
     "boundary",

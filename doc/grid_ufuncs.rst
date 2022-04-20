@@ -112,6 +112,8 @@ Let's imagine we have a numpy function which does forward differencing along one
 
     import numpy as np
 
+.. ipython:: python
+
     def diff_forward(a):
         return a - np.roll(a, -1, axis=-1)
 
@@ -213,6 +215,8 @@ Finally you can use type hints to specify the grid positions of the variables in
 .. ipython:: python
 
     from typing import Annotated
+
+.. ipython:: python
 
     @as_grid_ufunc()
     def diff_center_to_left(
@@ -326,6 +330,8 @@ Here a periodic boundary condition has been used as the default, but we can choo
     )
     def interp_center_to_left_fill_with_zeros(a):
         return interp(a)
+
+.. ipython:: python
 
     interp_center_to_left_fill_with_zeros(
         grid, da, axis=[["X"]], boundary="fill", fill_value=0

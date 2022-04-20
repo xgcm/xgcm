@@ -483,7 +483,7 @@ class TestGridUFuncNoPadding:
         def diff_center_to_left(a):
             return a - np.roll(a, shift=-1, axis=-1)
 
-        da = grid._ds.lat_c ** 2 + grid._ds.lon_c ** 2
+        da = grid._ds.lat_c**2 + grid._ds.lon_c**2
 
         diffed = (da - da.roll(lon_c=-1, roll_coords=False)).data
         expected = xr.DataArray(
@@ -565,7 +565,7 @@ class TestGridUFuncNoPadding:
 
         grid = create_2d_test_grid("lon", "lat")
 
-        a = grid._ds.lon_c ** 2 + grid._ds.lat_c ** 2
+        a = grid._ds.lon_c**2 + grid._ds.lat_c**2
 
         expected_u = 2 * grid._ds.lon_i.expand_dims(dim={"lat_c": len(grid._ds.lat_c)})
         expected_u.coords["lat_c"] = grid._ds.lat_c
@@ -709,8 +709,8 @@ class TestGridUfuncWithPadding:
 
         grid = create_2d_test_grid("lon", "lat")
 
-        U = grid._ds.lon_g ** 2 + grid._ds.lat_c ** 3
-        V = grid._ds.lon_c ** 3 + grid._ds.lat_g ** 2
+        U = grid._ds.lon_g**2 + grid._ds.lat_c**3
+        V = grid._ds.lon_c**3 + grid._ds.lat_g**2
 
         diffed_v = (V - V.roll(lon_c=1, roll_coords=False)).data
         diffed_u = (U - U.roll(lat_c=1, roll_coords=False)).data
@@ -742,7 +742,7 @@ class TestPadManuallyInsideUfunc:
             return 0.5 * (b - c)
 
         grid = create_1d_test_grid("depth")
-        da = grid._ds.depth_c ** 2
+        da = grid._ds.depth_c**2
         da.coords["depth_c"] = grid._ds.depth_c
 
         diffed = 0.5 * (da - da.roll(depth_c=2, roll_coords=False)).data
@@ -777,7 +777,7 @@ class TestPadAfterUFunc:
             return np.cumsum(a, axis=-1)[..., :-1]
 
         grid = create_1d_test_grid("depth")
-        da = grid._ds.depth_c ** 2
+        da = grid._ds.depth_c**2
         da.coords["depth_c"] = grid._ds.depth_c
 
         cum = da.cumsum(dim="depth_c").roll(depth_c=1, roll_coords=False)
@@ -979,7 +979,7 @@ class TestDaskOverlap:
 
         grid = create_2d_test_grid("lon", "lat")
 
-        a = (grid._ds.lon_c ** 2 + grid._ds.lat_c ** 2).chunk(1)
+        a = (grid._ds.lon_c**2 + grid._ds.lat_c**2).chunk(1)
 
         # Test direct application
         with pytest.raises(NotImplementedError, match="multiple outputs"):
@@ -1049,7 +1049,7 @@ class TestMapOverlapGridops:
 
         grid = create_2d_test_grid("depth", "y")
 
-        da = (grid._ds.depth_c ** 2 + grid._ds.y_c ** 2).chunk(3)
+        da = (grid._ds.depth_c**2 + grid._ds.y_c**2).chunk(3)
         da.coords["depth_c"] = grid._ds.depth_c
         da.coords["y_c"] = grid._ds.y_c
 

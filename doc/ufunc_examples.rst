@@ -110,6 +110,8 @@ A divergence is the sum of multiple partial derivatives, so first let's define a
     def diff_forward_1d(a):
         return a[..., 1:] - a[..., :-1]
 
+.. ipython:: python
+
     def diff(arr, axis):
         """First order forward difference along any axis"""
         return np.apply_along_axis(diff_forward_1d, axis, arr)
@@ -176,6 +178,8 @@ Let's first define a tracer field ``T``, which we imagine will start off localis
             -0.5 * ((x_coord - x_pos) ** 2 + (y_coord - y_pos) ** 2) / w ** 2
         )
 
+.. ipython:: python
+
     ds["T"] = gaussian(grid_ds.x_c, grid_ds.y_c, x_pos=7.5, y_pos=7.5, A=50, w=2)
 
     @savefig tracer_field.png width=4in
@@ -222,9 +226,10 @@ Now we can plot the gradient of the tracer field as a vector field
 
 .. ipython:: python
 
-
     ds["T"].plot.contourf(x="x_c", vmax=60)
-    colocated.plot.quiver("x_c", "y_c", u="grad_T_x", v="grad_T_y", color='0.5', scale=200)
+    colocated.plot.quiver(
+        "x_c", "y_c", u="grad_T_x", v="grad_T_y", color="0.5", scale=200
+    )
 
     @savefig gradient_scalar_field.png width=4in
     plt.gcf()
@@ -243,9 +248,13 @@ Now we can define a simple flux operator (which internally calls our previous gr
     def interp_forward_1d(a):
         return (a[..., :-1] + a[..., 1:]) / 2.0
 
+.. ipython:: python
+
     def interp_forward(arr, axis):
         """First order forward interpolation along any axis"""
         return np.apply_along_axis(interp_forward_1d, axis, arr)
+
+.. ipython:: python
 
     @as_grid_ufunc(
         "(X:left,Y:center),(X:center,Y:left),(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
@@ -305,6 +314,9 @@ We can compute vector fields from vector fields too, such as vorticity.
         v_diff_x = diff(v, axis=-2)
         u_diff_y = diff(u, axis=-1)
         return v_diff_x[..., 1:] - u_diff_y[..., 1:, :]
+
+
+.. ipython:: python
 
     vort = vorticity(grid, ds["U"], ds["V"], axis=[("X", "Y"), ("X", "Y")])
 
