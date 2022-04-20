@@ -3,9 +3,26 @@
 What's New
 ===========
 
-
-v0.7.0 (unreleased)
+v0.8.0 (unreleased)
 -------------------
+
+New Features
+~~~~~~~~~~~~
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
+Documentation
+~~~~~~~~~~~~~
+
+
+v0.7.0 (2022/4/20)
+-------------------
+
+.. _whats-new.0.7.0:
 
 New Features
 ~~~~~~~~~~~~
