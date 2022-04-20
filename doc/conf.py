@@ -159,7 +159,15 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # tml_theme = 'default'
-html_theme = "pangeo"
+html_theme = "pangeo_sphinx_book_theme"
+html_theme_options = {
+    "repository_url": "https://github.com/pangeo-forge/pangeo-forge-recipes",
+    "repository_branch": "master",
+    "path_to_docs": "docs",
+    "use_repository_button": True,
+    "use_issues_button": True,
+    "use_edit_page_button": True,
+}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
