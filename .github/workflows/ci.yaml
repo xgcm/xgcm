@@ -15,7 +15,7 @@ jobs:
     name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
     if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash -l {0}
@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Cache conda
-        uses: actions/cache@v3.0.1
+        uses: actions/cache@v3.0.2
         env:
           # Increase this value to reset cache if ci/environment.yml has not changed
           CACHE_NUMBER: 0
@@ -52,7 +52,7 @@ jobs:
         run: |
           pytest -n auto --cov=./ --cov-report=xml
       - name: Upload code coverage to Codecov
-        uses: codecov/codecov-action@v2.1.0
+        uses: codecov/codecov-action@v3.0.0
         with:
           file: ./coverage.xml
           flags: unittests
@@ -71,7 +71,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Cache conda
-      uses: actions/cache@v3.0.1
+      uses: actions/cache@v3.0.2
       env:
         # Increase this value to reset cache if ci/environment-core-deps.yml has not changed
         CACHE_NUMBER: 0
@@ -107,7 +107,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Cache conda
-      uses: actions/cache@v3.0.1
+      uses: actions/cache@v3.0.2
       env:
         # Increase this value to reset cache if ci/environment-upstream-dev.yml has not changed
         CACHE_NUMBER: 0
