@@ -12,16 +12,12 @@ Boundary Conditions
     ds = xr.Dataset(
         coords={
             "x_c": (
-                [
-                    "x_c",
-                ],
+                ["x_c"],
                 np.arange(1, 10),
                 {"axis": "X"},
             ),
             "x_g": (
-                [
-                    "x_g",
-                ],
+                ["x_g"],
                 np.arange(0.5, 9),
                 {"axis": "X", "c_grid_axis_shift": -0.5},
             ),

@@ -151,15 +151,11 @@ We create it as follows.
     ds = xr.Dataset(
         coords={
             "x_c": (
-                [
-                    "x_c",
-                ],
+                ["x_c"],
                 np.arange(1, 10),
             ),
             "x_g": (
-                [
-                    "x_g",
-                ],
+                ["x_g"],
                 np.arange(0.5, 9),
             ),
         }
@@ -249,16 +245,12 @@ We create an :py:class:`xarray.Dataset` with such attributes as follows:
     ds = xr.Dataset(
         coords={
             "x_c": (
-                [
-                    "x_c",
-                ],
+                ["x_c"],
                 np.arange(1, 10),
                 {"axis": "X"},
             ),
             "x_g": (
-                [
-                    "x_g",
-                ],
+                ["x_g"],
                 np.arange(0.5, 9),
                 {"axis": "X", "c_grid_axis_shift": -0.5},
             ),
@@ -287,7 +279,7 @@ interpolate or take differences along the axis. First we create some test data:
 
     import matplotlib.pyplot as plt
 
-    da = np.sin(ds.x_c * 2 * np.pi / 9).rename("f")
+    da = np.sin(ds.x_c * 2 * np.pi / 9)
     print(da)
     @savefig grid_test_data.png
     da.plot()
