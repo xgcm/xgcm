@@ -3,23 +3,48 @@
 What's New
 ===========
 
-v0.6.1 (unreleased)
--------------------
 
-.. _whats-new.0.6.1:
+v0.7.0 (unreleased)
+-------------------
 
 New Features
 ~~~~~~~~~~~~
 
+- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions :py:meth:`~xgcm.grid_ufunc.apply_as_grid_ufunc`
+  and :py:meth:`~xgcm.grid_ufunc.as_grid_ufunc`. (:pull:`362`, :issue:`344`)
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+- Padding of vector fields for complex topologies via a dictionary-like syntax has been added (:pull:`459`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
 Breaking Changes
 ~~~~~~~~~~~~~~~~
+
+- Removed the ``extrapolate`` boundary option (:pull:`470`).
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
+- All computation methods on the `Grid` object are now re-routed through :py:meth:`~xgcm.grid_ufunc.apply_as_grid_ufunc`.
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+Documentation
+~~~~~~~~~~~~~
+
+- Add CITATION.cff file (:pull:`450`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+
+v0.6.1 (2022/02/15)
+-------------------
+
+.. _whats-new.0.6.1:
+
 
 Documentation
 ~~~~~~~~~~~~~
 - Switch RTD build to use mamba for increased speed and reduced memory useage (:pull:`401`).
-  By `Julius Busecke <https://github.com/jbusecke>`_.
-
-- Add CITATION.cff file (:pull:`450`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
 Internal Changes
@@ -38,6 +63,9 @@ v0.6.0 (2021/11/03)
 
 New Features
 ~~~~~~~~~~~~
+- :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
+  By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
+
 - :py:meth:`~xgcm.grid.Grid.get_metric` refactored, and now incorporates :py:meth:`~xgcm.grid.Grid.interp_like` to allow for automatic interpolation of missing metrics from available values on surrounding positions (:pull:`345`, :pull:`354`).
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
@@ -67,6 +95,8 @@ Internal Changes
 ~~~~~~~~~~~~~
 
 - Fixed metrics tests so some tests that previously did not run now do run, and refactored the metrics tests.
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
+- Enabled type checking on the repository with mypy.
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
 - Removed dependency on docrep, which as docrep 2.7 used a GPL licence, implicitly changed the license of xGCM.
