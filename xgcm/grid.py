@@ -298,6 +298,13 @@ class Axis:
         da_i : xarray.DataArray
             The differenced data
         """
+        warnings.warn(
+            "From version 0.8.0 the Axis computation methods will be removed, "
+            "in favour of using the Grid computation methods instead. "
+            f"i.e. use `Grid.{f}` instead of `Axis.{f}`",
+            FutureWarning,
+        )
+
         position_from, dim = self._get_position_name(da)
         if to is None:
             to = self._default_shifts[position_from]
@@ -736,6 +743,12 @@ class Axis:
         da_cum : xarray.DataArray
             The cumsummed data
         """
+        warnings.warn(
+            "From version 0.8.0 the Axis computation methods will be removed, "
+            "in favour of using the Grid computation methods instead. "
+            "i.e. use `Grid.cumsum` instead of `Axis.cumsum`",
+            FutureWarning,
+        )
 
         pos, dim = self._get_position_name(da)
 
@@ -966,6 +979,13 @@ class Axis:
 
 
         """
+        warnings.warn(
+            "From version 0.8.0 the Axis computation methods will be removed, "
+            "in favour of using the Grid computation methods instead. "
+            "i.e. use `Grid.transform` instead of `Axis.transform`",
+            FutureWarning,
+        )
+
         # Theoretically we should be able to use a multidimensional `target`, which would need the additional information provided with `target_dim`.
         # But the feature is not tested yet, thus setting this to default value internally (resulting in error in `_parse_target`, when a multidim `target` is passed)
         target_dim = None
