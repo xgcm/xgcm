@@ -18,6 +18,6 @@ dependencies:
   - pip:
     - nbsphinx
     - jupyter_client
-    - sphinx_pangeo_theme
+    - pangeo-sphinx-book-theme
     - sphinx-copybutton
     - sphinxcontrib-srclinks
