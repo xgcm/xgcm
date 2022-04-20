@@ -106,7 +106,11 @@ To give you an idea of how we might use grid ufuncs here is a table of possible 
 Defining New Grid Ufuncs
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
+<<<<<<< HEAD
 Let's imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
+=======
+Lets imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
+>>>>>>> grid_ufunc_refactor_project
 
 .. ipython:: python
 
@@ -346,7 +350,7 @@ Metrics
 .. note::
 
     Automatically supplying metrics directly to grid ufuncs is not yet implemented, but will be soon!
-    For now, if you need a metric in your grid ufunc, simply include it as an input and pass it explicitly. 
+    For now, if you need a metric in your grid ufunc, simply include it as an input and pass it explicitly.
     To work with metrics outside of grid ufuncs see the documentation page on metrics.
 
 
