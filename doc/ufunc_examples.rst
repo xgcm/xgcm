@@ -175,7 +175,7 @@ Let's first define a tracer field ``T``, which we imagine will start off localis
 
     def gaussian(x_coord, y_coord, x_pos, y_pos, A, w):
         return A * np.exp(
-            -0.5 * ((x_coord - x_pos) ** 2 + (y_coord - y_pos) ** 2) / w ** 2
+            -0.5 * ((x_coord - x_pos) ** 2 + (y_coord - y_pos) ** 2) / w**2
         )
 
 .. ipython:: python

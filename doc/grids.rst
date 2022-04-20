@@ -323,7 +323,7 @@ For example:
 .. ipython:: python
 
     da2 = da + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
-    da2 = da2.assign_coords(h=da2.y ** 2)
+    da2 = da2.assign_coords(h=da2.y**2)
     print(da2)
     grid.interp(da2, "X", keep_coords=True)
 
