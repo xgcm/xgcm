@@ -44,6 +44,7 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
+    "sphinx_panels",
     "numpydoc",
     "nbsphinx",
     "IPython.sphinxext.ipython_directive",

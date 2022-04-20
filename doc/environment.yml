@@ -11,13 +11,15 @@ dependencies:
   - pytest
   - numpydoc
   - sphinx
-  - ipython
   - matplotlib
   - sphinx_rtd_theme
   - ipykernel
+#  - python-graphviz
   - pip:
     - nbsphinx
     - jupyter_client
     - sphinx_pangeo_theme
     - sphinx-copybutton
     - sphinxcontrib-srclinks
+    - sphinx-panels
+    - git+https://github.com/TomNicholas/ipython.git@dont_strip_all_decorators2

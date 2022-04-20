@@ -61,6 +61,8 @@ The inverse of differentiation is integration. For finite volume grids, the
 inverse of the difference operator is a discrete cumulative sum. xgcm also
 provides a grid-aware version of the ``cumsum`` operator.
 
+.. _axis-positions:
+
 Axes and Positions
 ~~~~~~~~~~~~~~~~~~
 
@@ -285,41 +287,41 @@ interpolate or take differences along the axis. First we create some test data:
 
     import matplotlib.pyplot as plt
 
-    f = np.sin(ds.x_c * 2 * np.pi / 9).rename("f")
-    print(f)
+    da = np.sin(ds.x_c * 2 * np.pi / 9).rename("f")
+    print(da)
     @savefig grid_test_data.png
-    f.plot()
+    da.plot()
     plt.close()
 
 We interpolate as follows:
 
 .. ipython:: python
 
-    f_interp = grid.interp(f, axis="X")
-    f_interp
+    da_interp = grid.interp(da, axis="X")
+    da_interp
 
 We see that the output is on the ``x_g`` points rather than the original ``x_c``
 points.
 
 .. warning::
 
-    xgcm does not perform input validation to verify that ``f`` is
+    xgcm does not perform input validation to verify that ``da`` is
     compatible with ``grid``.
 
 The same position shift happens with a difference operation:
 
 .. ipython:: python
 
-    f_diff = grid.diff(f, axis="X")
-    f_diff
+    da_diff = grid.diff(da, axis="X")
+    da_diff
 
 We can reverse the difference operation by taking a cumsum:
 
 .. ipython:: python
 
-    grid.cumsum(f_diff, "X")
+    grid.cumsum(da_diff, "X")
 
-Which is approximately equal to the original ``f``, modulo the numerical errors
+Which is approximately equal to the original ``da``, modulo the numerical errors
 accrued due to the discretization of the data.
 
 By default, these grid operations will drop any coordinate that are not
@@ -328,10 +330,10 @@ For example:
 
 .. ipython:: python
 
-    f2 = f + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
-    f2 = f2.assign_coords(h=f2.y**2)
-    print(f2)
-    grid.interp(f2, "X", keep_coords=True)
+    da2 = da + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
+    da2 = da2.assign_coords(h=da2.y ** 2)
+    print(da2)
+    grid.interp(da2, "X", keep_coords=True)
 
 So far we have just discussed simple grids (i.e. regular grids with a single
 face).

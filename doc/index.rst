@@ -45,6 +45,7 @@ Contents
    grids
    grid_topology
    grid_metrics
+   grid_ufuncs
    boundary_conditions
    transform
    xgcm-examples/02_mitgcm

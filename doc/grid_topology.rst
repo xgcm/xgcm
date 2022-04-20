@@ -1,4 +1,4 @@
-.. _grid_topology:
+.. _Grid Topology:
 
 Grid Topology
 -------------
