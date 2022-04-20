@@ -6,30 +6,25 @@ Grid Ufuncs
 Concept of a Grid Ufunc
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-In short, a "grid ufunc" is a generalisation of a `numpy generalized universal function`_ to include the xGCM Axes and Positions of input and output variables.
+In short, a "grid ufunc" is a generalisation of a numpy generalized universal function to include the xGCM Axes and Positions of input and output variables.
 
-If you are not already familiar with numpy generalised universal functions (hereon referred to as "numpy ufuncs"),
-then here is a quick primer.
+If you are not already familiar with the concept `numpy generalized universal function`_ (hereon referred to a "numpy ufunc"),
+then have a read of the linked documentation.
+You will also need to understand the `concept of "core dims"`_ used in ``xarray.apply_ufunc``.
 
-.. dropdown:: **Primer on numpy generalized universal functions**
-
-    Content about numpy...
-
-We tell a function about the axes information through a ``signature``.
+We tell a grid ufunc about the xGCM axes information through a ``signature``.
 For example, imagine we have a function which accepts data located at the center grid positions and returns
 data located at the left-hand grid positions, on the same axis.
 The signature for this function would look like:
 
 ``"(ax1:center)->(ax1:left)"``.
 
-You will also need to understand the `concept of "core dims"`_ used in ``xarray.apply_ufunc``.
-
 Grid ufuncs allow us to:
 
 - Avoid mistakes by stating that functions are only valid for data on specific grid positions,
 - Neatly promote numpy functions to grid-aware xarray functions,
-- Conveniently apply boundary conditions and grid topologies (see :ref:`Boundaries and Padding`),
-- Boost performance relative to chaining many `Grid.diff` or `Grid.interp` operations,
+- Conveniently apply :ref:`Boundary Conditions` and :ref:`Grid Topology`,
+- Boost performance relative to chaining many ``Grid.diff`` or ``Grid.interp`` operations,
 - Immediately parallelize our operations with dask (see :ref:`Parallelizing with Dask`).
 
 .. _numpy generalized universal function: https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
@@ -340,13 +335,10 @@ We can also choose a different default boundary condition at decorator definitio
 and then override it at function call time if we prefer.
 
 .. ipython:: python
-    :okexcept:
 
-    interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=np.NaN)
+    interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=0)
 
-
-- Link to more specific docs?
-- Link to more complex examples?
+For more advanced examples of grid ufuncs, see the page on :ref:`ufunc examples`.
 
 Metrics
 ~~~~~~~
@@ -398,10 +390,13 @@ to the new function in the same way that the boundary kwargs work.)
 
 The dask graph in this case is simple, because this is an "embarrasingly parallel" problem.
 
-.. ipython:: python
-    :okexcept:
+.. code-block:: python
 
-    result.data.visualize(optimise=True)
+    result.data.visualize(optimize_graph=True)
+
+.. image:: _static/parallelize_broadcast.png
+   :height: 400px
+   :alt: Dask task graph for parallelizing along a broadcast dimension
 
 The result is as expected from padding each row independently.
 
@@ -432,13 +427,18 @@ If your ufunc operates on individual chunks independently, then ``dask.map_block
 but the possibility of padding boundaries means that ``dask.map_overlap`` is required.
 The dask graph is more complicated, because each chunk along the core dim needs to communicate its ``boundary_width`` elements to adjacent chunks.
 
-.. ipython:: python
-    :okexcept:
+.. code-block:: python
 
-    result.data.visualize(optimise=True)
+    result.data.visualize(optimize_graph=True)
+
+.. image:: _static/parallelize_core.png
+   :height: 400px
+   :alt: Dask task graph for parallelizing along a core dimension
+
+.. ipython:: python
 
     result.compute()
 
 There is one limitation of this feature: you cannot use ``map_overlap`` with grid ufuncs that change length along a core dimension
 (e.g. by shifting axis positions from ``center`` to ``outer``).
-XGCM will error if you try to do this.
+XGCM will raise an error if you try to do this.
