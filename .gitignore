@@ -72,7 +72,7 @@ dask-worker-space/dask-worker-space/purge.lock
 
 # CI/Linting
 .mypy_cache
-xgcm/.vscode/settings.json
+.vscode
 02_Testing xgcm metrics.ipynb
 Testing xgcm.ipynb
 .ipynb_checkpoints/02_Testing xgcm metrics-checkpoint.ipynb
