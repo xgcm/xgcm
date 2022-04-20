@@ -1,7 +1,3 @@
-.. image:: _static/logo.png
-
-|
-
 xgcm: General Circulation Model Postprocessing with xarray
 ==========================================================
 
