@@ -6,30 +6,25 @@ Grid Ufuncs
 Concept of a Grid Ufunc
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-In short, a "grid ufunc" is a generalisation of a `numpy generalized universal function`_ to include the xGCM Axes and Positions of input and output variables.
+In short, a "grid ufunc" is a generalisation of a numpy generalized universal function to include the xGCM Axes and Positions of input and output variables.
 
-If you are not already familiar with numpy generalised universal functions (hereon referred to as "numpy ufuncs"),
-then here is a quick primer.
+If you are not already familiar with the concept `numpy generalized universal function`_ (hereon referred to a "numpy ufunc"),
+then have a read of the linked documentation.
+You will also need to understand the `concept of "core dims"`_ used in ``xarray.apply_ufunc``.
 
-.. dropdown:: **Primer on numpy generalized universal functions**
-
-    Content about numpy...
-
-We tell a function about the axes information through a ``signature``.
+We tell a grid ufunc about the xGCM axes information through a ``signature``.
 For example, imagine we have a function which accepts data located at the center grid positions and returns
 data located at the left-hand grid positions, on the same axis.
 The signature for this function would look like:
 
 ``"(ax1:center)->(ax1:left)"``.
 
-You will also need to understand the `concept of "core dims"`_ used in ``xarray.apply_ufunc``.
-
 Grid ufuncs allow us to:
 
 - Avoid mistakes by stating that functions are only valid for data on specific grid positions,
 - Neatly promote numpy functions to grid-aware xarray functions,
-- Conveniently apply boundary conditions and grid topologies (see :ref:`Boundaries and Padding`),
-- Boost performance relative to chaining many `Grid.diff` or `Grid.interp` operations,
+- Conveniently apply :ref:`Boundary Conditions` and :ref:`Grid Topology`,
+- Boost performance relative to chaining many ``Grid.diff`` or ``Grid.interp`` operations,
 - Immediately parallelize our operations with dask (see :ref:`Parallelizing with Dask`).
 
 .. _numpy generalized universal function: https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
