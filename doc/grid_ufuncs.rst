@@ -331,7 +331,6 @@ Here a periodic boundary condition has been used as the default, but we can choo
     def interp_center_to_left_fill_with_zeros(a):
         return interp(a)
 
-
     interp_center_to_left_fill_with_zeros(
         grid, da, axis=[["X"]], boundary="fill", fill_value=0
     )
@@ -394,10 +393,13 @@ to the new function in the same way that the boundary kwargs work.)
 
 The dask graph in this case is simple, because this is an "embarrasingly parallel" problem.
 
-.. ipython:: python
-    :okexcept:
+.. code-block:: python
 
     result.data.visualize(optimize_graph=True)
+
+.. image:: _static/parallelize_broadcast.png
+   :height: 400px
+   :alt: Dask task graph for parallelizing along a broadcast dimension
 
 The result is as expected from padding each row independently.
 
@@ -428,13 +430,18 @@ If your ufunc operates on individual chunks independently, then ``dask.map_block
 but the possibility of padding boundaries means that ``dask.map_overlap`` is required.
 The dask graph is more complicated, because each chunk along the core dim needs to communicate its ``boundary_width`` elements to adjacent chunks.
 
-.. ipython:: python
-    :okexcept:
+.. code-block:: python
 
     result.data.visualize(optimize_graph=True)
+
+.. image:: _static/parallelize_core.png
+   :height: 400px
+   :alt: Dask task graph for parallelizing along a core dimension
+
+.. ipython:: python
 
     result.compute()
 
 There is one limitation of this feature: you cannot use ``map_overlap`` with grid ufuncs that change length along a core dimension
 (e.g. by shifting axis positions from ``center`` to ``outer``).
-XGCM will error if you try to do this.
+XGCM will raise an error if you try to do this.
