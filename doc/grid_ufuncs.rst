@@ -343,9 +343,7 @@ and then override it at function call time if we prefer.
 
     interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=0)
 
-
-- Link to more specific docs?
-- Link to more complex examples?
+For more advanced examples of grid ufuncs, see the page on :ref:`ufunc examples`.
 
 Metrics
 ~~~~~~~
