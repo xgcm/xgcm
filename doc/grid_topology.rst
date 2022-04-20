@@ -240,8 +240,9 @@ some special care is needed.
 Why is that the case? Lets consider a subset of the faces introduced above.
 Specifically lets focus on the connection between faces 1 and 4:
 
-.. figure:: images/example_face_connections.png
-  :alt: simplified face connections
+.. figure:: images/scalar_padding.png
+  :alt: scalar padding diagram
+  :width: 300
 
 You can see that they are connected across different axes (the 'left' side of the Y axis on
 face 1 is connected to the right side of the X axis on face 4). In order to perform any operation
@@ -267,6 +268,12 @@ as a scalar, there is a problem: Consider padding ``U`` to the right on face 4. 
 right (more specifically positive along the X axis), we would expect that this flow would continue as upward
 (positive along the Y axis) on face 1! But such upward flow on that connected face is captured by a different
 vector component.
+
+.. figure:: images/component_swap_demo.png
+  :alt: proper padding of vector components
+  :width: 600
+
+Lets demonstrate what happens when we just treat a velocity component as a scalar
 
 !!! EXAMPLE show fail of padding naively
 
