@@ -77,3 +77,7 @@ xgcm/.vscode/settings.json
 Testing xgcm.ipynb
 .ipynb_checkpoints/02_Testing xgcm metrics-checkpoint.ipynb
 xgcm/test/sample.py
+
+# dask artifacts
+global.lock
+purge.lock

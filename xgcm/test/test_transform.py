@@ -8,7 +8,7 @@ high level: API implementations in the grid object (located in grid.py)
 # TODO:
 # - performance test? It would be nice to have these right after so we can track the performance as this feature evolves
 
-import dask
+import dask  # type: ignore
 import numpy as np
 import pytest
 import xarray as xr
@@ -16,7 +16,7 @@ import xarray as xr
 from xgcm.grid import Grid
 
 try:
-    import numba
+    import numba  # type: ignore
 
     from ..transform import (
         conservative_interpolation,
@@ -944,7 +944,7 @@ def processes_client():
 
 @pytest.fixture(scope="module")
 def distributed_client():
-    from dask.distributed import Client, LocalCluster
+    from dask.distributed import Client, LocalCluster  # type: ignore
 
     cluster = LocalCluster(threads_per_worker=1, n_workers=2, processes=True)
     client = Client(cluster)
