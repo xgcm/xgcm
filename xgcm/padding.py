@@ -392,7 +392,9 @@ def pad(
     )
 
     # Exit without padding if all widths are zero
-    if all(width == (0, 0) for width in padding_width.values()):
+    if padding_width is None or all(
+        width == (0, 0) for width in padding_width.values()
+    ):
         # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
         # TODO: No padding would occur in that situation. Should we warn the user?
         return data
