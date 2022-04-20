@@ -106,11 +106,7 @@ To give you an idea of how we might use grid ufuncs here is a table of possible 
 Defining New Grid Ufuncs
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-<<<<<<< HEAD
 Let's imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
-=======
-Lets imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
->>>>>>> grid_ufunc_refactor_project
 
 .. ipython:: python
 
