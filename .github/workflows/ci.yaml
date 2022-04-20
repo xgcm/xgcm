@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - "master"
-      - "grid_ufunc_refactor_project"
   pull_request:
     branches:
       - "*"
