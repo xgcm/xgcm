@@ -11,8 +11,6 @@ install_requires = [
     "dask",
     "numpy",
     "future",
-    "docrep<=0.2.7",
-    "typing_extensions >= 3.7",  # python_version < '3.8'
 ]
 doc_requires = [
     "sphinx",
@@ -30,7 +28,8 @@ extras_require = {
 extras_require["dev"] = extras_require["complete"] + [
     "pytest",
     "pytest-cov",
-    "scipy" "flake8",
+    "scipy",
+    "flake8",
     "black",
     "codecov",
 ]
@@ -48,14 +47,13 @@ setup(
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     install_requires=install_requires,
     extras_require=extras_require,
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     long_description=long_description,
     long_description_content_type="text/x-rst",
     setup_requires="setuptools_scm",

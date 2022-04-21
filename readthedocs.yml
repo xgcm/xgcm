@@ -1,7 +1,17 @@
-conda:
-    file: doc/environment.yml
+version: 2
+
+submodules:
+  include: all
+
+build:
+  os: "ubuntu-20.04"
+  tools:
+    python: "mambaforge-4.10"
+
 python:
-   version: 3.6
-   install:
-      - method: setuptools
-        path: package
+    install:
+       - method: setuptools
+         path: .
+
+conda:
+  environment: doc/environment.yml

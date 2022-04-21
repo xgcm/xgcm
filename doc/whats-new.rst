@@ -3,17 +3,86 @@
 What's New
 ===========
 
-v0.6.0 (unreleased)
+v0.8.0 (unreleased)
+-------------------
+
+New Features
+~~~~~~~~~~~~
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
+Documentation
+~~~~~~~~~~~~~
+
+
+v0.7.0 (2022/4/20)
+-------------------
+
+.. _whats-new.0.7.0:
+
+New Features
+~~~~~~~~~~~~
+
+- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions :py:meth:`~xgcm.grid_ufunc.apply_as_grid_ufunc`
+  and :py:meth:`~xgcm.grid_ufunc.as_grid_ufunc`. (:pull:`362`, :issue:`344`)
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+- Padding of vector fields for complex topologies via a dictionary-like syntax has been added (:pull:`459`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+- Removed the ``extrapolate`` boundary option (:pull:`470`).
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
+- All computation methods on the `Grid` object are now re-routed through :py:meth:`~xgcm.grid_ufunc.apply_as_grid_ufunc`.
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
+Documentation
+~~~~~~~~~~~~~
+
+- Switch to pangeo-book-scheme (:pull:`482`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+- Add CITATION.cff file (:pull:`450`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+
+v0.6.1 (2022/02/15)
+-------------------
+
+.. _whats-new.0.6.1:
+
+
+Documentation
+~~~~~~~~~~~~~
+- Switch RTD build to use mamba for increased speed and reduced memory useage (:pull:`401`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+- Switch CI to use mamba (:pull:`412`, :issue:`398`).
+ By `Julius Busecke <https://github.com/jbusecke>`_.
+
+- Add deprecation warnings for future changes in the API (:issue:`409`,:pull:`411`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+
+v0.6.0 (2021/11/03)
 -------------------
 
 .. _whats-new.0.6.0:
 
 New Features
 ~~~~~~~~~~~~
-- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions :py:meth:`~xgcm.grid_ufunc.apply_grid_ufunc`
-  and :py:meth:`~xgcm.grid_ufunc.as_grid_ufunc`. Beginning of an internal refactor to rewrite all grid computation methods
-  as grid ufuncs. (:pull:`362`, :issue:`344`)
-  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
 
 - :py:meth:`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object (:pull:`336`, :issue:`199`).
   By `Dianne Deauna <https://github.com/jdldeauna>`_ under the `SIParCS internship <https://www2.cisl.ucar.edu/siparcs-2021-projects#8>`_.
@@ -38,6 +107,8 @@ Breaking Changes
 
 Documentation
 ~~~~~~~~~~~~~
+- Added documentation on boundary conditions (:issue:`273`, :pull: `325`)
+  By `Romain Caneill <https://github.com/rcaneill>`_.
 - Updated metrics documentation for new methods in `Grid Metrics <https://xgcm.readthedocs.io/en/latest/grid_metrics.html>`_.
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
@@ -48,7 +119,16 @@ Internal Changes
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 - Enabled type checking on the repository with mypy.
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
+- Removed dependency on docrep, which as docrep 2.7 used a GPL licence, implicitly changed the license of xGCM.
+  Therefore xGCM now has a valid MIT license, instead of accidentally being a GPL licence as it was before.
+  (:issue:`308`, :pull:`384`)
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
+Deprecations
+~~~~~~~~~~~~~
+
+- The `keep_coords` kwarg is now deprecated, and will be removed in the next version. (:issue:`382`)
+  By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
 
 
 v0.5.2 (2021/5/27)

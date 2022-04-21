@@ -44,10 +44,12 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
+    "sphinx_panels",
     "numpydoc",
     "nbsphinx",
     "IPython.sphinxext.ipython_directive",
-    "IPython.sphinxext.ipython_console_highlighting",
+    # "IPython.sphinxext.ipython_console_highlighting",
     "sphinxcontrib.srclinks",
 ]
 
@@ -93,8 +95,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"xgcm"
-copyright = u"2016-2019, xgcm developers"
+project = "xgcm"
+copyright = "2016-2019, xgcm developers"
 
 html_show_sourcelink = True
 srclink_project = "https://github.com/xgcm/xgcm"
@@ -161,7 +163,15 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 # tml_theme = 'default'
-html_theme = "pangeo"
+html_theme = "pangeo_sphinx_book_theme"
+html_theme_options = {
+    "repository_url": "https://github.com/pangeo-forge/pangeo-forge-recipes",
+    "repository_branch": "master",
+    "path_to_docs": "docs",
+    "use_repository_button": True,
+    "use_issues_button": True,
+    "use_edit_page_button": True,
+}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -172,15 +182,15 @@ html_theme = "pangeo"
 # html_theme_path = []
 
 # The name for this set of Sphinx documents.  If None, it defaults to
-# "<project> v<release> documentation".
-# html_title = None
+# "<project> v<version> documentation".
+html_title = f"{project} v{version} documentation"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 # html_short_title = None
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-# html_logo = None
+html_logo = "images/logo.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -206,7 +216,7 @@ html_static_path = ["_static"]
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-html_sidebars = {"index": [], "**": ["localtoc.html", "srclinks.html"]}
+# html_sidebars = {"index": [], "**": ["localtoc.html", "srclinks.html"]}
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
 # html_additional_pages = {}
@@ -256,7 +266,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ("index", "xgcm.tex", u"xgcm Documentation", u"xgcm developers", "manual")
+    ("index", "xgcm.tex", "xgcm Documentation", "xgcm developers", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -284,7 +294,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "xgcm", u"xgcm Documentation", [u"xgcm developers"], 1)]
+man_pages = [("index", "xgcm", "xgcm Documentation", ["xgcm developers"], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -299,8 +309,8 @@ texinfo_documents = [
     (
         "index",
         "xgcm",
-        u"xgcm Documentation",
-        u"xgcm developers",
+        "xgcm Documentation",
+        "xgcm developers",
         "xgcm",
         "One line description of project.",
         "Miscellaneous",

@@ -5,7 +5,6 @@ channels:
   - conda-forge
 dependencies:
   - codecov
-  - docrep<=0.2.7
   - numba
   - numpy
   - scipy

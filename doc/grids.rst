@@ -55,11 +55,13 @@ boundary conditions.
 xgcm currently supports periodic,
 `Dirichlet <https://en.wikipedia.org/wiki/Dirichlet_boundary_condition>`_, and
 `Neumann <https://en.wikipedia.org/wiki/Neumann_boundary_condition>`_ boundary
-conditions, although the latter two are limited to simple cases.
+conditions, although the latter two are limited to simple cases, see :ref:`Boundary conditions`.
 
 The inverse of differentiation is integration. For finite volume grids, the
 inverse of the difference operator is a discrete cumulative sum. xgcm also
 provides a grid-aware version of the ``cumsum`` operator.
+
+.. _axis-positions:
 
 Axes and Positions
 ~~~~~~~~~~~~~~~~~~
@@ -149,15 +151,11 @@ We create it as follows.
     ds = xr.Dataset(
         coords={
             "x_c": (
-                [
-                    "x_c",
-                ],
+                ["x_c"],
                 np.arange(1, 10),
             ),
             "x_g": (
-                [
-                    "x_g",
-                ],
+                ["x_g"],
                 np.arange(0.5, 9),
             ),
         }
@@ -247,16 +245,12 @@ We create an :py:class:`xarray.Dataset` with such attributes as follows:
     ds = xr.Dataset(
         coords={
             "x_c": (
-                [
-                    "x_c",
-                ],
+                ["x_c"],
                 np.arange(1, 10),
                 {"axis": "X"},
             ),
             "x_g": (
-                [
-                    "x_g",
-                ],
+                ["x_g"],
                 np.arange(0.5, 9),
                 {"axis": "X", "c_grid_axis_shift": -0.5},
             ),
@@ -283,39 +277,43 @@ interpolate or take differences along the axis. First we create some test data:
 
 .. ipython:: python
 
-    f = np.sin(ds.x_c * 2 * np.pi / 9)
-    print(f)
-    f.plot()
+    import matplotlib.pyplot as plt
+
+    da = np.sin(ds.x_c * 2 * np.pi / 9)
+    print(da)
+    @savefig grid_test_data.png
+    da.plot()
+    plt.close()
 
 We interpolate as follows:
 
 .. ipython:: python
 
-    f_interp = grid.interp(f, axis="X")
-    f_interp
+    da_interp = grid.interp(da, axis="X")
+    da_interp
 
-We see that the output is on the ``x_g`` points rather than the original ``xc``
+We see that the output is on the ``x_g`` points rather than the original ``x_c``
 points.
 
 .. warning::
 
-    xgcm does not perform input validation to verify that ``f`` is
+    xgcm does not perform input validation to verify that ``da`` is
     compatible with ``grid``.
 
 The same position shift happens with a difference operation:
 
 .. ipython:: python
 
-    f_diff = grid.diff(f, axis="X")
-    f_diff
+    da_diff = grid.diff(da, axis="X")
+    da_diff
 
 We can reverse the difference operation by taking a cumsum:
 
 .. ipython:: python
 
-    grid.cumsum(f_diff, "X")
+    grid.cumsum(da_diff, "X")
 
-Which is approximately equal to the original ``f``, modulo the numerical errors
+Which is approximately equal to the original ``da``, modulo the numerical errors
 accrued due to the discretization of the data.
 
 By default, these grid operations will drop any coordinate that are not
@@ -324,19 +322,13 @@ For example:
 
 .. ipython:: python
 
-    f2 = f + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
-    f2 = f2.assign_coords(h=f2.y ** 2)
-    print(f2)
-    grid.interp(f2, "X", keep_coords=True)
+    da2 = da + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
+    da2 = da2.assign_coords(h=da2.y**2)
+    print(da2)
+    grid.interp(da2, "X", keep_coords=True)
 
 So far we have just discussed simple grids (i.e. regular grids with a single
 face).
 Xgcm can also deal with complex topologies such as cubed-sphere and
 lat-lon-cap.
 This is described in the :ref:`grid_topology` page.
-
-.. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
-.. _xarray: http://xarray.pydata.org
-.. _MITgcm notation: http://mitgcm.org/public/r2_manual/latest/online_documents/node31.html
-.. _CF Conventions: http://cfconventions.org/
-.. _COMODO Conventions: https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html

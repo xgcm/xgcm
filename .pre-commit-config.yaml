@@ -5,14 +5,12 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-
   - repo: https://github.com/PyCQA/isort
     rev: 5.9.3
     hooks:
       - id: isort
-
-  - repo: https://github.com/python/black
-    rev: 21.7b0
+  - repo: https://github.com/psf/black
+    rev: 22.3.0
     hooks:
       - id: black
   - repo: https://github.com/keewis/blackdoc
@@ -34,7 +32,7 @@ repos:
             # Type stubs
             types-pkg_resources,
             types-PyYAML,
-            typing-extensions==3.10.0.0,
+            typing-extensions==4.0.1,
             # Dependencies that are typed
             numpy,
           ]
