@@ -10,13 +10,14 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 22.3.0 #make sure to sync with blackdoc beneath
     hooks:
       - id: black
   - repo: https://github.com/keewis/blackdoc
     rev: v0.3.4
     hooks:
       - id: blackdoc
+        additional_dependencies: ["black==22.3.0"]
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.9.2
     hooks:
