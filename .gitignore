@@ -81,3 +81,5 @@ xgcm/test/sample.py
 # dask artifacts
 global.lock
 purge.lock
+.DS_Store
+doc/.vscode/settings.json
