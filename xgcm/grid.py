@@ -37,7 +37,8 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
-    Tuple,Union,
+    Tuple,
+    Union,
 )
 
 # Only need this until python 3.8
