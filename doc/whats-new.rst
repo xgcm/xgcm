@@ -15,6 +15,9 @@ Breaking Changes
 Internal Changes
 ~~~~~~~~~~~~~~~~
 
+- Switching code linting to the pre-commit.ci service (:pull:`490`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
 Documentation
 ~~~~~~~~~~~~~
 
