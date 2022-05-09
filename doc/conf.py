@@ -165,7 +165,7 @@ pygments_style = "sphinx"
 # tml_theme = 'default'
 html_theme = "pangeo_sphinx_book_theme"
 html_theme_options = {
-    "repository_url": "https://github.com/pangeo-forge/pangeo-forge-recipes",
+    "repository_url": "https://github.com/xgcm/xgcm",
     "repository_branch": "master",
     "path_to_docs": "docs",
     "use_repository_button": True,
