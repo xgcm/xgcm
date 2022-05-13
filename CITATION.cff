@@ -60,3 +60,4 @@ authors:
   orcid: "https://orcid.org/0000-0002-8654-6009"
 title: "xgcm"
 url: "https://github.com/xgcm/xgcm"
+doi: "10.5281/zenodo.826925" #resolves to latest version
