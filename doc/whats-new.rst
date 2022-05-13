@@ -21,6 +21,11 @@ Internal Changes
 Documentation
 ~~~~~~~~~~~~~
 
+Bugfixes
+~~~~~~~~
+
+- Fix formatting of the CITATION.cff file (:pull:`500`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 v0.7.0 (2022/4/20)
 -------------------
