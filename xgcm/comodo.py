@@ -124,12 +124,21 @@ def get_axis_positions_and_coords(ds, axis_name):
                     "length %g (axis_len=%g)" % (name, clen, axis_len)
                 )
         else:
-            raise ValueError(
-                "Coordinate %s has invalid or missing "
-                "`c_grid_axis_shift` attribute `%s`" % (name, repr(shift))
-            )
-    return axis_coords
+            if shift not in valid_axis_shifts:
+                # string representing of valid axis shifts
+                valids = str(valid_axis_shifts)[1:-1]
 
+                raise ValueError(
+                    "Coordinate %s has invalid "
+                    "`c_grid_axis_shift` attribute `%s`. "
+                    "c_grid_axis_shift must be one of: %s" % (name, repr(shift), valids)
+                )
+            else:
+                raise ValueError(
+                    "Coordinate %s has missing "
+                    "`c_grid_axis_shift` attribute `%s`" % (name, repr(shift))
+                )
+    return axis_coords
 
 def _assert_data_on_grid(da):
     pass
