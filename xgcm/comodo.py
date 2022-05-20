@@ -125,7 +125,7 @@ def get_axis_positions_and_coords(ds, axis_name):
                 )
         else:
             if shift not in valid_axis_shifts:
-                # string representing of valid axis shifts
+                # string representing valid axis shifts
                 valids = str(valid_axis_shifts)[1:-1]
 
                 raise ValueError(
