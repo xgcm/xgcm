@@ -131,7 +131,7 @@ def get_axis_positions_and_coords(ds, axis_name):
                 raise ValueError(
                     "Coordinate %s has invalid "
                     "`c_grid_axis_shift` attribute `%s`. "
-                    "c_grid_axis_shift must be one of: %s" % (name, repr(shift), valids)
+                    "`c_grid_axis_shift` must be one of: %s" % (name, repr(shift), valids)
                 )
             else:
                 raise ValueError(
