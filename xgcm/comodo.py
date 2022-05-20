@@ -1,5 +1,10 @@
 from collections import OrderedDict
 
+# Representation of axis shifts
+axis_shift_left  =  0.5
+axis_shift_right = -0.5
+# Characeterizes valid shifts only
+valid_axis_shifts = [axis_shift_left, axis_shift_right]
 
 def assert_valid_comodo(ds):
     """Verify that the dataset meets comodo conventions
@@ -102,7 +107,7 @@ def get_axis_positions_and_coords(ds, axis_name):
             axis_coords["outer"] = name
         elif clen == axis_len - 1:
             axis_coords["inner"] = name
-        elif shift == -0.5:
+        elif shift == axis_shift_left:
             if clen == axis_len:
                 axis_coords["left"] = name
             else:
@@ -110,7 +115,7 @@ def get_axis_positions_and_coords(ds, axis_name):
                     "Left coordinate %s has incompatible "
                     "length %g (axis_len=%g)" % (name, clen, axis_len)
                 )
-        elif shift == 0.5:
+        elif shift == axis_shift_right:
             if clen == axis_len:
                 axis_coords["right"] = name
             else:
