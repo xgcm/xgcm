@@ -1,9 +1,9 @@
 from collections import OrderedDict
 
 # Representation of axis shifts
-axis_shift_left  =  0.5
-axis_shift_right = -0.5
-# Characterize valid shifts only
+axis_shift_left  = -0.5
+axis_shift_right = 0.5
+# Characeterizes valid shifts only
 valid_axis_shifts = [axis_shift_left, axis_shift_right]
 
 def assert_valid_comodo(ds):
