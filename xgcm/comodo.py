@@ -4,7 +4,7 @@ from collections import OrderedDict
 axis_shift_left   = -0.5
 axis_shift_right  = 0.5
 axis_shift_center = 0
-# Characeterizes valid shifts only
+# Characterizes valid shifts only
 valid_axis_shifts = [axis_shift_left, axis_shift_right, axis_shift_center]
 
 def assert_valid_comodo(ds):
@@ -61,7 +61,7 @@ def get_axis_positions_and_coords(ds, axis_name):
     # center, left, right, or outer
     coords = {name: ds[name] for name in coord_names}
 
-    # some tortured logic for dealing with malforme c_grid_axis_shift
+    # some tortured logic for dealing with malformed c_grid_axis_shift
     # attributes such as produced by old versions of xmitgcm.
     # This should be a float (either -0.5 or 0.5)
     # this function returns that, or True of the attribute is set to
