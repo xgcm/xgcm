@@ -40,7 +40,12 @@ def _interp_1d_linear(
 
 
 def interp_1d_linear(
-    phi, theta, target_theta_levels, mask_edges=False, bypass_checks=False
+    phi,
+    theta,
+    target_theta_levels,
+    mask_edges=False,
+    bypass_checks=False,
+    logarithmic=False,
 ):
     """
     Vectorized interpolation of scalar phi to isosurfaces of scalar theta
@@ -62,12 +67,19 @@ def interp_1d_linear(
         Option to bypass logic to flip data if monotonically decreasing along the axis.
         This will improve performance if True, but the user needs to ensure that values
         are increasing alon the axis.
+    logarithmic : bool, optional
+        Apply a logarithmic transform to theta and target_theta_levels so that the
+        interpolation is done in logarithmic, rather than linear, space. In turn, theta
+        must be positive. Defaults to False.
 
     Returns
     -------
     phi_interp : array
         Array of shape (..., m) of phi interpolated to theta isosurfaces.
     """
+    if logarithmic:
+        theta = np.log(theta)
+        target_theta_levels = np.log(target_theta_levels)
     return _interp_1d_linear(phi, theta, target_theta_levels, mask_edges, bypass_checks)
 
 
