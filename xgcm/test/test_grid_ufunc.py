@@ -799,6 +799,55 @@ class TestPadAfterUFunc:
         )
         assert_equal(result, expected)
 
+    def test_cumsum_dask(self):
+        def cumsum_center_to_left(a):
+            return np.cumsum(a, axis=-1)[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+        da = grid._ds.depth_c**2
+        da.coords["depth_c"] = grid._ds.depth_c
+        da = da.chunk({"depth_c": 3})
+
+        cum = da.cumsum(dim="depth_c").roll(depth_c=1, roll_coords=False)
+        cum[0] = 0
+        expected = xr.DataArray(
+            cum.data, dims=["depth_g"], coords={"depth_g": grid._ds.depth_g}
+        )
+
+        result = apply_as_grid_ufunc(
+            cumsum_center_to_left,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            boundary="fill",
+            fill_value=0,
+            pad_before_func=False,
+            dask="allowed",
+            map_overlap=False,
+        )
+        assert_equal(result, expected)
+
+    def test_cumsum_chunk_checking_bug(self):
+        # see issue #507
+        ds = (
+            xr.DataArray(
+                np.ones(10) * 0.5, dims="Z", coords={"Z": np.arange(0.5, 10, 1)}
+            )
+            .chunk({"Z": -1})
+            .to_dataset(name="drF")
+        )
+        ds.coords["Zp1"] = xr.DataArray(
+            np.arange(11), dims="Zp1", coords={"Zp1": np.arange(11)}
+        )
+        grid = Grid(ds, coords={"Z": {"center": "Z", "outer": "Zp1"}})
+
+        print(ds.drF)
+
+        grid.cumsum(ds.drF, "Z", boundary="periodic")
+        grid.cumsum(ds.drF, "Z", boundary="extend")
+
 
 class TestDaskNoOverlap:
     def test_chunked_non_core_dims(self):
