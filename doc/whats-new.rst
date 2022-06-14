@@ -3,8 +3,32 @@
 What's New
 ===========
 
-v0.8.0 (unreleased)
+v0.9.0 (unreleased)
 -------------------
+
+.. _whats-new.0.9.0:
+
+New Features
+~~~~~~~~~~~~
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
+
+Documentation
+~~~~~~~~~~~~~
+
+Bugfixes
+~~~~~~~~
+
+
+v0.8.0 (2022/06/14)
+-------------------
+
+.. _whats-new.0.8.0:
 
 New Features
 ~~~~~~~~~~~~
@@ -23,6 +47,7 @@ Internal Changes
 
 Documentation
 ~~~~~~~~~~~~~
+
 - Fix 'suggest edits' button in docs (:pull:`512`, :issue:`503`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
