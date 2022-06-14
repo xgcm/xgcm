@@ -791,7 +791,7 @@ def apply_as_grid_ufunc(
         results = _pad_then_rechunk(
             unpadded_results,
             grid,
-            in_core_dims,
+            out_core_dims,
             boundary_width_real_axes,
             boundary,
             fill_value,
@@ -799,9 +799,9 @@ def apply_as_grid_ufunc(
         )
 
     # TODO add option to trim result if not done in ufunc
-    # TODO loud warning if ufunc returns array of incorrect size
 
     # Restore any dimension coordinates associated with new output dims that are present in grid
+    # Also throws loud warning if ufunc returns array of incorrect size
     results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
