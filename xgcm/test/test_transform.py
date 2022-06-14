@@ -229,6 +229,33 @@ cases = {
             "mask_edges": False,
         },
     },
+    # example of log-transformed linear interpolation, tested against MetPy's
+    # log_interpolate_1d
+    "log_sigma_pressure": {
+        "source_coord": ("sigma", [0.9969, 0.9558, 0.8631, 0.7046, 0.5117]),
+        "source_data": (
+            "data",
+            [271.75452, 272.79956, 274.8517, 279.22043, 296.48782],
+        ),
+        "source_additional_data_coord": (
+            "sigma",
+            [0.9969, 0.9558, 0.8631, 0.7046, 0.5117],
+        ),
+        "source_additional_data": (
+            "pressure",
+            [100180.625, 96250.0, 87369.14, 72186.66, 53718.586],
+        ),
+        "target_coord": ("pressure", [1.0e5, 8.5e4, 7.0e4]),
+        "target_data": ("pressure", [1.0e5, 8.5e4, 7.0e4]),
+        "expected_coord": ("pressure", [1.0e5, 8.5e4, 7.0e4]),
+        "expected_data": ("data", [271.80164362, 275.48088011, 281.01791239]),
+        "grid_kwargs": {"coords": {"Z": {"center": "sigma"}}},
+        "transform_kwargs": {
+            "target_data": "pressure",
+            "mask_edges": True,
+            "method": "log",
+        },
+    },
     "conservative_depth_depth": {
         "source_coord": ("z", [5, 25, 60]),
         "source_bounds_coord": ("zc", [0, 10, 50, 75]),

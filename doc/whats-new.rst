@@ -9,6 +9,9 @@ v0.8.0 (unreleased)
 New Features
 ~~~~~~~~~~~~
 
+- Addition of logarithmic interpolation to transform (:pull:`483`).
+  By `Jonathan Thielen <https://github.com/jthielen>`_.
+
 Breaking Changes
 ~~~~~~~~~~~~~~~~
 
