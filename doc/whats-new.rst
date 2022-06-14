@@ -20,6 +20,8 @@ Internal Changes
 
 Documentation
 ~~~~~~~~~~~~~
+- Fix 'suggest edits' button in docs (:pull:`512`, :issue:`503`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 Bugfixes
 ~~~~~~~~
