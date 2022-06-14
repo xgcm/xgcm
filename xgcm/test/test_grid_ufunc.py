@@ -843,8 +843,6 @@ class TestPadAfterUFunc:
         )
         grid = Grid(ds, coords={"Z": {"center": "Z", "outer": "Zp1"}})
 
-        print(ds.drF)
-
         grid.cumsum(ds.drF, "Z", boundary="periodic")
         grid.cumsum(ds.drF, "Z", boundary="extend")
 
