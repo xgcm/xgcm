@@ -31,6 +31,8 @@ Bugfixes
 
 - Fix formatting of the CITATION.cff file (:pull:`500`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
+- Fix bug with cumsum when data chunked with dask. (:pull:`415`, :issue:`507`)
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
 
 v0.7.0 (2022/4/20)
 -------------------
