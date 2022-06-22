@@ -14,6 +14,7 @@ dependencies:
   - matplotlib
   - sphinx_rtd_theme
   - ipykernel
+  - ipython
 #  - python-graphviz
   - pip:
     - nbsphinx
@@ -22,4 +23,3 @@ dependencies:
     - sphinx-copybutton
     - sphinxcontrib-srclinks
     - sphinx-panels
-    - git+https://github.com/TomNicholas/ipython.git@dont_strip_all_decorators2
