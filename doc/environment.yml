@@ -22,4 +22,4 @@ dependencies:
     - sphinx-copybutton
     - sphinxcontrib-srclinks
     - sphinx-panels
-    - git+https://github.com/TomNicholas/ipython.git@dont_strip_all_decorators2
+    - git+https://github.com/ipython/ipython.git
