@@ -332,3 +332,9 @@ face).
 Xgcm can also deal with complex topologies such as cubed-sphere and
 lat-lon-cap.
 This is described in the :ref:`grid_topology` page.
+
+.. _Arakawa Grids: https://en.wikipedia.org/wiki/Arakawa_grids
+.. _xarray: http://xarray.pydata.org
+.. _MITgcm notation: http://mitgcm.org/public/r2_manual/latest/online_documents/node31.html
+.. _CF Conventions: http://cfconventions.org/
+.. _COMODO Conventions: https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
