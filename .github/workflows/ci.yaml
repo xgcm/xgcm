@@ -84,7 +84,7 @@ jobs:
         channel-priority: strict
         activate-environment: test_env_xgcm # Defined in ci/environment.yml
         auto-update-conda: false
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.10"
         environment-file: ci/environment-core-deps.yml
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
     - name: Set up conda environment
@@ -120,7 +120,7 @@ jobs:
         channel-priority: strict
         activate-environment: test_env_xgcm # Defined in ci/environment.yml
         auto-update-conda: false
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.10"
         environment-file: ci/environment-upstream-dev.yml
         use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
     - name: Set up conda environment
