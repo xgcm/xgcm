@@ -1,11 +1,12 @@
 from collections import OrderedDict
 
 # Representation of axis shifts
-axis_shift_left   = -0.5
-axis_shift_right  = 0.5
+axis_shift_left = -0.5
+axis_shift_right = 0.5
 axis_shift_center = 0
 # Characterizes valid shifts only
 valid_axis_shifts = [axis_shift_left, axis_shift_right, axis_shift_center]
+
 
 def assert_valid_comodo(ds):
     """Verify that the dataset meets comodo conventions
@@ -132,7 +133,8 @@ def get_axis_positions_and_coords(ds, axis_name):
                 raise ValueError(
                     "Coordinate %s has invalid "
                     "`c_grid_axis_shift` attribute `%s`. "
-                    "`c_grid_axis_shift` must be one of: %s" % (name, repr(shift), valids)
+                    "`c_grid_axis_shift` must be one of: %s"
+                    % (name, repr(shift), valids)
                 )
             else:
                 raise ValueError(
@@ -140,6 +142,7 @@ def get_axis_positions_and_coords(ds, axis_name):
                     "`c_grid_axis_shift` attribute `%s`" % (name, repr(shift))
                 )
     return axis_coords
+
 
 def _assert_data_on_grid(da):
     pass
