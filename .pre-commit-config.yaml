@@ -16,12 +16,12 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/keewis/blackdoc
-    rev: v0.3.4
+    rev: v0.3.5
     hooks:
       - id: blackdoc
         additional_dependencies: ["black==22.3.0"]
   - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 5.0.2
     hooks:
       - id: flake8
   - repo: https://github.com/pre-commit/mirrors-mypy
