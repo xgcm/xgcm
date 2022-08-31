@@ -233,7 +233,7 @@ def test_generate_axis():
     assert_allclose(f["z_outer"], ds_out_outer["z_outer"])
     assert_allclose(g["lon_outer"], ds_out_outer["lon_outer"])
 
-    # Mulitdim cases
+    # Multidim cases
     aa = generate_axis(
         a,
         "X",

@@ -95,7 +95,6 @@ class Axis:
         self,
         ds,
         axis_name,
-        periodic=True,
         default_shifts={},
         coords=None,
         boundary=None,
@@ -111,15 +110,13 @@ class Axis:
             should conform to Comodo conventions [1]_.
         axis_name : str
             The name of the axis (should match axis attribute)
-        periodic : bool, optional
-            Whether the domain is periodic along this axis
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
         coords : dict, optional
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
-        boundary : str or dict, optional,
+        boundary : str, optional,
             boundary can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -131,7 +128,7 @@ class Axis:
               the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
-            * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
+            * 'periodic' : Wrap arrays around.
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
         fill_value : float, optional
@@ -144,7 +141,6 @@ class Axis:
 
         self._ds = ds
         self.name = axis_name
-        self._periodic = periodic
         if boundary not in _VALID_BOUNDARY:
             raise ValueError(
                 f"Expected 'boundary' to be one of {_VALID_BOUNDARY}. Received {boundary!r} instead."
@@ -232,15 +228,11 @@ class Axis:
 
         # now we implement periodic coordinates by setting appropriate
         # connections
-        if periodic:
+        if boundary == "periodic":
             self._connections = {None: ((None, self, False), (None, self, False))}
 
     def __repr__(self):
-        is_periodic = "periodic" if self._periodic else "not periodic"
-        summary = [
-            "<xgcm.Axis '%s' (%s, boundary=%r)>"
-            % (self.name, is_periodic, self.boundary)
-        ]
+        summary = ["<xgcm.Axis '%s' (boundary=%r)>" % (self.name, self.boundary)]
         summary.append("Axis Coordinates:")
         summary += self._coord_desc()
         return "\n".join(summary)
@@ -475,12 +467,15 @@ class Axis:
             edge_data = concatenate(arrays, face_axis_num)
         else:
             edge_data = face_edge_data(None, None)
-        if self._periodic:
+
+        if self.boundary == "periodic":
+            print("GOTCHA")
             if boundary_discontinuity:
                 if is_left_edge:
                     edge_data = edge_data - boundary_discontinuity
                 elif not is_left_edge:
                     edge_data = edge_data + boundary_discontinuity
+
         return edge_data
 
     def _extend_left(
@@ -1002,9 +997,9 @@ class Axis:
             )
 
         # raise error if axis is periodic
-        if self._periodic:
+        if self.boundary == "periodic":
             raise ValueError(
-                "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
+                "`transform` can only be used on axes that are non-periodic. TODO 2022-08-10 raehik Pass `periodic=False` to `xgcm.Grid`."
             )
 
         # raise error if the target values are not provided as xr.dataarray
@@ -1207,7 +1202,6 @@ class Grid:
         self,
         ds,
         check_dims=True,
-        periodic=True,
         default_shifts={},
         face_connections=None,
         coords=None,
@@ -1226,10 +1220,6 @@ class Grid:
         check_dims : bool, optional
             Whether to check the compatibility of input data dimensions before
             performing grid operations.
-        periodic : {True, False, list}
-            Whether the grid is periodic (i.e. "wrap-around"). If a list is
-            specified (e.g. ``['X', 'Y']``), the axis names in the list will be
-            be periodic and any other axes founds will be assumed non-periodic.
         default_shifts : dict
             A dictionary of dictionaries specifying default grid position
             shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
@@ -1252,7 +1242,7 @@ class Grid:
             for the cell distance in the x-direction ``dx_t`` and the
             horizontal cell areas ``area_tracer`` and ``area_u``, located at
             different grid positions).
-        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        boundary : {None, 'fill', 'extend', 'extrapolate', 'periodic', dict}, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -1263,6 +1253,7 @@ class Grid:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+            * 'periodic': TODO
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         fill_value : {float, dict}, optional
@@ -1291,14 +1282,6 @@ class Grid:
                 "to `padding` to better reflect the process "
                 "of array padding and avoid confusion with "
                 "physical boundary conditions (e.g. ocean land boundary).",
-                category=DeprecationWarning,
-            )
-
-        # Deprecation Warnigns
-        if periodic:
-            warnings.warn(
-                "The `periodic` argument will be deprecated. "
-                "To preserve previous behavior supply `boundary = 'periodic'.",
                 category=DeprecationWarning,
             )
 
@@ -1347,13 +1330,6 @@ class Grid:
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
 
-        # Parse list input. This case does only apply to periodic.
-        # Since we plan on deprecating it soon handle it here, so we can easily
-        # remove it later
-        if isinstance(periodic, list):
-            periodic = {axname: True for axname in periodic}
-        periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
-
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
         self._connections = face_connections if face_connections else None
@@ -1364,9 +1340,6 @@ class Grid:
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
-            # periodic
-            is_periodic = periodic.get(axis_name, False)
-
             # default_shifts
             if axis_name in default_shifts:
                 axis_default_shifts = default_shifts[axis_name]
@@ -1399,7 +1372,6 @@ class Grid:
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
-                is_periodic,
                 default_shifts=axis_default_shifts,
                 coords=coords.get(axis_name),
                 boundary=axis_boundary,
@@ -1456,9 +1428,10 @@ class Grid:
         # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
 
         # temporary hack to get periodic conditions from axis
+        # TODO 2022-08-10 raehik
         if ax_property_name == "boundary":
             for axname in axes:
-                if self.axes[axname]._periodic:
+                if self.axes[axname].boundary == "periodic":
                     if axname not in parsed_kwargs_w_defaults.keys():
                         parsed_kwargs_w_defaults[axname] = "periodic"
 
@@ -1739,10 +1712,7 @@ class Grid:
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
         for name, axis in self.axes.items():
-            is_periodic = "periodic" if axis._periodic else "not periodic"
-            summary.append(
-                "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
-            )
+            summary.append("%s Axis (boundary=%r):" % (name, axis.boundary))
             summary += axis._coord_desc()
         return "\n".join(summary)
 
@@ -2034,7 +2004,7 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if a global 2D dataset should be interpolated on both X and Y axis, but it is
-        only periodic in the X axis, we can do this:
+        only periodic in the X axis, we can do this: TODO 2022-08-10 raehik
 
         >>> grid.interp(da, ["X", "Y"], periodic={"X": True, "Y": False})
         """

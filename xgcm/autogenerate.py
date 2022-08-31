@@ -74,18 +74,17 @@ def generate_axis(
                             to be specified'
         )
 
+    # TODO 2022-08-10 raehik - deleted setting periodic var, default to
+    # periodic?
     if pad is None:
         fill_value = 0.0
-        boundary = None
-        periodic = True
+        boundary = "periodic"
     elif pad == "auto":
         fill_value = 0.0
         boundary = "extrapolate"
-        periodic = False
     else:
         fill_value = pad
         boundary = "fill"
-        periodic = False
 
     kwargs = dict(
         boundary_discontinuity=boundary_discontinuity,
@@ -112,7 +111,7 @@ def generate_axis(
         # or xgcm.Axis throws error. Will be rewrapped below.
         ds[name] = _fill_attrs(ds[name], "center", axis)
 
-        ax = Axis(ds, axis, periodic=periodic)
+        ax = Axis(ds, axis)
         args = ds[name], raw_interp_function, relative_pos_to
         ds.coords[new_name] = ax._neighbor_binary_func_raw(*args, **kwargs)
 
@@ -121,7 +120,7 @@ def generate_axis(
         ds[new_name] = _fill_attrs(ds[new_name], pos_to, axis)
     else:
         kwargs.pop("position_check", None)
-        ax = Axis(ds, axis, periodic=periodic)
+        ax = Axis(ds, axis)
         args = ds[name], pos_to
         ds.coords[new_name] = ax.interp(*args, **kwargs)
     return ds

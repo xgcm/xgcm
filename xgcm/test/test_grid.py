@@ -45,17 +45,16 @@ def test_extend_right_left(discontinuity, right):
 
 
 @pytest.mark.parametrize("fill_value", [0, 10, 20])
+# TODO 2022-08-10 raehik - test periodic (unsure syntax)
 @pytest.mark.parametrize(
     "boundary", ["fill", "extend", pytest.param("extrapolate", marks=pytest.mark.xfail)]
 )
-@pytest.mark.parametrize("periodic", [True, False])
+# @pytest.mark.parametrize("periodic", [True, False])
 @pytest.mark.parametrize("is_left_edge", [True, False])
 @pytest.mark.parametrize("boundary_discontinuity", [None, 360])
-def test_get_edge_data(
-    periodic, fill_value, boundary, is_left_edge, boundary_discontinuity
-):
+def test_get_edge_data(fill_value, boundary, is_left_edge, boundary_discontinuity):
     ds = datasets["1d_left"]
-    axis = Axis(ds, "X", periodic=periodic)
+    axis = Axis(ds, "X")
     edge = axis._get_edge_data(
         ds.XC,
         boundary=boundary,
@@ -77,17 +76,16 @@ def test_get_edge_data(
         edge_extra = ds.XC.data[-1] + np.diff(ds.XC.data[-2:])
     edge_fill = fill_value
 
-    if periodic:
+    if boundary == "periodic":
         assert edge_periodic == edge
+    elif boundary == "fill":
+        assert edge_fill == edge
+    elif boundary == "extend":
+        assert edge_extend == edge
+    elif boundary == "extrapolate":
+        assert edge_extra == edge
     else:
-        if boundary == "fill":
-            assert edge_fill == edge
-        elif boundary == "extend":
-            assert edge_extend == edge
-        elif boundary == "extrapolate":
-            assert edge_extra == edge
-        else:
-            assert 0
+        assert 0
 
 
 def test_create_axis(all_datasets):
@@ -106,7 +104,6 @@ def _assert_axes_equal(ax1, ax2):
     for pos, coord in ax1.coords.items():
         assert pos in ax2.coords
         assert coord == ax2.coords[pos]
-    assert ax1._periodic == ax2._periodic
     assert ax1._default_shifts == ax2._default_shifts
     assert ax1._facedim == ax2._facedim
     # TODO: make this work...
@@ -132,7 +129,6 @@ def test_create_axis_no_comodo(all_datasets):
         for pos, coord_name in ax1.coords.items():
             assert pos in ax2.coords
             assert coord_name == ax2.coords[pos]
-        assert ax1._periodic == ax2._periodic
         assert ax1._default_shifts == ax2._default_shifts
         assert ax1._facedim == ax2._facedim
 
@@ -152,7 +148,6 @@ def test_create_axis_no_coords(all_datasets):
         assert ax1.name == ax2.name
         for pos, coord in ax1.coords.items():
             assert pos in ax2.coords
-        assert ax1._periodic == ax2._periodic
         assert ax1._default_shifts == ax2._default_shifts
         assert ax1._facedim == ax2._facedim
 
@@ -177,7 +172,7 @@ def test_get_position_name(all_datasets):
 
 
 def test_axis_wrap_and_replace_2d(periodic_2d):
-    ds, periodic, expected = periodic_2d
+    ds, expected = periodic_2d
     axis_objs = _get_axes(ds)
 
     da_xc_yc = 0 * ds.XC * ds.YC + 1
@@ -196,7 +191,7 @@ def test_axis_wrap_and_replace_2d(periodic_2d):
 
 
 def test_axis_wrap_and_replace_nonperiodic(nonperiodic_1d):
-    ds, periodic, expected = nonperiodic_1d
+    ds, expected = nonperiodic_1d
     axis = Axis(ds, "X")
 
     da_c = 0 * ds.XC + 1
@@ -230,8 +225,8 @@ def _pad_right(data, boundary, fill_value=0.0):
 )
 @pytest.mark.parametrize("from_center", [True, False])
 def test_axis_neighbor_pairs_nonperiodic_1d(nonperiodic_1d, boundary, from_center):
-    ds, periodic, expected = nonperiodic_1d
-    axis = Axis(ds, "X", periodic=periodic)
+    ds, expected = nonperiodic_1d
+    axis = Axis(ds, "X")
 
     # detect whether this is an outer or inner case
     # outer --> dim_line_diff = 1
@@ -284,8 +279,8 @@ def test_axis_neighbor_pairs_nonperiodic_1d(nonperiodic_1d, boundary, from_cente
     "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
 )
 def test_axis_cumsum(nonperiodic_1d, boundary):
-    ds, periodic, expected = nonperiodic_1d
-    axis = Axis(ds, "X", periodic=periodic)
+    ds, expected = nonperiodic_1d
+    axis = Axis(ds, "X")
 
     axis_expected = expected["axes"]["X"]
 
@@ -361,8 +356,8 @@ def test_axis_neighbor_pairs_2d(
 )
 @pytest.mark.parametrize("from_center", [True, False])
 def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_center):
-    ds, periodic, expected = nonperiodic_1d
-    axis = Axis(ds, "X", periodic=periodic)
+    ds, expected = nonperiodic_1d
+    axis = Axis(ds, "X")
 
     dim_len_diff = len(ds.XG) - len(ds.XC)
 
@@ -447,12 +442,14 @@ def test_axis_diff_and_interp_nonperiodic_1d(nonperiodic_1d, boundary, from_cent
 def test_axis_diff_and_interp_nonperiodic_2d(
     all_2d, boundary, axis_name, varname, this, to
 ):
-    ds, periodic, _ = all_2d
+    ds, _ = all_2d
 
+    """ TODO 2022-08-10 raehik
     try:
         ax_periodic = axis_name in periodic
     except TypeError:
         ax_periodic = periodic
+    """
 
     boundary_arg = boundary if not ax_periodic else None
     axis = Axis(ds, axis_name, periodic=ax_periodic, boundary=boundary_arg)
@@ -593,11 +590,11 @@ def test_axis_errors():
 @pytest.mark.parametrize("fill_value", [None, 0, 1.0])
 def test_grid_create(all_datasets, boundary, fill_value):
     ds, periodic, expected = all_datasets
-    grid = Grid(ds, periodic=periodic)
+    grid = Grid(ds)
     assert grid is not None
     for ax in grid.axes.values():
         assert ax.boundary is None
-    grid = Grid(ds, periodic=periodic, boundary=boundary, fill_value=fill_value)
+    grid = Grid(ds, boundary=boundary, fill_value=fill_value)
     for name, ax in grid.axes.items():
         if isinstance(boundary, dict):
             expected = boundary.get(name)
@@ -616,14 +613,14 @@ def test_grid_create(all_datasets, boundary, fill_value):
 
 def test_create_grid_no_comodo(all_datasets):
     ds, periodic, expected = all_datasets
-    grid_expected = Grid(ds, periodic=periodic)
+    grid_expected = Grid(ds)
 
     ds_noattr = ds.copy()
     for var in ds.variables:
         ds_noattr[var].attrs.clear()
 
     coords = expected["axes"]
-    grid = Grid(ds_noattr, periodic=periodic, coords=coords)
+    grid = Grid(ds_noattr, coords=coords)
 
     for axis_name_expected in grid_expected.axes:
         axis_expected = grid_expected.axes[axis_name_expected]
@@ -633,11 +630,11 @@ def test_create_grid_no_comodo(all_datasets):
 
 def test_grid_no_coords(periodic_1d):
     """Ensure that you can use xgcm with Xarray datasets that don't have dimension coordinates."""
-    ds, periodic, expected = periodic_1d
+    ds, expected = periodic_1d
     ds_nocoords = ds.drop_vars(list(ds.dims.keys()))
 
     coords = expected["axes"]
-    grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
+    grid = Grid(ds_nocoords, coords=coords)
 
     diff = grid.diff(ds["data_c"], "X")
     assert len(diff.coords) == 0
@@ -647,7 +644,7 @@ def test_grid_no_coords(periodic_1d):
 
 def test_grid_repr(all_datasets):
     ds, periodic, _ = all_datasets
-    grid = Grid(ds, periodic=periodic)
+    grid = Grid(ds)
     r = repr(grid).split("\n")
     assert r[0] == "<xgcm.Grid>"
 
@@ -657,7 +654,7 @@ def test_grid_ops(all_datasets):
     Check that we get the same answer using Axis or Grid objects
     """
     ds, periodic, _ = all_datasets
-    grid = Grid(ds, periodic=periodic)
+    grid = Grid(ds)
 
     for axis_name in grid.axes.keys():
         try:
@@ -684,7 +681,7 @@ def test_grid_ops(all_datasets):
 
 
 @pytest.mark.parametrize("func", ["interp", "max", "min", "diff", "cumsum"])
-@pytest.mark.parametrize("periodic", ["True", "False", ["X"], ["Y"], ["X", "Y"]])
+# TODO 2022-08-10 raehik
 @pytest.mark.parametrize(
     "boundary",
     [
@@ -695,9 +692,9 @@ def test_grid_ops(all_datasets):
         {"X": "extend", "Y": "fill"},
     ],
 )
-def test_multi_axis_input(all_datasets, func, periodic, boundary):
-    ds, periodic_unused, expected_unused = all_datasets
-    grid = Grid(ds, periodic=periodic)
+def test_multi_axis_input(all_datasets, func, boundary):
+    ds, periodic, expected_unused = all_datasets
+    grid = Grid(ds)
     axes = list(grid.axes.keys())
     for varname in ["data_c", "data_g"]:
         serial = ds[varname]
@@ -741,8 +738,8 @@ def test_dask_vs_eager(all_datasets, func, boundary):
 def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     """Test axis kwarg input functionality using dict input"""
     ds, _, _ = nonperiodic_1d
-    grid_direct = Grid(ds, periodic=False, boundary="fill", fill_value=5)
-    grid_dict = Grid(ds, periodic=False, boundary={"X": "fill"}, fill_value={"X": 5})
+    grid_direct = Grid(ds, boundary="fill", fill_value=5)
+    grid_dict = Grid(ds, boundary={"X": "fill"}, fill_value={"X": 5})
     assert grid_direct.axes["X"].fill_value == grid_dict.axes["X"].fill_value
     assert grid_direct.axes["X"].boundary == grid_dict.axes["X"].boundary
 
@@ -827,8 +824,8 @@ def test_keep_coords_deprecation():
 
 def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     ds = datasets["2d_left"]
-    grid1 = Grid(ds, periodic=False)
-    grid2 = Grid(ds, periodic=False, boundary={"X": "fill", "Y": "fill"})
+    grid1 = Grid(ds)
+    grid2 = Grid(ds, boundary={"X": "fill", "Y": "fill"})
 
     actual1 = grid1.interp(ds.data_g, ("X", "Y"), boundary={"X": "fill", "Y": "fill"})
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
@@ -846,7 +843,6 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
         (["X"], "tracer"),
     ],
 )
-@pytest.mark.parametrize("periodic", [True, False])
 @pytest.mark.parametrize(
     "boundary, boundary_expected",
     [
@@ -885,12 +881,10 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     ],
 )
 @pytest.mark.parametrize("fill_value", [None, 0.1])
-def test_interp_like(
-    metric_axes, metric_name, periodic, boundary, boundary_expected, fill_value
-):
+def test_interp_like(metric_axes, metric_name, boundary, boundary_expected, fill_value):
 
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic)
+    grid = Grid(ds, coords=coords)
     grid.set_metrics(metric_axes, metric_name)
     metric_available = grid._metrics.get(frozenset(metric_axes), None)
     metric_available = metric_available[0]
@@ -957,7 +951,6 @@ def test_boundary_global_input(funcname, boundary, fill_value):
         ds,
         coords=coords,
         metrics=metrics,
-        periodic=False,
         boundary=boundary,
         fill_value=fill_value,
     )
@@ -965,9 +958,7 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     global_result = func_global(ds.tracer, axis)
 
     # Test results by manually specifying fill value/boundary on grid method
-    grid_manual = Grid(
-        ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
-    )
+    grid_manual = Grid(ds, coords=coords, metrics=metrics, boundary=boundary)
     func_manual = getattr(grid_manual, funcname)
     manual_result = func_manual(
         ds.tracer, axis, boundary=boundary, fill_value=fill_value
