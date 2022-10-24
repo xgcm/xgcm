@@ -157,6 +157,9 @@ class Axis:
         if coords:
             # use specified coords
             self.coords = {pos: name for pos, name in coords.items()}
+        elif sgrid.assert_valid_sgrid(ds):
+            # If a valid sgrid dataset use sgrid conventions
+            self.coords = sgrid.get_axis_positions_and_coords(ds, axis_name)
         else:
             # fall back on comodo conventions
             self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
