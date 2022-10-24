@@ -9,7 +9,7 @@ import numpy as np
 import xarray as xr
 from dask.array import Array as Dask_Array
 
-from . import comodo, gridops
+from . import comodo, gridops, sgrid
 from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
 from .grid_ufunc import (
     GridUFunc,
@@ -1323,6 +1323,8 @@ class Grid:
 
         if coords:
             all_axes = coords.keys()
+        elif sgrid.assert_valid_sgrid(ds):
+            pass
         else:
             all_axes = comodo.get_all_axes(ds)
             coords = {}
