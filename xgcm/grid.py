@@ -1324,7 +1324,8 @@ class Grid:
         if coords:
             all_axes = coords.keys()
         elif sgrid.assert_valid_sgrid(ds):
-            pass
+            all_axes = sgrid.get_all_axes(ds)
+            coords = {}
         else:
             all_axes = comodo.get_all_axes(ds)
             coords = {}
