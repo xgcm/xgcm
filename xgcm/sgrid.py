@@ -22,7 +22,7 @@ def assert_valid_sgrid(ds):
 
 
 def get_sgrid_grid(ds):
-    """Extract the 
+    """Extract the
 
     Parameters
     ----------
@@ -76,27 +76,50 @@ def get_all_axes(ds):
     return axes
 
 
-def get_axis_coords(ds, axis_name):
-    """Find the name of the coordinates associated with an sgrid axis.
-
-    Parameters
-    ----------
-    ds : xarray.dataset or xarray.dataarray
-    axis_name : str
-        The name of the axis to find (e.g. 'X')
-
-    Returns
-    -------
-    coord_name : list
-        The names of the coordinate matching that axis
+def get_axis_positions_and_coords(ds, axis_name):
+    """
+    https://sgrid.github.io/sgrid/
     """
 
-    coord_names = []
+    # generate an ordered dict axis_coords
+    # Populate with keywords 'center', 'inner', 'outer', 'left', 'right'
+    # corresponding to the name of the coordinates on this axis
+    # For SGRID this can be done based on whether it is node or face and looking at the padding attribute.
+    # 
+    # center refers to the edge location in 1D, face locations in 2D, volume locations in 3D
+    # 
+    # padding low  refers to 'right'
+    # padding high refers to 'left'
+    # padding both refers to 'inner'
+    # padding none refers to 'outer'
+
+    # 1) Guaranteed are node and face/volume dimensions, which include padding info so check for these first, and
+    #      record the type of shift.
+    # 2) Then check for coordinates and if absent generate.
+    # 3) Finally store type of 'shift'associated with this coordinate.
+
+    # To ask xgcm and sgrid:
+    # - 'vertical_dimensions' are vertical coordinates ever supplied somewhere? Looks like no in sgrid docs?
+    # - If coordinates not supplied do we need to generate some and add to dataset?
+    # - If coordinates are no supplied is a range of [0, 1] appropriate?
+    # - Can you have a 1D dataset?
+
+    # Dictionary mapping SGRID padding types to xgcm node positions
+    pad2pos = {
+        "high": "left",
+        "low": "right",
+        "both": "inner",
+        "none": "outer",
+    }
 
     # Extract the name of the SGRID grid variable
     sgrid_grid_name = get_sgrid_grid(ds)
+    sgrid_grid_dim = ds[sgrid_grid_name].attrs["topology_dimension"]
 
-    # Select the index to use corresponding to X, Y, or Z
+    # Generate an empty dictionary to store coordinates associated with this axis
+    axis_coords = OrderedDict()
+
+    # Select the index to use corresponding to X, Y, or Z axis
     if axis_name == "X":
         i_select = 0
     elif axis_name == "Y":
@@ -108,46 +131,67 @@ def get_axis_coords(ds, axis_name):
             f"{axis_name} not recognised as one of the default Sgrid values 'X', 'Y', 'Z'."
         )
 
-    # If it's a 3D grid using vertical_dimensions catch this and treat appropriately
+    # Coordinates are not a required attribute for sgrid, only dimensions.
+    # Therefore need to generate a default if these are not specified.
+    # Choose a grid spanning [0, 1]
+    # TODO: Need to be careful, however, as if Volume AND Face coords are specified then
+    #  it's over-constrained!
+
     if (axis_name == "Z") & ("vertical_dimensions" in ds[sgrid_grid_name].attrs):
         # vertical coordinates not specified for sgrid with vertical_dimensions.
         # Therefore need to generate a default for xgcm. Choose a grid spanning [0, 1]
-        pass
+        node_coord_name = "_".join([axis_name, "node", "coords"])
+        cell_coord_name = "_".join([axis_name, "cell", "coords"])
+        cell_pad = ds[sgrid_grid_name].attrs["vertical_dimensions"].split()[2].replace(")", "")
+        # TODO: Generate vertical coordinates if none supplied
+
     else:
-
-        # Coordinates are not a required attribute for sgrid, only dimensions.
-        # Therefore need to generate a default if these are not specified.
-        # Choose a grid spanning [0, 1]
+        # Nodes
+        # node_dim = ds[sgrid_grid_name].attrs["node_dimensions"].split()[i_select]
         if "node_coordinates" in ds[sgrid_grid_name].attrs:
-            coord_names.append(ds[sgrid_grid_name].attrs["node_coordinates"].split()[i_select])
+            node_coord_name = ds[sgrid_grid_name].attrs["node_coordinates"].split()[i_select]
         else:
-            pass
+            node_coord_name = "_".join([axis_name, "node", "coords"])
+            # TODO: Generate node coordinates if none supplied
 
-        if "face_coordinates" in ds[sgrid_grid_name].attrs:
-            coord_names.append(ds[sgrid_grid_name].attrs["face_coordinates"].split()[i_select])
+        # Edges/Faces/Volume
+        if sgrid_grid_dim == 2:
+            cell_pad = ds[sgrid_grid_name].attrs["face_dimensions"].split()[3 * i_select + 2].replace(")", "")
+            if "face_coordinates" in ds[sgrid_grid_name].attrs:
+                cell_coord_name = ds[sgrid_grid_name].attrs["face_coordinates"].split()[i_select]
+            else:
+                cell_coord_name = "_".join([axis_name, "cell", "coords"])
+                # TODO: Generate face coordinates in ds if none supplied
+
+        elif sgrid_grid_dim == 3:
+            cell_pad = ds[sgrid_grid_name].attrs["volume_dimensions"].split()[3 * i_select + 2].replace(")", "")
+
+            if "volume_coordinates" in ds[sgrid_grid_name].attrs:
+                cell_coord_name = ds[sgrid_grid_name].attrs["volume_coordinates"].split()[i_select]
+            else:
+                cell_coord_name = "_".join([axis_name, "cell", "coords"])
+                # TODO: Generate volume coordinates if none supplied
         else:
-            pass
+            raise ValueError(
+                f"Sgrid dimensions {sgrid_grid_dim} in variable {sgrid_grid_name} is > 3."
+            )
 
-        if "volume_coordinates" in ds[sgrid_grid_name].attrs:
-            coord_names.append(ds[sgrid_grid_name].attrs["volume_coordinates"].split()[i_select])
-        else:
-            pass
+    # Set the padding type for the nodes accordingly. Cell padding is center.
+    axis_coords["center"] = cell_coord_name
+    try:
+        axis_pos = pad2pos[cell_pad]
+        axis_coords[axis_pos] = node_coord_name
+    except KeyError as e:
+        # TODO: Raise error properly
+        pass
 
-    return coord_names
-
-
-def get_axis_positions_and_coords(ds, axis_name):
-    coord_names = get_axis_coords(ds, axis_name)
-    print(f"{axis_name}: {coord_names}")
-    # ncoords = len(coord_names)
-    # if ncoords == 0:
-    #     # didn't find anything for this axis
-    #     raise ValueError("Couldn't find any coordinates for axis %s" % axis_name)
-
-    # # now figure out what type of coordinates these are:
-    # # center, left, right, or outer
-
-    # now we can start filling in the information about the different coords
-    axis_coords = OrderedDict()
+    # TODO: do we need to infer/generate edge_i/face_i coordinates here?
+    #  Discuss with xgcm...
+    # No... but we may need to infer cell coordinates from them if face/volume not provided... will be messy...
+    # This would need adding to the above
 
     return axis_coords
+
+
+def _assert_data_on_grid(da):
+    pass
