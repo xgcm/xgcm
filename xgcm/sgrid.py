@@ -1,5 +1,23 @@
 from collections import OrderedDict
 
+"""Some musings on concrete SGRID syntax.
+
+Most example staggered grids on the SGRID spec are described using a Java-like
+syntax (probably a NetCDF export/view of the metadata), which isn't part of the
+spec. However, some dataset attributes use syntax that deserve commentary.
+
+The `*_dimensions` attributes have different forms depending on grid
+dimensionality.
+
+  * The most simple form is a space-separated list of node dimensions.
+    `node_dimensions` uses this in 2D and 3D.
+  * The general form is a list where each entry is either `NODE_DIMENSION` or
+    `FACE_DIMENSION: NODE_DIMENSION (padding: PADDING_TYPE)`. In 3D grids, these
+    may be mixed and matched (i.e. the optional `edge1_dimensions` attribute
+    looks like `face_dimension1:node_dimension1 (padding:type1) node_dimension2
+    node_dimension3`: face-node connectivity is defined for only the first
+    dimension
+"""
 
 def assert_valid_sgrid(ds):
     """Verify that the dataset meets SGRID conventions
