@@ -19,6 +19,7 @@ dimensionality.
     dimension
 """
 
+
 def assert_valid_sgrid(ds):
     """Verify that the dataset meets SGRID conventions
     We know this if the dataset has an integer grid variable with the
@@ -103,9 +104,9 @@ def get_axis_positions_and_coords(ds, axis_name):
     # Populate with keywords 'center', 'inner', 'outer', 'left', 'right'
     # corresponding to the name of the coordinates on this axis
     # For SGRID this can be done based on whether it is node or face and looking at the padding attribute.
-    # 
+    #
     # center refers to the edge location in 1D, face locations in 2D, volume locations in 3D
-    # 
+    #
     # padding low  refers to 'right'
     # padding high refers to 'left'
     # padding both refers to 'inner'
@@ -160,32 +161,50 @@ def get_axis_positions_and_coords(ds, axis_name):
         # Therefore need to generate a default for xgcm. Choose a grid spanning [0, 1]
         node_coord_name = "_".join([axis_name, "node", "coords"])
         cell_coord_name = "_".join([axis_name, "cell", "coords"])
-        cell_pad = ds[sgrid_grid_name].attrs["vertical_dimensions"].split()[2].replace(")", "")
+        cell_pad = (
+            ds[sgrid_grid_name].attrs["vertical_dimensions"].split()[2].replace(")", "")
+        )
         # TODO: Generate vertical coordinates if none supplied
 
     else:
         # Nodes
         # node_dim = ds[sgrid_grid_name].attrs["node_dimensions"].split()[i_select]
         if "node_coordinates" in ds[sgrid_grid_name].attrs:
-            node_coord_name = ds[sgrid_grid_name].attrs["node_coordinates"].split()[i_select]
+            node_coord_name = (
+                ds[sgrid_grid_name].attrs["node_coordinates"].split()[i_select]
+            )
         else:
             node_coord_name = "_".join([axis_name, "node", "coords"])
             # TODO: Generate node coordinates if none supplied
 
         # Edges/Faces/Volume
         if sgrid_grid_dim == 2:
-            cell_pad = ds[sgrid_grid_name].attrs["face_dimensions"].split()[3 * i_select + 2].replace(")", "")
+            cell_pad = (
+                ds[sgrid_grid_name]
+                .attrs["face_dimensions"]
+                .split()[3 * i_select + 2]
+                .replace(")", "")
+            )
             if "face_coordinates" in ds[sgrid_grid_name].attrs:
-                cell_coord_name = ds[sgrid_grid_name].attrs["face_coordinates"].split()[i_select]
+                cell_coord_name = (
+                    ds[sgrid_grid_name].attrs["face_coordinates"].split()[i_select]
+                )
             else:
                 cell_coord_name = "_".join([axis_name, "cell", "coords"])
                 # TODO: Generate face coordinates in ds if none supplied
 
         elif sgrid_grid_dim == 3:
-            cell_pad = ds[sgrid_grid_name].attrs["volume_dimensions"].split()[3 * i_select + 2].replace(")", "")
+            cell_pad = (
+                ds[sgrid_grid_name]
+                .attrs["volume_dimensions"]
+                .split()[3 * i_select + 2]
+                .replace(")", "")
+            )
 
             if "volume_coordinates" in ds[sgrid_grid_name].attrs:
-                cell_coord_name = ds[sgrid_grid_name].attrs["volume_coordinates"].split()[i_select]
+                cell_coord_name = (
+                    ds[sgrid_grid_name].attrs["volume_coordinates"].split()[i_select]
+                )
             else:
                 cell_coord_name = "_".join([axis_name, "cell", "coords"])
                 # TODO: Generate volume coordinates if none supplied
