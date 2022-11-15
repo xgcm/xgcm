@@ -324,66 +324,66 @@ def _maybe_multiple_return_vals(return_hint):
 
 class GridUFunc:
     """
-    Binds a numpy ufunc into a "grid-aware ufunc", meaning that when called ufunc is wrapped by `apply_as_grid_ufunc`.
+        Binds a numpy ufunc into a "grid-aware ufunc", meaning that when called ufunc is wrapped by `apply_as_grid_ufunc`.
 
-    Parameters
-    ----------
-    ufunc : function
-        Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
-        arrays (`.data`). Passed directly on to `xarray.apply_ufunc`.
-    signature : string
-        Grid universal function signature. Specifies the xgcm.Axis names and
-        positions for each input and output variable, e.g.,
+        Parameters
+        ----------
+        ufunc : function
+            Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
+            arrays (`.data`). Passed directly on to `xarray.apply_ufunc`.
+        signature : string
+            Grid universal function signature. Specifies the xgcm.Axis names and
+            positions for each input and output variable, e.g.,
 
-        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
-    boundary_width : Dict[str: Tuple[int, int], optional
-        The widths of the boundaries at the edge of each array.
-        Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-<<<<<<< HEAD
-=======
-    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
-        A flag indicating how to handle boundaries:
-        * None: Do not apply any boundary conditions. Raise an error if
-          boundary conditions are required for the operation.
-        * 'fill':  Set values outside the array boundary to fill_value
-          (i.e. a Dirichlet boundary condition.)
-        * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Neumann boundary condition.)
-        * 'extrapolate': Set values by extrapolating linearly from the two
-          points nearest to the edge
-        Optionally a dict mapping axis name to separate values for each axis
-        can be passed.
-    fill_value : {float, dict}, optional
-        The value to use in boundary conditions with `boundary='fill'`.
-        Optionally a dict mapping axis name to separate values for each axis
-        can be passed. Default is 0.
->>>>>>> master
-    dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
-        How to handle applying to objects containing lazy data in the form of
-        dask arrays. Passed directly on to `xarray.apply_ufunc`.
-    map_overlap : bool, optional
-        Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
-        Default is False. If True, will need to be accompanied by dask='allowed'.
-    **kwargs
-        Keyword arguments are passed directly onto xarray.apply_ufunc.
-        (As such then kwargs should not be xarray data objects, as they will not be subject to
-        alignment, nor downcast to numpy-like arrays.)
+            ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+        boundary_width : Dict[str: Tuple[int, int], optional
+            The widths of the boundaries at the edge of each array.
+            Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
+    <<<<<<< HEAD
+    =======
+        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+            * None: Do not apply any boundary conditions. Raise an error if
+              boundary conditions are required for the operation.
+            * 'fill':  Set values outside the array boundary to fill_value
+              (i.e. a Dirichlet boundary condition.)
+            * 'extend': Set values outside the array to the nearest array
+              value. (i.e. a limited form of Neumann boundary condition.)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to separate values for each axis
+            can be passed. Default is 0.
+    >>>>>>> master
+        dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
+            How to handle applying to objects containing lazy data in the form of
+            dask arrays. Passed directly on to `xarray.apply_ufunc`.
+        map_overlap : bool, optional
+            Whether or not to automatically apply the function along chunked core dimensions using dask.array.map_overlap.
+            Default is False. If True, will need to be accompanied by dask='allowed'.
+        **kwargs
+            Keyword arguments are passed directly onto xarray.apply_ufunc.
+            (As such then kwargs should not be xarray data objects, as they will not be subject to
+            alignment, nor downcast to numpy-like arrays.)
 
-    Returns
-    -------
-    grid_ufunc : callable
-        Class which when called consumes and produces xarray objects, whose xgcm Axis
-        names and positions must conform to the pattern specified by `signature`.
-        Calling function has an additional positional argument `grid`, of type `xgcm.Grid`,
-        and another additional positional argument `axis`, of type Sequence[Tuple[str]],
-        so that `func`'s new signature is `func(grid, *args, axis, **kwargs)`.
-        The grid and axis arguments are passed on to `apply_grid_ufunc`.
+        Returns
+        -------
+        grid_ufunc : callable
+            Class which when called consumes and produces xarray objects, whose xgcm Axis
+            names and positions must conform to the pattern specified by `signature`.
+            Calling function has an additional positional argument `grid`, of type `xgcm.Grid`,
+            and another additional positional argument `axis`, of type Sequence[Tuple[str]],
+            so that `func`'s new signature is `func(grid, *args, axis, **kwargs)`.
+            The grid and axis arguments are passed on to `apply_grid_ufunc`.
 
-    See Also
-    --------
-    as_grid_ufunc
-    apply_as_grid_ufunc
-    Grid.apply_as_grid_ufunc
+        See Also
+        --------
+        as_grid_ufunc
+        apply_as_grid_ufunc
+        Grid.apply_as_grid_ufunc
     """
 
     ufunc: Callable
@@ -798,7 +798,7 @@ def apply_as_grid_ufunc(
         results = _pad_then_rechunk(
             unpadded_results,
             grid,
-            in_core_dims,
+            out_core_dims,
             boundary_width_real_axes,
             boundary,
             fill_value,
@@ -806,9 +806,9 @@ def apply_as_grid_ufunc(
         )
 
     # TODO add option to trim result if not done in ufunc
-    # TODO loud warning if ufunc returns array of incorrect size
 
     # Restore any dimension coordinates associated with new output dims that are present in grid
+    # Also throws loud warning if ufunc returns array of incorrect size
     results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
@@ -916,7 +916,7 @@ def _pad_then_rechunk(
 
 def _is_dim_chunked(a, dim):
     # TODO this func can't handle Datasets - it will error if you check multiple variables with different chunking
-    return len(a.variable.chunksizes[dim]) > 1
+    return len(a.variable.chunksizes[dim]) > 0
 
 
 def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:

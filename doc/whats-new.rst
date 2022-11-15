@@ -3,8 +3,10 @@
 What's New
 ===========
 
-v0.8.0 (unreleased)
+v0.9.0 (unreleased)
 -------------------
+
+.. _whats-new.0.9.0:
 
 New Features
 ~~~~~~~~~~~~
@@ -15,9 +17,47 @@ Breaking Changes
 Internal Changes
 ~~~~~~~~~~~~~~~~
 
+
 Documentation
 ~~~~~~~~~~~~~
 
+Bugfixes
+~~~~~~~~
+
+
+v0.8.0 (2022/06/14)
+-------------------
+
+.. _whats-new.0.8.0:
+
+New Features
+~~~~~~~~~~~~
+
+- Addition of logarithmic interpolation to transform (:pull:`483`).
+  By `Jonathan Thielen <https://github.com/jthielen>`_.
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
+- Switching code linting to the pre-commit.ci service (:pull:`490`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+Documentation
+~~~~~~~~~~~~~
+
+- Fix 'suggest edits' button in docs (:pull:`512`, :issue:`503`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+Bugfixes
+~~~~~~~~
+
+- Fix formatting of the CITATION.cff file (:pull:`500`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+- Fix bug with cumsum when data chunked with dask. (:pull:`415`, :issue:`507`)
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
 
 v0.7.0 (2022/4/20)
 -------------------

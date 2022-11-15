@@ -843,9 +843,8 @@ class Grid:
             # if chunked along core dim then we need map_overlap
             core_dim = self._get_dims_from_axis(data, ax_name)
             if _has_chunked_core_dims(data_unpacked, core_dim):
-                # cumsum is a special case because it can't be correctly applied chunk-wise with map_overlap (it would need blockwise instead)
-                # TODO double check that this dispatches to the dask version of cumsum?
-                # TODO could we use the same approach with the diff etc?
+                # cumsum is a special case because it can't be correctly applied chunk-wise with map_overlap
+                # (it would need blockwise instead)
                 map_overlap = True if funcname != "cumsum" else False
                 dask = "allowed"
             else:
@@ -1549,7 +1548,7 @@ class Grid:
         coordinates that are defined by e.g. a tracer field like
         temperature, density, etc.
 
-        Currently two methods are supported to carry out the
+        Currently three methods are supported to carry out the
         transformation:
 
         - 'linear': Values are linear interpolated between 1D columns
@@ -1560,6 +1559,10 @@ class Grid:
           are outside of the range of `target_data`, setting
           `mask_edges=False` results in the default np.interp behavior of
           repeated values.
+
+        - 'log': Same as 'linear', but with values interpolated
+          logarithmically between 1D columns. Operates by applying `np.log`
+          to the target and target data values prior to linear interpolation.
 
         - 'conservative': Values are transformed while conserving the
           integral of `da` along each 1D column. This method can be used
@@ -1578,10 +1581,10 @@ class Grid:
         axis : str
             Name of the axis on which to act
         target : {np.array, xr.DataArray}
-            Target points for transformation. Dependin on the method is
-            interpreted as cell center (method='linear') or cell bounds
-            (method='conservative).
-            Values correpond to `target_data` or the existing coordinate
+            Target points for transformation. Depending on the method is
+            interpreted as cell center (method='linear' and method='log') or
+            cell bounds (method='conservative).
+            Values correspond to `target_data` or the existing coordinate
             along the axis (if `target_data=None`). The name of the
             resulting new coordinate is determined by the input type.
             When passed as numpy array the resulting dimension is named
@@ -1595,12 +1598,13 @@ class Grid:
             Method used to transform, by default "linear"
         mask_edges : bool, optional
             If activated, `target` values outside the range of `target_data`
-            are masked with nan, by default True. Only applies to 'linear' method.
+            are masked with nan, by default True. Only applies to 'linear' and
+            'log' methods.
         bypass_checks : bool, optional
-            Only applies for `method='linear'`.
+            Only applies for `method='linear'` and `method='log'`.
             Option to bypass logic to flip data if monotonically decreasing along the axis.
             This will improve performance if True, but the user needs to ensure that values
-            are increasing alon the axis.
+            are increasing along the axis.
         suffix : str, optional
             Customizable suffix to the name of the output array. This will
             be added to the original name of `da`. Defaults to `_transformed`.
