@@ -120,6 +120,7 @@ def interp_inner_to_center(a):
 
 # Min
 
+
 def pairwise_forward_min(a):
     left, right = a[..., :-1], a[..., 1:]
     stacked_pairs = np.stack([left, right], axis=-1)
