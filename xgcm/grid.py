@@ -4,6 +4,18 @@ import itertools
 import operator
 import warnings
 from collections import OrderedDict
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import xarray as xr
@@ -20,26 +32,7 @@ from .grid_ufunc import (
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
-
-try:
-    import numba  # type: ignore
-
-    from .transform import conservative_interpolation, linear_interpolation
-except ImportError:
-    numba = None
-
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from .transform import transform
 
 # Only need this until python 3.8
 try:
@@ -254,7 +247,7 @@ class Grid:
         if ax_property_name is not None:
             for axname in axes:
                 if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
-                    ax_property = getattr(self.axes[axname], ax_property_name)
+                    ax_property = self.axes[axname][ax_property_name]
                     parsed_kwargs[axname] = ax_property
 
         # if None set to default value.
@@ -263,14 +256,6 @@ class Grid:
         }
         # At this point the output should be guaranteed to have an entry per existing axis.
         # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
-
-        # temporary hack to get periodic conditions from axis
-        if ax_property_name == "boundary":
-            for axname in axes:
-                if self.axes[axname]._periodic:
-                    if axname not in parsed_kwargs_w_defaults.keys():
-                        parsed_kwargs_w_defaults[axname] = "periodic"
-
         return parsed_kwargs_w_defaults
 
     def _assign_face_connections(self, fc):
@@ -1401,9 +1386,7 @@ class Grid:
 
 
         """
-
-        ax = self.axes[axis]
-        return ax.transform(da, target, **kwargs)
+        return transform(self, axis, da, target, **kwargs)
 
 
 def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwargs):

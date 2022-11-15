@@ -2,6 +2,12 @@
 Classes and functions for 1D coordinate transformation.
 """
 import functools
+import warnings
+
+try:
+    import numba  # type: ignore
+except ImportError:
+    numba = None
 
 import numpy as np
 import xarray as xr
@@ -263,5 +269,237 @@ def conservative_interpolation(
     out = out.assign_coords({target_dim: target_centers})
 
     # TODO: Somehow preserve the original bounds
+
+    return out
+
+
+def transform(
+    grid,
+    axis_name,
+    da,
+    target,
+    target_data=None,
+    method="linear",
+    mask_edges=True,
+    bypass_checks=False,
+    suffix="_transformed",
+):
+    """Convert an array of data to new 1D-coordinates.
+    The method takes a multidimensional array of data `da` and
+    transforms it onto another data_array `target_data` in the
+    direction of the axis (for each 1-dimensional 'column').
+    `target_data` can be e.g. the existing coordinate along an
+    axis, like depth. xgcm automatically detects the appropriate
+    coordinate and then transforms the data from the input
+    positions to the desired positions defined in `target`. This
+    is the default behavior. The method can also be used for more
+    complex cases like transforming a dataarray into new
+    coordinates that are defined by e.g. a tracer field like
+    temperature, density, etc.
+    Currently three methods are supported to carry out the
+    transformation:
+    - 'linear': Values are linear interpolated between 1D columns
+      along `axis` of `da` and `target_data`. This method requires
+      `target_data` to increase/decrease monotonically. `target`
+      values are interpreted as new cell centers in this case. By
+      default this method will return nan for values in `target` that
+      are outside of the range of `target_data`, setting
+      `mask_edges=False` results in the default np.interp behavior of
+      repeated values.
+    - 'log': Same as 'linear', but with values interpolated
+      logarithmically between 1D columns. Operates by applying `np.log`
+      to the target and target data values prior to linear interpolation.
+    - 'conservative': Values are transformed while conserving the
+      integral of `da` along each 1D column. This method can be used
+      with non-monotonic values of `target_data`. Currently this will
+      only work with extensive quantities (like heat, mass, transport)
+      but not with intensive quantities (like temperature, density,
+      velocity). N given `target` values are interpreted as cell-bounds
+      and the returned array will have N-1 elements along the newly
+      created coordinate, with coordinate values that are interpolated
+      between `target` values.
+    Parameters
+    ----------
+    grid : xgcm.Grid
+        xgcm Grid object
+    axis_name : str
+        Name of the axis along which to operate
+    da : xr.DataArray
+        Input data
+    target : {np.array, xr.DataArray}
+        Target points for transformation. Depending on the method is
+        interpreted as cell center (method='linear' and method='log') or
+        cell bounds (method='conservative).
+        Values correspond to `target_data` or the existing coordinate
+        along the axis (if `target_data=None`). The name of the
+        resulting new coordinate is determined by the input type.
+        When passed as numpy array the resulting dimension is named
+        according to `target_data`, if provided as xr.Dataarray
+        naming is inferred from the `target` input.
+    target_data : xr.DataArray, optional
+        Data to transform onto (e.g. a tracer like density or temperature).
+        Defaults to None, which infers the appropriate coordinate along
+        `axis` (e.g. the depth).
+    method : str, optional
+        Method used to transform, by default "linear"
+    mask_edges : bool, optional
+        If activated, `target` values outside the range of `target_data`
+        are masked with nan, by default True. Only applies to 'linear' and 'log'
+        methods.
+    bypass_checks : bool, optional
+        Only applies for `method='linear'` and `method='log'`.
+        Option to bypass logic to flip data if monotonically decreasing along the axis.
+        This will improve performance if True, but the user needs to ensure that values
+        are increasing along the axis.
+    suffix : str, optional
+        Customizable suffix to the name of the output array. This will
+        be added to the original name of `da`. Defaults to `_transformed`.
+    Returns
+    -------
+    xr.DataArray
+        The transformed data
+    """
+    warnings.warn(
+        "From version 0.8.0 the Axis computation methods will be removed, "
+        "in favour of using the Grid computation methods instead. "
+        "i.e. use `Grid.transform` instead of `Axis.transform`",
+        FutureWarning,
+    )
+
+    axis = grid.axes[axis_name]
+
+    # Theoretically we should be able to use a multidimensional `target`, which would need the additional information provided with `target_dim`.
+    # But the feature is not tested yet, thus setting this to default value internally (resulting in error in `_parse_target`, when a multidim `target` is passed)
+    target_dim = None
+
+    # check optional numba dependency
+    if numba is None:
+        raise ImportError(
+            "The transform functionality of xgcm requires numba. Install using `conda install numba`."
+        )
+
+    # raise error if axis is periodic
+    if axis.boundary == "periodic":
+        raise ValueError(
+            "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
+        )
+
+    # raise error if the target values are not provided as xr.dataarray
+    for var_name, variable, allowed_types in [
+        ("da", da, [xr.DataArray]),
+        ("target", target, [xr.DataArray, np.ndarray]),
+        ("target_data", target_data, [xr.DataArray]),
+    ]:
+        if not (isinstance(variable, tuple(allowed_types)) or variable is None):
+            raise ValueError(
+                f"`{var_name}` needs to be a {' or '.join([str(a) for a in allowed_types])}. Found {type(variable)}"
+            )
+
+    def _target_data_name_handling(target_data):
+        """Handle target_data input without a name"""
+        if target_data.name is None:
+            warnings.warn(
+                "Input`target_data` has no name, but we need a name for the transformed dimension. The name `TRANSFORMED_DIMENSION` will be used. To avoid this warning, call `.rename` on `target_data` before calling `transform`."
+            )
+            target_data.name = "TRANSFORMED_DIMENSION"
+
+    def _check_other_dims(target_da):
+        # check if other dimensions (excluding ones associated with the transform axis) are the
+        # same between `da` and `target_data`. If not provide instructions how to work around.
+
+        da_other_dims = set(da.dims) - set(axis.coords.values())
+        target_da_other_dims = set(target_da.dims) - set(axis.coords.values())
+        if not target_da_other_dims.issubset(da_other_dims):
+            raise ValueError(
+                f"Found additional dimensions [{target_da_other_dims-da_other_dims}]"
+                "in `target_data` not found in `da`. This could mean that the target "
+                "array is not on the same position along other axes."
+                " If the additional dimensions are associated witha staggered axis, "
+                "use grid.interp() to move values to other grid position. "
+                "If additional dimensions are not related to the grid (e.g. climate "
+                "model ensemble members or similar), use xr.broadcast() before using transform."
+            )
+
+    def _parse_target(target, target_dim, target_data_dim, target_data):
+        """Parse target values into correct xarray naming and set default naming based on input data"""
+        # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
+        if target_data is None:
+            target_data = grid._ds[target_data_dim]
+
+        # Infer target_dim from target
+        if isinstance(target, xr.DataArray):
+            if len(target.dims) == 1:
+                if target_dim is None:
+                    target_dim = list(target.dims)[0]
+            else:
+                if target_dim is None:
+                    raise ValueError(
+                        f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. This is currently not supported. `."
+                    )
+        else:
+            # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
+            _target_data_name_handling(target_data)
+            target_dim = target_data.name
+            target = xr.DataArray(
+                target, dims=[target_dim], coords={target_dim: target}
+            )
+
+        _check_other_dims(target_data)
+        return target, target_dim, target_data
+
+    _, dim = axis._get_position_name(da)
+    if method == "linear" or method == "log":
+        target, target_dim, target_data = _parse_target(
+            target, target_dim, dim, target_data
+        )
+        out = linear_interpolation(
+            da,
+            target_data,
+            target,
+            dim,
+            dim,  # in this case the dimension of phi and theta are the same
+            target_dim,
+            mask_edges=mask_edges,
+            bypass_checks=bypass_checks,
+            logarithmic=(method == "log"),
+        )
+    elif method == "conservative":
+        # the conservative method requires `target_data` to be on the `outer` coordinate.
+        # If that is not the case (a very common use case like transformation on any tracer),
+        # we need to infer the boundary values (using the interp logic)
+        # for this method we need the `outer` position. Error out if its not there.
+        try:
+            target_data_dim = axis.coords["outer"]
+        except KeyError:
+            raise RuntimeError(
+                "In order to use the method `conservative` the grid object needs to have `outer` coordinates."
+            )
+
+        target, target_dim, target_data = _parse_target(
+            target, target_dim, target_data_dim, target_data
+        )
+
+        # check on which coordinate `target_data` is, and interpolate if needed
+        if target_data_dim not in target_data.dims:
+            warnings.warn(
+                "The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values. For most accurate results provide values on cell bounds.",
+                UserWarning,
+            )
+            target_data = grid.interp(target_data, axis_name, boundary="extend")
+            # This seems to end up with chunks along the axis dimension.
+            # Rechunk to keep xr.apply_func from complaining.
+            # TODO: This should be made obsolete, when the internals are refactored using numba
+            target_data = target_data.chunk(
+                {axis._get_position_name(target_data)[1]: -1}
+            )
+
+        out = conservative_interpolation(
+            da,
+            target_data,
+            target,
+            dim,
+            target_data_dim,  # in this case the dimension of phi and theta are the same
+            target_dim,
+        )
 
     return out
