@@ -31,7 +31,9 @@ if TYPE_CHECKING:
 #   - Specify xgcm.Axis name and "axis positions" instead of numpy axes as (ax_name:ax_pos)
 
 _AXIS_NAME = r"\w+"
-_AXIS_POSITION = "(?:center|left|right|inner|outer)"
+_AXIS_POSITION = (
+    "(?:center|left|right|inner|outer)"  # TODO use VALID_POSITION_NAMES here instead
+)
 _AXIS_NAME_POSITION_PAIR = f"{_AXIS_NAME}:{_AXIS_POSITION}"
 _AXIS_NAME_POSITION_PAIR_LIST = (
     f"(?:{_AXIS_NAME_POSITION_PAIR}(?:,{_AXIS_NAME_POSITION_PAIR})*,?)*"
