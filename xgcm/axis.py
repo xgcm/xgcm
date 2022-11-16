@@ -63,7 +63,9 @@ class Axis:
 
         for pos, dim in coords.items():
             if pos not in VALID_POSITION_NAMES.split("|"):
-                raise ValueError(f"Axis position must be one of {VALID_POSITION_NAMES.split('|')}, but got {pos}")
+                raise ValueError(
+                    f"Axis position must be one of {VALID_POSITION_NAMES.split('|')}, but got {pos}"
+                )
             if dim not in ds.dims:
                 raise ValueError(
                     f"Could not find dimension `{dim}` (for the `{pos}` position on axis `{name}`) in input dataset."
@@ -86,7 +88,9 @@ class Axis:
         self._default_shifts = _default_shifts
 
         if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
-            raise ValueError(f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}")
+            raise ValueError(
+                f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}"
+            )
         self._boundary = boundary
 
     @property
@@ -110,8 +114,7 @@ class Axis:
 
         if len(candidates) == 0:
             raise KeyError(
-                f"None of the DataArray's dims {da.dims} were found in axis "
-                "coords."
+                f"None of the DataArray's dims {da.dims} were found in axis " "coords."
             )
         elif len(candidates) > 1:
             raise KeyError(
