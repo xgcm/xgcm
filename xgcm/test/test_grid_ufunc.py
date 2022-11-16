@@ -1110,6 +1110,32 @@ class TestMapOverlapGridops:
         result = grid.diff(da, axis="depth", to="right").compute()
         assert_equal(result, expected)
 
+    def test_single_chunk_core_dims_center_to_outer(self):
+        # test for issue #518
+        z_coord = xr.DataArray(np.arange(0.5, 10, 1), dims="Z")
+        zp1_coord = xr.DataArray(np.arange(11), dims="Zp1")
+        ds = (
+            xr.DataArray(np.linspace(1, 10, num=10), dims="Z", coords={"Z": z_coord})
+            .chunk({"Z": -1})
+            .to_dataset(name="drF")
+        )
+        ds.coords["Zp1"] = zp1_coord
+        grid = Grid(ds, coords={"Z": {"center": "Z", "outer": "Zp1"}})
+
+        expected_values = np.concatenate(
+            (np.array([1.0]), np.linspace(1.5, 9.5, num=9), np.array([10.0]))
+        )
+        expected = (
+            xr.DataArray(expected_values, dims="Zp1", coords={"Zp1": zp1_coord})
+            .chunk({"Zp1": -1})
+            .to_dataset(name="drF")
+        )
+
+        result = grid.interp(ds.drF, "Z", boundary="extend", to="outer").to_dataset(
+            name="drF"
+        )
+        assert_equal(result, expected)
+
 
 class TestSignaturesEquivalent:
     def test_equivalent(self):
