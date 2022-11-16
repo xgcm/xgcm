@@ -24,6 +24,9 @@ Documentation
 Bugfixes
 ~~~~~~~~
 
+- Fix bug where chunked core dims of only a single chunk triggered errors. (:pull:`558`, :issue:`518`, :issue:`522`)
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
 
 v0.8.0 (2022/06/14)
 -------------------
