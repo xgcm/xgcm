@@ -829,13 +829,14 @@ class TestPadAfterUFunc:
         )
         assert_equal(result, expected)
 
-    def test_cumsum_chunk_checking_bug(self):
-        # see issue #507
+    @pytest.mark.parametrize("chunksize", [-1, 3])
+    def test_cumsum_chunk_checking_bug(self, chunksize):
+        # for chunksize=-1 see issue #507
         ds = (
             xr.DataArray(
                 np.ones(10) * 0.5, dims="Z", coords={"Z": np.arange(0.5, 10, 1)}
             )
-            .chunk({"Z": -1})
+            .chunk({"Z": chunksize})
             .to_dataset(name="drF")
         )
         ds.coords["Zp1"] = xr.DataArray(
@@ -845,9 +846,6 @@ class TestPadAfterUFunc:
 
         grid.cumsum(ds.drF, "Z", boundary="periodic")
         grid.cumsum(ds.drF, "Z", boundary="extend")
-
-    def test_cumsum_chunked_core_dim(self):
-        ...
 
 
 class TestDaskNoOverlap:
