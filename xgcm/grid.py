@@ -2260,9 +2260,6 @@ class Grid:
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
 
-        boundary_width = {}
-        old_to_new_dims = {}
-
         if isinstance(axis, str):
             axis = [axis]
         to = self._as_axis_kwarg_mapping(to)
@@ -2276,23 +2273,17 @@ class Grid:
         for ax in axes:
             pos, dim = ax._get_position_name(da)
 
-            # TODO move metric logic outside of loops
             ax_metric_weighted = metric_weighted[ax.name]
             if ax_metric_weighted:
                 metric = self.get_metric(data, ax_metric_weighted)
                 data = data * metric
 
             # first use xarray's cumsum method
-            # TODO if we knew all the dims we could do this in one go instead of looping
             data = data.cumsum(dim=dim)
 
             ax_to = to[ax.name]
             if ax_to is None:
                 ax_to = ax._default_shifts[pos]
-
-            # get dim with position to
-            new_dim_name = ax.coords[ax_to]
-            old_to_new_dims[dim] = new_dim_name
 
             # now pad / trim the data as necessary
             # here we enumerate all the valid possible shifts
@@ -2300,51 +2291,57 @@ class Grid:
                 pos == "left" and ax_to == "center"
             ):
                 # do nothing, this is the default for how cumsum works
-                boundary_width[ax.name] = (0, 0)
+                ax_boundary_width = {ax.name: (0, 0)}
             elif (pos == "center" and ax_to == "left") or (
                 pos == "right" and ax_to == "center"
             ):
                 data = data.isel(**{dim: slice(0, -1)})
-                boundary_width[ax.name] = (1, 0)
+                ax_boundary_width = {ax.name: (1, 0)}
             elif (pos == "center" and ax_to == "inner") or (
                 pos == "outer" and ax_to == "center"
             ):
                 data = data.isel(**{dim: slice(0, -1)})
-                boundary_width[ax.name] = (0, 0)
+                ax_boundary_width = {ax.name: (0, 0)}
             elif (pos == "center" and ax_to == "outer") or (
                 pos == "inner" and ax_to == "center"
             ):
-                boundary_width[ax.name] = (1, 0)
+                ax_boundary_width = {ax.name: (1, 0)}
             else:
                 raise ValueError(
                     f"From `{pos}` to `{ax_to}` is not a valid position "
                     f"shift for cumsum operation along axis {ax}."
                 )
 
-        padded = pad(
-            data=data,
-            grid=self,
-            boundary_width=boundary_width,
-            boundary=boundary,
-            fill_value=fill_value,
-        )
+            padded = pad(
+                data=data,
+                grid=self,
+                boundary_width=ax_boundary_width,
+                boundary=boundary,
+                fill_value=fill_value,
+            )
 
-        renamed = padded.rename(old_to_new_dims)
+            # get dim with position to
+            new_dim_name = ax.coords[ax_to]
+            renamed = padded.rename(**{dim: new_dim_name})
 
-        # drop all coords to avoid conflicts when attaching new ones
-        coordless = renamed.drop(renamed.coords)
+            # drop all coords to avoid conflicts when attaching new ones
+            coordless = renamed.drop_vars(renamed.coords)
 
-        reattached = _reattach_coords(
-            [coordless], grid=self, boundary_width=boundary_width, keep_coords=True
-        )[0]
+            reattached = _reattach_coords(
+                [coordless],
+                grid=self,
+                boundary_width=ax_boundary_width,
+                keep_coords=True,
+            )[0]
 
-        for ax in axes:
             ax_metric_weighted = metric_weighted[ax.name]
             if ax_metric_weighted:
                 metric = self.get_metric(reattached, ax_metric_weighted)
                 reattached = reattached / metric
 
-        return reattached
+            data = reattached
+
+        return data
 
     def _apply_vector_function(self, function, vector, **kwargs):
         if not (len(vector) == 2 and isinstance(vector, dict)):
