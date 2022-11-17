@@ -17,9 +17,11 @@ from .grid_ufunc import (
     _GridUFuncSignature,
     _has_chunked_core_dims,
     _maybe_unpack_vector_component,
+    _reattach_coords,
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
+from .padding import pad
 
 try:
     import numba  # type: ignore
@@ -1582,7 +1584,7 @@ class Grid:
                 metric_var = self._ds[metric_varname].reset_coords(drop=True)
                 self._metrics[metric_axes].append(metric_var)
 
-    def _get_dims_from_axis(self, da, axis):
+    def _get_dims_from_axis(self, da: xr.DataArray, axis: Iterable[str]) -> List[str]:
         da = _maybe_unpack_vector_component(da)
         dim = []
         axis = _maybe_promote_str_to_list(axis)
@@ -2198,7 +2200,9 @@ class Grid:
         """
         return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
-    def cumsum(self, da, axis, **kwargs):
+    def cumsum(
+        self, da, axis, to=None, boundary=None, fill_value=None, metric_weighted=None
+    ):
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
         position.
@@ -2247,7 +2251,67 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._1d_grid_ufunc_dispatch("cumsum", da, axis, **kwargs)
+
+        boundary_width = {}
+
+        if isinstance(axis, str):
+            axis = [axis]
+        to = self._as_axis_kwarg_mapping(to)
+
+        axes = [self.axes[ax_name] for ax_name in axis]
+        for ax in axes:
+            pos, dim = ax._get_position_name(da)
+
+            # first use xarray's cumsum method
+            # TODO if we knew all the dims we could do this in one go instead of looping
+            da_cum = da.cumsum(dim=dim)
+
+            ax_to = to[ax.name]
+            if ax_to is None:
+                ax_to = ax._default_shifts[pos]
+
+            # now pad / trim the data as necessary
+            # here we enumerate all the valid possible shifts
+            if (pos == "center" and ax_to == "right") or (
+                pos == "left" and ax_to == "center"
+            ):
+                # do nothing, this is the default for how cumsum works
+                data = da_cum
+                boundary_width[ax.name] = (0, 0)
+            elif (pos == "center" and ax_to == "left") or (
+                pos == "right" and ax_to == "center"
+            ):
+                data = da_cum.isel(**{dim: slice(0, -1)})
+                boundary_width[ax.name] = (1, 0)
+            elif (pos == "center" and ax_to == "inner") or (
+                pos == "outer" and ax_to == "center"
+            ):
+                data = da_cum.isel(**{dim: slice(0, -1)})
+                boundary_width[ax.name] = (0, 0)
+            elif (pos == "center" and ax_to == "outer") or (
+                pos == "inner" and ax_to == "center"
+            ):
+                data = da_cum
+                boundary_width[ax.name] = (1, 0)
+            else:
+                raise ValueError(
+                    f"From `{pos}` to `{ax_to}` is not a valid position "
+                    f"shift for cumsum operation along axis {ax}."
+                )
+
+        data = pad(
+            data=data,
+            grid=self,
+            boundary_width=boundary_width,
+            boundary=boundary,
+            fill_value=fill_value,
+        )
+
+        # TODO need to rename dims to their new positions here for this to work
+
+        return _reattach_coords(
+            [data], grid=self, boundary_width=boundary_width, keep_coords=True
+        )
 
     def _apply_vector_function(self, function, vector, **kwargs):
         if not (len(vector) == 2 and isinstance(vector, dict)):

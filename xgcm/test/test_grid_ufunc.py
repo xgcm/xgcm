@@ -846,6 +846,9 @@ class TestPadAfterUFunc:
         grid.cumsum(ds.drF, "Z", boundary="periodic")
         grid.cumsum(ds.drF, "Z", boundary="extend")
 
+    def test_cumsum_chunked_core_dim(self):
+        ...
+
 
 class TestDaskNoOverlap:
     def test_chunked_non_core_dims(self):
