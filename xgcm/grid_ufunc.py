@@ -1111,7 +1111,7 @@ def _reattach_coords(
     results_with_coords = []
     for res in results:
 
-        # padding strips all coordinates (inlcuding dimension coordinates).
+        # padding strips all coordinates (including dimension coordinates).
         # Here we centrally restore them from the grid._ds.
         all_matching_coords = {
             coord: da_coord
