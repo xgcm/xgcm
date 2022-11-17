@@ -2201,14 +2201,22 @@ class Grid:
         return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
     def cumsum(
-        self, da, axis, to=None, boundary=None, fill_value=None, metric_weighted=None
-    ):
+        self,
+        da: xr.DataArray,
+        axis: Union[str, Iterable[str]],
+        to=None,
+        boundary=None,
+        fill_value=None,
+        metric_weighted=None,
+    ) -> xr.DataArray:
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
         position.
 
         Parameters
         ----------
+        da: xarray.DataArray
+            Data to apply cumsum to.
         axis : str or list or tuple
             Name of the axis on which to act. Multiple axes can be passed as list or
             tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
@@ -2259,10 +2267,20 @@ class Grid:
             axis = [axis]
         to = self._as_axis_kwarg_mapping(to)
 
+        if isinstance(metric_weighted, str):
+            metric_weighted = (metric_weighted,)
+        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
+
         data = da
         axes = [self.axes[ax_name] for ax_name in axis]
         for ax in axes:
             pos, dim = ax._get_position_name(da)
+
+            # TODO move metric logic outside of loops
+            ax_metric_weighted = metric_weighted[ax.name]
+            if ax_metric_weighted:
+                metric = self.get_metric(data, ax_metric_weighted)
+                data = data * metric
 
             # first use xarray's cumsum method
             # TODO if we knew all the dims we could do this in one go instead of looping
@@ -2316,9 +2334,17 @@ class Grid:
         # drop all coords to avoid conflicts when attaching new ones
         coordless = renamed.drop(renamed.coords)
 
-        return _reattach_coords(
+        reattached = _reattach_coords(
             [coordless], grid=self, boundary_width=boundary_width, keep_coords=True
         )[0]
+
+        for ax in axes:
+            ax_metric_weighted = metric_weighted[ax.name]
+            if ax_metric_weighted:
+                metric = self.get_metric(reattached, ax_metric_weighted)
+                reattached = reattached / metric
+
+        return reattached
 
     def _apply_vector_function(self, function, vector, **kwargs):
         if not (len(vector) == 2 and isinstance(vector, dict)):
