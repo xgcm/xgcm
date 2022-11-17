@@ -2259,13 +2259,14 @@ class Grid:
             axis = [axis]
         to = self._as_axis_kwarg_mapping(to)
 
+        data = da
         axes = [self.axes[ax_name] for ax_name in axis]
         for ax in axes:
             pos, dim = ax._get_position_name(da)
 
             # first use xarray's cumsum method
             # TODO if we knew all the dims we could do this in one go instead of looping
-            da_cum = da.cumsum(dim=dim)
+            data = data.cumsum(dim=dim)
 
             ax_to = to[ax.name]
             if ax_to is None:
@@ -2281,22 +2282,20 @@ class Grid:
                 pos == "left" and ax_to == "center"
             ):
                 # do nothing, this is the default for how cumsum works
-                data = da_cum
                 boundary_width[ax.name] = (0, 0)
             elif (pos == "center" and ax_to == "left") or (
                 pos == "right" and ax_to == "center"
             ):
-                data = da_cum.isel(**{dim: slice(0, -1)})
+                data = data.isel(**{dim: slice(0, -1)})
                 boundary_width[ax.name] = (1, 0)
             elif (pos == "center" and ax_to == "inner") or (
                 pos == "outer" and ax_to == "center"
             ):
-                data = da_cum.isel(**{dim: slice(0, -1)})
+                data = data.isel(**{dim: slice(0, -1)})
                 boundary_width[ax.name] = (0, 0)
             elif (pos == "center" and ax_to == "outer") or (
                 pos == "inner" and ax_to == "center"
             ):
-                data = da_cum
                 boundary_width[ax.name] = (1, 0)
             else:
                 raise ValueError(
@@ -2304,7 +2303,7 @@ class Grid:
                     f"shift for cumsum operation along axis {ax}."
                 )
 
-        data = pad(
+        padded = pad(
             data=data,
             grid=self,
             boundary_width=boundary_width,
@@ -2312,13 +2311,13 @@ class Grid:
             fill_value=fill_value,
         )
 
-        renamed = data.rename(old_to_new_dims)
+        renamed = padded.rename(old_to_new_dims)
 
         # drop all coords to avoid conflicts when attaching new ones
-        renamed = renamed.drop(renamed.coords)
+        coordless = renamed.drop(renamed.coords)
 
         return _reattach_coords(
-            [renamed], grid=self, boundary_width=boundary_width, keep_coords=True
+            [coordless], grid=self, boundary_width=boundary_width, keep_coords=True
         )[0]
 
     def _apply_vector_function(self, function, vector, **kwargs):
