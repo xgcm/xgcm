@@ -2311,7 +2311,7 @@ class Grid:
 
         return _reattach_coords(
             [data], grid=self, boundary_width=boundary_width, keep_coords=True
-        )
+        )[0]
 
     def _apply_vector_function(self, function, vector, **kwargs):
         if not (len(vector) == 2 and isinstance(vector, dict)):
