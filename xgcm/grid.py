@@ -2253,6 +2253,7 @@ class Grid:
         """
 
         boundary_width = {}
+        old_to_new_dims = {}
 
         if isinstance(axis, str):
             axis = [axis]
@@ -2269,6 +2270,10 @@ class Grid:
             ax_to = to[ax.name]
             if ax_to is None:
                 ax_to = ax._default_shifts[pos]
+
+            # get dim with position to
+            new_dim_name = ax.coords[ax_to]
+            old_to_new_dims[dim] = new_dim_name
 
             # now pad / trim the data as necessary
             # here we enumerate all the valid possible shifts
@@ -2307,10 +2312,13 @@ class Grid:
             fill_value=fill_value,
         )
 
-        # TODO need to rename dims to their new positions here for this to work
+        renamed = data.rename(old_to_new_dims)
+
+        # drop all coords to avoid conflicts when attaching new ones
+        renamed = renamed.drop(renamed.coords)
 
         return _reattach_coords(
-            [data], grid=self, boundary_width=boundary_width, keep_coords=True
+            [renamed], grid=self, boundary_width=boundary_width, keep_coords=True
         )[0]
 
     def _apply_vector_function(self, function, vector, **kwargs):
