@@ -117,7 +117,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center"]
         ) -> Annotated[np.ndarray, "X:center"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:center)->(X:center)"
 
@@ -125,7 +125,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center,Y:center"]
         ) -> Annotated[np.ndarray, "X:center"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:center,Y:center)->(X:center)"
 
@@ -134,7 +134,7 @@ class TestParseSignatureFromTypeHints:
             a: Annotated[np.ndarray, "X:left"],
             b: Annotated[np.ndarray, "Y:right"],
         ) -> Annotated[np.ndarray, "X:center"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:left),(Y:right)->(X:center)"
 
@@ -142,7 +142,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center"]
         ) -> Annotated[np.ndarray, "X:left,Y:right"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:center)->(X:left,Y:right)"
 
@@ -150,7 +150,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center"]
         ) -> Tuple[Annotated[np.ndarray, "X:left"], Annotated[np.ndarray, "Y:right"]]:
-            ...
+            return np.array([]), np.array([])
 
         assert str(ufunc.signature) == "(X:center)->(X:left),(Y:right)"
 
@@ -164,7 +164,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "nonsense"]  # type: ignore
             ) -> Annotated[np.ndarray, "X:center"]:
-                ...
+                return np.array([])
 
         with pytest.raises(ValueError, match="Not a valid grid ufunc signature"):
 
@@ -172,7 +172,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "X:Mars"]
             ) -> Annotated[np.ndarray, "X:center"]:
-                ...
+                return np.array([])
 
     @pytest.mark.xfail(reason="signature regex will assume nonsense==no inputs")
     def test_invalid_return_arg_annotation(self):
@@ -184,7 +184,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "X:center"]
             ) -> Annotated[np.ndarray, "X:Venus"]:
-                ...
+                return np.array([])
 
     def test_both_sig_kwarg_and_hints_given(self):
         with pytest.raises(
@@ -195,7 +195,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "X:center"]
             ) -> Annotated[np.ndarray, "X:left"]:
-                ...
+                return np.array([])
 
     def test_type_hint_as_numpy_ndarray(self):
 
