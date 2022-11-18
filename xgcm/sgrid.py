@@ -41,7 +41,7 @@ def assert_valid_sgrid(ds):
 
 
 def get_sgrid_grid(ds):
-    """Extract the
+    """Obtain the name of the dummy variable that stores various SGRID metadata.
 
     Parameters
     ----------
@@ -52,8 +52,15 @@ def get_sgrid_grid(ds):
     var_name : str
     """
 
+    # TODO 2022-11-17 raehik
+    # re a conversation with xGCM devs: seems reasonable this is an omission in
+    # the SGRID spec. Perhaps we simply assume `grid`.
+
+    # look for a reasonably uniquely-identifying attribute in each variable, and
+    # return the first one found (we assume there should only be one)
+    # (checking for `grid_topology` is a bit extra)
     for var_name in ds.data_vars:
-        if "cf_role" in ds[var_name].attrs:
+        if ds[var_name].attrs.get("cf_role") == "grid_topology":
             return var_name
         else:
             pass
@@ -72,6 +79,7 @@ def get_all_axes(ds):
 
     Returns
     ----------
+    # set of strings
 
     """
     axes = set()
@@ -97,6 +105,11 @@ def get_all_axes(ds):
 
 def get_axis_positions_and_coords(ds, axis_name):
     """
+    SGRID version of related function in `comodo.py`.
+
+    Returns a dictionary of position->coordinate entries, which is then stored
+    in the `Axis.coords` instance variable.
+
     https://sgrid.github.io/sgrid/
     """
 
@@ -106,11 +119,6 @@ def get_axis_positions_and_coords(ds, axis_name):
     # For SGRID this can be done based on whether it is node or face and looking at the padding attribute.
     #
     # center refers to the edge location in 1D, face locations in 2D, volume locations in 3D
-    #
-    # padding low  refers to 'right'
-    # padding high refers to 'left'
-    # padding both refers to 'inner'
-    # padding none refers to 'outer'
 
     # 1) Guaranteed are node and face/volume dimensions, which include padding info so check for these first, and
     #      record the type of shift.
@@ -155,6 +163,11 @@ def get_axis_positions_and_coords(ds, axis_name):
     # Choose a grid spanning [0, 1]
     # TODO: Need to be careful, however, as if Volume AND Face coords are specified then
     #  it's over-constrained!
+
+    # TODO 2022-11-18 raehik
+    # re discussion earlier this week: following block should be rewritten to
+    # consider primarily `face_dimensions` (required for 2D grid), ignore
+    # `*_coordinates` attributes)
 
     if (axis_name == "Z") & ("vertical_dimensions" in ds[sgrid_grid_name].attrs):
         # vertical coordinates not specified for sgrid with vertical_dimensions.

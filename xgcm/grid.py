@@ -1408,6 +1408,8 @@ class Grid:
                 is_periodic,
                 default_shifts=axis_default_shifts,
                 coords=coords.get(axis_name),
+                # ^ note that `get` defaults to none if not found (which will
+                #   happen if user did not specify coords)
                 boundary=axis_boundary,
                 fill_value=axis_fillvalue,
             )
