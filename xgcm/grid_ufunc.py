@@ -911,7 +911,7 @@ def _pad_then_rechunk(
 
 def _is_dim_chunked(a, dim):
     # TODO this func can't handle Datasets - it will error if you check multiple variables with different chunking
-    return len(a.variable.chunksizes[dim]) > 0
+    return len(a.variable.chunksizes[dim]) > 1
 
 
 def _has_chunked_core_dims(obj: xr.DataArray, core_dims: Sequence[str]) -> bool:
@@ -1113,7 +1113,7 @@ def _reattach_coords(
     results_with_coords = []
     for res in results:
 
-        # padding strips all coordinates (inlcuding dimension coordinates).
+        # padding strips all coordinates (including dimension coordinates).
         # Here we centrally restore them from the grid._ds.
         all_matching_coords = {
             coord: da_coord
