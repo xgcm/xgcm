@@ -1420,9 +1420,9 @@ class Grid:
     def _as_axis_kwarg_mapping(
         self,
         kwargs: Union[Any, Dict[str, Any]],
-        axes: Iterable[str] = None,
+        axes: Optional[Iterable[str]] = None,
         ax_property_name=None,
-        default_value: Any = None,
+        default_value: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
@@ -1753,8 +1753,8 @@ class Grid:
         axis,
         to=None,
         keep_coords=False,
-        metric_weighted: Union[
-            str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
+        metric_weighted: Optional[
+            Union[str, Iterable[str], Dict[str, Union[str, Iterable[str]]]]
         ] = None,
         other_component: Optional[Dict[str, xr.DataArray]] = None,
         **kwargs,
@@ -1901,11 +1901,11 @@ class Grid:
         self,
         func: Callable,
         *args: xr.DataArray,
-        axis: Sequence[Sequence[str]] = None,
+        axis: Optional[Sequence[Sequence[str]]] = None,
         signature: Union[str, _GridUFuncSignature] = "",
-        boundary_width: Mapping[str, Tuple[int, int]] = None,
-        boundary: Union[str, Mapping[str, str]] = None,
-        fill_value: Union[float, Mapping[str, float]] = None,
+        boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+        boundary: Optional[Union[str, Mapping[str, str]]] = None,
+        fill_value: Optional[Union[float, Mapping[str, float]]] = None,
         dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
         map_overlap: bool = False,
         **kwargs,

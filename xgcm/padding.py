@@ -72,7 +72,7 @@ def _pad_face_connections(
     padding_width: Dict[str, Tuple[int, int]],
     padding: Dict[str, str],
     fill_value: Dict[str, float],
-    other_component: Dict[str, xr.DataArray] = None,
+    other_component: Optional[Dict[str, xr.DataArray]] = None,
 ):
     facedim = grid._facedim
     connections = grid._connections
@@ -342,8 +342,8 @@ def pad(
     grid: Grid,
     boundary_width: Optional[Dict[str, Tuple[int, int]]],
     boundary: Union[str, Mapping[str, str], None] = None,
-    fill_value: Union[float, Mapping[str, float]] = None,
-    other_component: Dict[str, xr.DataArray] = None,
+    fill_value: Optional[Union[float, Mapping[str, float]]] = None,
+    other_component: Optional[Dict[str, xr.DataArray]] = None,
 ):
     """
     Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.

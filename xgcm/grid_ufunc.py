@@ -448,7 +448,7 @@ class GridUFunc:
 
     def __call__(
         self,
-        grid: "Grid" = None,
+        grid: Optional["Grid"] = None,
         *args: xr.DataArray,
         axis: Sequence[str],
         **kwargs,
@@ -473,7 +473,9 @@ class GridUFunc:
 
 
 def as_grid_ufunc(
-    signature: str = "", boundary_width: Mapping[str, Tuple[int, int]] = None, **kwargs
+    signature: str = "",
+    boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+    **kwargs,
 ) -> Callable:
     """
     Decorator which turns a numpy ufunc into a "grid-aware ufunc".
@@ -555,18 +557,18 @@ def as_grid_ufunc(
 def apply_as_grid_ufunc(
     func: Callable,
     *args: Union[xr.DataArray, Dict[str, xr.DataArray]],
-    axis: Sequence[Sequence[str]] = None,
-    grid: "Grid" = None,
+    axis: Optional[Sequence[Sequence[str]]] = None,
+    grid: Optional["Grid"] = None,
     signature: Union[str, _GridUFuncSignature] = "",
-    boundary_width: Mapping[str, Tuple[int, int]] = None,
-    boundary: Union[str, Mapping[str, str]] = None,
-    fill_value: Union[float, Mapping[str, float]] = None,
+    boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+    boundary: Optional[Union[str, Mapping[str, str]]] = None,
+    fill_value: Optional[Union[float, Mapping[str, float]]] = None,
     keep_coords: bool = True,
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
     pad_before_func: bool = True,
-    other_component: Union[
-        Dict[str, xr.DataArray], Sequence[Dict[str, xr.DataArray]]
+    other_component: Optional[
+        Union[Dict[str, xr.DataArray], Sequence[Dict[str, xr.DataArray]]]
     ] = None,
     **kwargs,
 ) -> List[Any]:
