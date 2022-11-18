@@ -1326,11 +1326,14 @@ class Grid:
 
         if coords:
             all_axes = coords.keys()
+            print("Generating grid from user-defined information.")
         elif sgrid.assert_valid_sgrid(ds):
             all_axes = sgrid.get_all_axes(ds)
+            print("SGRID compliant dataset. Generating grid from SGRID parameters.")
             coords = {}
         else:
             all_axes = comodo.get_all_axes(ds)
+            print("Generating grid following COMODO conventions.")
             coords = {}
 
         # check coords input validity
