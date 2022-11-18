@@ -2208,6 +2208,7 @@ class Grid:
         boundary=None,
         fill_value=None,
         metric_weighted=None,
+        keep_coords: bool = False,
     ) -> xr.DataArray:
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
@@ -2331,7 +2332,7 @@ class Grid:
                 [coordless],
                 grid=self,
                 boundary_width=ax_boundary_width,
-                keep_coords=True,
+                keep_coords=keep_coords,
             )[0]
 
             ax_metric_weighted = metric_weighted[ax.name]
