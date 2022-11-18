@@ -147,10 +147,13 @@ def get_axis_positions_and_coords(ds, axis_name):
     # Due to the way vertical coordinates are represented with a 2D dataset
     # using SGRID catch this case and handle before general cases:
     if (axis_name == "Z") & ("vertical_dimensions" in ds[sgrid_grid_name].attrs):
-        vert_dim = ds[sgrid_grid_name].attrs["vertical_dimensions"].split()
-        node_dim_name = vert_dim[0].split(":")[1]
-        cell_dim_name = vert_dim[0].split(":")[0]
-        cell_pad = vert_dim[2].replace(")", "")
+        vert_dim = ds[sgrid_grid_name].attrs["vertical_dimensions"]
+        # Account for fact that there may or may not be a space after ':'
+        vert_dim = vert_dim.replace(":", " ").split()
+
+        node_dim_name = vert_dim[1]
+        cell_dim_name = vert_dim[0]
+        cell_pad = vert_dim[3].replace(")", "")
 
     else:
         # Nodes
@@ -172,7 +175,9 @@ def get_axis_positions_and_coords(ds, axis_name):
         # Edges/Faces/Volume
         # If 2D dataset extract from face_dimensions
         if sgrid_grid_dim == 2:
-            cell_dim = ds[sgrid_grid_name].attrs["face_dimensions"].split()
+            cell_dim = ds[sgrid_grid_name].attrs["face_dimensions"]
+            # Account for fact that there may or may not be a space after ':'
+            cell_dim = cell_dim.replace(":", " ").split()
 
             # Find the face dimension that matches the node dimension
             dim = [s[0] for s in enumerate(cell_dim) if node_dim_name in s[1]]
@@ -181,12 +186,13 @@ def get_axis_positions_and_coords(ds, axis_name):
                     f"Found {len(dim)} face_dimensions corresponding to node_dimension '{node_dim_name}'. Expecting 1."
                 )
 
-            cell_dim_name = cell_dim[dim[0]].split(":")[0]
+            cell_dim_name = cell_dim[dim[0] - 1]
             cell_pad = cell_dim[dim[0] + 2].replace(")", "")
 
         # If 3D dataset extract from volume_dimensions
         elif sgrid_grid_dim == 3:
-            cell_dim = ds[sgrid_grid_name].attrs["volume_dimensions"].split()
+            cell_dim = ds[sgrid_grid_name].attrs["volume_dimensions"]
+            cell_dim = cell_dim.replace(":", " ").split()
 
             # Find the face dimension that matches the node dimension
             dim = [s[0] for s in enumerate(cell_dim) if node_dim_name in s[1]]
@@ -195,7 +201,7 @@ def get_axis_positions_and_coords(ds, axis_name):
                     f"Found {len(dim)} face_dimensions corresponding to node_dimension '{node_dim_name}'. Expecting 1."
                 )
 
-            cell_dim_name = cell_dim[dim[0]].split(":")[0]
+            cell_dim_name = cell_dim[dim[0] - 1]
             cell_pad = cell_dim[dim[0] + 2].replace(")", "")
 
             # Check for face dimensions
