@@ -14,12 +14,12 @@ def assert_valid_sgrid(ds):
     True/False : boolean
     """
 
-    if "SGRID" in ds.Conventions:
-        return True
-    elif "sgrid" in ds.Conventions:
-        return True
-    elif "Sgrid" in ds.Conventions:
-        return True
+    conventions_attr = next((x for x in ["Conventions", "conventions"]
+                             if x in ds.attrs), False)
+    if conventions_attr:
+        if (any(x in ds.attrs[conventions_attr]
+                for x in ["SGRID", "sgrid", "Sgrid"])):
+            return True
 
     return False
 
