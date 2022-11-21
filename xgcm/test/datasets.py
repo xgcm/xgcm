@@ -27,6 +27,233 @@ import xarray as xr
 
 N = 100
 datasets = {
+    # SGRID examples, adapted from SGRID website
+    "sgrid2D": xr.Dataset(
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 2,
+                    "node_dimensions": "inode jnode",
+                    "face_dimensions": "icell: inode (padding: none) jcell: jnode (padding: none)",
+                    "node_coordinates": "node_lon node_lat",
+                },
+            ),
+            "c": (
+                ["time", "jcell", "icell"],
+                np.random.rand(1, 9, 19),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "face",
+                },
+            ),
+            "u": (
+                ["time", "jcell", "inode"],
+                np.random.rand(1, 9, 20),
+                {
+                    "description": "x-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "edge1",
+                },
+            ),
+            "v": (
+                ["time", "jnode", "icell"],
+                np.random.rand(1, 10, 19),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "edge2",
+                },
+            ),
+        },
+        attrs={"Conventions": "SGRID-x.x"},
+        coords={
+            "node_lat": (
+                ["jnode", "inode"],
+                np.random.rand(10, 20),
+                {
+                    "standard_name": "latitude",
+                    "units": "degree_north",
+                },
+            ),
+            "node_lon": (
+                ["jnode", "inode"],
+                np.random.rand(10, 20),
+                {
+                    "standard_name": "longitude",
+                    "units": "degree_east",
+                },
+            ),
+        },
+    ),
+    "sgrid2Dvert": xr.Dataset(
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 2,
+                    "node_dimensions": "inode jnode",
+                    "face_dimensions": "icell: inode (padding: none) jcell: jnode (padding: none)",
+                    "node_coordinates": "node_lon node_lat",
+                    "vertical_dimensions": "vcell: vnode (padding: both)",
+                },
+            ),
+            "c": (
+                ["time", "vcell", "jcell", "icell"],
+                np.random.rand(1, 6, 9, 19),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "face",
+                },
+            ),
+            "u": (
+                ["time", "vnode", "jcell", "inode"],
+                np.random.rand(1, 5, 9, 20),
+                {
+                    "description": "x-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "edge1",
+                },
+            ),
+            "v": (
+                ["time", "vnode", "jnode", "icell"],
+                np.random.rand(1, 5, 10, 19),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "edge2",
+                },
+            ),
+            "w": (
+                ["time", "vcell", "jcell", "icell"],
+                np.random.rand(1, 6, 9, 19),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face",
+                },
+            ),
+        },
+        attrs={"Conventions": "SGRID-x.x"},
+        coords={
+            "node_lat": (
+                ["jnode", "inode"],
+                np.random.rand(10, 20),
+                {
+                    "standard_name": "latitude",
+                    "units": "degree_north",
+                },
+            ),
+            "node_lon": (
+                ["jnode", "inode"],
+                np.random.rand(10, 20),
+                {
+                    "standard_name": "longitude",
+                    "units": "degree_east",
+                },
+            ),
+            "vert_coor": (
+                ["vcell"],
+                np.random.rand(6),
+                {
+                    "standard_name": "vertical coordinate",
+                    "units": "[%]",
+                },
+            ),
+        },
+    ),
+    "sgrid3D": xr.Dataset(
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 3,
+                    "node_dimensions": "inode jnode knode",
+                    "volume_dimensions": "icell: inode (padding: low) jcell: jnode (padding: low) kcell: knode (padding: high)",
+                    "node_coordinates": "node_lon node_lat node_alt",
+                },
+            ),
+            "c": (
+                ["time", "kcell", "jcell", "icell"],
+                np.random.rand(1, 10, 10, 20),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "volume",
+                },
+            ),
+            "u": (
+                ["time", "knode", "jcell", "inode"],
+                np.random.rand(1, 10, 10, 20),
+                {
+                    "description": "x-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face1",
+                },
+            ),
+            "v": (
+                ["time", "knode", "jnode", "icell"],
+                np.random.rand(1, 10, 10, 20),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face2",
+                },
+            ),
+            "w": (
+                ["time", "kcell", "jcell", "icell"],
+                np.random.rand(1, 10, 10, 20),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face3",
+                },
+            ),
+        },
+        attrs={"conventions": "sgrid-x.x"},
+        coords={
+            "node_lat": (
+                ["knode", "jnode", "inode"],
+                np.random.rand(10, 10, 20),
+                {
+                    "standard_name": "latitude",
+                    "units": "degree_north",
+                },
+            ),
+            "node_lon": (
+                ["knode", "jnode", "inode"],
+                np.random.rand(10, 10, 20),
+                {
+                    "standard_name": "longitude",
+                    "units": "degree_east",
+                },
+            ),
+            "node_vert": (
+                ["knode", "jnode", "inode"],
+                np.random.rand(10, 10, 20),
+                {
+                    "standard_name": "pressure",
+                    "units": "bar",
+                },
+            ),
+        },
+    ),
     # the comodo example, with renamed dimensions
     "1d_outer": xr.Dataset(
         {"data_c": (["XC"], np.random.rand(9)), "data_g": (["XG"], np.random.rand(10))},
