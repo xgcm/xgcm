@@ -14,11 +14,11 @@ def assert_valid_sgrid(ds):
     True/False : boolean
     """
 
-    conventions_attr = next((x for x in ["Conventions", "conventions"]
-                             if x in ds.attrs), False)
+    conventions_attr = next(
+        (x for x in ["Conventions", "conventions"] if x in ds.attrs), False
+    )
     if conventions_attr:
-        if (any(x in ds.attrs[conventions_attr]
-                for x in ["SGRID", "sgrid", "Sgrid"])):
+        if any(x in ds.attrs[conventions_attr] for x in ["SGRID", "sgrid", "Sgrid"]):
             return True
 
     return False
