@@ -1003,7 +1003,8 @@ def _check_if_length_would_change(signature: _GridUFuncSignature):
     if any(pos in DISALLOWED_OVERLAP_POSITIONS for pos in all_ax_positions):
         raise NotImplementedError(
             "Cannot chunk along a core dimension for a grid ufunc which has a signature which "
-            f"includes one of the axis positions {DISALLOWED_OVERLAP_POSITIONS}"
+            f"includes one of the axis positions {DISALLOWED_OVERLAP_POSITIONS}."
+            "Consider rechunking to a single chunk along this dimension if possible."
         )
 
 

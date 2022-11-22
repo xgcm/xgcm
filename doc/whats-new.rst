@@ -24,6 +24,10 @@ Internal Changes
 Documentation
 ~~~~~~~~~~~~~
 
+- Improved error message to suggest rechunking to a single chunk when trying to perform disallowed operations
+  along chunked core dims.
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
 Bugfixes
 ~~~~~~~~
 
