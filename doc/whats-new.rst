@@ -17,12 +17,37 @@ Breaking Changes
 Internal Changes
 ~~~~~~~~~~~~~~~~
 
+Documentation
+~~~~~~~~~~~~~
+
+Bugfixes
+~~~~~~~~
+
+
+v0.8.1 (2022/11/22)
+-------------------
+
+.. _whats-new.0.8.1:
+
+New Features
+~~~~~~~~~~~~
+
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+Internal Changes
+~~~~~~~~~~~~~~~~
+
 - Rewrote cumsum to use a different code path from :py:func:`~xgcm.apply_as_grid_ufunc` internally,
   which makes it less susceptible to subtle bugs like the one reported in :issue:`507`. (:pull:`558`).
   By `Thomas Nicholas <https://github.com/tomnicholas>`_.
 
 Documentation
 ~~~~~~~~~~~~~
+
+- Improved error message to suggest rechunking to a single chunk when trying to perform disallowed operations
+  along chunked core dims.
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
 
 Bugfixes
 ~~~~~~~~
