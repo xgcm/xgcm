@@ -29,6 +29,7 @@ N = 100
 datasets = {
     # SGRID examples, adapted from SGRID website
     "sgrid2D": xr.Dataset(
+        # Similar to 2d_left below
         {
             "grid": (
                 (),
@@ -37,22 +38,31 @@ datasets = {
                     "cf_role": "grid_topology",
                     "topology_dimension": 2,
                     "node_dimensions": "inode jnode",
-                    "face_dimensions": "icell: inode (padding: none) jcell: jnode (padding: none)",
+                    "face_dimensions": "icell: inode (padding: high) jcell: jnode (padding: high)",
                     "node_coordinates": "node_lon node_lat",
                 },
             ),
-            "c": (
+            "data_c": (
                 ["time", "jcell", "icell"],
-                np.random.rand(1, 9, 19),
+                np.random.rand(1, N, 2 * N),
                 {
                     "description": "some concentration",
                     "grid": "grid",
                     "location": "face",
                 },
             ),
+            "data_g": (
+                ["time", "jnode", "inode"],
+                np.random.rand(1, N, 2 * N),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "node",
+                },
+            ),
             "u": (
                 ["time", "jcell", "inode"],
-                np.random.rand(1, 9, 20),
+                np.random.rand(1, N, 2 * N),
                 {
                     "description": "x-velocity",
                     "units": "m s-1",
@@ -62,7 +72,7 @@ datasets = {
             ),
             "v": (
                 ["time", "jnode", "icell"],
-                np.random.rand(1, 10, 19),
+                np.random.rand(1, N, 2 * N),
                 {
                     "description": "y-velocity",
                     "units": "m s-1",
@@ -75,7 +85,7 @@ datasets = {
         coords={
             "node_lat": (
                 ["jnode", "inode"],
-                np.random.rand(10, 20),
+                np.random.rand(N, 2 * N),
                 {
                     "standard_name": "latitude",
                     "units": "degree_north",
@@ -83,10 +93,58 @@ datasets = {
             ),
             "node_lon": (
                 ["jnode", "inode"],
-                np.random.rand(10, 20),
+                np.random.rand(N, 2 * N),
                 {
                     "standard_name": "longitude",
                     "units": "degree_east",
+                },
+            ),
+            "cell_lat": (
+                ["jcell", "icell"],
+                np.random.rand(N, 2 * N),
+                {
+                    "standard_name": "latitude_cells",
+                    "units": "degree_north",
+                },
+            ),
+            "cell_lon": (
+                ["jcell", "icell"],
+                np.random.rand(N, 2 * N),
+                {
+                    "standard_name": "longitude_cells",
+                    "units": "degree_east",
+                },
+            ),
+            "XG": (
+                ["jnode"],
+                2 * np.pi / N * np.arange(0, N),
+                {
+                    "standard_name": "X_node_coord",
+                    "units": "-",
+                },
+            ),
+            "XC": (
+                ["jcell"],
+                2 * np.pi / N * (np.arange(0, N) + 0.5),
+                {
+                    "standard_name": "X_cell_coord",
+                    "units": "-",
+                },
+            ),
+            "YG": (
+                ["inode"],
+                2 * np.pi / (2 * N) * np.arange(0, 2 * N),
+                {
+                    "standard_name": "Y_node_coord",
+                    "units": "-",
+                },
+            ),
+            "YC": (
+                ["icell"],
+                2 * np.pi / (2 * N) * (np.arange(0, 2 * N) + 0.5),
+                {
+                    "standard_name": "Y_cell_coord",
+                    "units": "-",
                 },
             ),
         },
@@ -105,18 +163,27 @@ datasets = {
                     "vertical_dimensions": "vcell: vnode (padding: both)",
                 },
             ),
-            "c": (
+            "data_c": (
                 ["time", "vcell", "jcell", "icell"],
-                np.random.rand(1, 6, 9, 19),
+                np.random.rand(1, 6, N - 1, 2 * N - 1),
                 {
                     "description": "some concentration",
                     "grid": "grid",
                     "location": "face",
                 },
             ),
+            "data_g": (
+                ["time", "vnode", "jnode", "inode"],
+                np.random.rand(1, 5, N, 2 * N),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "node",
+                },
+            ),
             "u": (
                 ["time", "vnode", "jcell", "inode"],
-                np.random.rand(1, 5, 9, 20),
+                np.random.rand(1, 5, N - 1, 2 * N),
                 {
                     "description": "x-velocity",
                     "units": "m s-1",
@@ -126,7 +193,7 @@ datasets = {
             ),
             "v": (
                 ["time", "vnode", "jnode", "icell"],
-                np.random.rand(1, 5, 10, 19),
+                np.random.rand(1, 5, N, 2 * N - 1),
                 {
                     "description": "y-velocity",
                     "units": "m s-1",
@@ -136,7 +203,7 @@ datasets = {
             ),
             "w": (
                 ["time", "vcell", "jcell", "icell"],
-                np.random.rand(1, 6, 9, 19),
+                np.random.rand(1, 6, N - 1, 2 * N - 1),
                 {
                     "description": "y-velocity",
                     "units": "m s-1",
@@ -149,7 +216,7 @@ datasets = {
         coords={
             "node_lat": (
                 ["jnode", "inode"],
-                np.random.rand(10, 20),
+                np.random.rand(N, 2 * N),
                 {
                     "standard_name": "latitude",
                     "units": "degree_north",
@@ -157,7 +224,7 @@ datasets = {
             ),
             "node_lon": (
                 ["jnode", "inode"],
-                np.random.rand(10, 20),
+                np.random.rand(N, 2 * N),
                 {
                     "standard_name": "longitude",
                     "units": "degree_east",
@@ -186,18 +253,27 @@ datasets = {
                     "node_coordinates": "node_lon node_lat node_alt",
                 },
             ),
-            "c": (
+            "data_c": (
                 ["time", "kcell", "jcell", "icell"],
-                np.random.rand(1, 10, 10, 20),
+                np.random.rand(1, N, N, 2 * N),
                 {
                     "description": "some concentration",
                     "grid": "grid",
                     "location": "volume",
                 },
             ),
+            "data_g": (
+                ["time", "knode", "jnode", "inode"],
+                np.random.rand(1, N, N, 2 * N),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "node",
+                },
+            ),
             "u": (
                 ["time", "knode", "jcell", "inode"],
-                np.random.rand(1, 10, 10, 20),
+                np.random.rand(1, N, N, 2 * N),
                 {
                     "description": "x-velocity",
                     "units": "m s-1",
@@ -207,7 +283,7 @@ datasets = {
             ),
             "v": (
                 ["time", "knode", "jnode", "icell"],
-                np.random.rand(1, 10, 10, 20),
+                np.random.rand(1, N, N, 2 * N),
                 {
                     "description": "y-velocity",
                     "units": "m s-1",
@@ -217,7 +293,7 @@ datasets = {
             ),
             "w": (
                 ["time", "kcell", "jcell", "icell"],
-                np.random.rand(1, 10, 10, 20),
+                np.random.rand(1, N, N, 2 * N),
                 {
                     "description": "y-velocity",
                     "units": "m s-1",
@@ -230,7 +306,7 @@ datasets = {
         coords={
             "node_lat": (
                 ["knode", "jnode", "inode"],
-                np.random.rand(10, 10, 20),
+                np.random.rand(N, N, 2 * N),
                 {
                     "standard_name": "latitude",
                     "units": "degree_north",
@@ -238,7 +314,7 @@ datasets = {
             ),
             "node_lon": (
                 ["knode", "jnode", "inode"],
-                np.random.rand(10, 10, 20),
+                np.random.rand(N, N, 2 * N),
                 {
                     "standard_name": "longitude",
                     "units": "degree_east",
@@ -246,7 +322,7 @@ datasets = {
             ),
             "node_vert": (
                 ["knode", "jnode", "inode"],
-                np.random.rand(10, 10, 20),
+                np.random.rand(N, N, 2 * N),
                 {
                     "standard_name": "pressure",
                     "units": "bar",
@@ -358,6 +434,12 @@ datasets = {
 
 # include periodicity
 datasets_with_periodicity = {
+    "nonperiodic_sgrid2D": (datasets["sgrid2D"], False),
+    "periodic_sgrid2D": (datasets["sgrid2D"], True),
+    "xperiodic_sgrid2D": (datasets["sgrid2D"], ["X"]),
+    "yperiodic_sgrid2D": (datasets["sgrid2D"], ["Y"]),
+    "sgrid2Dvert": (datasets["sgrid2Dvert"], False),
+    "sgrid3D": (datasets["sgrid3D"], False),
     "nonperiodic_1d_outer": (datasets["1d_outer"], False),
     "nonperiodic_1d_inner": (datasets["1d_inner"], False),
     "periodic_1d_left": (datasets["1d_left"], True),
@@ -371,6 +453,44 @@ datasets_with_periodicity = {
 }
 
 expected_values = {
+    "nonperiodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "icell", "left": "inode"},
+            "Y": {"center": "jcell", "left": "jnode"},
+        }
+    },
+    "periodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "icell", "left": "inode"},
+            "Y": {"center": "jcell", "left": "jnode"},
+        }
+    },
+    "xperiodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "icell", "left": "inode"},
+            "Y": {"center": "jcell", "left": "jnode"},
+        }
+    },
+    "yperiodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "icell", "left": "inode"},
+            "Y": {"center": "jcell", "left": "jnode"},
+        }
+    },
+    "sgrid2Dvert": {
+        "axes": {
+            "X": {"center": "icell", "outer": "inode"},
+            "Y": {"center": "jcell", "outer": "jnode"},
+            "Z": {"center": "vcell", "inner": "vnode"},
+        }
+    },
+    "sgrid3D": {
+        "axes": {
+            "X": {"center": "icell", "right": "inode"},
+            "Y": {"center": "jcell", "right": "jnode"},
+            "Z": {"center": "kcell", "left": "knode"},
+        }
+    },
     "nonperiodic_1d_outer": {"axes": {"X": {"center": "XC", "outer": "XG"}}},
     "nonperiodic_1d_inner": {"axes": {"X": {"center": "XC", "inner": "XG"}}},
     "periodic_1d_left": {"axes": {"X": {"center": "XC", "left": "XG"}}},
@@ -439,6 +559,10 @@ def periodic_1d(request):
 @pytest.fixture(
     scope="module",
     params=[
+        "nonperiodic_sgrid2D",
+        "periodic_sgrid2D",
+        "xperiodic_sgrid2D",
+        "yperiodic_sgrid2D",
         "periodic_2d_left",
         "nonperiodic_2d_left",
         "xperiodic_2d_left",
@@ -450,7 +574,7 @@ def all_2d(request):
     return ds, periodic, expected_values[request.param]
 
 
-@pytest.fixture(scope="module", params=["periodic_2d_left"])
+@pytest.fixture(scope="module", params=["periodic_sgrid2D", "periodic_2d_left"])
 def periodic_2d(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
@@ -458,7 +582,14 @@ def periodic_2d(request):
 
 @pytest.fixture(
     scope="module",
-    params=["nonperiodic_2d_left", "xperiodic_2d_left", "yperiodic_2d_left"],
+    params=[
+        "nonperiodic_sgrid2D",
+        "xperiodic_sgrid2D",
+        "yperiodic_sgrid2D",
+        "nonperiodic_2d_left",
+        "xperiodic_2d_left",
+        "yperiodic_2d_left",
+    ],
 )
 def nonperiodic_2d(request):
     ds, periodic = datasets_with_periodicity[request.param]

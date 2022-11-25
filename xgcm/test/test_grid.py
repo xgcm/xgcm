@@ -3,6 +3,9 @@ import pytest
 import xarray as xr
 
 from xgcm.grid import Axis, Grid
+from xgcm.comodo import get_all_axes as get_all_axes_comodo
+from xgcm.sgrid import assert_valid_sgrid
+from xgcm.sgrid import get_all_axes as get_all_axes_sgrid
 
 from .datasets import all_2d  # noqa: F401
 from .datasets import all_datasets  # noqa: F401
@@ -16,7 +19,11 @@ from .datasets import periodic_2d  # noqa: F401
 
 # helper function to produce axes from datasets
 def _get_axes(ds):
-    all_axes = {ds[c].attrs["axis"] for c in ds.dims if "axis" in ds[c].attrs}
+    if assert_valid_sgrid(ds):
+        all_axes = get_all_axes_sgrid(ds)
+    else:
+        all_axes = get_all_axes_comodo(ds)
+    # all_axes = {ds[c].attrs["axis"] for c in ds.dims if "axis" in ds[c].attrs}
     axis_objs = {ax: Axis(ds, ax) for ax in all_axes}
     return axis_objs
 
@@ -691,8 +698,8 @@ def test_grid_ops(all_datasets):
         "fill",
         pytest.param("extrapolate", marks=pytest.mark.xfail(strict=True)),
         "extend",
-        {"X": "fill", "Y": "extend"},
-        {"X": "extend", "Y": "fill"},
+        {"X": "fill", "Y": "extend", "Z": "extend"},
+        {"X": "extend", "Y": "fill", "Z": "fill"},
     ],
 )
 def test_multi_axis_input(all_datasets, func, periodic, boundary):
