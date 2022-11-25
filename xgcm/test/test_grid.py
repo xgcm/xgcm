@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from xgcm.grid import Axis, Grid
 from xgcm.comodo import get_all_axes as get_all_axes_comodo
+from xgcm.grid import Axis, Grid
 from xgcm.sgrid import assert_valid_sgrid
 from xgcm.sgrid import get_all_axes as get_all_axes_sgrid
 
