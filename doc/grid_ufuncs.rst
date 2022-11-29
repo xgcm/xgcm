@@ -106,7 +106,7 @@ To give you an idea of how we might use grid ufuncs here is a table of possible 
 Defining New Grid Ufuncs
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Let's imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
+Let's imagine we have a numpy function which does backward differencing along one dimension, with an implicit periodic boundary condition.
 
 .. ipython:: python
 
@@ -114,7 +114,7 @@ Let's imagine we have a numpy function which does forward differencing along one
 
 .. ipython:: python
 
-    def diff_forward(a):
+    def diff_backward(a):
         return a - np.roll(a, -1, axis=-1)
 
 All this function does is subtract each element of the given array from the element immediately to its right,
@@ -173,7 +173,7 @@ The quickest option is to apply our function directly, using ``apply_as_grid_ufu
     from xgcm import apply_as_grid_ufunc
 
     result = apply_as_grid_ufunc(
-        diff_forward, da, axis=[["X"]], signature="(ax1:center)->(ax1:left)", grid=grid
+        diff_backward, da, axis=[["X"]], signature="(ax1:center)->(ax1:left)", grid=grid
     )
 
     result
@@ -197,7 +197,7 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
 
     @as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
     def diff_center_to_left(a):
-        return diff_forward(a)
+        return diff_backward(a)
 
 Now when we call the ``diff_center_to_left`` function, it will act as if we had applied it using ``apply_as_grid_ufunc``.
 
@@ -222,7 +222,7 @@ Finally you can use type hints to specify the grid positions of the variables in
     def diff_center_to_left(
         a: Annotated[np.ndarray, "ax1:center"]
     ) -> Annotated[np.ndarray, "ax1:left"]:
-        return diff_forward(a)
+        return diff_backward(a)
 
 Again we call this decorated function, remembering to supply the grid and axis arguments
 
