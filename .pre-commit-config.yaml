@@ -1,4 +1,4 @@
-autoupdate_schedule: monthly
+autoupdate_schedule: quarterly
 default_language_version:
     python: python3.9
 repos:
