@@ -192,7 +192,6 @@ class Grid:
                 boundary[ax] = "periodic"
 
         default_shifts = self._as_axis_kwarg_mapping(default_shifts, axes=all_axes)
-        print(default_shifts)
 
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
@@ -200,6 +199,9 @@ class Grid:
         # TODO: I think of the face connection data as grid not axes properties, since they almost by defintion
         # TODO: involve multiple axes. In a future PR we should remove this info from the axes
         # TODO: but make sure to properly port the checking functionality!
+
+        print(coords)
+        print(boundary)
 
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
