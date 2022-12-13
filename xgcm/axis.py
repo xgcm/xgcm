@@ -59,6 +59,8 @@ class Axis:
             boundary kwarg when calling specific methods.
         """
 
+        self._name = name
+
         # check all inputted values are valid here
 
         for pos, dim in coords.items():
@@ -85,6 +87,13 @@ class Axis:
                     if possible_shift in self.coords:
                         _default_shifts[pos] = possible_shift
                         break
+
+            if _default_shifts[pos] == pos:
+                # TODO stricter checking? e.g. non-adjacent positions?
+                raise ValueError(
+                    f"Can't set the default shift for {pos} to be to {pos}"
+                )
+
         self._default_shifts = _default_shifts
 
         if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
@@ -92,6 +101,10 @@ class Axis:
                 f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}"
             )
         self._boundary = boundary
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def coords(self) -> Mapping[str, str]:
