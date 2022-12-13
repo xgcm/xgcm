@@ -21,7 +21,6 @@ import numpy as np
 import xarray as xr
 from dask.array import Array as Dask_Array
 
-
 from . import comodo, gridops
 from .axis import Axis
 from .grid_ufunc import (
