@@ -29,9 +29,11 @@ from .grid_ufunc import (
     _GridUFuncSignature,
     _has_chunked_core_dims,
     _maybe_unpack_vector_component,
+    _reattach_coords,
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
+from .padding import pad
 from .transform import transform
 
 # Only need this until python 3.8
