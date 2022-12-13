@@ -117,7 +117,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center"]
         ) -> Annotated[np.ndarray, "X:center"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:center)->(X:center)"
 
@@ -125,7 +125,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center,Y:center"]
         ) -> Annotated[np.ndarray, "X:center"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:center,Y:center)->(X:center)"
 
@@ -134,7 +134,7 @@ class TestParseSignatureFromTypeHints:
             a: Annotated[np.ndarray, "X:left"],
             b: Annotated[np.ndarray, "Y:right"],
         ) -> Annotated[np.ndarray, "X:center"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:left),(Y:right)->(X:center)"
 
@@ -142,7 +142,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center"]
         ) -> Annotated[np.ndarray, "X:left,Y:right"]:
-            ...
+            return np.array([])
 
         assert str(ufunc.signature) == "(X:center)->(X:left,Y:right)"
 
@@ -150,7 +150,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc(
             a: Annotated[np.ndarray, "X:center"]
         ) -> Tuple[Annotated[np.ndarray, "X:left"], Annotated[np.ndarray, "Y:right"]]:
-            ...
+            return np.array([]), np.array([])
 
         assert str(ufunc.signature) == "(X:center)->(X:left),(Y:right)"
 
@@ -164,7 +164,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "nonsense"]  # type: ignore
             ) -> Annotated[np.ndarray, "X:center"]:
-                ...
+                return np.array([])
 
         with pytest.raises(ValueError, match="Not a valid grid ufunc signature"):
 
@@ -172,7 +172,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "X:Mars"]
             ) -> Annotated[np.ndarray, "X:center"]:
-                ...
+                return np.array([])
 
     @pytest.mark.xfail(reason="signature regex will assume nonsense==no inputs")
     def test_invalid_return_arg_annotation(self):
@@ -184,7 +184,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "X:center"]
             ) -> Annotated[np.ndarray, "X:Venus"]:
-                ...
+                return np.array([])
 
     def test_both_sig_kwarg_and_hints_given(self):
         with pytest.raises(
@@ -195,7 +195,7 @@ class TestParseSignatureFromTypeHints:
             def ufunc(
                 a: Annotated[np.ndarray, "X:center"]
             ) -> Annotated[np.ndarray, "X:left"]:
-                ...
+                return np.array([])
 
     def test_type_hint_as_numpy_ndarray(self):
 
@@ -829,13 +829,14 @@ class TestPadAfterUFunc:
         )
         assert_equal(result, expected)
 
-    def test_cumsum_chunk_checking_bug(self):
-        # see issue #507
+    @pytest.mark.parametrize("chunksize", [-1, 3])
+    def test_cumsum_chunk_checking_bug(self, chunksize):
+        # for chunksize=-1 see issue #507
         ds = (
             xr.DataArray(
                 np.ones(10) * 0.5, dims="Z", coords={"Z": np.arange(0.5, 10, 1)}
             )
-            .chunk({"Z": -1})
+            .chunk({"Z": chunksize})
             .to_dataset(name="drF")
         )
         ds.coords["Zp1"] = xr.DataArray(
@@ -1108,6 +1109,32 @@ class TestMapOverlapGridops:
         ).compute()
 
         result = grid.diff(da, axis="depth", to="right").compute()
+        assert_equal(result, expected)
+
+    def test_single_chunk_core_dims_center_to_outer(self):
+        # test for issue #518
+        z_coord = xr.DataArray(np.arange(0.5, 10, 1), dims="Z")
+        zp1_coord = xr.DataArray(np.arange(11), dims="Zp1")
+        ds = (
+            xr.DataArray(np.linspace(1, 10, num=10), dims="Z", coords={"Z": z_coord})
+            .chunk({"Z": -1})
+            .to_dataset(name="drF")
+        )
+        ds.coords["Zp1"] = zp1_coord
+        grid = Grid(ds, coords={"Z": {"center": "Z", "outer": "Zp1"}})
+
+        expected_values = np.concatenate(
+            (np.array([1.0]), np.linspace(1.5, 9.5, num=9), np.array([10.0]))
+        )
+        expected = (
+            xr.DataArray(expected_values, dims="Zp1", coords={"Zp1": zp1_coord})
+            .chunk({"Zp1": -1})
+            .to_dataset(name="drF")
+        )
+
+        result = grid.interp(ds.drF, "Z", boundary="extend", to="outer").to_dataset(
+            name="drF"
+        )
         assert_equal(result, expected)
 
 

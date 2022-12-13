@@ -21,6 +21,7 @@ import numpy as np
 import xarray as xr
 from dask.array import Array as Dask_Array
 
+
 from . import comodo, gridops
 from .axis import Axis
 from .grid_ufunc import (
@@ -222,9 +223,9 @@ class Grid:
     def _as_axis_kwarg_mapping(
         self,
         kwargs: Union[Any, Dict[str, Any]],
-        axes: Iterable[str] = None,
+        axes: Optional[Iterable[str]] = None,
         ax_property_name=None,
-        default_value: Any = None,
+        default_value: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
@@ -376,7 +377,7 @@ class Grid:
                 metric_var = self._ds[metric_varname].reset_coords(drop=True)
                 self._metrics[metric_axes].append(metric_var)
 
-    def _get_dims_from_axis(self, da, axis):
+    def _get_dims_from_axis(self, da: xr.DataArray, axis: Iterable[str]) -> List[str]:
         da = _maybe_unpack_vector_component(da)
         dim = []
         axis = _maybe_promote_str_to_list(axis)
@@ -547,8 +548,8 @@ class Grid:
         axis,
         to=None,
         keep_coords=False,
-        metric_weighted: Union[
-            str, Iterable[str], Dict[str, Union[str, Iterable[str]]]
+        metric_weighted: Optional[
+            Union[str, Iterable[str], Dict[str, Union[str, Iterable[str]]]]
         ] = None,
         other_component: Optional[Dict[str, xr.DataArray]] = None,
         **kwargs,
@@ -695,11 +696,11 @@ class Grid:
         self,
         func: Callable,
         *args: xr.DataArray,
-        axis: Sequence[Sequence[str]] = None,
+        axis: Optional[Sequence[Sequence[str]]] = None,
         signature: Union[str, _GridUFuncSignature] = "",
-        boundary_width: Mapping[str, Tuple[int, int]] = None,
-        boundary: Union[str, Mapping[str, str]] = None,
-        fill_value: Union[float, Mapping[str, float]] = None,
+        boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+        boundary: Optional[Union[str, Mapping[str, str]]] = None,
+        fill_value: Optional[Union[float, Mapping[str, float]]] = None,
         dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
         map_overlap: bool = False,
         **kwargs,
@@ -992,13 +993,24 @@ class Grid:
         """
         return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
-    def cumsum(self, da, axis, **kwargs):
+    def cumsum(
+        self,
+        da: xr.DataArray,
+        axis: Union[str, Iterable[str]],
+        to=None,
+        boundary=None,
+        fill_value=None,
+        metric_weighted=None,
+        keep_coords: bool = False,
+    ) -> xr.DataArray:
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
         position.
 
         Parameters
         ----------
+        da: xarray.DataArray
+            Data to apply cumsum to.
         axis : str or list or tuple
             Name of the axis on which to act. Multiple axes can be passed as list or
             tuple (e.g. ``['X', 'Y']``). Functions will be executed over each axis in the
@@ -1041,7 +1053,89 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
-        return self._1d_grid_ufunc_dispatch("cumsum", da, axis, **kwargs)
+
+        if isinstance(axis, str):
+            axis = [axis]
+        to = self._as_axis_kwarg_mapping(to)
+
+        if isinstance(metric_weighted, str):
+            metric_weighted = (metric_weighted,)
+        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
+
+        data = da
+        axes = [self.axes[ax_name] for ax_name in axis]
+        for ax in axes:
+            pos, dim = ax._get_position_name(da)
+
+            ax_metric_weighted = metric_weighted[ax.name]
+            if ax_metric_weighted:
+                metric = self.get_metric(data, ax_metric_weighted)
+                data = data * metric
+
+            # first use xarray's cumsum method
+            data = data.cumsum(dim=dim)
+
+            ax_to = to[ax.name]
+            if ax_to is None:
+                ax_to = ax._default_shifts[pos]
+
+            # now pad / trim the data as necessary
+            # here we enumerate all the valid possible shifts
+            if (pos == "center" and ax_to == "right") or (
+                pos == "left" and ax_to == "center"
+            ):
+                # do nothing, this is the default for how cumsum works
+                ax_boundary_width = {ax.name: (0, 0)}
+            elif (pos == "center" and ax_to == "left") or (
+                pos == "right" and ax_to == "center"
+            ):
+                data = data.isel(**{dim: slice(0, -1)})
+                ax_boundary_width = {ax.name: (1, 0)}
+            elif (pos == "center" and ax_to == "inner") or (
+                pos == "outer" and ax_to == "center"
+            ):
+                data = data.isel(**{dim: slice(0, -1)})
+                ax_boundary_width = {ax.name: (0, 0)}
+            elif (pos == "center" and ax_to == "outer") or (
+                pos == "inner" and ax_to == "center"
+            ):
+                ax_boundary_width = {ax.name: (1, 0)}
+            else:
+                raise ValueError(
+                    f"From `{pos}` to `{ax_to}` is not a valid position "
+                    f"shift for cumsum operation along axis {ax}."
+                )
+
+            padded = pad(
+                data=data,
+                grid=self,
+                boundary_width=ax_boundary_width,
+                boundary=boundary,
+                fill_value=fill_value,
+            )
+
+            # get dim with position to
+            new_dim_name = ax.coords[ax_to]
+            renamed = padded.rename(**{dim: new_dim_name})
+
+            # drop all coords to avoid conflicts when attaching new ones
+            coordless = renamed.drop_vars(renamed.coords)
+
+            reattached = _reattach_coords(
+                [coordless],
+                grid=self,
+                boundary_width=ax_boundary_width,
+                keep_coords=keep_coords,
+            )[0]
+
+            ax_metric_weighted = metric_weighted[ax.name]
+            if ax_metric_weighted:
+                metric = self.get_metric(reattached, ax_metric_weighted)
+                reattached = reattached / metric
+
+            data = reattached
+
+        return data
 
     def _apply_vector_function(self, function, vector, **kwargs):
         if not (len(vector) == 2 and isinstance(vector, dict)):
