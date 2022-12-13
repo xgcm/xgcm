@@ -1,3 +1,5 @@
+import warnings
+
 import cf_xarray
 
 
@@ -29,6 +31,10 @@ def cf_parser(ds):
             da_bounds = ds[bounds_var]
         else:
             # recreate bounds
+            warnings.warn(
+                "Did not find bounds for axis {ax}. Using cf-xarray to guess bounds, which is less accurate than precomputed values. Check results carefully. ",
+                UserWarning,
+            )
             da_bounds = ds.cf.add_bounds(center_grid_dim)[center_grid_dim + "_bounds"]
 
         [bounds_dim] = set(da_bounds.dims) - set(
