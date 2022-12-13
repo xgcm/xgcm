@@ -16,6 +16,8 @@ Breaking Changes
 
 Internal Changes
 ~~~~~~~~~~~~~~~~
+- pre-commit autoupdate frequency reduced (:pull:`563`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 Documentation
 ~~~~~~~~~~~~~
