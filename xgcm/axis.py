@@ -21,6 +21,7 @@ class Axis:
     ]  # TODO give this mapping from positions to dimension names a better name?
     _default_shifts: Mapping[str, str]
     _boundary: str
+    _fill_value: float
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
 
@@ -32,7 +33,8 @@ class Axis:
         default_shifts: Mapping[
             str, str
         ] = None,  # TODO type hint as Literal of the allowed options
-        boundary: str = "periodic",  # TODO type hint as Literal of the allowed options
+        boundary: str = None,  # TODO type hint as Literal of the allowed options
+        fill_value: float = None,
     ):
         """
         Create a new Axis object from an input dataset.
@@ -61,6 +63,8 @@ class Axis:
             * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
+        fill_value : float, optional
+            The value to use in the boundary condition when boundary='fill'.
         """
 
         self._name = name
@@ -79,11 +83,13 @@ class Axis:
         self._coords = coords
 
         # set default position shifts
+
         _default_shifts = {}
         if default_shifts is None:
             default_shifts = {}
         for pos in self.coords:
             # use user-specified value if present
+
             if pos in default_shifts:
                 _default_shifts[pos] = default_shifts[pos]
             else:
@@ -92,7 +98,7 @@ class Axis:
                         _default_shifts[pos] = possible_shift
                         break
 
-            if _default_shifts[pos] == pos:
+            if pos in _default_shifts and _default_shifts[pos] == pos:
                 # TODO stricter checking? e.g. non-adjacent positions?
                 raise ValueError(
                     f"Can't set the default shift for {pos} to be to {pos}"
@@ -100,11 +106,36 @@ class Axis:
 
         self._default_shifts = _default_shifts
 
+        if boundary is None:
+            boundary = "periodic"
         if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
             raise ValueError(
                 f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}"
             )
         self._boundary = boundary
+
+        if fill_value is None:
+            fill_value = 0.0
+        if not isinstance(fill_value, (int, float)):
+            raise TypeError("fill value must be an integer or a float")
+        self._fill_value = fill_value
+
+        # TODO backwards compatible attributes, to be removed --------------------
+
+        if self._boundary == "periodic":
+            self._periodic = True
+        else:
+            self._periodic = None
+
+    @property
+    def periodic(self) -> bool:
+        return self._periodic
+
+    # TODO end of backwards compatible section ------------------------------------
+
+    @property
+    def fill_value(self) -> float:
+        return self._fill_value
 
     @property
     def name(self) -> str:
@@ -121,6 +152,7 @@ class Axis:
     @property
     def boundary(self) -> str:
         return self._boundary
+
 
     def _get_position_name(self, da: xr.DataArray) -> Tuple[str, str]:
         """Return the position and name of the axis coordinate in a DataArray."""

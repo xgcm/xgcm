@@ -198,10 +198,12 @@ class Grid:
         periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
 
         for ax, p in periodic.items():
-            if p is True:
+            if p is True and boundary[ax] is None:
                 boundary[ax] = "periodic"
 
         default_shifts = self._as_axis_kwarg_mapping(default_shifts, axes=all_axes)
+
+        fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
 
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
@@ -210,9 +212,6 @@ class Grid:
         # TODO: involve multiple axes. In a future PR we should remove this info from the axes
         # TODO: but make sure to properly port the checking functionality!
 
-        print(coords)
-        print(boundary)
-
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
@@ -220,8 +219,9 @@ class Grid:
                 axis_name,
                 ds,
                 coords=coords[axis_name],
-                default_shifts=default_shifts[axis_name],
-                boundary=boundary[axis_name],
+                default_shifts=default_shifts.get(axis_name, None),
+                boundary=boundary.get(axis_name, None),
+                fill_value=fill_value.get(axis_name, None),
             )
 
         if face_connections is not None:
@@ -237,8 +237,6 @@ class Grid:
         self,
         kwargs: Union[Any, Dict[str, Any]],
         axes: Optional[Iterable[str]] = None,
-        ax_property_name=None,
-        default_value: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
@@ -257,20 +255,22 @@ class Grid:
             for axname in axes:
                 parsed_kwargs[axname] = kwargs
 
-        # Check axis properties for values that were not provided (before using the default)
-        if ax_property_name is not None:
-            for axname in axes:
-                if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
-                    ax_property = self.axes[axname][ax_property_name]
-                    parsed_kwargs[axname] = ax_property
+        return parsed_kwargs
 
-        # if None set to default value.
-        parsed_kwargs_w_defaults = {
-            k: default_value if v is None else v for k, v in parsed_kwargs.items()
-        }
-        # At this point the output should be guaranteed to have an entry per existing axis.
-        # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
-        return parsed_kwargs_w_defaults
+        # # Check axis properties for values that were not provided (before using the default)
+        # if ax_property_name is not None:
+        #     for axname in axes:
+        #         if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
+        #             ax_property = self.axes[axname][ax_property_name]
+        #             parsed_kwargs[axname] = ax_property
+        #
+        # # if None set to default value.
+        # parsed_kwargs_w_defaults = {
+        #     k: default_value if v is None else v for k, v in parsed_kwargs.items()
+        # }
+        # # At this point the output should be guaranteed to have an entry per existing axis.
+        # # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
+        # return parsed_kwargs_w_defaults
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
