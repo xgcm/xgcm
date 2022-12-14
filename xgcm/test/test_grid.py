@@ -14,6 +14,28 @@ from .datasets import periodic_1d  # noqa: F401
 from .datasets import periodic_2d  # noqa: F401
 
 
+class TestGrid:
+    def test_init(self):
+        grid = Grid(ds, coords=..., autoparse_metadata=False)
+
+    def test_raise_on_inconsistent_input(self):
+        ...
+
+    def test_kwargs_mapped_over_multiple_axes(self):
+        ...
+
+    def test_repr(self):
+        ...
+
+    def test_properties(self):
+        # test boundaries
+
+        # test face connections
+
+        # test metrics
+        ...
+
+
 @pytest.mark.parametrize(
     "boundary",
     [
@@ -27,6 +49,9 @@ from .datasets import periodic_2d  # noqa: F401
 @pytest.mark.parametrize("fill_value", [None, 0, 1.0])
 def test_grid_create(all_datasets, boundary, fill_value):
     ds, periodic, expected = all_datasets
+    print(ds)
+    print(ds["XC"].attrs)
+    print(ds["XG"].attrs)
     grid = Grid(ds, periodic=periodic)
     assert grid is not None
     for ax in grid.axes.values():

@@ -22,13 +22,17 @@ class Axis:
     _default_shifts: Mapping[str, str]
     _boundary: str
 
+    """A single direction along a model grid, containing potentially multiple cell positions."""
+
     def __init__(
         self,
-        name,
-        ds,
-        coords,  # TODO rename to dims
-        default_shifts=None,
-        boundary="periodic",
+        name: str,
+        ds: xr.Dataset,
+        coords: Mapping[str, str],  # TODO rename to dims
+        default_shifts: Mapping[
+            str, str
+        ] = None,  # TODO type hint as Literal of the allowed options
+        boundary: str = "periodic",  # TODO type hint as Literal of the allowed options
     ):
         """
         Create a new Axis object from an input dataset.

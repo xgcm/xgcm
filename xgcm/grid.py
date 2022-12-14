@@ -59,15 +59,17 @@ class Grid:
 
     def __init__(
         self,
-        ds,
-        check_dims=True,
-        periodic=True,
-        default_shifts=None,
-        face_connections=None,
-        coords=None,
-        metrics=None,
-        boundary=None,
-        fill_value=None,
+        ds: xr.Dataset,
+        coords: Mapping[str, Mapping[str, str]] = None,
+        periodic: bool = True,
+        fill_value: float | Mapping[str, float] = None,
+        default_shifts: Mapping[
+            str, str
+        ] = None,  # TODO check if one default shift can be applied to many Axes
+        boundary: str | Mapping[str, str] = None,
+        face_connections=None,  # TODO type hint this
+        metrics: Mapping[Tuple[str], List[str]] = None,  # TODO type hint this
+        autoparse_metadata: bool = True,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -77,18 +79,6 @@ class Grid:
         ds : xarray.Dataset
             Contains the relevant grid information. Coordinate attributes
             should conform to Comodo conventions [1]_.
-        check_dims : bool, optional
-            Whether to check the compatibility of input data dimensions before
-            performing grid operations.
-        periodic : {True, False, list}
-            Whether the grid is periodic (i.e. "wrap-around"). If a list is
-            specified (e.g. ``['X', 'Y']``), the axis names in the list will be
-            be periodic and any other axes founds will be assumed non-periodic.
-        default_shifts : dict
-            A dictionary of dictionaries specifying default grid position
-            shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
-        face_connections : dict
-            Grid topology
         coords : dict, optional
             Specifies positions of dimension names along axes X, Y, Z, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
@@ -99,13 +89,17 @@ class Grid:
             at the `left` position along the `X` axis).
             If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
-        metrics : dict, optional
-            Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
-            metric variable names in the dataset
-            (e.g. {('X',):['dx_t'], ('X', 'Y'):['area_tracer', 'area_u']}
-            for the cell distance in the x-direction ``dx_t`` and the
-            horizontal cell areas ``area_tracer`` and ``area_u``, located at
-            different grid positions).
+        periodic : {True, False, list}
+            Whether the grid is periodic (i.e. "wrap-around"). If a list is
+            specified (e.g. ``['X', 'Y']``), the axis names in the list will be
+            periodic and any other axes founds will be assumed non-periodic.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
+        default_shifts : dict
+            A dictionary of dictionaries specifying default grid position
+            shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
@@ -119,17 +113,21 @@ class Grid:
               points nearest to the edge
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
-        fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
-            Optionally a dict mapping axis name to seperate values for each axis
-            can be passed.
+        face_connections : dict
+            Grid topology
+        metrics : dict, optional
+            Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
+            metric variable names in the dataset
+            (e.g. {('X',):['dx_t'], ('X', 'Y'):['area_tracer', 'area_u']}
+            for the cell distance in the x-direction ``dx_t`` and the
+            horizontal cell areas ``area_tracer`` and ``area_u``, located at
+            different grid positions).
 
         REFERENCES
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
         self._ds = ds
-        self._check_dims = check_dims
 
         if boundary:
             warnings.warn(
@@ -167,11 +165,23 @@ class Grid:
                 category=DeprecationWarning,
             )
 
-        if coords:
-            all_axes = coords.keys()
-        else:
-            all_axes = comodo.get_all_axes(ds)
+        if autoparse_metadata:
+            # TODO (Julius in #568) full hierarchy of conventions here
+            # but override with any user-given options
+
+            # try comodo parsing
+            comodo_ax_names = comodo.get_all_axes(ds)
             coords = {}
+            for ax_name in comodo_ax_names:
+                coords[ax_name] = comodo.get_axis_positions_and_coords(ds, ax_name)
+
+        if not coords:
+            raise ValueError(
+                "Could not determine Axis names - please provide them in the coords kwarg "
+                "or provide a dataset from which they can be parsed"
+            )
+
+        all_axes = coords.keys()
 
         # Convert all inputs to axes-kwarg mappings
         # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?

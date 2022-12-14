@@ -1,9 +1,10 @@
-import datasets
 import numpy as np
 import pytest
 import xarray as xr
 
 from xgcm.axis import Axis
+
+from . import datasets
 
 
 def periodic_1d():
@@ -57,6 +58,15 @@ class TestInit:
         # TODO (these deafult shift values make no physical sense)
         assert axis.default_shifts == {"left": "inner", "center": "outer"}
         assert axis.boundary == "fill"
+
+    def test_inconsistent_dims(self):
+        """Test when xgcm coord names are not present in dataset dims"""
+        with pytest.raises(ValueError, match="Could not find dimension"):
+            Axis(
+                name="X",
+                ds=periodic_1d(),
+                coords={"center": "lat", "left": "lon"},
+            )
 
     def test_invalid_args(self):
 
