@@ -16,7 +16,7 @@ from .datasets import periodic_2d  # noqa: F401
 
 class TestGrid:
     def test_init(self):
-        #grid = Grid(ds, coords=..., autoparse_metadata=False)
+        # grid = Grid(ds, coords=..., autoparse_metadata=False)
         ...
 
     def test_raise_on_inconsistent_input(self):

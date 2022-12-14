@@ -153,7 +153,6 @@ class Axis:
     def boundary(self) -> str:
         return self._boundary
 
-
     def _get_position_name(self, da: xr.DataArray) -> Tuple[str, str]:
         """Return the position and name of the axis coordinate in a DataArray."""
 
