@@ -87,6 +87,12 @@ class TestInit:
                 boundary="blargh",
             )
 
+    def test_repr(self):
+        axis = Axis(name="X", ds=periodic_1d(), coords={"center": "XC", "left": "XG"})
+        repr = axis.__repr__
+
+        assert repr == "<xgcm.Axis()>"
+
 
 def test_get_position_name():
     ds = periodic_1d()

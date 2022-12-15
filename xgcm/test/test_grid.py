@@ -16,7 +16,7 @@ from .datasets import periodic_2d  # noqa: F401
 
 class TestGrid:
     def test_init(self):
-        #grid = Grid(ds, coords=..., autoparse_metadata=False)
+        # grid = Grid(ds, coords=..., autoparse_metadata=False)
         ...
 
     def test_raise_on_inconsistent_input(self):
@@ -161,9 +161,9 @@ def test_invalid_boundary_error():
 
 def test_invalid_fill_value_error():
     ds = datasets["1d_left"]
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         Grid(ds, fill_value="bad")
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         Grid(ds, fill_value={"X": "bad"})
 
 
@@ -188,6 +188,10 @@ def test_keep_coords(funcname, gridtype):
     ds, coords, metrics = datasets_grid_metric(gridtype)
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(ds, coords=coords, metrics=metrics)
+
+    print(grid)
+    grid.axes["T"]._default_shifts = {}
+
     func = getattr(grid, funcname)
     for axis_name in grid.axes.keys():
         result = func(ds.tracer, axis_name)
@@ -364,14 +368,6 @@ def test_boundary_global_input(funcname, boundary, fill_value):
     grid_manual = Grid(
         ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
     )
-
-    for n, ax in grid_manual.axes.items():
-        print(ax.boundary)
-        print(ax.fill_value)
-
-    for n, ax in grid_global.axes.items():
-        print(ax.boundary)
-        print(ax.fill_value)
 
     func_manual = getattr(grid_manual, funcname)
     manual_result = func_manual(

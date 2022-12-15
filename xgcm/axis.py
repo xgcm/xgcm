@@ -84,27 +84,25 @@ class Axis:
 
         # set default position shifts
 
-        _default_shifts = {}
         if default_shifts is None:
             default_shifts = {}
+
+        self._default_shifts = {}
         for pos in self.coords:
             # use user-specified value if present
-
             if pos in default_shifts:
-                _default_shifts[pos] = default_shifts[pos]
+                self._default_shifts[pos] = default_shifts[pos]
             else:
                 for possible_shift in FALLBACK_SHIFTS[pos]:
                     if possible_shift in self.coords:
-                        _default_shifts[pos] = possible_shift
+                        self._default_shifts[pos] = possible_shift
                         break
 
-            if pos in _default_shifts and _default_shifts[pos] == pos:
+            if pos in self._default_shifts and self._default_shifts[pos] == pos:
                 # TODO stricter checking? e.g. non-adjacent positions?
                 raise ValueError(
                     f"Can't set the default shift for {pos} to be to {pos}"
                 )
-
-        self._default_shifts = _default_shifts
 
         if boundary is None:
             boundary = "periodic"
@@ -153,6 +151,24 @@ class Axis:
     def boundary(self) -> str:
         return self._boundary
 
+    def __repr__(self):
+        is_periodic = "periodic" if self._periodic else "not periodic"
+        summary = [
+            "<xgcm.Axis '%s' (%s, boundary=%r)>"
+            % (self.name, is_periodic, self.boundary)
+        ]
+        summary.append("Axis Coordinates:")
+        summary += self._coord_desc()
+        return "\n".join(summary)
+
+    def _coord_desc(self):
+        summary = []
+        for name, cname in self.coords.items():
+            coord_info = "  * %-8s %s" % (name, cname)
+            if name in self._default_shifts:
+                coord_info += " --> %s" % self._default_shifts[name]
+            summary.append(coord_info)
+        return summary
 
     def _get_position_name(self, da: xr.DataArray) -> Tuple[str, str]:
         """Return the position and name of the axis coordinate in a DataArray."""

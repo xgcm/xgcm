@@ -380,8 +380,6 @@ def pad(
         dict key, matching one of the grid axes)
     """
 
-    print(boundary)
-
     # TODO rename this globally
     padding = boundary
     padding_width = boundary_width
@@ -391,15 +389,9 @@ def pad(
     padding = grid._as_axis_kwarg_mapping(padding)
     padding = padding_defaults | padding
 
-    print(padding)
-
-    print(fill_value)
-
     fill_value_defaults = {ax: grid.axes[ax].fill_value for ax in grid.axes}
     fill_value = grid._as_axis_kwarg_mapping(fill_value)
     fill_value = fill_value_defaults | fill_value
-
-    print(fill_value)
 
     # Exit without padding if all widths are zero
     if padding_width is None or all(
