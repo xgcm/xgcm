@@ -167,6 +167,10 @@ class Grid:
 
         if coords is None:
             coords = {}
+        else:
+            # TODO this is only to retain backwards compatibility
+            # preferred would be to remove this line so autoparsing is combined with user input.
+            autoparse_metadata = False
 
         if autoparse_metadata:
             # TODO (Julius in #568) full hierarchy of conventions here
@@ -677,7 +681,6 @@ class Grid:
 
         signatures = []
         for ax_name in axis:
-            print(ax_name)
             ax = self.axes[ax_name]
 
             from_pos, _ = ax._get_position_name(da)  # removed `dim` since it wasnt used

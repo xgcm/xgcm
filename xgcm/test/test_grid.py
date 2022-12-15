@@ -48,6 +48,22 @@ class TestGrid:
         # test metrics
         ...
 
+def periodic_1d_single_pos():
+    N = 5
+    ds = xr.Dataset(
+        {"data_c": (["XC"], np.random.rand(N))},
+        coords={
+            "XC": (["XC"], 2 * np.pi / N * (np.arange(0, N) + 0.5), {"axis": "X"}),
+        },
+    )
+    return ds
+
+def test_raise_on_operation_not_valid_for_same_position():
+    ds = periodic_1d_single_pos()
+    grid = Grid(ds, coords={'X':{'center':'XC'}})
+    with pytest.raises(NotImplementedError, match="Could not find any pre-defined diff grid ufuncs"):
+        grid.diff(ds.data_c, 'X', to='center')
+
 
 @pytest.mark.parametrize(
     "boundary",
@@ -200,9 +216,6 @@ def test_keep_coords(funcname, gridtype):
     ds, coords, metrics = datasets_grid_metric(gridtype)
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(ds, coords=coords, metrics=metrics)
-
-    print(grid)
-    grid.axes["T"]._default_shifts = {}
 
     func = getattr(grid, funcname)
     for axis_name in grid.axes.keys():
