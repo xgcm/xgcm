@@ -199,14 +199,3 @@ class Axis:
     # TODO repr
 
     # TODO equals method
-
-    def _assert_axes_equal(ax1, ax2):
-        assert ax1.name == ax2.name
-        for pos, coord in ax1.coords.items():
-            assert pos in ax2.coords
-            assert coord == ax2.coords[pos]
-        assert ax1._periodic == ax2._periodic
-        assert ax1._default_shifts == ax2._default_shifts
-        assert ax1._facedim == ax2._facedim
-        # TODO: make this work...
-        # assert ax1._connections == ax2._connections
