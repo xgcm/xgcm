@@ -197,7 +197,7 @@ class Grid:
         # Convert all inputs to axes-kwarg mappings
         # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
-        boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
+        boundary = self._map_kwargs_over_axes(boundary, axes=all_axes)
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
 
@@ -206,15 +206,15 @@ class Grid:
         # remove it later
         if isinstance(periodic, list):
             periodic = {axname: True for axname in periodic}
-        periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
+        periodic = self._map_kwargs_over_axes(periodic, axes=all_axes)
 
         for ax, p in periodic.items():
             if p is True and boundary[ax] is None:
                 boundary[ax] = "periodic"
 
-        default_shifts = self._as_axis_kwarg_mapping(default_shifts, axes=all_axes)
+        default_shifts = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
 
-        fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+        fill_value = self._map_kwargs_over_axes(fill_value, axes=all_axes)
 
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
@@ -244,7 +244,7 @@ class Grid:
             for key, value in metrics.items():
                 self.set_metrics(key, value)
 
-    def _as_axis_kwarg_mapping(
+    def _map_kwargs_over_axes(
         self,
         kwargs: Union[Any, Dict[str, Any]],
         axes: Optional[Iterable[str]] = None,
@@ -258,30 +258,30 @@ class Grid:
         if axes is None:
             axes = self.axes
 
-        parsed_kwargs: Dict[str, Any] = dict()
+        mapped_kwargs: Dict[str, Any] = dict()
 
         if isinstance(kwargs, dict):
-            parsed_kwargs = kwargs
+            mapped_kwargs = kwargs
         else:
             for axname in axes:
-                parsed_kwargs[axname] = kwargs
+                mapped_kwargs[axname] = kwargs
 
-        return parsed_kwargs
+        return mapped_kwargs
 
-        # # Check axis properties for values that were not provided (before using the default)
-        # if ax_property_name is not None:
-        #     for axname in axes:
-        #         if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
-        #             ax_property = self.axes[axname][ax_property_name]
-        #             parsed_kwargs[axname] = ax_property
-        #
-        # # if None set to default value.
-        # parsed_kwargs_w_defaults = {
-        #     k: default_value if v is None else v for k, v in parsed_kwargs.items()
-        # }
-        # # At this point the output should be guaranteed to have an entry per existing axis.
-        # # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
-        # return parsed_kwargs_w_defaults
+    def _complete_user_kwargs_using_axis_defaults(self, user_kwargs, property):
+        """
+        Takes user choice of values for a given kwarg, and returns full per-axis mapping of kwargs,
+        filling in with Axis defaults when needed.
+        """
+
+        defaults = {ax: getattr(self.axes[ax], property) for ax in self.axes}
+        if user_kwargs is not None:
+            user_kwargs = self._map_kwargs_over_axes(user_kwargs)
+            user_kwargs = defaults | user_kwargs
+        else:
+            user_kwargs = defaults
+
+        return user_kwargs
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -606,11 +606,11 @@ class Grid:
         data_unpacked = _maybe_unpack_vector_component(data)
 
         # convert input arguments into axes-kwarg mappings
-        to = self._as_axis_kwarg_mapping(to)
+        to = self._map_kwargs_over_axes(to)
 
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
-        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
+        metric_weighted = self._map_kwargs_over_axes(metric_weighted)
 
         signatures = self._create_1d_grid_ufunc_signatures(
             data_unpacked, axis=axis, to=to
@@ -1080,11 +1080,11 @@ class Grid:
 
         if isinstance(axis, str):
             axis = [axis]
-        to = self._as_axis_kwarg_mapping(to)
+        to = self._map_kwargs_over_axes(to)
 
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
-        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
+        metric_weighted = self._map_kwargs_over_axes(metric_weighted)
 
         data = da
         axes = [self.axes[ax_name] for ax_name in axis]
