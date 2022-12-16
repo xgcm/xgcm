@@ -38,7 +38,7 @@ class TestGrid:
 
         print(periodic_1d)
 
-        dodgy_periodic = {'X': periodic, 'Y': False}
+        dodgy_periodic = {"X": periodic, "Y": False}
         with pytest.raises(ValueError, match="these axes are not present"):
             Grid(ds, periodic=dodgy_periodic, coords=coords)
 

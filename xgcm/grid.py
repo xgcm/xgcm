@@ -54,8 +54,9 @@ def _maybe_promote_str_to_list(a):
 def _check_no_extraneous_axes_in_kwarg_mapping(kwarg_mapping, axes, property):
     if set(kwarg_mapping.keys()) != set(axes):
         extra_axes = set(kwarg_mapping.keys()) - set(axes)
-        raise ValueError(f"'{property}' kwargs contain values for axes {extra_axes}, but these axes are not present on grid")
-
+        raise ValueError(
+            f"'{property}' kwargs contain values for axes {extra_axes}, but these axes are not present on grid"
+        )
 
 
 class Grid:
@@ -226,7 +227,9 @@ class Grid:
                     boundary[ax] = "fill"
 
         default_shifts = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
-        _check_no_extraneous_axes_in_kwarg_mapping(default_shifts, all_axes, "default_shifts")
+        _check_no_extraneous_axes_in_kwarg_mapping(
+            default_shifts, all_axes, "default_shifts"
+        )
 
         fill_value = self._map_kwargs_over_axes(fill_value, axes=all_axes)
         _check_no_extraneous_axes_in_kwarg_mapping(fill_value, all_axes, "fill_value")
