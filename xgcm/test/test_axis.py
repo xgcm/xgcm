@@ -89,9 +89,9 @@ class TestInit:
 
     def test_repr(self):
         axis = Axis(name="X", ds=periodic_1d(), coords={"center": "XC", "left": "XG"})
-        repr = axis.__repr__
+        repr = axis.__repr__()
 
-        assert repr == "<xgcm.Axis()>"
+        assert repr.startswith("<xgcm.Axis 'X'")
 
 
 def test_get_position_name():

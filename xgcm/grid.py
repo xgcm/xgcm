@@ -209,8 +209,11 @@ class Grid:
         periodic = self._map_kwargs_over_axes(periodic, axes=all_axes)
 
         for ax, p in periodic.items():
-            if p is True and boundary[ax] is None:
-                boundary[ax] = "periodic"
+            if boundary[ax] is None:
+                if p is True:
+                    boundary[ax] = "periodic"
+                else:
+                    boundary[ax] = "fill"
 
         default_shifts = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
 

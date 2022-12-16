@@ -386,7 +386,9 @@ def pad(
 
     # Always promote the padding/fill_value to a dict of form {ax: kwarg}.
     padding = grid._complete_user_kwargs_using_axis_defaults(padding, "boundary")
-    fill_value = grid._complete_user_kwargs_using_axis_defaults(fill_value, "fill_value")
+    fill_value = grid._complete_user_kwargs_using_axis_defaults(
+        fill_value, "fill_value"
+    )
 
     # Exit without padding if all widths are zero
     if padding_width is None or all(
