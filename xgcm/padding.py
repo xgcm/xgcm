@@ -386,8 +386,11 @@ def pad(
 
     # Always promote the padding/fill_value to a axed dict.
     padding_defaults = {ax: grid.axes[ax].boundary for ax in grid.axes}
-    padding = grid._as_axis_kwarg_mapping(padding)
-    padding = padding_defaults | padding
+    if padding is not None:
+        padding = grid._as_axis_kwarg_mapping(padding)
+        padding = padding_defaults | padding
+    else:
+        padding = padding_defaults
 
     fill_value_defaults = {ax: grid.axes[ax].fill_value for ax in grid.axes}
     fill_value = grid._as_axis_kwarg_mapping(fill_value)

@@ -48,6 +48,7 @@ class TestGrid:
         # test metrics
         ...
 
+
 def periodic_1d_single_pos():
     N = 5
     ds = xr.Dataset(
@@ -58,11 +59,14 @@ def periodic_1d_single_pos():
     )
     return ds
 
+
 def test_raise_on_operation_not_valid_for_same_position():
     ds = periodic_1d_single_pos()
-    grid = Grid(ds, coords={'X':{'center':'XC'}})
-    with pytest.raises(NotImplementedError, match="Could not find any pre-defined diff grid ufuncs"):
-        grid.diff(ds.data_c, 'X', to='center')
+    grid = Grid(ds, coords={"X": {"center": "XC"}})
+    with pytest.raises(
+        NotImplementedError, match="Could not find any pre-defined diff grid ufuncs"
+    ):
+        grid.diff(ds.data_c, "X", to="center")
 
 
 @pytest.mark.parametrize(

@@ -687,7 +687,6 @@ class Grid:
 
             to_pos = to[ax_name]
             if to_pos is None:
-                print(ax._default_shifts)
                 to_pos = ax._default_shifts[from_pos]
 
             # TODO build this more directly?
