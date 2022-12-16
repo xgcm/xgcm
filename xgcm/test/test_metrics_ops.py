@@ -354,7 +354,7 @@ class TestDifferentGridPositionsParametrized:
         ds, coords, metrics = datasets_grid_metric("C")
 
         del coords[axis]
-
+        del periodic[axis]
         del_metrics = [k for k in metrics.keys() if axis in k]
         for dm in del_metrics:
             del metrics[dm]

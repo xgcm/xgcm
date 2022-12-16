@@ -85,7 +85,7 @@ def test_grid_create(all_datasets, boundary, fill_value):
     assert grid is not None
 
     for ax in grid.axes.values():
-        assert ax.boundary is "periodic"
+        assert ax.boundary is "periodic" if periodic else "fill"
         assert ax.fill_value == 0.0
 
     grid = Grid(ds, periodic=periodic, boundary=boundary, fill_value=fill_value)
