@@ -31,8 +31,16 @@ class TestGrid:
         # grid = Grid(ds, coords=..., autoparse_metadata=False)
         ...
 
-    def test_raise_on_inconsistent_input(self):
-        ...
+    def test_raise_on_inconsistent_input(self, periodic_1d):
+        # TODO
+        ds, periodic, expected = periodic_1d
+        coords = expected["axes"]
+
+        print(periodic_1d)
+
+        dodgy_periodic = {'X': periodic, 'Y': False}
+        with pytest.raises(ValueError, match="these axes are not present"):
+            Grid(ds, periodic=dodgy_periodic, coords=coords)
 
     def test_kwargs_mapped_over_multiple_axes(self):
         ...

@@ -51,6 +51,13 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
+def _check_no_extraneous_axes_in_kwarg_mapping(kwarg_mapping, axes, property):
+    if set(kwarg_mapping.keys()) != set(axes):
+        extra_axes = set(kwarg_mapping.keys()) - set(axes)
+        raise ValueError(f"'{property}' kwargs contain values for axes {extra_axes}, but these axes are not present on grid")
+
+
+
 class Grid:
     """
     An object with multiple :class:`xgcm.Axis` objects representing different
@@ -195,11 +202,12 @@ class Grid:
         all_axes = coords.keys()
 
         # Convert all inputs to axes-kwarg mappings
-        # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
         boundary = self._map_kwargs_over_axes(boundary, axes=all_axes)
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
+        print(boundary)
+        _check_no_extraneous_axes_in_kwarg_mapping(boundary, all_axes, "boundary")
 
         # Parse list input. This case does only apply to periodic.
         # Since we plan on deprecating it soon handle it here, so we can easily
@@ -207,6 +215,8 @@ class Grid:
         if isinstance(periodic, list):
             periodic = {axname: True for axname in periodic}
         periodic = self._map_kwargs_over_axes(periodic, axes=all_axes)
+
+        _check_no_extraneous_axes_in_kwarg_mapping(periodic, all_axes, "periodic")
 
         for ax, p in periodic.items():
             if boundary[ax] is None:
@@ -216,8 +226,10 @@ class Grid:
                     boundary[ax] = "fill"
 
         default_shifts = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
+        _check_no_extraneous_axes_in_kwarg_mapping(default_shifts, all_axes, "default_shifts")
 
         fill_value = self._map_kwargs_over_axes(fill_value, axes=all_axes)
+        _check_no_extraneous_axes_in_kwarg_mapping(fill_value, all_axes, "fill_value")
 
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
