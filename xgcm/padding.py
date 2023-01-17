@@ -379,16 +379,15 @@ def pad(
         This needs to be passed as a dictionary (with the direction of that component identified by the
         dict key, matching one of the grid axes)
     """
+
     # TODO rename this globally
     padding = boundary
     padding_width = boundary_width
 
-    # Always promote the padding/fill_value to a axed dict.
-    padding = grid._as_axis_kwarg_mapping(
-        padding, ax_property_name="boundary", default_value="periodic"
-    )
-    fill_value = grid._as_axis_kwarg_mapping(
-        fill_value, ax_property_name="fill_value", default_value=0.0
+    # Always promote the padding/fill_value to a dict of form {ax: kwarg}.
+    padding = grid._complete_user_kwargs_using_axis_defaults(padding, "boundary")
+    fill_value = grid._complete_user_kwargs_using_axis_defaults(
+        fill_value, "fill_value"
     )
 
     # Exit without padding if all widths are zero
@@ -398,15 +397,6 @@ def pad(
         # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
         # TODO: No padding would occur in that situation. Should we warn the user?
         return data
-
-    # Check axis properties for padding/fill_value, but do not overwrite
-    for axname, axis in grid.axes.items():
-        if axname not in padding.keys():
-            # Use default axis boundary for axis unless overridden
-            padding[axname] = axis.boundary
-        if axname not in fill_value.keys():
-            # Use default axis boundary for axis unless overridden
-            fill_value[axname] = axis.fill_value
 
     # TODO: Refactor, if the max value is 0, complain.
     # Maybe move this check upstream, so that either none or 0 everywhere does not even call pad
@@ -420,7 +410,7 @@ def pad(
     data = _strip_all_coords(data)
 
     # If any axis has connections we need to use the complex padding
-    if any([any(grid.axes[ax]._connections.keys()) for ax in grid.axes]):
+    if grid._connections:
         da_padded = _pad_face_connections(
             data,
             grid,
