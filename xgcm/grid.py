@@ -230,8 +230,8 @@ class Grid:
         self.axes = OrderedDict()
         for axis_name in all_axes:
             self.axes[axis_name] = Axis(
-                axis_name,
                 ds,
+                axis_name,
                 coords=coords[axis_name],
                 default_shifts=default_shifts.get(axis_name, None),
                 boundary=boundary.get(axis_name, None),

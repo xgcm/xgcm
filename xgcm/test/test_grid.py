@@ -26,12 +26,45 @@ def _assert_axes_equal(ax1, ax2):
     # assert ax1._connections == ax2._connections
 
 
-class TestGrid:
-    def test_init(self):
-        # grid = Grid(ds, coords=..., autoparse_metadata=False)
+class TestInvalidGrid:
+    def test_raise_non_str_axis_name(self, periodic_2d):
+        with pytest.raises(TypeError, match="name argument must be of type str"):
+            ds, *_ = datasets_grid_metric("C")
+            Grid(ds, coords={1: {"left": "XG"}})
+
+    def test_non_ds_type(self):
+        with pytest.raises(
+            TypeError, match="ds argument must be of type xarray.Dataset"
+        ):
+            Grid(4, coords={"ax1": {"left": "XG"}})
+
+    def test_invalid_position_name(self):
+        with pytest.raises(ValueError):
+            ds, *_ = datasets_grid_metric("C")
+            Grid(ds, coords={"ax1": {"outer space": "XG"}})
+
+    def test_nonexistent_dimension(self):
+        with pytest.raises(ValueError):
+            ds, *_ = datasets_grid_metric("C")
+            Grid(ds, coords={"ax1": {"center": "XGEEEEEEEE"}})
+
+    @pytest.mark.xfail(reason="Not yet implemented")
+    def test_duplicate_values(self):
+        with pytest.raises(ValueError):
+            ds, *_ = datasets_grid_metric("C")
+            Grid(ds, coords={"ax1": {"left": "xt", "right": "xt"}})
+
+        with pytest.raises(ValueError):
+            ds, *_ = datasets_grid_metric("C")
+            Grid(ds, coords={"ax1": {"left": "xt"}, "ax2": {"right": "xt"}})
+
+    def test_inconsistent_lengths(self):
+        # TODO incompatible lengths (e.g. outer dim not 1 element longer than center dim)
         ...
 
-    def test_raise_on_inconsistent_input(self):
+
+class TestGrid:
+    def test_init(self):
         ...
 
     def test_kwargs_mapped_over_multiple_axes(self):

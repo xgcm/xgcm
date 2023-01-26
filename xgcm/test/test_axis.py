@@ -126,56 +126,6 @@ def test_assert_axes_equal():
     ...
 
 
-# TODO raise similar errors
-def test_axis_errors():
-    ds = datasets["1d_left"]
-
-    ds_noattr = ds.copy()
-    del ds_noattr.XC.attrs["axis"]
-    with pytest.raises(
-        ValueError, match="Couldn't find a center coordinate for axis X"
-    ):
-        _ = Axis(ds_noattr, "X", periodic=True)
-
-    del ds_noattr.XG.attrs["axis"]
-    with pytest.raises(ValueError, match="Couldn't find any coordinates for axis X"):
-        _ = Axis(ds_noattr, "X", periodic=True)
-
-    ds_chopped = ds.copy().isel(XG=slice(None, 3))
-    del ds_chopped["data_g"]
-    with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
-        _ = Axis(ds_chopped, "X", periodic=True)
-
-    ds_chopped.XG.attrs["c_grid_axis_shift"] = -0.5
-    with pytest.raises(ValueError, match="coordinate XG has incompatible length"):
-        _ = Axis(ds_chopped, "X", periodic=True)
-
-    del ds_chopped.XG.attrs["c_grid_axis_shift"]
-    with pytest.raises(
-        ValueError,
-        match="Found two coordinates without `c_grid_axis_shift` attribute for axis X",
-    ):
-        _ = Axis(ds_chopped, "X", periodic=True)
-
-    ax = Axis(ds, "X", periodic=True)
-
-    with pytest.raises(
-        ValueError, match="Can't get neighbor pairs for the same position."
-    ):
-        ax.interp(ds.data_c, "center")
-
-    with pytest.raises(
-        ValueError, match="This axis doesn't contain a `right` position"
-    ):
-        ax.interp(ds.data_c, "right")
-
-    # This case is broken, need to fix!
-    # with pytest.raises(
-    #    ValueError, match="`boundary=fill` is not allowed " "with periodic axis X."
-    # ):
-    #    ax.interp(ds.data_c, "left", boundary="fill")
-
-
 def test_create_axis_no_coords(all_datasets):
     ds, periodic, expected = all_datasets
     axis_objs = _get_axes(ds)

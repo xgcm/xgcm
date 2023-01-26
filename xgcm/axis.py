@@ -81,12 +81,16 @@ class Axis:
         """
 
         if not isinstance(name, str):
-            raise TypeError
+            raise TypeError(
+                f"name argument must be of type str, but is of type {type(name)}"
+            )
 
         self._name = name
 
         if not isinstance(ds, xr.Dataset):
-            raise TypeError
+            raise TypeError(
+                f"ds argument must be of type xarray.Dataset, but is of type {type(ds)}"
+            )
 
         coords = _maybe_parse_from_metadata(coords, ds, name)
 
