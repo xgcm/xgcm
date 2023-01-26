@@ -2,6 +2,7 @@ from typing import Mapping, Tuple
 
 import xarray as xr
 
+from . import comodo
 from .padding import _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
 
 VALID_POSITION_NAMES = "center|left|right|inner|outer"
@@ -12,6 +13,18 @@ FALLBACK_SHIFTS = {
     "outer": ("center",),
     "inner": ("center",),
 }
+
+
+def _maybe_parse_from_metadata(coords, ds, axis_name):
+    """Any logic for auto-parsing from various conventions should live here"""
+    if coords:
+        # use specified coords
+        return coords
+    else:
+        # fall back on comodo conventions
+        print(ds)
+        print(axis_name)
+        return comodo.get_axis_positions_and_coords(ds, axis_name)
 
 
 class Axis:
@@ -27,9 +40,9 @@ class Axis:
 
     def __init__(
         self,
-        name: str,
         ds: xr.Dataset,
-        coords: Mapping[str, str],  # TODO rename to dims
+        name: str,
+        coords: Mapping[str, str] = None,  # TODO rename to dims
         default_shifts: Mapping[
             str, str
         ] = None,  # TODO type hint as Literal of the allowed options
@@ -41,10 +54,10 @@ class Axis:
 
         Parameters
         ----------
-        name : str
-            Name of this Axis.
         ds : xarray.Dataset
             Contains the relevant grid information.
+        name : str
+            Name of this Axis.
         coords : dict
             Mapping of axis positions to coordinate names
             (e.g. `{'center': 'XC', 'left: 'XG'}`)
@@ -67,10 +80,17 @@ class Axis:
             The value to use in the boundary condition when boundary='fill'.
         """
 
+        if not isinstance(name, str):
+            raise TypeError
+
         self._name = name
 
-        # check all inputted values are valid here
+        if not isinstance(ds, xr.Dataset):
+            raise TypeError
 
+        coords = _maybe_parse_from_metadata(coords, ds, name)
+
+        # check all inputted values are valid here
         for pos, dim in coords.items():
             if pos not in VALID_POSITION_NAMES.split("|"):
                 raise ValueError(
@@ -195,7 +215,5 @@ class Axis:
         """Return the dimension number of the axis coordinate in a DataArray."""
         _, coord_name = self._get_position_name(da)
         return da.get_axis_num(coord_name)
-
-    # TODO repr
 
     # TODO equals method
