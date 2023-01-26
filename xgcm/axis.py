@@ -2,7 +2,6 @@ from typing import Mapping, Tuple
 
 import xarray as xr
 
-from . import comodo
 from .padding import _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
 
 VALID_POSITION_NAMES = "center|left|right|inner|outer"
@@ -13,18 +12,6 @@ FALLBACK_SHIFTS = {
     "outer": ("center",),
     "inner": ("center",),
 }
-
-
-def _maybe_parse_from_metadata(coords, ds, axis_name):
-    """Any logic for auto-parsing from various conventions should live here"""
-    if coords:
-        # use specified coords
-        return coords
-    else:
-        # fall back on comodo conventions
-        print(ds)
-        print(axis_name)
-        return comodo.get_axis_positions_and_coords(ds, axis_name)
 
 
 class Axis:
@@ -42,7 +29,7 @@ class Axis:
         self,
         ds: xr.Dataset,
         name: str,
-        coords: Mapping[str, str] = None,  # TODO rename to dims
+        coords: Mapping[str, str],  # TODO rename to dims
         default_shifts: Mapping[
             str, str
         ] = None,  # TODO type hint as Literal of the allowed options
@@ -91,8 +78,6 @@ class Axis:
             raise TypeError(
                 f"ds argument must be of type xarray.Dataset, but is of type {type(ds)}"
             )
-
-        coords = _maybe_parse_from_metadata(coords, ds, name)
 
         # check all inputted values are valid here
         for pos, dim in coords.items():

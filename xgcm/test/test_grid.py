@@ -176,6 +176,50 @@ def test_grid_repr(all_datasets):
 
 
 @pytest.mark.parametrize(
+    "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
+)
+def test_cumsum(nonperiodic_1d, boundary):
+    ds, periodic, expected = nonperiodic_1d
+    grid = Grid(ds, boundary="periodic")
+
+    cumsum_g = grid.cumsum(ds.data_g, axis="X", to="center", boundary=boundary)
+
+    to = grid.axes["X"].default_shifts["center"]
+    cumsum_c = grid.cumsum(ds.data_c, axis="X", to=to, boundary=boundary)
+
+    cumsum_c_raw = np.cumsum(ds.data_c.data)
+    cumsum_g_raw = np.cumsum(ds.data_g.data)
+
+    if to == "right":
+        np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw)
+        fill_value = 0.0 if boundary == "fill" else cumsum_g_raw[0]
+        np.testing.assert_allclose(
+            cumsum_g.data, np.hstack([fill_value, cumsum_g_raw[:-1]])
+        )
+    elif to == "left":
+        np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw)
+        fill_value = 0.0 if boundary == "fill" else cumsum_c_raw[0]
+        np.testing.assert_allclose(
+            cumsum_c.data, np.hstack([fill_value, cumsum_c_raw[:-1]])
+        )
+    elif to == "inner":
+        np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw[:-1])
+        fill_value = 0.0 if boundary == "fill" else cumsum_g_raw[0]
+        np.testing.assert_allclose(cumsum_g.data, np.hstack([fill_value, cumsum_g_raw]))
+    elif to == "outer":
+        np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw[:-1])
+        fill_value = 0.0 if boundary == "fill" else cumsum_c_raw[0]
+        np.testing.assert_allclose(cumsum_c.data, np.hstack([fill_value, cumsum_c_raw]))
+
+    # not much point doing this...we don't have the right test datasets
+    # to really test the errors
+    # other_positions = {'left', 'right', 'inner', 'outer'}.difference({to})
+    # for pos in other_positions:
+    #     with pytest.raises(KeyError):
+    #         axis.cumsum(ds.data_c, to=pos, boundary=boundary)
+
+
+@pytest.mark.parametrize(
     "func",
     ["interp", "max", "min", "diff", "cumsum"],
 )
