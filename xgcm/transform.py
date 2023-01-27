@@ -4,15 +4,9 @@ Classes and functions for 1D coordinate transformation.
 import functools
 import warnings
 
-try:
-    import numba  # type: ignore
-    from numba import boolean, float32, float64, guvectorize  # type: ignore
-except ImportError:
-    numba = None
-
 import numpy as np
 import xarray as xr
-
+from numba import boolean, float32, float64, guvectorize  # type: ignore
 
 """Low level functions (numba/numpy)"""
 
@@ -372,12 +366,6 @@ def transform(
     # Theoretically we should be able to use a multidimensional `target`, which would need the additional information provided with `target_dim`.
     # But the feature is not tested yet, thus setting this to default value internally (resulting in error in `_parse_target`, when a multidim `target` is passed)
     target_dim = None
-
-    # check optional numba dependency
-    if numba is None:
-        raise ImportError(
-            "The transform functionality of xgcm requires numba. Install using `conda install numba`."
-        )
 
     # raise error if axis is periodic
     if axis.boundary == "periodic":
