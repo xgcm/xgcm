@@ -11,7 +11,7 @@ import xarray as xr
 if TYPE_CHECKING:
     from .grid import Grid
 
-_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
+_XGCM_PADDING_KWARG_TO_XARRAY_PAD_KWARG = {
     "periodic": "wrap",
     "fill": "constant",
     "extend": "edge",
@@ -103,20 +103,20 @@ def _pad_face_connections(
 
     padding_width = {axname: padding_width.get(axname, (0, 0)) for axname in pad_axes}
 
-    # This method below works really nicely if all the boundary widths have the same size.
-    # This is however not very common. We often have boundary_width with (0,1).
+    # This method below works really nicely if all the padding widths have the same size.
+    # This is however not very common. We often have padding_width with (0,1).
     # I had a ton of trouble accomodating with convoluted logic. The new approach:
-    # we find the largest boundary width value, and pad every boundary/axis with this max
-    # value. As a final step we trim the padded dataset according to the original boundary
+    # we find the largest padding width value, and pad every padding/axis with this max
+    # value. As a final step we trim the padded dataset according to the original padding
     # widths.
 
-    def _max_boundary_width(padding_width):
+    def _max_padding_width(padding_width):
         all_widths = []
         for widths in padding_width.values():
             all_widths.extend(list(widths))
         return max(all_widths)
 
-    width = _max_boundary_width(padding_width)
+    width = _max_padding_width(padding_width)
 
     # TODO should i just return da if width is 0 here? I have a check further down, that I could eliminate that way.
     max_padding_width = {k: (width, width) for k in padding_width.keys()}
@@ -328,7 +328,7 @@ def _pad_basic(
         _, dim = axis._get_position_name(da)
         ax_padding = padding[ax]
         # translate padding and kwargs to xarray.pad syntax
-        ax_padding = _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG[ax_padding]
+        ax_padding = _XGCM_PADDING_KWARG_TO_XARRAY_PAD_KWARG[ax_padding]
         if ax_padding == "constant":
             kwargs = dict(constant_values=fill_value[ax])
         else:
@@ -340,73 +340,57 @@ def _pad_basic(
 def pad(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
-    boundary_width: Optional[Dict[str, Tuple[int, int]]],
-    boundary: Union[str, Mapping[str, str], None] = None,
+    padding_width: Optional[Dict[str, Tuple[int, int]]],
+    padding: Union[str, Mapping[str, str], None] = None,
     fill_value: Optional[Union[float, Mapping[str, float]]] = None,
     other_component: Optional[Dict[str, xr.DataArray]] = None,
 ):
     """
-    Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
+    Pads the boundary of given arrays along given Axes, according to information in Axes.padding.
     Parameters
     ----------
     data :
-        Array to pad according to boundary and boundary_width.
+        Array to pad according to padding and padding_width.
         If a dictionary is passed the input is assumed to be a vector component
         (with the directionof that component identified by the dict key, matching one of the grid axes)
     grid : xgcm.Grid
-        Grid object specifiying the topology and default boundary conditions to use for padding.
-    boundary_width :
+        Grid object specifiying the topology and default method to use for padding.
+    padding_width :
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
-        A flag indicating how to handle boundaries:
-        * None: Defaults to `periodic`
-        * 'periodic' : Wrap array along the specified axes
-        * 'fill':  Set values outside the array boundary to fill_value
-          (i.e. a Dirichlet boundary condition.)
-        * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Neumann boundary condition.)
-        * 'extrapolate': Set values by extrapolating linearly from the two
-          points nearest to the edge
-        Optionally a dict mapping axis name to separate values for each axis
-        can be passed.
-    fill_value :
-        The value to use in boundary conditions with `boundary='fill'`.
-        Optionally a dict mapping axis name to separate values for each axis
-        can be passed. Default is 0.
+    padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
+            * 'extend': Set values outside the array to the nearest array
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
+    fill_value : {float, dict}, optional
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed. Default is 0.
     other_component :
         If passing a vector some padding operations require the orthogonal vector component for padding.
         This needs to be passed as a dictionary (with the direction of that component identified by the
         dict key, matching one of the grid axes)
     """
-    # TODO rename this globally
-    padding = boundary
-    padding_width = boundary_width
 
-    # Always promote the padding/fill_value to a axed dict.
-    padding = grid._as_axis_kwarg_mapping(
-        padding, ax_property_name="boundary", default_value="periodic"
-    )
-    fill_value = grid._as_axis_kwarg_mapping(
-        fill_value, ax_property_name="fill_value", default_value=0.0
+    # Always promote the padding/fill_value to a dict of form {ax: kwarg}.
+    padding = grid._complete_user_kwargs_using_axis_defaults(padding, "padding")
+    fill_value = grid._complete_user_kwargs_using_axis_defaults(
+        fill_value, "fill_value"
     )
 
     # Exit without padding if all widths are zero
     if padding_width is None or all(
         width == (0, 0) for width in padding_width.values()
     ):
-        # TODO: Think about case when boundary is specified but boundary_width is None or (0,0).
+        # TODO: Think about case when padding is specified but padding_width is None or (0,0).
         # TODO: No padding would occur in that situation. Should we warn the user?
         return data
-
-    # Check axis properties for padding/fill_value, but do not overwrite
-    for axname, axis in grid.axes.items():
-        if axname not in padding.keys():
-            # Use default axis boundary for axis unless overridden
-            padding[axname] = axis.boundary
-        if axname not in fill_value.keys():
-            # Use default axis boundary for axis unless overridden
-            fill_value[axname] = axis.fill_value
 
     # TODO: Refactor, if the max value is 0, complain.
     # Maybe move this check upstream, so that either none or 0 everywhere does not even call pad
@@ -420,7 +404,7 @@ def pad(
     data = _strip_all_coords(data)
 
     # If any axis has connections we need to use the complex padding
-    if any([any(grid.axes[ax]._connections.keys()) for ax in grid.axes]):
+    if grid._connections:
         da_padded = _pad_face_connections(
             data,
             grid,

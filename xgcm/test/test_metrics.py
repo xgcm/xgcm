@@ -185,7 +185,7 @@ def test_get_metric_with_conditions_01():
 def test_get_metric_with_conditions_02a(periodic):
     # Condition 2, case a: interpolate metric with matching axis to desired dimensions
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic, boundary="extend")
+    grid = Grid(ds, coords=coords, periodic=periodic, padding="extend")
     grid.set_metrics(("X", "Y"), "area_e")
 
     get_metric = grid.get_metric(ds.v, ("X", "Y"))
