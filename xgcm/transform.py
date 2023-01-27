@@ -6,12 +6,13 @@ import warnings
 
 try:
     import numba  # type: ignore
+    from numba import boolean, float32, float64, guvectorize  # type: ignore
 except ImportError:
     numba = None
 
 import numpy as np
 import xarray as xr
-from numba import boolean, float32, float64, guvectorize  # type: ignore
+
 
 """Low level functions (numba/numpy)"""
 
