@@ -16,6 +16,9 @@ Breaking Changes
 
 Internal Changes
 ~~~~~~~~~~~~~~~~
+- Switch CI environment setup to micromamba (:issue:`576`, :pull:`577`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
 - pre-commit autoupdate frequency reduced (:pull:`563`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
