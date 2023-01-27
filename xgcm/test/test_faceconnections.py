@@ -149,8 +149,8 @@ def test_create_connected_grid(ds, ds_face_connections_x_to_x):
 def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     # simplest scenario with one face connection
     grid = Grid(ds, face_connections=ds_face_connections_x_to_x, periodic=False)
-    diff_x = grid.diff(ds.data_c, "X", boundary="fill")
-    interp_x = grid.interp(ds.data_c, "X", boundary="fill")
+    diff_x = grid.diff(ds.data_c, "X", padding="fill")
+    interp_x = grid.interp(ds.data_c, "X", padding="fill")
 
     # make sure the face connection got applied correctly
     np.testing.assert_allclose(
@@ -160,7 +160,7 @@ def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
         interp_x[1, :, 0], 0.5 * (ds.data_c[1, :, 0] + ds.data_c[0, :, -1])
     )
 
-    # make sure the left boundary got applied correctly
+    # make sure the left padding got applied correctly
     np.testing.assert_allclose(diff_x[0, :, 0], ds.data_c[0, :, 0] - 0.0)
     np.testing.assert_allclose(interp_x[0, :, 0], 0.5 * (ds.data_c[0, :, 0] + 0.0))
 
@@ -169,8 +169,8 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # one face connection, rotated
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
-    diff_y = grid.diff(ds.data_c, "Y", boundary="fill")
-    interp_y = grid.interp(ds.data_c, "Y", boundary="fill")
+    diff_y = grid.diff(ds.data_c, "Y", padding="fill")
+    interp_y = grid.interp(ds.data_c, "Y", padding="fill")
 
     # make sure the face connection got applied correctly
     # non-same axis connections require rotation
@@ -187,18 +187,18 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
     # TODO: checking all the other boundaries
 
 
-@pytest.mark.parametrize("boundary", ["periodic", "fill"])
-def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
+@pytest.mark.parametrize("padding", ["periodic", "fill"])
+def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, padding):
     # one face connection, rotated
     grid = Grid(
         ds,
         face_connections=ds_face_connections_x_to_y,
-        boundary=boundary,
+        padding=padding,
         fill_value=1,
         periodic=False,
     )
     # TODO: Remove the periodic once that is deprecated.
-    # ! Set boundary on grid, so it is applied to all axes.
+    # ! Set padding on grid, so it is applied to all axes.
     # TODO: modify the non velocity tests too (after release)
 
     # modify the values of the dataset, so we know what to expect from the output
@@ -225,7 +225,7 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
     vector_center = grid.interp_2d_vector(
         {"X": ds.u, "Y": ds.v},
         to="center",
-        boundary="fill",
+        padding="fill",
         fill_value=100,
     )
     u_c_interp = vector_center["X"]
@@ -233,7 +233,7 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
     vector_diff = grid.diff_2d_vector(
         {"X": ds.u, "Y": ds.v},
         to="center",
-        boundary="fill",
+        padding="fill",
         fill_value=100,
     )
     u_c_diff = vector_diff["X"]
@@ -256,9 +256,9 @@ def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y
 
     # TODO: figure out tangent vectors
     with pytest.raises(NotImplementedError):
-        _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, to="left", boundary="fill")
+        _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, to="left", padding="fill")
     with pytest.raises(NotImplementedError):
-        _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, boundary="fill")
+        _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, padding="fill")
 
 
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):

@@ -2,7 +2,7 @@ from typing import Mapping, Tuple
 
 import xarray as xr
 
-from .padding import _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
+from .padding import _XGCM_PADDING_KWARG_TO_XARRAY_PAD_KWARG
 
 VALID_POSITION_NAMES = "center|left|right|inner|outer"
 FALLBACK_SHIFTS = {
@@ -20,7 +20,7 @@ class Axis:
         str, str
     ]  # TODO give this mapping from positions to dimension names a better name?
     _default_shifts: Mapping[str, str]
-    _boundary: str
+    _padding: str
     _fill_value: float
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
@@ -33,7 +33,7 @@ class Axis:
         default_shifts: Mapping[
             str, str
         ] = None,  # TODO type hint as Literal of the allowed options
-        boundary: str = None,  # TODO type hint as Literal of the allowed options
+        padding: str = None,  # TODO type hint as Literal of the allowed options
         fill_value: float = None,
     ):
         """
@@ -51,20 +51,17 @@ class Axis:
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
-        boundary : str or dict
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition where
-              the difference at the boundary will be zero.)
+        padding : str or dict
+            padding can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
+            * None:  Do not apply any padding. Raise an error if
+              padding required for the operation.
+            * 'fill':  Set values outside the array to fill_value
+            * 'extend': Set values outside the array to the nearest array value
             * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
             This sets the default value. It can be overriden by specifying the
-            boundary kwarg when calling specific methods.
+            padding kwarg when calling specific methods.
         fill_value : float, optional
-            The value to use in the boundary condition when boundary='fill'.
+            The value to use in the padding condition when padding='fill'.
         """
 
         if not isinstance(name, str):
@@ -113,13 +110,13 @@ class Axis:
                     f"Can't set the default shift for {pos} to be to {pos}"
                 )
 
-        if boundary is None:
-            boundary = "periodic"
-        if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
+        if padding is None:
+            padding = "periodic"
+        if padding not in _XGCM_PADDING_KWARG_TO_XARRAY_PAD_KWARG:
             raise ValueError(
-                f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}"
+                f"padding must be one of {_XGCM_PADDING_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {padding}"
             )
-        self._boundary = boundary
+        self._padding = padding
 
         if fill_value is None:
             fill_value = 0.0
@@ -129,7 +126,7 @@ class Axis:
 
         # TODO backwards compatible attributes, to be removed --------------------
 
-        if self._boundary == "periodic":
+        if self._padding == "periodic":
             self._periodic = True
         else:
             self._periodic = None
@@ -157,14 +154,13 @@ class Axis:
         return self._default_shifts
 
     @property
-    def boundary(self) -> str:
-        return self._boundary
+    def padding(self) -> str:
+        return self._padding
 
     def __repr__(self):
         is_periodic = "periodic" if self._periodic else "not periodic"
         summary = [
-            "<xgcm.Axis '%s' (%s, boundary=%r)>"
-            % (self.name, is_periodic, self.boundary)
+            "<xgcm.Axis '%s' (%s, padding=%r)>" % (self.name, is_periodic, self.padding)
         ]
         summary.append("Axis Coordinates:")
         summary += self._coord_desc()

@@ -72,7 +72,7 @@ class Grid:
         default_shifts: Mapping[
             str, str
         ] = None,  # TODO check if one default shift can be applied to many Axes
-        boundary: str | Mapping[str, str] = None,
+        padding: str | Mapping[str, str] = None,
         face_connections=None,  # TODO type hint this
         metrics: Mapping[Tuple[str], List[str]] = None,  # TODO type hint this
         autoparse_metadata: bool = True,
@@ -100,21 +100,19 @@ class Grid:
             specified (e.g. ``['X', 'Y']``), the axis names in the list will be
             periodic and any other axes founds will be assumed non-periodic.
         fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
+            The value to use for padding with `padding='fill'`.
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         default_shifts : dict
             A dictionary of dictionaries specifying default grid position
             shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
-        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
             Optionally a dict mapping axis name to seperate values for each axis
@@ -135,20 +133,11 @@ class Grid:
         """
         self._ds = ds
 
-        if boundary:
-            warnings.warn(
-                "The `boundary` argument will be renamed "
-                "to `padding` to better reflect the process "
-                "of array padding and avoid confusion with "
-                "physical boundary conditions (e.g. ocean land boundary).",
-                category=DeprecationWarning,
-            )
-
         # Deprecation Warnigns
         if periodic:
             warnings.warn(
                 "The `periodic` argument will be deprecated. "
-                "To preserve previous behavior supply `boundary = 'periodic'.",
+                "To preserve previous behavior supply `padding = 'periodic'.",
                 category=DeprecationWarning,
             )
 
@@ -160,14 +149,14 @@ class Grid:
             )
 
         extrapolate_warning = False
-        if boundary == "extrapolate":
+        if padding == "extrapolate":
             extrapolate_warning = True
-        if isinstance(boundary, dict):
-            if any([k == "extrapolate" for k in boundary.keys()]):
+        if isinstance(padding, dict):
+            if any([k == "extrapolate" for k in padding.keys()]):
                 extrapolate_warning = True
         if extrapolate_warning:
             warnings.warn(
-                "The `boundary='extrapolate'` option will no longer be supported in future releases.",
+                "The `padding='extrapolate'` option will no longer be supported in future releases.",
                 category=DeprecationWarning,
             )
 
@@ -203,7 +192,7 @@ class Grid:
         # Convert all inputs to axes-kwarg mappings
         # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
-        boundary = self._map_kwargs_over_axes(boundary, axes=all_axes)
+        padding = self._map_kwargs_over_axes(padding, axes=all_axes)
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
 
@@ -215,11 +204,11 @@ class Grid:
         periodic = self._map_kwargs_over_axes(periodic, axes=all_axes)
 
         for ax, p in periodic.items():
-            if boundary[ax] is None:
+            if padding[ax] is None:
                 if p is True:
-                    boundary[ax] = "periodic"
+                    padding[ax] = "periodic"
                 else:
-                    boundary[ax] = "fill"
+                    padding[ax] = "fill"
 
         default_shifts = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
 
@@ -240,7 +229,7 @@ class Grid:
                 axis_name,
                 coords=coords[axis_name],
                 default_shifts=default_shifts.get(axis_name, None),
-                boundary=boundary.get(axis_name, None),
+                padding=padding.get(axis_name, None),
                 fill_value=fill_value.get(axis_name, None),
             )
 
@@ -469,7 +458,7 @@ class Grid:
             if metric_vars is None:
                 # Condition 2: interpolate metric with matching axis to desired dimensions
                 warnings.warn(
-                    f"Metric at {array.dims} being interpolated from metrics at dimensions {mv.dims}. Boundary value set to 'extend'."
+                    f"Metric at {array.dims} being interpolated from metrics at dimensions {mv.dims}. Padding set to 'extend'."
                 )
                 metric_vars = self.interp_like(mv, array, "extend", None)
         else:
@@ -493,7 +482,7 @@ class Grid:
                             # Condition 4: metrics in the wrong position (must interpolate before multiplying)
                             possible_dims = [pc.dims for pc in possible_combinations]
                             warnings.warn(
-                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Boundary value set to 'extend'."
+                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Padding set to 'extend'."
                             )
                             metric_vars = tuple(
                                 self.interp_like(pc, array, "extend", None)
@@ -511,7 +500,7 @@ class Grid:
             )
         return metric_vars
 
-    def interp_like(self, array, like, boundary=None, fill_value=None):
+    def interp_like(self, array, like, padding=None, fill_value=None):
         """Compares positions between two data arrays and interpolates array to the position of like if necessary
 
         Parameters
@@ -520,21 +509,21 @@ class Grid:
             DataArray to interpolate to the position of like
         like : DataArray
             DataArray with desired grid positions for source array
-        boundary : str or dict, optional,
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+            A flag indicating how to handle boundaries:
+
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition where
-              the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
-            This sets the default value. It can be overriden by specifying the
-            boundary kwarg when calling specific methods.
-        fill_value : float, optional
-            The value to use in the boundary condition when `boundary='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
+        fill_value : {float, dict}, optional
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
 
         Returns
         -------
@@ -560,7 +549,7 @@ class Grid:
             array,
             interp_axes,
             fill_value=fill_value,
-            boundary=boundary,
+            padding=padding,
         )
         return array
 
@@ -569,7 +558,7 @@ class Grid:
         for name, axis in self.axes.items():
             is_periodic = "periodic" if axis._periodic else "not periodic"
             summary.append(
-                "%s Axis (%s, boundary=%r):" % (name, is_periodic, axis.boundary)
+                "%s Axis (%s, padding=%r):" % (name, is_periodic, axis.padding)
             )
             summary += axis._coord_desc()
         return "\n".join(summary)
@@ -731,8 +720,8 @@ class Grid:
         *args: xr.DataArray,
         axis: Optional[Sequence[Sequence[str]]] = None,
         signature: Union[str, _GridUFuncSignature] = "",
-        boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
-        boundary: Optional[Union[str, Mapping[str, str]]] = None,
+        padding_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+        padding: Optional[Union[str, Mapping[str, str]]] = None,
         fill_value: Optional[Union[float, Mapping[str, float]]] = None,
         dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
         map_overlap: bool = False,
@@ -762,25 +751,24 @@ class Grid:
             positions for each input and output variable, e.g.,
 
             ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
-        boundary_width : Dict[str: Tuple[int, int]
+        padding_width : Dict[str: Tuple[int, int]
             The widths of the boundaries at the edge of each array.
             Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
-            * None: Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
-            Optionally a dict mapping axis name to separate values for each axis
+            Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
-            Optionally a dict mapping axis name to separate values for each axis
-            can be passed. Default is 0.
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
             How to handle applying to objects containing lazy data in the form of
             dask arrays. Passed directly on to `xarray.apply_ufunc`.
@@ -806,8 +794,8 @@ class Grid:
             axis=axis,
             grid=self,
             signature=signature,
-            boundary_width=boundary_width,
-            boundary=boundary,
+            padding_width=padding_width,
+            padding=padding,
             fill_value=fill_value,
             dask=dask,
             map_overlap=map_overlap,
@@ -830,20 +818,21 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed (see example)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         vector_partner : dict, optional
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
@@ -882,20 +871,21 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed (see example)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         vector_partner : dict, optional
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
@@ -914,9 +904,9 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if a global 2D dataset should be differenced on both X and Y axis, but the fill
-        value at the boundary should be differenc for each axis, we can do this:
+        value for padding should be differenc for each axis, we can do this:
 
-        >>> grid.diff(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
+        >>> grid.diff(da, ["X", "Y"], padding="fill", fill_value={"X": 0, "Y": 100})
         """
         return self._1d_grid_ufunc_dispatch("diff", da, axis, **kwargs)
 
@@ -934,20 +924,21 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed (see example)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         vector_partner : dict, optional
             A single key (string), value (DataArray).
             Optionally a dict with seperate values for each axis can be passed (see example)
@@ -966,10 +957,10 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if we want to find the minimum of sourrounding grid cells for a global 2D dataset
-        in both X and Y axis, but the fill value at the boundary should be different
+        in both X and Y axis, but the fill value for padding should be different
         for each axis, we can do this:
 
-        >>> grid.min(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
+        >>> grid.min(da, ["X", "Y"], padding="fill", fill_value={"X": 0, "Y": 100})
         """
         return self._1d_grid_ufunc_dispatch("min", da, axis, **kwargs)
 
@@ -987,19 +978,21 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed (see example)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
             Optionally a dict with seperate values for each axis can be passed (see example)
         vector_partner : dict, optional
             A single key (string), value (DataArray).
@@ -1019,10 +1012,10 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if we want to find the maximum of sourrounding grid cells for a global 2D dataset
-        in both X and Y axis, but the fill value at the boundary should be different
+        in both X and Y axis, but the fill value for padding should be different
         for each axis, we can do this:
 
-        >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
+        >>> grid.max(da, ["X", "Y"], padding="fill", fill_value={"X": 0, "Y": 100})
         """
         return self._1d_grid_ufunc_dispatch("max", da, axis, **kwargs)
 
@@ -1031,7 +1024,7 @@ class Grid:
         da: xr.DataArray,
         axis: Union[str, Iterable[str]],
         to=None,
-        boundary=None,
+        padding=None,
         fill_value=None,
         metric_weighted=None,
         keep_coords: bool = False,
@@ -1052,20 +1045,21 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed (see example)
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-            Optionally a dict with seperate values for each axis can be passed (see example)
+            The value to use for padding with `padding='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         metric_weighted : str or tuple of str or dict, optional
             Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
@@ -1081,10 +1075,10 @@ class Grid:
         --------
         Each keyword argument can be provided as a `per-axis` dictionary. For instance,
         if we want to compute the cumulative sum of global 2D dataset
-        in both X and Y axis, but the fill value at the boundary should be different
+        in both X and Y axis, but the fill value for padding should be different
         for each axis, we can do this:
 
-        >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
+        >>> grid.max(da, ["X", "Y"], padding="fill", fill_value={"X": 0, "Y": 100})
         """
 
         if isinstance(axis, str):
@@ -1118,21 +1112,21 @@ class Grid:
                 pos == "left" and ax_to == "center"
             ):
                 # do nothing, this is the default for how cumsum works
-                ax_boundary_width = {ax.name: (0, 0)}
+                ax_padding_width = {ax.name: (0, 0)}
             elif (pos == "center" and ax_to == "left") or (
                 pos == "right" and ax_to == "center"
             ):
                 data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (1, 0)}
+                ax_padding_width = {ax.name: (1, 0)}
             elif (pos == "center" and ax_to == "inner") or (
                 pos == "outer" and ax_to == "center"
             ):
                 data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (0, 0)}
+                ax_padding_width = {ax.name: (0, 0)}
             elif (pos == "center" and ax_to == "outer") or (
                 pos == "inner" and ax_to == "center"
             ):
-                ax_boundary_width = {ax.name: (1, 0)}
+                ax_padding_width = {ax.name: (1, 0)}
             else:
                 raise ValueError(
                     f"From `{pos}` to `{ax_to}` is not a valid position "
@@ -1142,8 +1136,8 @@ class Grid:
             padded = pad(
                 data=data,
                 grid=self,
-                boundary_width=ax_boundary_width,
-                boundary=boundary,
+                padding_width=ax_padding_width,
+                padding=padding,
                 fill_value=fill_value,
             )
 
@@ -1157,7 +1151,7 @@ class Grid:
             reattached = _reattach_coords(
                 [coordless],
                 grid=self,
-                boundary_width=ax_boundary_width,
+                padding_width=ax_padding_width,
                 keep_coords=keep_coords,
             )[0]
 
@@ -1260,17 +1254,17 @@ class Grid:
         to : {'center', 'left', 'right', 'inner', 'outer'}
             The direction in which to shift the array. If not specified,
             default will be used.
-        boundary : {None, 'fill', 'extend'}
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
         keep_coords : boolean, optional
@@ -1299,19 +1293,17 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with seperate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed (see example)
-        fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
             Optionally a dict with seperate values for each axis can be passed (see example)
         vector_partner : dict, optional
             A single key (string), value (DataArray).
@@ -1373,20 +1365,17 @@ class Grid:
             The direction in which to shift the array (can be ['center','left','right','inner','outer']).
             If not specified, default will be used.
             Optionally a dict with separate values for each axis can be passed (see example)
-        boundary : None or str or dict, optional
+        padding : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
+            * None:  Do not apply any padding. Raise an error if
+              padding is required for the operation.
+            * 'fill':  Set values outside the array to fill_value
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-
-            Optionally a dict with separate values for each axis can be passed.
-        fill_value : {float, dict}, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-            Optionally a dict with separate values for each axis can be passed.
+            * 'extrapolate': Set values by extrapolating linearly from the two
+              points nearest to the edge
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         metric_weighted : str or tuple of str or dict, optional
             Optionally use metrics to multiply/divide with appropriate metrics before/after the operation.
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
@@ -1522,7 +1511,7 @@ class Grid:
 
 
 def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwargs):
-    # TODO to select via other kwargs (e.g. boundary) the signature of this function needs to be generalised
+    # TODO to select via other kwargs (e.g. padding) the signature of this function needs to be generalised
 
     def is_grid_ufunc(obj):
         return isinstance(obj, GridUFunc)
@@ -1594,16 +1583,3 @@ def _maybe_get_axis_kwarg_from_mapping(
         return kwargs[axname]
     else:
         return kwargs
-
-
-_other_docstring_options = """
-    * 'dirichlet'
-       The value of the array at the boundary point is specified by
-       `fill_value`.
-    * 'neumann'
-       The value of the array diff at the boundary point is
-       specified[1]_ by `fill_value`.
-
-        .. [1] https://en.wikipedia.org/wiki/Dirichlet_boundary_condition
-        .. [2] https://en.wikipedia.org/wiki/Neumann_boundary_condition
-"""

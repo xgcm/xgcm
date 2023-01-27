@@ -368,7 +368,7 @@ def transform(
     target_dim = None
 
     # raise error if axis is periodic
-    if axis.boundary == "periodic":
+    if axis.padding == "periodic":
         raise ValueError(
             "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
         )
@@ -474,7 +474,7 @@ def transform(
                 "The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values. For most accurate results provide values on cell bounds.",
                 UserWarning,
             )
-            target_data = grid.interp(target_data, axis_name, boundary="extend")
+            target_data = grid.interp(target_data, axis_name, padding="extend")
             # This seems to end up with chunks along the axis dimension.
             # Rechunk to keep xr.apply_func from complaining.
             # TODO: This should be made obsolete, when the internals are refactored using numba
