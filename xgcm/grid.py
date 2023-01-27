@@ -37,6 +37,7 @@ from .padding import pad
 
 try:
     import numba  # type: ignore
+
     from .transform import transform
 except ImportError:
     numba = None
