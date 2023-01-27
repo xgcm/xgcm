@@ -13,7 +13,6 @@ except ImportError:
 import numpy as np
 import xarray as xr
 
-
 """Low level functions (numba/numpy)"""
 
 
