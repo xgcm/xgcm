@@ -51,7 +51,7 @@ def _apply_boundary_condition(da, dim, left, boundary=None, fill_value=0.0):
     left : bool
         If `True`, boundary condition is at left (beginning of array).
         If `False`, boundary condition is at the right (end of the array).
-    boundary : {'fill', 'extend', 'extrapolate'}
+    boundary : {'fill', 'extend', 'extrapolate', 'periodic'}
         A flag indicating how the boundary values are determined.
 
         * 'fill':  All values outside the array set to fill_value
@@ -60,14 +60,16 @@ def _apply_boundary_condition(da, dim, left, boundary=None, fill_value=0.0):
           value. (i.e. a limited form of Neumann boundary condition.)
         * 'extrapolate': Set values by extrapolating linearly from the two
           points nearest to the edge
+        * 'periodic': TODO
     fill_value : float, optional
         The value to use in the boundary condition with `boundary='fill'`.
     """
 
-    if boundary not in ["fill", "extend", "extrapolate"]:
+    # TODO 2022-08-10 raehik - bad, also defined in grid.py
+    if boundary not in ["fill", "extend", "extrapolate", "periodic"]:
         raise ValueError(
-            "`boundary` must be 'fill', 'extend' or "
-            "'extrapolate', not %r." % boundary
+            "`boundary` must be 'fill', 'extend', 'extrapolate' or "
+            "'periodic', not %r." % boundary
         )
 
     axis_num = da.get_axis_num(dim)
@@ -82,6 +84,7 @@ def _apply_boundary_condition(da, dim, left, boundary=None, fill_value=0.0):
 
     use_dask = has_dask and isinstance(base_array, dsa.Array)
 
+    boundary_array = []
     if boundary == "extend":
         boundary_array = edge_array
     elif boundary == "fill":

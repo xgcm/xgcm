@@ -128,7 +128,7 @@ def cubed_sphere_connections():
 
 def test_create_periodic_grid(ds):
     ds = ds.isel(face=0)
-    grid = Grid(ds, periodic=True)
+    grid = Grid(ds, boundary="periodic")
     for axis_name in grid.axes:
         axis = grid.axes[axis_name]
         assert axis._facedim is None
@@ -143,7 +143,7 @@ def test_create_periodic_grid(ds):
 
 def test_get_periodic_grid_edge(ds):
     ds = ds.isel(face=0)
-    grid = Grid(ds, periodic=True)
+    grid = Grid(ds, boundary="periodic")
 
     xaxis = grid.axes["X"]
     left_edge_data_x = xaxis._get_edge_data(ds.data_c)
@@ -180,7 +180,7 @@ def test_create_connected_grid(ds, ds_face_connections_x_to_x):
 
 def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):
     # simplest scenario with one face connection
-    grid = Grid(ds, face_connections=ds_face_connections_x_to_x, periodic=False)
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_x)
     diff_x = grid.diff(ds.data_c, "X", boundary="fill")
     interp_x = grid.interp(ds.data_c, "X", boundary="fill")
 
@@ -227,9 +227,7 @@ def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
         face_connections=ds_face_connections_x_to_y,
         boundary=boundary,
         fill_value=1,
-        periodic=False,
     )
-    # TODO: Remove the periodic once that is deprecated.
     # ! Set boundary on grid, so it is applied to all axes.
     # TODO: modify the non velocity tests too (after release)
 
