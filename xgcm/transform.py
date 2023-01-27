@@ -354,12 +354,6 @@ def transform(
     xr.DataArray
         The transformed data
     """
-    warnings.warn(
-        "From version 0.8.0 the Axis computation methods will be removed, "
-        "in favour of using the Grid computation methods instead. "
-        "i.e. use `Grid.transform` instead of `Axis.transform`",
-        FutureWarning,
-    )
 
     axis = grid.axes[axis_name]
 
