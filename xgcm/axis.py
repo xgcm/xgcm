@@ -1,4 +1,4 @@
-from typing import Mapping, Tuple
+from typing import Mapping, Optional, Tuple
 
 import xarray as xr
 
@@ -30,11 +30,13 @@ class Axis:
         ds: xr.Dataset,
         name: str,
         coords: Mapping[str, str],  # TODO rename to dims
-        default_shifts: Mapping[
-            str, str
+        default_shifts: Optional[
+            Mapping[str, str]
         ] = None,  # TODO type hint as Literal of the allowed options
-        boundary: str = None,  # TODO type hint as Literal of the allowed options
-        fill_value: float = None,
+        boundary: Optional[
+            str
+        ] = None,  # TODO type hint as Literal of the allowed options
+        fill_value: Optional[float] = None,
     ):
         """
         Create a new Axis object from an input dataset.

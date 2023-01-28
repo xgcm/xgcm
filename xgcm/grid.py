@@ -66,15 +66,15 @@ class Grid:
     def __init__(
         self,
         ds: xr.Dataset,
-        coords: Mapping[str, Mapping[str, str]] = None,
+        coords: Optional[Mapping[str, Mapping[str, str]]] = None,
         periodic: bool = True,
-        fill_value: float | Mapping[str, float] = None,
-        default_shifts: Mapping[
-            str, str
+        fill_value: Optional[float | Mapping[str, float]] = None,
+        default_shifts: Optional[
+            Mapping[str, str]
         ] = None,  # TODO check if one default shift can be applied to many Axes
-        boundary: str | Mapping[str, str] = None,
+        boundary: Optional[str | Mapping[str, str]] = None,
         face_connections=None,  # TODO type hint this
-        metrics: Mapping[Tuple[str], List[str]] = None,  # TODO type hint this
+        metrics: Optional[Mapping[Tuple[str], List[str]]] = None,  # TODO type hint this
         autoparse_metadata: bool = True,
     ):
         """
