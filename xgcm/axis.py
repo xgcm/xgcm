@@ -134,7 +134,7 @@ class Axis:
         if self._boundary == "periodic":
             self._periodic = True
         else:
-            self._periodic = None
+            self._periodic = False
 
     @property
     def periodic(self) -> bool:

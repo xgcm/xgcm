@@ -68,11 +68,11 @@ class Grid:
         ds: xr.Dataset,
         coords: Optional[Mapping[str, Mapping[str, str]]] = None,
         periodic: bool = True,
-        fill_value: Optional[float | Mapping[str, float]] = None,
+        fill_value: Optional[Union[float, Mapping[str, float]]] = None,
         default_shifts: Optional[
             Mapping[str, str]
         ] = None,  # TODO check if one default shift can be applied to many Axes
-        boundary: Optional[str | Mapping[str, str]] = None,
+        boundary: Optional[Union[str, Mapping[str, str]]] = None,
         face_connections=None,  # TODO type hint this
         metrics: Optional[Mapping[Tuple[str], List[str]]] = None,  # TODO type hint this
         autoparse_metadata: bool = True,
@@ -203,7 +203,7 @@ class Grid:
         # Convert all inputs to axes-kwarg mappings
         # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
-        boundary = self._map_kwargs_over_axes(boundary, axes=all_axes)
+        boundary_dict = self._map_kwargs_over_axes(boundary, axes=all_axes)
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
 
@@ -211,19 +211,20 @@ class Grid:
         # Since we plan on deprecating it soon handle it here, so we can easily
         # remove it later
         if isinstance(periodic, list):
-            periodic = {axname: True for axname in periodic}
-        periodic = self._map_kwargs_over_axes(periodic, axes=all_axes)
+            periodic_dict = {axname: True for axname in periodic}
+        else:
+            periodic_dict = self._map_kwargs_over_axes(periodic, axes=all_axes)
 
-        for ax, p in periodic.items():
-            if boundary[ax] is None:
+        for ax, p in periodic_dict.items():
+            if boundary_dict[ax] is None:
                 if p is True:
-                    boundary[ax] = "periodic"
+                    boundary_dict[ax] = "periodic"
                 else:
-                    boundary[ax] = "fill"
+                    boundary_dict[ax] = "fill"
 
-        default_shifts = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
+        default_shifts_dict = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
 
-        fill_value = self._map_kwargs_over_axes(fill_value, axes=all_axes)
+        fill_value_dict = self._map_kwargs_over_axes(fill_value, axes=all_axes)
 
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
@@ -239,15 +240,15 @@ class Grid:
                 ds,
                 axis_name,
                 coords=coords[axis_name],
-                default_shifts=default_shifts.get(axis_name, None),
-                boundary=boundary.get(axis_name, None),
-                fill_value=fill_value.get(axis_name, None),
+                default_shifts=default_shifts_dict.get(axis_name, None),
+                boundary=boundary_dict.get(axis_name, None),
+                fill_value=fill_value_dict.get(axis_name, None),
             )
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
 
-        self._metrics = {}
+        self._metrics: Dict[Tuple[str], List[str]] = {}
 
         if metrics is not None:
             for key, value in metrics.items():
