@@ -14,6 +14,10 @@ New Features
 Breaking Changes
 ~~~~~~~~~~~~~~~~
 
+- All computation methods on the :py:class:`xgcm.Axis` class have been removed, in favour of using the corresponding
+  methods on the :py:class:`xgcm.Grid` object (:issue:`405`, :pull:`557`).
+  By `Thomas Nicholas <https://github.com/tomnicholas>`_.
+
 Internal Changes
 ~~~~~~~~~~~~~~~~
 - Switch CI environment setup to micromamba (:issue:`576`, :pull:`577`).
