@@ -42,11 +42,7 @@ try:
 except ImportError:
     numba = None
 
-# Only need this until python 3.8
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Literal
 
 
 def _maybe_promote_str_to_list(a):
