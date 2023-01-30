@@ -19,7 +19,7 @@ Breaking Changes
   (:issue:`405`, :pull:`557`).
   By `Thomas Nicholas <https://github.com/tomnicholas>`_.
 
-- All functionality for generating c-grid dimensions on incomplete datasets via :py:meth:`xgcm.Grid.autogenerate`,  was removed (:pull:`557`). 
+- All functionality for generating c-grid dimensions on incomplete datasets via :py:meth:`xgcm.Grid.autogenerate`,  was removed (:pull:`557`).
    By `Julius Busecke <https://github.com/jbusecke>`_.
 Internal Changes
 ~~~~~~~~~~~~~~~~
