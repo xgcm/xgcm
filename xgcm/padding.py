@@ -341,7 +341,7 @@ def pad(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
     boundary_width: Optional[Dict[str, Tuple[int, int]]],
-    boundary: Union[str, Mapping[str, str], None] = None,
+    boundary: Optional[Union[str, Mapping[str, str]]] = None,
     fill_value: Optional[Union[float, Mapping[str, float]]] = None,
     other_component: Optional[Dict[str, xr.DataArray]] = None,
 ):

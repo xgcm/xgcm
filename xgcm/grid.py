@@ -278,7 +278,11 @@ class Grid:
 
         return mapped_kwargs
 
-    def _complete_user_kwargs_using_axis_defaults(self, user_kwargs, property):
+    def _complete_user_kwargs_using_axis_defaults(
+        self,
+        user_kwargs: Union[Any, Dict[str, Any]],
+        property: str,
+    ) -> Dict[str, Any]:
         """
         Takes user choice of values for a given kwarg, and returns full per-axis mapping of kwargs,
         filling in with Axis defaults when needed.
