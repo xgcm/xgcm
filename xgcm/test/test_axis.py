@@ -4,7 +4,7 @@ import xarray as xr
 
 from xgcm.axis import Axis
 
-from .datasets import all_datasets, datasets
+from .datasets import all_datasets, datasets  # noqa
 
 
 def periodic_1d():
