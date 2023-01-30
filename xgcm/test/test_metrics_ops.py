@@ -353,8 +353,11 @@ class TestDifferentGridPositionsParametrized:
 
         ds, coords, metrics = datasets_grid_metric("C")
 
+        # delete all extraneous kwargs from fixture
+        # TODO simplify parametrization so this isn't necessary
         del coords[axis]
-
+        if isinstance(periodic, dict) and axis in periodic:
+            del periodic[axis]
         del_metrics = [k for k in metrics.keys() if axis in k]
         for dm in del_metrics:
             del metrics[dm]
