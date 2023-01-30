@@ -15,7 +15,8 @@ Breaking Changes
 ~~~~~~~~~~~~~~~~
 
 - All computation methods on the :py:class:`xgcm.Axis` class have been removed, in favour of using the corresponding
-  methods on the :py:class:`xgcm.Grid` object (:issue:`405`, :pull:`557`).
+  methods on the :py:class:`xgcm.Grid` object. The :py:class:`xgcm.Axis` class has also been removed from public API.
+  (:issue:`405`, :pull:`557`).
   By `Thomas Nicholas <https://github.com/tomnicholas>`_.
 
 Internal Changes

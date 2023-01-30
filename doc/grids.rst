@@ -99,10 +99,10 @@ one extra point. These positions are visualized in the figure below.
 
    The different possible positions of a variable ``f`` along an axis.
 
-xgcm represents an axis using the :class:`xgcm.Axis` class.
+xgcm represents an axis internally using the :py:class:`xgcm.Axis` class.
 
-Although it is possible to create an ``Axis`` directly, the recommended way to
-to use xgcm is by creating a single ``Grid`` object, containing multiple axes
+Although it is technically possible to create an ``Axis`` directly, the recommended way to
+to use xgcm is by creating a single :py:class:`xgcm.Grid` object, containing multiple axes
 for each physical dimension.
 
 Creating ``Grid`` Objects
