@@ -33,6 +33,7 @@ jobs:
         uses: mamba-org/provision-with-micromamba@main
         with:
           cache-downloads: true
+          cache-env: true
           micromamba-version: 'latest'
           environment-file: ci/environment.yml
           extra-specs: |
