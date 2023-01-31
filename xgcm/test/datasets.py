@@ -28,48 +28,48 @@ import xarray as xr
 N = 100
 datasets = {
     "sgrid2D": xr.Dataset(
-    # Similar to 2d_left below
-    {
-        "grid": (
-            (),
-            np.array(1, dtype="int32"),
-            {
-                "cf_role": "grid_topology",
-                "topology_dimension": 2,
-                "node_dimensions": "XG YG",
-                "face_dimensions": "XC: XG (padding: high) YC: YG (padding: high)",
-                "node_coordinates": "node_lon node_lat",
-            },
-        ),
-        "data_c": (
-            ["time", "YC", "XC"],
-            np.random.rand(1, 10, 20),
-        ),
-        "data_g": (
-            ["time", "YG", "XG"],
-            np.random.rand(1, 10, 20),
-        ),
-    },
-    attrs={"Conventions": "SGRID-x.x"},
-    coords={
-        "YGrid": (
-            ["YG"],
-            np.arange(0, 10),
-        ),
-        "YCell": (
-            ["YC"],
-            (np.arange(0, 10) + 0.5),
-        ),
-        "XGrid": (
-            ["XG"],
-            np.arange(0, 20),
-        ),
-        "XCell": (
-            ["XC"],
-            np.arange(0, 20) + 0.5,
-        ),
-    },
-),
+        # Similar to 2d_left below
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 2,
+                    "node_dimensions": "XG YG",
+                    "face_dimensions": "XC: XG (padding: high) YC: YG (padding: high)",
+                    "node_coordinates": "node_lon node_lat",
+                },
+            ),
+            "data_c": (
+                ["time", "YC", "XC"],
+                np.random.rand(1, 10, 20),
+            ),
+            "data_g": (
+                ["time", "YG", "XG"],
+                np.random.rand(1, 10, 20),
+            ),
+        },
+        attrs={"Conventions": "SGRID-x.x"},
+        coords={
+            "YGrid": (
+                ["YG"],
+                np.arange(0, 10),
+            ),
+            "YCell": (
+                ["YC"],
+                (np.arange(0, 10) + 0.5),
+            ),
+            "XGrid": (
+                ["XG"],
+                np.arange(0, 20),
+            ),
+            "XCell": (
+                ["XC"],
+                np.arange(0, 20) + 0.5,
+            ),
+        },
+    ),
     "sgrid2Dvert": xr.Dataset(
         {
             "grid": (
@@ -469,10 +469,7 @@ def all_2d(request):
     return ds, periodic, expected_values[request.param]
 
 
-@pytest.fixture(scope="module", params=[
-    "periodic_sgrid2D", 
-    "periodic_2d_left"
-])
+@pytest.fixture(scope="module", params=["periodic_sgrid2D", "periodic_2d_left"])
 def periodic_2d(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
