@@ -1,12 +1,6 @@
 API
 ###
 
-Axis
-====
-
-.. autoclass:: xgcm.Axis
-   :members:
-
 Grid
 ====
 
@@ -21,9 +15,3 @@ Grid ufuncs
 
    xgcm.apply_as_grid_ufunc
    xgcm.as_grid_ufunc
-
-autogenerate
-============
-
-.. automodule:: xgcm.autogenerate
-  :members:

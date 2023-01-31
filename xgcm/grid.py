@@ -4,13 +4,25 @@ import itertools
 import operator
 import warnings
 from collections import OrderedDict
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import xarray as xr
 from dask.array import Array as Dask_Array
 
 from . import comodo, gridops, sgrid
-from .duck_array_ops import _apply_boundary_condition, _pad_array, concatenate
+from .axis import Axis
 from .grid_ufunc import (
     GridUFunc,
     _check_data_input,
@@ -26,28 +38,11 @@ from .padding import pad
 try:
     import numba  # type: ignore
 
-    from .transform import conservative_interpolation, linear_interpolation
+    from .transform import transform
 except ImportError:
     numba = None
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
-
-# Only need this until python 3.8
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Literal
 
 
 def _maybe_promote_str_to_list(a):
@@ -58,1150 +53,6 @@ def _maybe_promote_str_to_list(a):
         return a
 
 
-_VALID_BOUNDARY = [None, "fill", "extend", "periodic"]
-
-
-class Axis:
-    """
-    An object that represents a group of coordinates that all lie along the same
-    physical dimension but at different positions with respect to a grid cell.
-    There are four possible positions:
-
-         Center
-         |------o-------|------o-------|------o-------|------o-------|
-               [0]            [1]            [2]            [3]
-
-         Left
-         |------o-------|------o-------|------o-------|------o-------|
-        [0]            [1]            [2]            [3]
-
-         Right
-         |------o-------|------o-------|------o-------|------o-------|
-                       [0]            [1]            [2]            [3]
-
-         Inner
-         |------o-------|------o-------|------o-------|------o-------|
-                       [0]            [1]            [2]
-
-         Outer
-         |------o-------|------o-------|------o-------|------o-------|
-        [0]            [1]            [2]            [3]            [4]
-
-    The `center` position is the only one without the `c_grid_axis_shift`
-    attribute, which must be present for the other four. However, the actual
-    value of `c_grid_axis_shift` is ignored for `inner` and `outer`, which are
-    differentiated by their length.
-    """
-
-    def __init__(
-        self,
-        ds,
-        axis_name,
-        periodic=True,
-        default_shifts={},
-        coords=None,
-        boundary=None,
-        fill_value=None,
-    ):
-        """
-        Create a new Axis object from an input dataset.
-
-        Parameters
-        ----------
-        ds : xarray.Dataset
-            Contains the relevant grid information. Coordinate attributes
-            should conform to Comodo conventions [1]_.
-        axis_name : str
-            The name of the axis (should match axis attribute)
-        periodic : bool, optional
-            Whether the domain is periodic along this axis
-        default_shifts : dict, optional
-            Default mapping from and to grid positions
-            (e.g. `{'center': 'left'}`). Will be inferred if not specified.
-        coords : dict, optional
-            Mapping of axis positions to coordinate names
-            (e.g. `{'center': 'XC', 'left: 'XG'}`)
-        boundary : str or dict, optional,
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition where
-              the difference at the boundary will be zero.)
-            * 'extrapolate': Set values by extrapolating linearly from the two
-              points nearest to the edge
-            * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
-            This sets the default value. It can be overriden by specifying the
-            boundary kwarg when calling specific methods.
-        fill_value : float, optional
-            The value to use in the boundary condition when `boundary='fill'`.
-
-        REFERENCES
-        ----------
-        .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
-        """
-
-        self._ds = ds
-        self.name = axis_name
-        self._periodic = periodic
-        if boundary not in _VALID_BOUNDARY:
-            raise ValueError(
-                f"Expected 'boundary' to be one of {_VALID_BOUNDARY}. Received {boundary!r} instead."
-            )
-        self.boundary = boundary
-        if fill_value is not None and not isinstance(fill_value, (int, float)):
-            raise ValueError("Expected 'fill_value' to be a number.")
-        self.fill_value = fill_value if fill_value is not None else 0.0
-
-        if coords:
-            # use specified coords
-            self.coords = {pos: name for pos, name in coords.items()}
-        elif sgrid.assert_valid_sgrid(ds):
-            # If a valid sgrid dataset use sgrid conventions
-            self.coords = sgrid.get_axis_positions_and_coords(ds, axis_name)
-        else:
-            # fall back on comodo conventions
-            self.coords = comodo.get_axis_positions_and_coords(ds, axis_name)
-
-        # self.coords is a dictionary with the following structure
-        #   key: position_name {'center' ,'left' ,'right', 'outer', 'inner'}
-        #   value: name of the dimension
-
-        # set default position shifts
-        fallback_shifts = {
-            "center": ("left", "right", "outer", "inner"),
-            "left": ("center",),
-            "right": ("center",),
-            "outer": ("center",),
-            "inner": ("center",),
-        }
-        self._default_shifts = {}
-        for pos in self.coords:
-            # use user-specified value if present
-            if pos in default_shifts:
-                self._default_shifts[pos] = default_shifts[pos]
-            else:
-                for possible_shift in fallback_shifts[pos]:
-                    if possible_shift in self.coords:
-                        self._default_shifts[pos] = possible_shift
-                        break
-
-        ########################################################################
-        # DEVELOPER DOCUMENTATION
-        #
-        # The attributes below are my best attempt to represent grid topology
-        # in a general way. The data structures are complicated, but I can't
-        # think of any way to simplify them.
-        #
-        # self._facedim (str) is the name of a dimension (e.g. 'face') or None.
-        # If it is None, that means that the grid topology is _simple_, i.e.
-        # that this is not a cubed-sphere grid or similar. For example:
-        #
-        #     ds.dims == ('time', 'lat', 'lon')
-        #
-        # If _facedim is set to a dimension name, that means that shifting
-        # grid positions requires exchanging data among multiple "faces"
-        # (a.k.a. "tiles", "facets", etc.). For this to work, there must be a
-        # dimension corresponding to the different faces. This is `_facedim`.
-        # For example:
-        #
-        #     ds.dims == ('time', 'face', 'lat', 'lon')
-        #
-        # In this case, `self._facedim == 'face'`
-        #
-        # We initialize all of this to None and let the `Grid` class handle
-        # setting these attributes for complex geometries.
-        self._facedim = None
-        #
-        # `self._connections` is a dictionary. It contains information about the
-        # connectivity among this axis and other axes.
-        # It should have the structure
-        #
-        #     {facedim_index: ((left_facedim_index, left_axis, left_reverse),
-        #                      (right_facedim_index, right_axis, right_reverse)}
-        #
-        # `facedim_index` : a value used to index the `self._facedim` dimension
-        #   (If `self._facedim` is `None`, then there should be only one key in
-        #   `facedim_index` and that key should be `None`.)
-        # `left_facedim_index` : the facedim index of the neighbor to the left.
-        #   (If `self._facedim` is `None`, this must also be `None`.)
-        # `left_axis` : an `Axis` object for the values to the left of this axis
-        # `left_reverse` : bool, whether the connection should be reversed. By
-        #   default, the left side of this axis will be connected to the right
-        #   side of the neighboring axis. `left_reverse` overrides this and
-        #   instead connects to the left side of the neighboring axis
-        self._connections = {None: (None, None)}
-
-        # now we implement periodic coordinates by setting appropriate
-        # connections
-        if periodic:
-            self._connections = {None: ((None, self, False), (None, self, False))}
-
-    def __repr__(self):
-        is_periodic = "periodic" if self._periodic else "not periodic"
-        summary = [
-            "<xgcm.Axis '%s' (%s, boundary=%r)>"
-            % (self.name, is_periodic, self.boundary)
-        ]
-        summary.append("Axis Coordinates:")
-        summary += self._coord_desc()
-        return "\n".join(summary)
-
-    def _coord_desc(self):
-        summary = []
-        for name, cname in self.coords.items():
-            coord_info = "  * %-8s %s" % (name, cname)
-            if name in self._default_shifts:
-                coord_info += " --> %s" % self._default_shifts[name]
-            summary.append(coord_info)
-        return summary
-
-    def _neighbor_binary_func(
-        self,
-        da,
-        f,
-        to,
-        boundary=None,
-        fill_value=None,
-        boundary_discontinuity=None,
-        vector_partner=None,
-        keep_coords=False,
-    ):
-        """
-        Apply a function to neighboring points.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data on which to operate
-        f : function
-            With signature f(da_left, da_right, shift)
-        to : {'center', 'left', 'right', 'inner', 'outer'}
-            The direction in which to shift the array. If not specified,
-            default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-        vector_partner : dict, optional
-            A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-        warnings.warn(
-            "From version 0.8.0 the Axis computation methods will be removed, "
-            "in favour of using the Grid computation methods instead. "
-            f"i.e. use `Grid.{f}` instead of `Axis.{f}`",
-            FutureWarning,
-        )
-
-        position_from, dim = self._get_position_name(da)
-        if to is None:
-            to = self._default_shifts[position_from]
-
-        if boundary is None:
-            boundary = self.boundary
-        if fill_value is None:
-            fill_value = self.fill_value
-
-        data_new = self._neighbor_binary_func_raw(
-            da,
-            f,
-            to,
-            boundary=boundary,
-            fill_value=fill_value,
-            boundary_discontinuity=boundary_discontinuity,
-            vector_partner=vector_partner,
-        )
-        # wrap in a new xarray wrapper
-        da_new = self._wrap_and_replace_coords(da, data_new, to, keep_coords)
-
-        return da_new
-
-    def _neighbor_binary_func_raw(
-        self,
-        da,
-        f,
-        to,
-        boundary=None,
-        fill_value=0.0,
-        boundary_discontinuity=None,
-        vector_partner=None,
-        position_check=True,
-    ):
-
-        # get the two neighboring sets of raw data
-        data_left, data_right = self._get_neighbor_data_pairs(
-            da,
-            to,
-            boundary=boundary,
-            fill_value=fill_value,
-            boundary_discontinuity=boundary_discontinuity,
-            vector_partner=vector_partner,
-            position_check=position_check,
-        )
-
-        # apply the function
-        data_new = f(data_left, data_right)
-
-        return data_new
-
-    def _get_edge_data(
-        self,
-        da,
-        is_left_edge=True,
-        boundary=None,
-        fill_value=0.0,
-        ignore_connections=False,
-        vector_partner=None,
-        boundary_discontinuity=None,
-    ):
-        """Get the appropriate edge data given axis connectivity and / or
-        boundary conditions.
-        """
-
-        position, this_dim = self._get_position_name(da)
-        this_axis_num = da.get_axis_num(this_dim)
-
-        def face_edge_data(fnum, face_axis, count=1):
-            # get the edge data for a single face
-
-            # There will not necessarily be connection data for every face
-            # for every axis. If there is no connection data, fnum will not
-            # be a key for self._connections.
-
-            if fnum in self._connections:
-                # it should always be a len 2 tuple
-                face_connection = self._connections[fnum][0 if is_left_edge else 1]
-            else:
-                face_connection = None
-
-            if (face_connection is None) or ignore_connections:
-                # no connection: use specified boundary condition instead
-                if self._facedim:
-                    da_face = da.isel(**{self._facedim: slice(fnum, fnum + 1)})
-                else:
-                    da_face = da
-                return _apply_boundary_condition(
-                    da_face,
-                    this_dim,
-                    is_left_edge,
-                    boundary=boundary,
-                    fill_value=fill_value,
-                )
-
-            neighbor_fnum, neighbor_axis, reverse = face_connection
-
-            # check for consistency
-            if face_axis is None:
-                assert neighbor_fnum is None
-
-            # Build up a slice that selects the correct edge region for a
-            # given face. We work directly with variables rather than
-            # DataArrays in the hopes of greater efficiency, avoiding
-            # indexing / alignment
-
-            # Start with getting all the data
-            edge_slice = [slice(None)] * da.ndim
-            if face_axis is not None:
-                # get the neighbor face
-                edge_slice[face_axis] = slice(neighbor_fnum, neighbor_fnum + 1)
-
-            data = da
-            # vector_partner is a one-entry dictionary
-            # - key is an axis identifier (e.g. 'X')
-            # - value is a DataArray
-            if vector_partner:
-                vector_partner_axis_name = next(iter(vector_partner))
-                if neighbor_axis.name == vector_partner_axis_name:
-                    data = vector_partner[vector_partner_axis_name]
-                    if reverse:
-                        raise NotImplementedError(
-                            "Don't know how to handle "
-                            "vectors with reversed "
-                            "connections."
-                        )
-            # TODO: there is still lots to figure out here regarding vectors.
-            # What we have currently works fine for vectors oriented normal
-            # to the axis (e.g. interp and diff u along x axis)
-            # It does NOT work for vectors tangent to the axis
-            # (e.g. interp and diff v along x axis)
-            # That is a pretty hard problem to solve, because rotating these
-            # faces also mixes up left vs right position. The solution will be
-            # quite involved and will probably require the edge points to be
-            # populated.
-            # I don't even know how to detect the fail case, let alone solve it.
-
-            neighbor_edge_dim = neighbor_axis.coords[position]
-            neighbor_edge_axis_num = data.get_axis_num(neighbor_edge_dim)
-            if is_left_edge and not reverse:
-                neighbor_edge_slice = slice(-count, None)
-            else:
-                neighbor_edge_slice = slice(None, count)
-            edge_slice[neighbor_edge_axis_num] = neighbor_edge_slice
-
-            # the orthogonal dimension need to be reoriented if we are
-            # connected to the other axis. Is this because of some deep
-            # topological principle?
-            if neighbor_axis is not self:
-                ortho_axis = da.get_axis_num(self.coords[position])
-                ortho_slice = slice(None, None, -1)
-                edge_slice[ortho_axis] = ortho_slice
-
-            edge = data.variable[tuple(edge_slice)].data
-
-            # the axis of the edge on THIS face is not necessarily the same
-            # as the axis on the OTHER face
-            if neighbor_axis is not self:
-                edge = edge.swapaxes(neighbor_edge_axis_num, this_axis_num)
-
-            return edge
-
-        if self._facedim:
-            face_axis_num = da.get_axis_num(self._facedim)
-            arrays = [
-                face_edge_data(fnum, face_axis_num) for fnum in da[self._facedim].values
-            ]
-            edge_data = concatenate(arrays, face_axis_num)
-        else:
-            edge_data = face_edge_data(None, None)
-        if self._periodic:
-            if boundary_discontinuity:
-                if is_left_edge:
-                    edge_data = edge_data - boundary_discontinuity
-                elif not is_left_edge:
-                    edge_data = edge_data + boundary_discontinuity
-        return edge_data
-
-    def _extend_left(
-        self,
-        da,
-        boundary=None,
-        fill_value=0.0,
-        ignore_connections=False,
-        vector_partner=None,
-        boundary_discontinuity=None,
-    ):
-
-        axis_num = self._get_axis_dim_num(da)
-        kw = dict(
-            is_left_edge=True,
-            boundary=boundary,
-            fill_value=fill_value,
-            ignore_connections=ignore_connections,
-            vector_partner=vector_partner,
-            boundary_discontinuity=boundary_discontinuity,
-        )
-        edge_data = self._get_edge_data(da, **kw)
-        return concatenate([edge_data, da.data], axis=axis_num)
-
-    def _extend_right(
-        self,
-        da,
-        boundary=None,
-        fill_value=0.0,
-        ignore_connections=False,
-        vector_partner=None,
-        boundary_discontinuity=None,
-    ):
-        axis_num = self._get_axis_dim_num(da)
-        kw = dict(
-            is_left_edge=False,
-            boundary=boundary,
-            fill_value=fill_value,
-            ignore_connections=ignore_connections,
-            vector_partner=vector_partner,
-            boundary_discontinuity=boundary_discontinuity,
-        )
-        edge_data = self._get_edge_data(da, **kw)
-        return concatenate([da.data, edge_data], axis=axis_num)
-
-    def _get_neighbor_data_pairs(
-        self,
-        da,
-        position_to,
-        boundary=None,
-        fill_value=0.0,
-        ignore_connections=False,
-        boundary_discontinuity=None,
-        vector_partner=None,
-        position_check=True,
-    ):
-
-        position_from, dim = self._get_position_name(da)
-        axis_num = da.get_axis_num(dim)
-
-        boundary_kwargs = dict(
-            boundary=boundary,
-            fill_value=fill_value,
-            ignore_connections=ignore_connections,
-            vector_partner=vector_partner,
-            boundary_discontinuity=boundary_discontinuity,
-        )
-
-        valid_positions = ["outer", "inner", "left", "right", "center"]
-
-        if position_to == position_from:
-            raise ValueError("Can't get neighbor pairs for the same position.")
-
-        if position_to not in valid_positions:
-            raise ValueError(
-                "`%s` is not a valid axis position name. Valid "
-                "names are %r." % (position_to, valid_positions)
-            )
-
-        # This prevents the grid generation to work, I added an optional
-        # kwarg that deactivates this check
-        # (only set False from autogenerate/generate_grid_ds)
-
-        if position_check:
-            if position_to not in self.coords:
-                raise ValueError(
-                    "This axis doesn't contain a `%s` position" % position_to
-                )
-
-        transition = (position_from, position_to)
-
-        if (transition == ("outer", "center")) or (transition == ("center", "inner")):
-            # don't need any edge values
-            left = da.isel(**{dim: slice(None, -1)}).data
-            right = da.isel(**{dim: slice(1, None)}).data
-        elif (transition == ("center", "outer")) or (transition == ("inner", "center")):
-            # need both edge values
-            left = self._extend_left(da, **boundary_kwargs)
-            right = self._extend_right(da, **boundary_kwargs)
-        elif transition == ("center", "left") or transition == ("right", "center"):
-            # need to slice *after* getting edge because otherwise we could
-            # mess up complicated connections (e.g. cubed-sphere)
-            left = self._extend_left(da, **boundary_kwargs)
-            # unfortunately left is not an xarray so we have to slice
-            # it the long numpy way
-            slc = axis_num * (slice(None),) + (slice(0, -1),)
-            left = left[slc]
-            right = da.data
-        elif transition == ("center", "right") or transition == ("left", "center"):
-            # need to slice *after* getting edge because otherwise we could
-            # mess up complicated connections (e.g. cubed-sphere)
-            right = self._extend_right(da, **boundary_kwargs)
-            # unfortunately left is not an xarray so we have to slice
-            # it the long numpy way
-            slc = axis_num * (slice(None),) + (slice(1, None),)
-            right = right[slc]
-            left = da.data
-        else:
-            raise NotImplementedError(
-                " to ".join(transition) + " transition not yet supported."
-            )
-
-        return left, right
-
-    def interp(
-        self,
-        da,
-        to=None,
-        boundary=None,
-        fill_value=None,
-        boundary_discontinuity=None,
-        vector_partner=None,
-        keep_coords=False,
-    ):
-        """
-        Interpolate neighboring points to the intermediate grid point along
-        this axis.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data on which to operate
-        to : {'center', 'left', 'right', 'inner', 'outer'}
-            The direction in which to shift the array. If not specified,
-            default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-        vector_partner : dict, optional
-            A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The interpolated data
-
-        """
-        return self._neighbor_binary_func(
-            da,
-            raw_interp_function,
-            to,
-            boundary,
-            fill_value,
-            boundary_discontinuity,
-            vector_partner,
-            keep_coords=keep_coords,
-        )
-
-    def diff(
-        self,
-        da,
-        to=None,
-        boundary=None,
-        fill_value=None,
-        boundary_discontinuity=None,
-        vector_partner=None,
-        keep_coords=False,
-    ):
-        """
-        Difference neighboring points to the intermediate grid point.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data on which to operate
-        to : {'center', 'left', 'right', 'inner', 'outer'}
-            The direction in which to shift the array. If not specified,
-            default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-        vector_partner : dict, optional
-            A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-
-        return self._neighbor_binary_func(
-            da,
-            raw_diff_function,
-            to,
-            boundary,
-            fill_value,
-            boundary_discontinuity,
-            vector_partner,
-            keep_coords=keep_coords,
-        )
-
-    def cumsum(self, da, to=None, boundary=None, fill_value=0.0, keep_coords=False):
-        """
-        Cumulatively sum a DataArray, transforming to the intermediate axis
-        position.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data on which to operate
-        to : {'center', 'left', 'right', 'inner', 'outer'}
-            The direction in which to shift the array. If not specified,
-            default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
-
-        Returns
-        -------
-        da_cum : xarray.DataArray
-            The cumsummed data
-        """
-        warnings.warn(
-            "From version 0.8.0 the Axis computation methods will be removed, "
-            "in favour of using the Grid computation methods instead. "
-            "i.e. use `Grid.cumsum` instead of `Axis.cumsum`",
-            FutureWarning,
-        )
-
-        pos, dim = self._get_position_name(da)
-
-        if to is None:
-            to = self._default_shifts[pos]
-
-        # first use xarray's cumsum method
-        da_cum = da.cumsum(dim=dim)
-
-        # _maybe_get_axis_kwarg_from_mapping is needed to ensure backwards compatibility
-        # axis methods cannot deal with a dict input for e.g. boundary etc.
-
-        boundary_kwargs = dict(
-            boundary=_maybe_get_axis_kwarg_from_mapping(boundary, self.name),
-            fill_value=_maybe_get_axis_kwarg_from_mapping(fill_value, self.name),
-        )
-
-        # now pad / trim the data as necessary
-        # here we enumerate all the valid possible shifts
-        if (pos == "center" and to == "right") or (pos == "left" and to == "center"):
-            # do nothing, this is the default for how cumsum works
-            data = da_cum.data
-        elif (pos == "center" and to == "left") or (pos == "right" and to == "center"):
-            data = _pad_array(
-                da_cum.isel(**{dim: slice(0, -1)}), dim, left=True, **boundary_kwargs
-            )
-        elif (pos == "center" and to == "inner") or (pos == "outer" and to == "center"):
-            data = da_cum.isel(**{dim: slice(0, -1)}).data
-        elif (pos == "center" and to == "outer") or (pos == "inner" and to == "center"):
-            data = _pad_array(da_cum, dim, left=True, **boundary_kwargs)
-        else:
-            raise ValueError(
-                "From `%s` to `%s` is not a valid position "
-                "shift for cumsum operation." % (pos, to)
-            )
-
-        da_cum_newcoord = self._wrap_and_replace_coords(da, data, to, keep_coords)
-        return da_cum_newcoord
-
-    def min(
-        self,
-        da,
-        to=None,
-        boundary=None,
-        fill_value=None,
-        boundary_discontinuity=None,
-        vector_partner=None,
-        keep_coords=False,
-    ):
-        """
-        Minimum of neighboring points on intermediate grid point.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data on which to operate
-        to : {'center', 'left', 'right', 'inner', 'outer'}
-            The direction in which to shift the array. If not specified,
-            default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-        vector_partner : dict, optional
-            A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-
-        return self._neighbor_binary_func(
-            da,
-            raw_min_function,
-            to,
-            boundary,
-            fill_value,
-            boundary_discontinuity,
-            vector_partner,
-            keep_coords,
-        )
-
-    def max(
-        self,
-        da,
-        to=None,
-        boundary=None,
-        fill_value=None,
-        boundary_discontinuity=None,
-        vector_partner=None,
-        keep_coords=False,
-    ):
-        """
-        Maximum of neighboring points on intermediate grid point.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            The data on which to operate
-        to : {'center', 'left', 'right', 'inner', 'outer'}
-            The direction in which to shift the array. If not specified,
-            default will be used.
-        boundary : {None, 'fill', 'extend'}
-            A flag indicating how to handle boundaries:
-
-            * None:  Do not apply any boundary conditions. Raise an error if
-              boundary conditions are required for the operation.
-            * 'fill':  Set values outside the array boundary to fill_value
-              (i.e. a Dirichlet boundary condition.)
-            * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition.)
-        fill_value : float, optional
-            The value to use in the boundary condition with `boundary='fill'`.
-        vector_partner : dict, optional
-            A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
-
-        Returns
-        -------
-        da_i : xarray.DataArray
-            The differenced data
-        """
-
-        return self._neighbor_binary_func(
-            da,
-            raw_max_function,
-            to,
-            boundary,
-            fill_value,
-            boundary_discontinuity,
-            vector_partner,
-            keep_coords,
-        )
-
-    def transform(
-        self,
-        da,
-        target,
-        target_data=None,
-        method="linear",
-        mask_edges=True,
-        bypass_checks=False,
-        suffix="_transformed",
-    ):
-        """Convert an array of data to new 1D-coordinates.
-        The method takes a multidimensional array of data `da` and
-        transforms it onto another data_array `target_data` in the
-        direction of the axis (for each 1-dimensional 'column').
-
-        `target_data` can be e.g. the existing coordinate along an
-        axis, like depth. xgcm automatically detects the appropriate
-        coordinate and then transforms the data from the input
-        positions to the desired positions defined in `target`. This
-        is the default behavior. The method can also be used for more
-        complex cases like transforming a dataarray into new
-        coordinates that are defined by e.g. a tracer field like
-        temperature, density, etc.
-
-        Currently three methods are supported to carry out the
-        transformation:
-
-        - 'linear': Values are linear interpolated between 1D columns
-          along `axis` of `da` and `target_data`. This method requires
-          `target_data` to increase/decrease monotonically. `target`
-          values are interpreted as new cell centers in this case. By
-          default this method will return nan for values in `target` that
-          are outside of the range of `target_data`, setting
-          `mask_edges=False` results in the default np.interp behavior of
-          repeated values.
-
-        - 'log': Same as 'linear', but with values interpolated
-          logarithmically between 1D columns. Operates by applying `np.log`
-          to the target and target data values prior to linear interpolation.
-
-        - 'conservative': Values are transformed while conserving the
-          integral of `da` along each 1D column. This method can be used
-          with non-monotonic values of `target_data`. Currently this will
-          only work with extensive quantities (like heat, mass, transport)
-          but not with intensive quantities (like temperature, density,
-          velocity). N given `target` values are interpreted as cell-bounds
-          and the returned array will have N-1 elements along the newly
-          created coordinate, with coordinate values that are interpolated
-          between `target` values.
-
-        Parameters
-        ----------
-        da : xr.xr.DataArray
-            Input data
-        target : {np.array, xr.DataArray}
-            Target points for transformation. Depending on the method is
-            interpreted as cell center (method='linear' and method='log') or
-            cell bounds (method='conservative).
-            Values correspond to `target_data` or the existing coordinate
-            along the axis (if `target_data=None`). The name of the
-            resulting new coordinate is determined by the input type.
-            When passed as numpy array the resulting dimension is named
-            according to `target_data`, if provided as xr.Dataarray
-            naming is inferred from the `target` input.
-        target_data : xr.DataArray, optional
-            Data to transform onto (e.g. a tracer like density or temperature).
-            Defaults to None, which infers the appropriate coordinate along
-            `axis` (e.g. the depth).
-        method : str, optional
-            Method used to transform, by default "linear"
-        mask_edges : bool, optional
-            If activated, `target` values outside the range of `target_data`
-            are masked with nan, by default True. Only applies to 'linear' and 'log'
-            methods.
-        bypass_checks : bool, optional
-            Only applies for `method='linear'` and `method='log'`.
-            Option to bypass logic to flip data if monotonically decreasing along the axis.
-            This will improve performance if True, but the user needs to ensure that values
-            are increasing along the axis.
-        suffix : str, optional
-            Customizable suffix to the name of the output array. This will
-            be added to the original name of `da`. Defaults to `_transformed`.
-
-        Returns
-        -------
-        xr.DataArray
-            The transformed data
-
-
-        """
-        warnings.warn(
-            "From version 0.8.0 the Axis computation methods will be removed, "
-            "in favour of using the Grid computation methods instead. "
-            "i.e. use `Grid.transform` instead of `Axis.transform`",
-            FutureWarning,
-        )
-
-        # Theoretically we should be able to use a multidimensional `target`, which would need the additional information provided with `target_dim`.
-        # But the feature is not tested yet, thus setting this to default value internally (resulting in error in `_parse_target`, when a multidim `target` is passed)
-        target_dim = None
-
-        # check optional numba dependency
-        if numba is None:
-            raise ImportError(
-                "The transform functionality of xgcm requires numba. Install using `conda install numba`."
-            )
-
-        # raise error if axis is periodic
-        if self._periodic:
-            raise ValueError(
-                "`transform` can only be used on axes that are non-periodic. Pass `periodic=False` to `xgcm.Grid`."
-            )
-
-        # raise error if the target values are not provided as xr.dataarray
-        for var_name, variable, allowed_types in [
-            ("da", da, [xr.DataArray]),
-            ("target", target, [xr.DataArray, np.ndarray]),
-            ("target_data", target_data, [xr.DataArray]),
-        ]:
-            if not (isinstance(variable, tuple(allowed_types)) or variable is None):
-                raise ValueError(
-                    f"`{var_name}` needs to be a {' or '.join([str(a) for a in allowed_types])}. Found {type(variable)}"
-                )
-
-        def _target_data_name_handling(target_data):
-            """Handle target_data input without a name"""
-            if target_data.name is None:
-                warnings.warn(
-                    "Input`target_data` has no name, but we need a name for the transformed dimension. The name `TRANSFORMED_DIMENSION` will be used. To avoid this warning, call `.rename` on `target_data` before calling `transform`."
-                )
-                target_data.name = "TRANSFORMED_DIMENSION"
-
-        def _check_other_dims(target_da):
-            # check if other dimensions (excluding ones associated with the transform axis) are the
-            # same between `da` and `target_data`. If not provide instructions how to work around.
-
-            da_other_dims = set(da.dims) - set(self.coords.values())
-            target_da_other_dims = set(target_da.dims) - set(self.coords.values())
-            if not target_da_other_dims.issubset(da_other_dims):
-                raise ValueError(
-                    f"Found additional dimensions [{target_da_other_dims-da_other_dims}]"
-                    "in `target_data` not found in `da`. This could mean that the target "
-                    "array is not on the same position along other axes."
-                    " If the additional dimensions are associated witha staggered axis, "
-                    "use grid.interp() to move values to other grid position. "
-                    "If additional dimensions are not related to the grid (e.g. climate "
-                    "model ensemble members or similar), use xr.broadcast() before using transform."
-                )
-
-        def _parse_target(target, target_dim, target_data_dim, target_data):
-            """Parse target values into correct xarray naming and set default naming based on input data"""
-            # if target_data is not provided, assume the target to be one of the staggered dataset dimensions.
-            if target_data is None:
-                target_data = self._ds[target_data_dim]
-
-            # Infer target_dim from target
-            if isinstance(target, xr.DataArray):
-                if len(target.dims) == 1:
-                    if target_dim is None:
-                        target_dim = list(target.dims)[0]
-                else:
-                    if target_dim is None:
-                        raise ValueError(
-                            f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. This is currently not supported. `."
-                        )
-            else:
-                # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
-                _target_data_name_handling(target_data)
-                target_dim = target_data.name
-                target = xr.DataArray(
-                    target, dims=[target_dim], coords={target_dim: target}
-                )
-
-            _check_other_dims(target_data)
-            return target, target_dim, target_data
-
-        _, dim = self._get_position_name(da)
-        if method == "linear" or method == "log":
-            target, target_dim, target_data = _parse_target(
-                target, target_dim, dim, target_data
-            )
-            out = linear_interpolation(
-                da,
-                target_data,
-                target,
-                dim,
-                dim,  # in this case the dimension of phi and theta are the same
-                target_dim,
-                mask_edges=mask_edges,
-                bypass_checks=bypass_checks,
-                logarithmic=(method == "log"),
-            )
-        elif method == "conservative":
-            # the conservative method requires `target_data` to be on the `outer` coordinate.
-            # If that is not the case (a very common use case like transformation on any tracer),
-            # we need to infer the boundary values (using the interp logic)
-            # for this method we need the `outer` position. Error out if its not there.
-            try:
-                target_data_dim = self.coords["outer"]
-            except KeyError:
-                raise RuntimeError(
-                    "In order to use the method `conservative` the grid object needs to have `outer` coordinates."
-                )
-
-            target, target_dim, target_data = _parse_target(
-                target, target_dim, target_data_dim, target_data
-            )
-
-            # check on which coordinate `target_data` is, and interpolate if needed
-            if target_data_dim not in target_data.dims:
-                warnings.warn(
-                    "The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values. For most accurate results provide values on cell bounds.",
-                    UserWarning,
-                )
-                target_data = self.interp(target_data, boundary="extend")
-                # This seems to end up with chunks along the axis dimension.
-                # Rechunk to keep xr.apply_func from complaining.
-                # TODO: This should be made obsolete, when the internals are refactored using numba
-                target_data = target_data.chunk(
-                    {self._get_position_name(target_data)[1]: -1}
-                )
-
-            out = conservative_interpolation(
-                da,
-                target_data,
-                target,
-                dim,
-                target_data_dim,  # in this case the dimension of phi and theta are the same
-                target_dim,
-            )
-
-        return out
-
-    def _wrap_and_replace_coords(self, da, data_new, position_to, keep_coords=False):
-        """
-        Take the base coords from da, the data from data_new, and return
-        a new DataArray with a coordinate on position_to.
-        """
-
-        if not keep_coords:
-            warnings.warn(
-                "The keep_coords keyword argument is being deprecated - in future it will be removed "
-                "entirely, and the behaviour will always be that currently given by keep_coords=True.",
-                category=DeprecationWarning,
-            )
-
-        position_from, old_dim = self._get_position_name(da)
-        try:
-            new_dim = self.coords[position_to]
-        except KeyError:
-            raise KeyError("Position '%s' was not found in axis.coords." % position_to)
-
-        orig_dims = da.dims
-
-        coords = OrderedDict()
-        dims = []
-        for d in orig_dims:
-            if d == old_dim:
-                dims.append(new_dim)
-                # only add coordinate if it actually exists
-                # otherwise this creates a new coordinate where before there
-                # was none
-                if new_dim in self._ds.coords:
-                    coords[new_dim] = self._ds.coords[new_dim]
-            else:
-                dims.append(d)
-                # only add coordinate if it actually exists...
-                if d in da.coords:
-                    coords[d] = da.coords[d]
-
-        # add compatible coords
-        if keep_coords:
-            for c in da.coords:
-                if c not in coords and set(da[c].dims).issubset(dims):
-                    coords[c] = da[c]
-
-        return xr.DataArray(data_new, dims=dims, coords=coords)
-
-    def _get_position_name(self, da):
-        """Return the position and name of the axis coordinate in a DataArray."""
-        for position, coord_name in self.coords.items():
-            # TODO: should we have more careful checking of alignment here?
-            if coord_name in da.dims:
-                return position, coord_name
-
-        raise KeyError(
-            "None of the DataArray's dims %s were found in axis "
-            "coords." % repr(da.dims)
-        )
-
-    def _get_axis_dim_num(self, da):
-        """Return the dimension number of the axis coordinate in a DataArray."""
-        _, coord_name = self._get_position_name(da)
-        return da.get_axis_num(coord_name)
-
-
-_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
-    "periodic": "wrap",
-    "fill": "constant",
-    "extend": "edge",
-}
-
-
 class Grid:
     """
     An object with multiple :class:`xgcm.Axis` objects representing different
@@ -1210,15 +61,17 @@ class Grid:
 
     def __init__(
         self,
-        ds,
-        check_dims=True,
-        periodic=True,
-        default_shifts={},
-        face_connections=None,
-        coords=None,
-        metrics=None,
-        boundary=None,
-        fill_value=None,
+        ds: xr.Dataset,
+        coords: Optional[Mapping[str, Mapping[str, str]]] = None,
+        periodic: bool = True,
+        fill_value: Optional[Union[float, Mapping[str, float]]] = None,
+        default_shifts: Optional[
+            Mapping[str, str]
+        ] = None,  # TODO check if one default shift can be applied to many Axes
+        boundary: Optional[Union[str, Mapping[str, str]]] = None,
+        face_connections=None,  # TODO type hint this
+        metrics: Optional[Mapping[Tuple[str], List[str]]] = None,  # TODO type hint this
+        autoparse_metadata: bool = True,
     ):
         """
         Create a new Grid object from an input dataset.
@@ -1228,18 +81,6 @@ class Grid:
         ds : xarray.Dataset
             Contains the relevant grid information. Coordinate attributes
             should conform to Comodo conventions [1]_.
-        check_dims : bool, optional
-            Whether to check the compatibility of input data dimensions before
-            performing grid operations.
-        periodic : {True, False, list}
-            Whether the grid is periodic (i.e. "wrap-around"). If a list is
-            specified (e.g. ``['X', 'Y']``), the axis names in the list will be
-            be periodic and any other axes founds will be assumed non-periodic.
-        default_shifts : dict
-            A dictionary of dictionaries specifying default grid position
-            shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
-        face_connections : dict
-            Grid topology
         coords : dict, optional
             Specifies positions of dimension names along axes X, Y, Z, e.g
             ``{'X': {'center': 'XC', 'left: 'XG'}}``.
@@ -1250,13 +91,17 @@ class Grid:
             at the `left` position along the `X` axis).
             If the values are not present in ``ds`` or are not dimensions,
             an error will be raised.
-        metrics : dict, optional
-            Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
-            metric variable names in the dataset
-            (e.g. {('X',):['dx_t'], ('X', 'Y'):['area_tracer', 'area_u']}
-            for the cell distance in the x-direction ``dx_t`` and the
-            horizontal cell areas ``area_tracer`` and ``area_u``, located at
-            different grid positions).
+        periodic : {True, False, list}
+            Whether the grid is periodic (i.e. "wrap-around"). If a list is
+            specified (e.g. ``['X', 'Y']``), the axis names in the list will be
+            periodic and any other axes founds will be assumed non-periodic.
+        fill_value : {float, dict}, optional
+            The value to use in boundary conditions with `boundary='fill'`.
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
+        default_shifts : dict
+            A dictionary of dictionaries specifying default grid position
+            shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
 
@@ -1270,25 +115,21 @@ class Grid:
               points nearest to the edge
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
-        fill_value : {float, dict}, optional
-            The value to use in boundary conditions with `boundary='fill'`.
-            Optionally a dict mapping axis name to seperate values for each axis
-            can be passed.
+        face_connections : dict
+            Grid topology
+        metrics : dict, optional
+            Specification of grid metrics mapping axis names (X, Y, Z) to corresponding
+            metric variable names in the dataset
+            (e.g. {('X',):['dx_t'], ('X', 'Y'):['area_tracer', 'area_u']}
+            for the cell distance in the x-direction ``dx_t`` and the
+            horizontal cell areas ``area_tracer`` and ``area_u``, located at
+            different grid positions).
 
         REFERENCES
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
         self._ds = ds
-        self._check_dims = check_dims
-
-        # Deprecation Warnigns
-        warnings.warn(
-            "The `xgcm.Axis` class will be deprecated in the future. "
-            "Please make sure to use the `xgcm.Grid` methods for your work instead.",
-            category=DeprecationWarning,
-        )
-        # This will show up every time, but I think that is fine
 
         if boundary:
             warnings.warn(
@@ -1326,32 +167,48 @@ class Grid:
                 category=DeprecationWarning,
             )
 
-        if coords:
-            all_axes = coords.keys()
-        elif sgrid.assert_valid_sgrid(ds):
-            all_axes = sgrid.get_all_axes(ds)
+        if coords is None:
             coords = {}
         else:
-            all_axes = comodo.get_all_axes(ds)
-            coords = {}
+            # TODO this is only to retain backwards compatibility
+            # preferred would be to remove this line so autoparsing is combined with user input.
+            autoparse_metadata = False
 
-        # check coords input validity
-        for axis, positions in coords.items():
-            for pos, dim in positions.items():
-                if not (dim in ds.variables or dim in ds.dims):
-                    raise ValueError(
-                        f"Could not find dimension `{dim}` (for the `{pos}` position on axis `{axis}`) in input dataset."
+        if autoparse_metadata:
+            # TODO (Julius in #568) full hierarchy of conventions here
+            # but override with any user-given options
+
+            # try sgrid parsing
+            if sgrid.assert_valid_sgrid(ds):
+                sgrid_ax_names = sgrid.get_all_axes(ds)
+                parsed_coords = {}
+                for ax_name in sgrid_ax_names:
+                    parsed_coords[ax_name] = sgrid.get_axis_positions_and_coords(
+                        ds, ax_name
                     )
-                if dim not in ds.dims:
-                    raise ValueError(
-                        f"Input `{dim}` (for the `{pos}` position on axis `{axis}`) is not a dimension in the input datasets `ds`."
+            # try comodo parsing
+            else:
+                comodo_ax_names = comodo.get_all_axes(ds)
+                parsed_coords = {}
+                for ax_name in comodo_ax_names:
+                    parsed_coords[ax_name] = comodo.get_axis_positions_and_coords(
+                        ds, ax_name
                     )
+
+            coords = parsed_coords | coords
+
+        if len(coords) == 0:
+            raise ValueError(
+                "Could not determine Axis names - please provide them in the coords kwarg "
+                "or provide a dataset from which they can be parsed"
+            )
+
+        all_axes = coords.keys()
 
         # Convert all inputs to axes-kwarg mappings
         # TODO We need a way here to check valid input. Maybe also in _as_axis_kwargs?
         # Parse axis properties
-        boundary = self._as_axis_kwarg_mapping(boundary, axes=all_axes)
-        fill_value = self._as_axis_kwarg_mapping(fill_value, axes=all_axes)
+        boundary_dict = self._map_kwargs_over_axes(boundary, axes=all_axes)
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
 
@@ -1359,8 +216,20 @@ class Grid:
         # Since we plan on deprecating it soon handle it here, so we can easily
         # remove it later
         if isinstance(periodic, list):
-            periodic = {axname: True for axname in periodic}
-        periodic = self._as_axis_kwarg_mapping(periodic, axes=all_axes)
+            periodic_dict = {axname: True for axname in periodic}
+        else:
+            periodic_dict = self._map_kwargs_over_axes(periodic, axes=all_axes)
+
+        for ax, p in periodic_dict.items():
+            if boundary_dict[ax] is None:
+                if p is True:
+                    boundary_dict[ax] = "periodic"
+                else:
+                    boundary_dict[ax] = "fill"
+
+        default_shifts_dict = self._map_kwargs_over_axes(default_shifts, axes=all_axes)
+
+        fill_value_dict = self._map_kwargs_over_axes(fill_value, axes=all_axes)
 
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
@@ -1372,67 +241,28 @@ class Grid:
         # Populate axes. Much of this is just for backward compatibility.
         self.axes = OrderedDict()
         for axis_name in all_axes:
-            # periodic
-            is_periodic = periodic.get(axis_name, False)
-
-            # default_shifts
-            if axis_name in default_shifts:
-                axis_default_shifts = default_shifts[axis_name]
-            else:
-                axis_default_shifts = {}
-
-            # boundary
-            if isinstance(boundary, dict):
-                axis_boundary = boundary.get(axis_name, None)
-            elif isinstance(boundary, str) or boundary is None:
-                axis_boundary = boundary
-            else:
-                raise ValueError(
-                    f"boundary={boundary} is invalid. Please specify a dictionary "
-                    "mapping axis name to a boundary option; a string or None."
-                )
-
-            if isinstance(fill_value, dict):
-                axis_fillvalue = fill_value.get(
-                    axis_name, None
-                )  # TODO: This again sets defaults. Dont do that here.
-            elif isinstance(fill_value, (int, float)) or fill_value is None:
-                axis_fillvalue = fill_value
-            else:
-                raise ValueError(
-                    f"fill_value={fill_value} is invalid. Please specify a dictionary "
-                    "mapping axis name to a boundary option; a number or None."
-                )
-
             self.axes[axis_name] = Axis(
                 ds,
                 axis_name,
-                is_periodic,
-                default_shifts=axis_default_shifts,
-                coords=coords.get(axis_name),
-                # ^ note that `get` defaults to none if not found (which will
-                #   happen if user did not specify coords)
-                boundary=axis_boundary,
-                fill_value=axis_fillvalue,
+                coords=coords[axis_name],
+                default_shifts=default_shifts_dict.get(axis_name, None),
+                boundary=boundary_dict.get(axis_name, None),
+                fill_value=fill_value_dict.get(axis_name, None),
             )
 
         if face_connections is not None:
             self._assign_face_connections(face_connections)
 
-        self._metrics = {}
+        self._metrics: Dict[Tuple[str], List[str]] = {}
 
         if metrics is not None:
             for key, value in metrics.items():
                 self.set_metrics(key, value)
 
-        # Finish setup
-
-    def _as_axis_kwarg_mapping(
+    def _map_kwargs_over_axes(
         self,
         kwargs: Union[Any, Dict[str, Any]],
         axes: Optional[Iterable[str]] = None,
-        ax_property_name=None,
-        default_value: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Convert kwarg input into dict for each available axis
         E.g. for a grid with 2 axes for the keyword argument `periodic`
@@ -1443,36 +273,34 @@ class Grid:
         if axes is None:
             axes = self.axes
 
-        parsed_kwargs: Dict[str, Any] = dict()
+        mapped_kwargs: Dict[str, Any] = dict()
 
         if isinstance(kwargs, dict):
-            parsed_kwargs = kwargs
+            mapped_kwargs = kwargs
         else:
             for axname in axes:
-                parsed_kwargs[axname] = kwargs
+                mapped_kwargs[axname] = kwargs
 
-        # Check axis properties for values that were not provided (before using the default)
-        if ax_property_name is not None:
-            for axname in axes:
-                if axname not in parsed_kwargs.keys() or parsed_kwargs[axname] is None:
-                    ax_property = getattr(self.axes[axname], ax_property_name)
-                    parsed_kwargs[axname] = ax_property
+        return mapped_kwargs
 
-        # if None set to default value.
-        parsed_kwargs_w_defaults = {
-            k: default_value if v is None else v for k, v in parsed_kwargs.items()
-        }
-        # At this point the output should be guaranteed to have an entry per existing axis.
-        # If neither a default value was given, nor an axis property was found, the value will be mapped to None.
+    def _complete_user_kwargs_using_axis_defaults(
+        self,
+        user_kwargs: Union[Any, Dict[str, Any]],
+        property: str,
+    ) -> Dict[str, Any]:
+        """
+        Takes user choice of values for a given kwarg, and returns full per-axis mapping of kwargs,
+        filling in with Axis defaults when needed.
+        """
 
-        # temporary hack to get periodic conditions from axis
-        if ax_property_name == "boundary":
-            for axname in axes:
-                if self.axes[axname]._periodic:
-                    if axname not in parsed_kwargs_w_defaults.keys():
-                        parsed_kwargs_w_defaults[axname] = "periodic"
+        defaults = {ax: getattr(self.axes[ax], property) for ax in self.axes}
+        if user_kwargs is not None:
+            user_kwargs = self._map_kwargs_over_axes(user_kwargs)
+            user_kwargs = defaults | user_kwargs
+        else:
+            user_kwargs = defaults
 
-        return parsed_kwargs_w_defaults
+        return user_kwargs
 
     def _assign_face_connections(self, fc):
         """Check a dictionary of face connections to make sure all the links are
@@ -1797,11 +625,11 @@ class Grid:
         data_unpacked = _maybe_unpack_vector_component(data)
 
         # convert input arguments into axes-kwarg mappings
-        to = self._as_axis_kwarg_mapping(to)
+        to = self._map_kwargs_over_axes(to)
 
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
-        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
+        metric_weighted = self._map_kwargs_over_axes(metric_weighted)
 
         signatures = self._create_1d_grid_ufunc_signatures(
             data_unpacked, axis=axis, to=to
@@ -2271,11 +1099,11 @@ class Grid:
 
         if isinstance(axis, str):
             axis = [axis]
-        to = self._as_axis_kwarg_mapping(to)
+        to = self._map_kwargs_over_axes(to)
 
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
-        metric_weighted = self._as_axis_kwarg_mapping(metric_weighted)
+        metric_weighted = self._map_kwargs_over_axes(metric_weighted)
 
         data = da
         axes = [self.axes[ax_name] for ax_name in axis]
@@ -2695,9 +1523,12 @@ class Grid:
 
 
         """
-
-        ax = self.axes[axis]
-        return ax.transform(da, target, **kwargs)
+        # check optional numba dependency
+        if numba is None:
+            raise ImportError(
+                "The transform functionality of xgcm requires numba. Install using `conda install numba`."
+            )
+        return transform(self, axis, da, target, **kwargs)
 
 
 def _select_grid_ufunc(funcname, signature: _GridUFuncSignature, module, **kwargs):
