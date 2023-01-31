@@ -3,8 +3,8 @@ import pytest
 import xarray as xr
 
 from xgcm.comodo import get_all_axes as get_all_axes_comodo
-from xgcm.sgrid import assert_valid_sgrid
 from xgcm.grid import Grid
+from xgcm.sgrid import assert_valid_sgrid
 
 from .datasets import all_2d  # noqa: F401
 from .datasets import all_datasets  # noqa: F401
