@@ -1,4 +1,4 @@
-from . import sgrid, comodo
+from . import comodo, sgrid
 
 
 def parse_metadata(ds):
