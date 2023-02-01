@@ -107,7 +107,7 @@ def test_raise_on_operation_not_valid_for_same_position():
     [
         "fill",
         "extend",
-        {"X": "fill", "Y": "extend"},
+        {"X": "fill", "Y": "extend", "Z": "fill"},
     ],
 )
 @pytest.mark.parametrize("fill_value", [0, 1.0])

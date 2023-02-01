@@ -21,7 +21,7 @@ import numpy as np
 import xarray as xr
 from dask.array import Array as Dask_Array
 
-from . import comodo, gridops, sgrid
+from . import gridops, metadata_parsers
 from .axis import Axis
 from .grid_ufunc import (
     GridUFunc,
@@ -178,22 +178,7 @@ class Grid:
             # TODO (Julius in #568) full hierarchy of conventions here
             # but override with any user-given options
 
-            # try sgrid parsing
-            if sgrid.assert_valid_sgrid(ds):
-                sgrid_ax_names = sgrid.get_all_axes(ds)
-                parsed_coords = {}
-                for ax_name in sgrid_ax_names:
-                    parsed_coords[ax_name] = sgrid.get_axis_positions_and_coords(
-                        ds, ax_name
-                    )
-            # try comodo parsing
-            else:
-                comodo_ax_names = comodo.get_all_axes(ds)
-                parsed_coords = {}
-                for ax_name in comodo_ax_names:
-                    parsed_coords[ax_name] = comodo.get_axis_positions_and_coords(
-                        ds, ax_name
-                    )
+            ds, parsed_coords = metadata_parsers.parse_metadata(ds)
 
             coords = parsed_coords | coords
 
