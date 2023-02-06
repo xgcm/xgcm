@@ -19,11 +19,10 @@ def test_parse_sgrid(all_sgrid):
     ds, periodic, expected = all_sgrid
     parsed_coords = metadata_parsers.parse_sgrid(ds)
     assert parsed_coords == expected["axes"]
-    # assert 'X' in kwargs_parsed['coords'].keys()
-    # ....
 
 
 # TODO: Tests for: sgrid.get_sgrid_grid, sgrid.get_all_axes, sgrid.get_axis_positions_and_coords?
+# TODO: Tests for: different 3D sgrid dataset structures?
 
 # TODO: Construct dict of comodo datasets to test comodo parsing as follows:
 # def test_parse_comodo(all_comodo):

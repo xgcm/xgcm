@@ -175,9 +175,9 @@ class Grid:
             autoparse_metadata = False
 
         if autoparse_metadata:
-            ds, parsed_coords = metadata_parsers.parse_metadata(ds)
+            ds, grid_kwargs = metadata_parsers.parse_metadata(ds)
 
-            coords = parsed_coords | coords
+            coords = grid_kwargs["coords"] | coords
 
         if len(coords) == 0:
             raise ValueError(

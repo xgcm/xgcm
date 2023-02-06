@@ -11,6 +11,10 @@ def parse_metadata(ds):
 
     Returns
     ----------
+    (ds, grid_kwargs) : Tupule of xr.dataset and dict
+        ds is the xarray dataset with any neccessary modifications
+        grid_kwargs is a dictionary of kwargs for forming a Grid object
+          extracted from metadata
 
     """
 
@@ -26,7 +30,16 @@ def parse_metadata(ds):
     else:
         parsed_coords = parse_comodo(ds)
 
-    return (ds, parsed_coords)
+    # TODO: Discuss at meeting:
+    #   - Any other metadata to be extracted?
+    #   - (real-world) coordinates from sgrid? Not sure xgcm uses.
+    #   - Most is probably in CF metadata
+    
+    grid_kwargs = {
+            "coords": parsed_coords
+            }
+
+    return (ds, grid_kwargs)
 
 
 def parse_sgrid(ds):
