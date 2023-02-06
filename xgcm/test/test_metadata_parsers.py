@@ -1,5 +1,5 @@
-from xgcm import sgrid
-from xgcm import metadata_parsers
+from xgcm import metadata_parsers, sgrid
+
 from .datasets import all_sgrid  # noqa: F401
 from .datasets import nonperiodic_1d  # noqa: F401
 
