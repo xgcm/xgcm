@@ -34,10 +34,8 @@ def parse_metadata(ds):
     #   - Any other metadata to be extracted?
     #   - (real-world) coordinates from sgrid? Not sure xgcm uses.
     #   - Most is probably in CF metadata
-    
-    grid_kwargs = {
-            "coords": parsed_coords
-            }
+
+    grid_kwargs = {"coords": parsed_coords}
 
     return (ds, grid_kwargs)
 
