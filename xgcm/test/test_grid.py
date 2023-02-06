@@ -112,6 +112,12 @@ def test_raise_on_operation_not_valid_for_same_position():
 )
 @pytest.mark.parametrize("fill_value", [0, 1.0])
 def test_grid_create(all_datasets, boundary, fill_value):
+    print(" ")
+    print(" ")
+    print(all_datasets)
+    print(" ")
+    print(" ")
+    assert "X" == "Y"
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
 

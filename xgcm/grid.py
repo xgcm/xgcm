@@ -175,9 +175,6 @@ class Grid:
             autoparse_metadata = False
 
         if autoparse_metadata:
-            # TODO (Julius in #568) full hierarchy of conventions here
-            # but override with any user-given options
-
             ds, parsed_coords = metadata_parsers.parse_metadata(ds)
 
             coords = parsed_coords | coords

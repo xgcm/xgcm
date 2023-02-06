@@ -14,8 +14,10 @@ def parse_metadata(ds):
 
     """
 
+    # TODO (Julius in #568) full hierarchy of conventions here
+    # but override with any user-given options
+
     # Placeholder for parsing CF metadata
-    # TODO: add this in with #568
 
     # try sgrid parsing
     if sgrid.assert_valid_sgrid(ds):

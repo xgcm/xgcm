@@ -491,6 +491,22 @@ def nonperiodic_2d(request):
     return ds, periodic, expected_values[request.param]
 
 
+@pytest.fixture(
+    scope="module",
+    params=[
+        "nonperiodic_sgrid2D",
+        "periodic_sgrid2D",
+        "xperiodic_sgrid2D",
+        "yperiodic_sgrid2D",
+        "sgrid2Dvert",
+        "sgrid3D",
+    ],
+)
+def all_sgrid(request):
+    ds, periodic = datasets_with_periodicity[request.param]
+    return ds, periodic, expected_values[request.param]
+
+
 def datasets_grid_metric(grid_type):
     """Uniform grid test dataset.
     Should eventually be extended to nonuniform grid"""
