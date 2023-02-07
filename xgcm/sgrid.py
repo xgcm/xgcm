@@ -1,4 +1,5 @@
 from collections import OrderedDict
+# import cf_xarray
 
 
 def assert_valid_sgrid(ds):
@@ -38,10 +39,14 @@ def get_sgrid_grid(ds):
         The name of the grid variable
     """
 
-    for var_name in ds.data_vars:
+    for var_name in ds.variables:
         if ds[var_name].attrs.get("cf_role") == "grid_topology":
             return var_name
     raise ValueError("Could not find identify SGRID grid in input dataset.")
+
+    # TODO replace the 4 lines above with this (and import cf_xarray) once
+    #   upstream changes reach the general release.
+    # return ds.cf["grid_topology"]
 
 
 def get_all_axes(ds):
