@@ -3,7 +3,7 @@ import pytest
 import xarray as xr
 
 from xgcm.grid import Grid
-from xgcm.metadata_parsers import parse_comodo
+from xgcm.metadata_parsers import parse_comodo, parse_sgrid
 
 from .datasets import all_2d  # noqa: F401
 from .datasets import all_datasets  # noqa: F401
@@ -13,6 +13,7 @@ from .datasets import nonperiodic_1d  # noqa: F401
 from .datasets import nonperiodic_2d  # noqa: F401
 from .datasets import periodic_1d  # noqa: F401
 from .datasets import periodic_2d  # noqa: F401
+from .datasets import sgrid_datasets  # noqa: F401
 
 
 def _assert_axes_equal(ax1, ax2):
@@ -664,3 +665,46 @@ class TestInputErrorApplyAsGridUfunc:
                 axis="X",
                 other_component=[{"wrong": xr.DataArray()}, {"Y": xr.DataArray()}],
             )
+
+
+class TestAutoparsingFunctionalities:
+    def test_autoparse_comodo(self):
+        # Check that autoparsing a comodo dataset produces trhe same grid as
+        # doing it manually
+        ds = datasets["2d_left"]
+        ds_parsed, grid_kwargs = parse_comodo(ds)
+        grid_manual = Grid(
+            ds_parsed, coords=grid_kwargs["coords"], autoparse_metadata=False
+        )
+        grid_autoparsed = Grid(ds)
+        for ax in ["X", "Y"]:
+            _assert_axes_equal(grid_manual.axes[ax], grid_autoparsed.axes[ax])
+        # TODO: Better way would be to define an assert_grid_equal() method
+
+    def test_autoparse_sgrid(self):
+        # Check that autoparsing an sgrid dataset produces trhe same grid as
+        # doing it manually
+        ds = sgrid_datasets["sgrid2D"]
+        ds_parsed, grid_kwargs = parse_sgrid(ds)
+        grid_manual = Grid(
+            ds_parsed, coords=grid_kwargs["coords"], autoparse_metadata=False
+        )
+        grid_autoparsed = Grid(ds)
+        for ax in ["X", "Y"]:
+            _assert_axes_equal(grid_manual.axes[ax], grid_autoparsed.axes[ax])
+        # TODO: Better way would be to define an assert_grid_equal() method
+
+    def test_autoparse_conflict(self):
+        # Check that autoparsing with a kwarg to Grid raises an error
+        ds = datasets["2d_left"]
+        ds_parsed, grid_kwargs = parse_comodo(ds)
+        msg = (
+            "Auroparsed Grid kwargs: .* conflict with"
+            "user-supplied kwargs. Run with 'autoparse=False' or autoparse"
+            "and amend kwargs before calling Grid constructer."
+        )
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            Grid(ds_parsed, coords=grid_kwargs["coords"])
