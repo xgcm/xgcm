@@ -22,22 +22,25 @@ def parse_metadata(ds):
     # but override with any user-given options
 
     # Placeholder for parsing CF metadata
+    # Follow sgrid approach below
 
     # try sgrid parsing
     if sgrid.assert_valid_sgrid(ds):
-        parsed_coords = parse_sgrid(ds)
+        ds_sgrid, grid_kwargs_sgrid = parse_sgrid(ds)
     # fall back on comodo
     else:
-        parsed_coords = parse_comodo(ds)
+        ds_comodo, grid_kwargs_comodo = parse_comodo(ds)
 
-    # TODO: Discuss at meeting:
-    #   - Any other metadata to be extracted?
-    #   - (real-world) coordinates from sgrid? Not sure xgcm uses.
-    #   - Most is probably in CF metadata
-    
-    grid_kwargs = {
-            "coords": parsed_coords
-            }
+    # Hierachy of conventions:
+    # This will need expanding as more metadata conventions are added.
+    # Currently use sgrid if available, otherwise comodo as in older version.
+    # May seem superflous at present but in preparation for future developments.
+    if sgrid.assert_valid_sgrid(ds):
+        ds = ds_sgrid
+        grid_kwargs = grid_kwargs_sgrid
+    else:
+        ds = ds_comodo
+        grid_kwargs = grid_kwargs_comodo
 
     return (ds, grid_kwargs)
 
@@ -51,6 +54,11 @@ def parse_sgrid(ds):
 
     Returns
     ----------
+    (ds, sgrid_grid_kwargs) : Tupule of xr.dataset and dict
+        ds is the xarray dataset with any neccessary modifications
+        sgrid_grid_kwargs is a dictionary of kwargs for forming a Grid object
+          extracted from metadata
+
 
     """
 
@@ -58,7 +66,9 @@ def parse_sgrid(ds):
     parsed_coords = {}
     for ax_name in sgrid_ax_names:
         parsed_coords[ax_name] = sgrid.get_axis_positions_and_coords(ds, ax_name)
-    return parsed_coords
+
+    sgrid_grid_kwargs = {"coords": parsed_coords}
+    return (ds, sgrid_grid_kwargs)
 
 
 def parse_comodo(ds):
@@ -70,6 +80,11 @@ def parse_comodo(ds):
 
     Returns
     ----------
+    (ds, comodo_grid_kwargs) : Tupule of xr.dataset and dict
+        ds is the xarray dataset with any neccessary modifications
+        comodo_grid_kwargs is a dictionary of kwargs for forming a Grid object
+          extracted from metadata
+
 
     """
 
@@ -77,7 +92,9 @@ def parse_comodo(ds):
     parsed_coords = {}
     for ax_name in comodo_ax_names:
         parsed_coords[ax_name] = comodo.get_axis_positions_and_coords(ds, ax_name)
-    return parsed_coords
+    
+    comodo_grid_kwargs = {"coords": parsed_coords}
+    return (ds, comodo_grid_kwargs)
 
 
 def cf_parser(ds):
@@ -89,8 +106,14 @@ def cf_parser(ds):
 
     Returns
     ----------
+    (ds, cf_grid_kwargs) : Tupule of xr.dataset and dict
+        ds is the xarray dataset with any neccessary modifications
+        cf_grid_kwargs is a dictionary of kwargs for forming a Grid object
+          extracted from metadata
+
 
     """
     # TODO: To be completed as part of #568
-    pass
-    return None
+    cf_grid_kwargs = {}
+    
+    return (ds, cf_grid_kwargs)

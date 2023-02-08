@@ -129,7 +129,60 @@ class Grid:
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
+        if not isinstance(ds, xr.Dataset):
+            raise TypeError(
+                f"ds argument must be of type xarray.Dataset, but is of type {type(ds)}"
+            )
+        
         self._ds = ds
+
+        # Attempt to autoparse metadata from various conventions
+        # Default is to do this to preserve backwards compatability
+        if autoparse_metadata:
+            ds, parsed_kwargs = metadata_parsers.parse_metadata(ds)
+            
+            # Loop over input kwargs. If None and parsed alternative available
+            # then replace local variable with autoparsed. If conflict raise error.
+            print(f"coords = {coords}")
+            duplicates = []
+            if "coords" in parsed_kwargs:
+                if coords is None:
+                    coords = parsed_kwargs["coords"]
+                else:
+                    duplicates.append("coords")
+            if "fill_value" in parsed_kwargs:
+                if fill_value is None:
+                    fill_value = parsed_kwargs["fill_value"]
+                else:
+                    duplicates.append("fill_value")
+            if "default_shifts" in parsed_kwargs:
+                if default_shifts is None:
+                    default_shifts = parsed_kwargs["default_shifts"]
+                else:
+                    duplicates.append("default_shifts")
+            if "boundary" in parsed_kwargs:
+                if boundary is None:
+                    boundary = parsed_kwargs["boundary"]
+                else:
+                    duplicates.append("boundary")
+            if "face_connections" in parsed_kwargs:
+                if face_connections is None:
+                    face_connections = parsed_kwargs["face_connections"]
+                else:
+                    duplicates.append("face_connections")
+            if "metrics" in parsed_kwargs:
+                if metrics is None:
+                    metrics = parsed_kwargs["metrics"]
+                else:
+                    duplicates.append("metrics")
+            
+            if len(duplicates) > 0:
+                raise ValueError(
+                    f"Auroparsed Grid kwargs: '{', '.join(duplicates)}' conflict with"
+                    f"user-supplied kwargs. Run with 'autoparse=False' or autoparse"
+                    f"and amend kwargs before calling Grid constructer."
+                )
+
 
         if boundary:
             warnings.warn(
@@ -168,18 +221,6 @@ class Grid:
             )
 
         if coords is None:
-            coords = {}
-        else:
-            # TODO this is only to retain backwards compatibility
-            # preferred would be to remove this line so autoparsing is combined with user input.
-            autoparse_metadata = False
-
-        if autoparse_metadata:
-            ds, grid_kwargs = metadata_parsers.parse_metadata(ds)
-
-            coords = grid_kwargs["coords"] | coords
-
-        if len(coords) == 0:
             raise ValueError(
                 "Could not determine Axis names - please provide them in the coords kwarg "
                 "or provide a dataset from which they can be parsed"
