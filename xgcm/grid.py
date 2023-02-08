@@ -133,14 +133,14 @@ class Grid:
             raise TypeError(
                 f"ds argument must be of type xarray.Dataset, but is of type {type(ds)}"
             )
-        
+
         self._ds = ds
 
         # Attempt to autoparse metadata from various conventions
         # Default is to do this to preserve backwards compatability
         if autoparse_metadata:
             ds, parsed_kwargs = metadata_parsers.parse_metadata(ds)
-            
+
             # Loop over input kwargs. If None and parsed alternative available
             # then replace local variable with autoparsed. If conflict raise error.
             print(f"coords = {coords}")
@@ -175,14 +175,13 @@ class Grid:
                     metrics = parsed_kwargs["metrics"]
                 else:
                     duplicates.append("metrics")
-            
+
             if len(duplicates) > 0:
                 raise ValueError(
                     f"Auroparsed Grid kwargs: '{', '.join(duplicates)}' conflict with"
                     f"user-supplied kwargs. Run with 'autoparse=False' or autoparse"
                     f"and amend kwargs before calling Grid constructer."
                 )
-
 
         if boundary:
             warnings.warn(

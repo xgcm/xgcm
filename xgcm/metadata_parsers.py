@@ -92,7 +92,7 @@ def parse_comodo(ds):
     parsed_coords = {}
     for ax_name in comodo_ax_names:
         parsed_coords[ax_name] = comodo.get_axis_positions_and_coords(ds, ax_name)
-    
+
     comodo_grid_kwargs = {"coords": parsed_coords}
     return (ds, comodo_grid_kwargs)
 
@@ -115,5 +115,5 @@ def cf_parser(ds):
     """
     # TODO: To be completed as part of #568
     cf_grid_kwargs = {}
-    
+
     return (ds, cf_grid_kwargs)

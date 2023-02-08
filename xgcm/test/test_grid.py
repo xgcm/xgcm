@@ -53,11 +53,19 @@ class TestInvalidGrid:
     def test_duplicate_values(self):
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
-            Grid(ds, coords={"ax1": {"left": "xt", "right": "xt"}}, autoparse_metadata=False)
+            Grid(
+                ds,
+                coords={"ax1": {"left": "xt", "right": "xt"}},
+                autoparse_metadata=False,
+            )
 
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
-            Grid(ds, coords={"ax1": {"left": "xt"}, "ax2": {"right": "xt"}}, autoparse_metadata=False)
+            Grid(
+                ds,
+                coords={"ax1": {"left": "xt"}, "ax2": {"right": "xt"}},
+                autoparse_metadata=False,
+            )
 
     def test_inconsistent_lengths(self):
         # TODO incompatible lengths (e.g. outer dim not 1 element longer than center dim)
@@ -252,8 +260,22 @@ def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     """Test axis kwarg input functionality using dict input"""
     ds, _, _ = nonperiodic_1d
     ds, grid_kwargs = parse_comodo(ds)
-    grid_direct = Grid(ds, coords=grid_kwargs["coords"], periodic=False, boundary="fill", fill_value=5, autoparse_metadata=False)
-    grid_dict = Grid(ds, coords=grid_kwargs["coords"], periodic=False, boundary={"X": "fill"}, fill_value={"X": 5}, autoparse_metadata=False)
+    grid_direct = Grid(
+        ds,
+        coords=grid_kwargs["coords"],
+        periodic=False,
+        boundary="fill",
+        fill_value=5,
+        autoparse_metadata=False,
+    )
+    grid_dict = Grid(
+        ds,
+        coords=grid_kwargs["coords"],
+        periodic=False,
+        boundary={"X": "fill"},
+        fill_value={"X": 5},
+        autoparse_metadata=False,
+    )
     assert grid_direct.axes["X"].fill_value == grid_dict.axes["X"].fill_value
     assert grid_direct.axes["X"].boundary == grid_dict.axes["X"].boundary
 
@@ -274,9 +296,16 @@ def test_invalid_fill_value_error():
     ds = datasets["1d_left"]
     ds, grid_kwargs = parse_comodo(ds)
     with pytest.raises(TypeError):
-        Grid(ds, coords=grid_kwargs["coords"], fill_value="bad", autoparse_metadata=False)
+        Grid(
+            ds, coords=grid_kwargs["coords"], fill_value="bad", autoparse_metadata=False
+        )
     with pytest.raises(TypeError):
-        Grid(ds, coords=grid_kwargs["coords"], fill_value={"X": "bad"}, autoparse_metadata=False)
+        Grid(
+            ds,
+            coords=grid_kwargs["coords"],
+            fill_value={"X": "bad"},
+            autoparse_metadata=False,
+        )
 
 
 @pytest.mark.parametrize(
@@ -338,7 +367,12 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     ds = datasets["2d_left"]
     ds, grid_kwargs = parse_comodo(ds)
     grid1 = Grid(ds, coords=grid_kwargs["coords"], autoparse_metadata=False)
-    grid2 = Grid(ds, coords=grid_kwargs["coords"], boundary={"X": "fill", "Y": "fill"}, autoparse_metadata=False)
+    grid2 = Grid(
+        ds,
+        coords=grid_kwargs["coords"],
+        boundary={"X": "fill", "Y": "fill"},
+        autoparse_metadata=False,
+    )
 
     actual1 = grid1.interp(ds.data_g, ("X", "Y"), boundary={"X": "fill", "Y": "fill"})
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
@@ -476,7 +510,12 @@ def test_boundary_global_input(funcname, boundary, fill_value):
 
     # Test results by manually specifying fill value/boundary on grid method
     grid_manual = Grid(
-        ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary, autoparse_metadata=False
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary=boundary,
+        autoparse_metadata=False,
     )
 
     func_manual = getattr(grid_manual, funcname)
