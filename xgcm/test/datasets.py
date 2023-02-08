@@ -491,11 +491,10 @@ def nonperiodic_2d(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
 
+
 @pytest.fixture(
     scope="module",
-    params=[
-x for x in sgrid_with_periodicity.keys()
-    ],
+    params=[x for x in sgrid_with_periodicity.keys()],
 )
 def all_sgrid(request):
     ds, periodic = sgrid_with_periodicity[request.param]
