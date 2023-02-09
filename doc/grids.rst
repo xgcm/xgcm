@@ -180,7 +180,9 @@ of the same axis. We do this using the ``coords`` keyword argument, as follows:
 
     from xgcm import Grid
 
-    grid = Grid(ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False)
+    grid = Grid(
+        ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
+    )
     grid
 
 The printed information about the grid indicates that xgcm has successfully
