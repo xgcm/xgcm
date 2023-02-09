@@ -195,18 +195,74 @@ interpolation and difference operations: operating on the center coordinate
 Detecting Axes from Dataset Attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is possible to avoid manually specifying the axis information via the
-``coords`` keyword if the dataset contains specific metadata that can
-tell xgcm about the relationship between different coordinates.
-If ``coords`` is not specified, xgcm looks for this metadata in the coordinate
-attributes.
+It is possible to avoid manually specifying the axis if the dataset contains
+specific metadata that can tell xgcm about the relationship between different
+coordinates.
+If the ``autoparse_metadata`` kwarg is set to ``True`` (the default), xgcm looks
+for this metadata in the coordinate attributes.
 Wherever possible, we try to follow established metadata conventions, rather
-than defining new metadata conventions. The two main relevant conventions
+than defining new metadata conventions. The main relevant conventions
 are the `CF Conventions`_, which apply broadly to Climate and Forecast datasets
-that follow the netCDF data model, and the `COMODO conventions`_, which define
+that follow the netCDF data model, and the `COMODO conventions`_ and
+`SGRID conventions`_, both of which define
 specific attributes relevant to Arakawa grids. While the COMODO conventions
 were designed with C-grids in mind, we find they are general enough to support
 all the different Arakawa grids.
+
+Detection and extraction of grid information from datasets is performed by a series
+of metadata parsing functions that take an xarray dataset and return a (potentially
+modified) dataset and dictionary of extracted Grid kwargs.
+When used as part of the autoparsing functionality of the ``Grid`` class there is a
+default hierarchy imposed.
+For more control a user can manually use a specific autoparsing function to extract
+the ``Grid`` kwargs and then pass they to the ``Grid`` constructor (after any
+changes/additions) with ``autoparse_metadata=False``.
+
+For example:
+
+.. ipython:: python
+
+    grid = xgcm.Grid(ds)
+
+will return a ``Grid`` object constructed from xgcm's best attempts to autoparse any
+metadata in the dataset according to internal hierarchies, whilst
+
+.. ipython:: python
+
+    ds_sgrid, grid_kwargs_sgrid = xgcm.metadata_parsers.parse_sgrid(ds)
+    grid = xgcm.Grid(ds, coords=grid_kwargs["coords"], autoparse_metadata=False)
+
+explicitly extracts SGRID metadata which is then used to construct a ``Grid`` object
+without autoparsing.
+
+SGRID data
+""""""""""
+The identifier xgcm looks for is 'SGRID' in the ``conventions`` attribute.
+Grid data is then contained within the ``variable`` with the ``cf_role`` of
+'grid_topology'.
+A set of grid axes in the order ``'X', 'Y', 'Z'`` are assigned based on the
+dimensionality of the data.
+SGRID 'node_dimensions' are extracted and correspond to xgcm's cell edges.
+SGRID 'face' or 'volume' dimensions are then extracted with their associated 'padding'
+identifier.
+This corresponds to xgcm's cell centers.
+Once the padding type has been extracted the correct xgcm 'position' can be assigned
+to the associated cell edge coordinate as set out in the following table:
+
++---------------+----------+
+| SGRID padding | position |
++===============+==========+
+| low           | right    |
++---------------+----------+
+| high          | left     |
++---------------+----------+
+| both          | inner    |
++---------------+----------+
+| none          | outer    |
++---------------+----------+
+
+COMODO Data
+"""""""""""
 
 The key attribute xgcm looks for is ``axis``.
 When creating a new grid, xgcm will search through the dataset dimensions
@@ -338,3 +394,4 @@ This is described in the :ref:`grid_topology` page.
 .. _MITgcm notation: http://mitgcm.org/public/r2_manual/latest/online_documents/node31.html
 .. _CF Conventions: http://cfconventions.org/
 .. _COMODO Conventions: https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
+.. _SGRID Conventions: https://sgrid.github.io/sgrid/
