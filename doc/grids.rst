@@ -180,7 +180,7 @@ of the same axis. We do this using the ``coords`` keyword argument, as follows:
 
     from xgcm import Grid
 
-    grid = Grid(ds, coords={"X": {"center": "x_c", "left": "x_g"}})
+    grid = Grid(ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False)
     grid
 
 The printed information about the grid indicates that xgcm has successfully
@@ -242,6 +242,10 @@ Grid data is then contained within the ``variable`` with the ``cf_role`` of
 'grid_topology'.
 A set of grid axes in the order ``'X', 'Y', 'Z'`` are assigned based on the
 dimensionality of the data.
+Note that SGRID treatment of 3D grids and 2D grids with a vertical coordinate is
+subtly different.
+Both cases are handled by the autoparsing functionality to form a 3D ``Grid`` object.
+
 SGRID 'node_dimensions' are extracted and correspond to xgcm's cell edges.
 SGRID 'face' or 'volume' dimensions are then extracted with their associated 'padding'
 identifier.
