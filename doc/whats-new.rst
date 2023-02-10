@@ -10,6 +10,10 @@ v0.9.0 (unreleased)
 
 New Features
 ~~~~~~~~~~~~
+- Methods for autoparsing of dataset metadata to construct a :py:class:`xgcm.Grid` class have been added.
+  Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
+  addition of SGRID conventions (:issue:`109`, :pull:`559`).
+  By `Jack Atkinson <https://github.com/jatkinson1000>`_.
 
 Breaking Changes
 ~~~~~~~~~~~~~~~~
@@ -21,6 +25,7 @@ Breaking Changes
 
 - All functionality for generating c-grid dimensions on incomplete datasets via :py:meth:`xgcm.Grid.autogenerate`,  was removed (:pull:`557`).
    By `Julius Busecke <https://github.com/jbusecke>`_.
+
 Internal Changes
 ~~~~~~~~~~~~~~~~
 - Switch CI environment setup to micromamba (:issue:`576`, :pull:`577`).
