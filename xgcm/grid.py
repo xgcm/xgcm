@@ -131,7 +131,7 @@ class Grid:
         """
         if not isinstance(ds, xr.Dataset):
             raise TypeError(
-                f"ds argument must be of type xarray.Dataset, but is of type {type(ds)}"
+                f"ds argument to `xgcm.Grid` must be of type xarray.Dataset, but is of type {type(ds)}"
             )
 
         self._ds = ds
