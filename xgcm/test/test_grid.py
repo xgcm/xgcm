@@ -36,7 +36,8 @@ class TestInvalidGrid:
 
     def test_non_ds_type(self):
         with pytest.raises(
-            TypeError, match="ds argument must be of type xarray.Dataset"
+            TypeError,
+            match="ds argument to `xgcm.Grid` must be of type xarray.Dataset, but is of type .*?",
         ):
             Grid(4, coords={"ax1": {"left": "XG"}}, autoparse_metadata=False)
 
