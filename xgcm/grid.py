@@ -113,6 +113,7 @@ class Grid:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         face_connections : dict
@@ -554,6 +555,7 @@ class Grid:
             DataArray with desired grid positions for source array
         boundary : str or dict, optional,
             boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
@@ -563,6 +565,7 @@ class Grid:
               the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
         fill_value : float, optional
@@ -799,6 +802,7 @@ class Grid:
             Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
+
             * None: Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
@@ -807,6 +811,7 @@ class Grid:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+
             Optionally a dict mapping axis name to separate values for each axis
             can be passed.
         fill_value : {float, dict}, optional
@@ -1301,6 +1306,7 @@ class Grid:
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Neumann boundary condition.)
+
         fill_value : float, optional
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
