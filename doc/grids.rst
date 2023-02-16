@@ -254,7 +254,7 @@ metadata in the dataset according to internal hierarchies, whilst
                 ["x_g"],
                 np.arange(0.5, 9),
             ),
-        }
+        },
     )
 
     ds_sgrid, grid_kwargs_sgrid = xgcm.metadata_parsers.parse_sgrid(ds)
