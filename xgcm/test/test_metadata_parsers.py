@@ -1,7 +1,7 @@
 import pytest
+import xarray as xr
 
 from xgcm import metadata_parsers, sgrid
-import xarray as xr
 
 from .datasets import all_sgrid  # noqa: F401
 from .datasets import nonperiodic_1d  # noqa: F401
@@ -36,7 +36,7 @@ class TestSGRID:
 
     def test_1D_sgrid(self):
         # Check 1D grid raises the expected error (Sgrid designed for 2D and 3D)
-        
+
         ds = xr.Dataset(
             {
                 "grid": (
@@ -59,7 +59,7 @@ class TestSGRID:
 
     def test_4D_sgrid(self):
         # Check 1D grid raises the expected error (Sgrid designed for 2D and 3D)
-        
+
         ds = xr.Dataset(
             {
                 "grid": (
