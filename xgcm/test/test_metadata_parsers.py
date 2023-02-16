@@ -1,6 +1,7 @@
 import pytest
 
 from xgcm import metadata_parsers, sgrid
+import xarray as xr
 
 from .datasets import all_sgrid  # noqa: F401
 from .datasets import nonperiodic_1d  # noqa: F401
@@ -27,6 +28,52 @@ class TestSGRID:
         # Check invalid SGRID datasets raise error
         ds, periodic, expected = nonperiodic_1d
         msg = "Could not find identify SGRID grid in input dataset."
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            sgrid.get_sgrid_grid(ds)
+
+    def test_1D_sgrid(self):
+        # Check 1D grid raises the expected error (Sgrid designed for 2D and 3D)
+        
+        ds = xr.Dataset(
+            {
+                "grid": (
+                    (),
+                    np.array(1, dtype="int32"),
+                    {
+                        "cf_role": "grid_topology",
+                        "topology_dimension": 1,
+                    },
+                ),
+            },
+            attrs={"Conventions": "SGRID-0.3"},
+        )
+        msg = "SGRID expected dataset with dimensions 2 or 3, got 1 in variable .*."
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            sgrid.get_sgrid_grid(ds)
+
+    def test_4D_sgrid(self):
+        # Check 1D grid raises the expected error (Sgrid designed for 2D and 3D)
+        
+        ds = xr.Dataset(
+            {
+                "grid": (
+                    (),
+                    np.array(1, dtype="int32"),
+                    {
+                        "cf_role": "grid_topology",
+                        "topology_dimension": 4,
+                    },
+                ),
+            },
+            attrs={"Conventions": "SGRID-0.3"},
+        )
+        msg = "SGRID expected dataset with dimensions 2 or 3, got 4 in variable .*."
         with pytest.raises(
             ValueError,
             match=msg,

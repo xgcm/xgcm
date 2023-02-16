@@ -239,8 +239,8 @@ metadata in the dataset according to internal hierarchies, whilst
                 {
                     "cf_role": "grid_topology",
                     "topology_dimension": 1,
-                    "node_dimensions": "x_g",
-                    "face_dimensions": "x_c: x_g (padding: high)",
+                    "node_dimensions": "x_g, y_g",
+                    "face_dimensions": "x_c: x_g (padding: high), y_c: y_g (padding: high)",
                 },
             ),
         },
@@ -252,6 +252,14 @@ metadata in the dataset according to internal hierarchies, whilst
             ),
             "x_g": (
                 ["x_g"],
+                np.arange(0.5, 9),
+            ),
+            "y_c": (
+                ["y_c"],
+                np.arange(1, 10),
+            ),
+            "y_g": (
+                ["y_g"],
                 np.arange(0.5, 9),
             ),
         }

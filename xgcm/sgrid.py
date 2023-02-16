@@ -217,7 +217,7 @@ def get_axis_positions_and_coords(ds, axis_name):
 
         else:
             raise ValueError(
-                f"SGRID grid dimensions {sgrid_grid_dim} in variable {sgrid_grid_name} is > 3."
+                f"SGRID expected dataset with dimensions 2 or 3, got {sgrid_grid_dim} in variable {sgrid_grid_name}."
             )
 
         # Check for edge dimensions
