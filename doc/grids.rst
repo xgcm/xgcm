@@ -231,6 +231,32 @@ metadata in the dataset according to internal hierarchies, whilst
 
 .. ipython:: python
 
+    ds = xr.Dataset(
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 1,
+                    "node_dimensions": "x_g",
+                    "face_dimensions": "x_c: x_g (padding: high)",
+                },
+            ),
+        },
+        attrs={"Conventions": "SGRID-0.3"},
+        coords={
+            "x_c": (
+                ["x_c"],
+                np.arange(1, 10),
+            ),
+            "x_g": (
+                ["x_g"],
+                np.arange(0.5, 9),
+            ),
+        }
+    )
+
     ds_sgrid, grid_kwargs_sgrid = xgcm.metadata_parsers.parse_sgrid(ds)
     grid = xgcm.Grid(ds, coords=grid_kwargs["coords"], autoparse_metadata=False)
 

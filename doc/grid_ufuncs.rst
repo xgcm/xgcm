@@ -297,7 +297,7 @@ In both cases the result has the same length as the original input array.
 We can also see that the result depends on the choice of boundary conditions.
 
 Automatically Applying Boundary Conditions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Doing this manually is a chore, so xgcm allows you to apply boundary conditions automatically when using grid ufuncs.
 
