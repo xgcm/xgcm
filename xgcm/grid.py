@@ -796,7 +796,7 @@ class Grid:
             Grid universal function signature. Specifies the xgcm.Axis names and
             positions for each input and output variable, e.g.,
 
-            ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+            ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)``.
         boundary_width : Dict[str: Tuple[int, int]
             The widths of the boundaries at the edge of each array.
             Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
