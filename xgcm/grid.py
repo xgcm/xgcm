@@ -179,9 +179,9 @@ class Grid:
 
             if len(duplicates) > 0:
                 raise ValueError(
-                    f"Auroparsed Grid kwargs: '{', '.join(duplicates)}' conflict with"
-                    f"user-supplied kwargs. Run with 'autoparse=False' or autoparse"
-                    f"and amend kwargs before calling Grid constructer."
+                    f"Autoparsed Grid kwargs: '{', '.join(duplicates)}' conflict with "
+                    f"user-supplied kwargs. Run with 'autoparse_metadata=False', or "
+                    f"autoparse and amend kwargs before calling Grid constructer."
                 )
 
         if boundary:

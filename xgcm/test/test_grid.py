@@ -700,8 +700,8 @@ class TestAutoparsingFunctionalities:
         ds = datasets["2d_left"]
         ds_parsed, grid_kwargs = parse_comodo(ds)
         msg = (
-            "Auroparsed Grid kwargs: .* conflict with"
-            "user-supplied kwargs. Run with 'autoparse=False' or autoparse"
+            "Autoparsed Grid kwargs: .* conflict with "
+            "user-supplied kwargs. Run with 'autoparse_metadata=False', or autoparse "
             "and amend kwargs before calling Grid constructer."
         )
         with pytest.raises(
