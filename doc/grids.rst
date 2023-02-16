@@ -254,7 +254,6 @@ metadata in the dataset according to internal hierarchies, whilst
                 ["x_g"],
                 np.arange(0.5, 9),
             ),
-<<<<<<< HEAD
             "y_c": (
                 ["y_c"],
                 np.arange(1, 10),
@@ -263,10 +262,7 @@ metadata in the dataset according to internal hierarchies, whilst
                 ["y_g"],
                 np.arange(0.5, 9),
             ),
-        }
-=======
         },
->>>>>>> 8d4baa9e8d3bc6c3ce8d8326e2e9c93275913f82
     )
 
     ds_sgrid, grid_kwargs_sgrid = xgcm.metadata_parsers.parse_sgrid(ds)
