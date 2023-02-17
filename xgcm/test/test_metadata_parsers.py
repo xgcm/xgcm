@@ -1,8 +1,8 @@
+import numpy as np
 import pytest
 import xarray as xr
-import numpy as np
 
-from xgcm import metadata_parsers, sgrid, Grid
+from xgcm import Grid, metadata_parsers, sgrid
 
 from .datasets import all_sgrid  # noqa: F401
 from .datasets import nonperiodic_1d  # noqa: F401
