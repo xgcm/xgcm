@@ -183,6 +183,40 @@ expected_values = {
 }
 
 sgrid_datasets = {
+    "sgrid1D": xr.Dataset(
+        # 1d_left
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 1,
+                    "node_dimensions": "XG",
+                    "face_dimensions": "XC: XG (padding: high)",
+                },
+            ),
+            "data_c": (
+                ["time", "XC"],
+                np.random.rand(1, 20),
+            ),
+            "data_g": (
+                ["time", "XG"],
+                np.random.rand(1, 20),
+            ),
+        },
+        attrs={"Conventions": "SGRID-x.x"},
+        coords={
+            "XGrid": (
+                ["XG"],
+                np.arange(0, 20),
+            ),
+            "XCell": (
+                ["XC"],
+                np.arange(0, 20) + 0.5,
+            ),
+        },
+    ),
     "sgrid2D": xr.Dataset(
         # Similar to 2d_left below
         {
@@ -383,6 +417,8 @@ sgrid_datasets = {
     ),
 }
 sgrid_with_periodicity = {
+    "nonperiodic_sgrid1D": (sgrid_datasets["sgrid1D"], False),
+    "periodic_sgrid1D": (sgrid_datasets["sgrid1D"], True),
     "nonperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], False),
     "periodic_sgrid2D": (sgrid_datasets["sgrid2D"], True),
     "xperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], ["X"]),
@@ -392,6 +428,16 @@ sgrid_with_periodicity = {
 }
 
 sgrid_expected_values = {
+    "nonperiodic_sgrid1D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+        }
+    },
+    "periodic_sgrid1D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+        }
+    },
     "nonperiodic_sgrid2D": {
         "axes": {
             "X": {"center": "XC", "left": "XG"},

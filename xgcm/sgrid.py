@@ -79,7 +79,8 @@ def get_all_axes(ds):
         axes.update(["X", "Y", "Z"])
     else:
         raise ValueError(
-            f"SGRID dimensions {ndims} in variable {sgrid_grid_name} is > 3."
+            f"SGRID expected dataset with 1-3 spatial dimensions but "
+            f"got {ndims} in variable '{sgrid_grid_name}'."
         )
     return axes
 
@@ -180,7 +181,7 @@ def get_axis_positions_and_coords(ds, axis_name):
 
         # Edges/Faces/Volume
         # If 2D dataset extract from face_dimensions
-        if sgrid_grid_dim == 2:
+        if sgrid_grid_dim in [1, 2]:
             cell_dim = ds[sgrid_grid_name].attrs["face_dimensions"]
             # Account for fact that there may or may not be a space after ':'
             cell_dim = cell_dim.replace(":", " ").split()
@@ -217,7 +218,8 @@ def get_axis_positions_and_coords(ds, axis_name):
 
         else:
             raise ValueError(
-                f"SGRID expected dataset with dimensions 2 or 3, got {sgrid_grid_dim} in variable {sgrid_grid_name}."
+                f"SGRID expected dataset with 1-3 spatial dimensions but "
+                f"got {sgrid_grid_dim} in variable '{sgrid_grid_name}'."
             )
 
         # Check for edge dimensions

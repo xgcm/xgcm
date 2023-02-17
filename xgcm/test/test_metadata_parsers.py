@@ -1,7 +1,8 @@
 import pytest
 import xarray as xr
+import numpy as np
 
-from xgcm import metadata_parsers, sgrid
+from xgcm import metadata_parsers, sgrid, Grid
 
 from .datasets import all_sgrid  # noqa: F401
 from .datasets import nonperiodic_1d  # noqa: F401
@@ -34,29 +35,6 @@ class TestSGRID:
         ):
             sgrid.get_sgrid_grid(ds)
 
-    def test_1D_sgrid(self):
-        # Check 1D grid raises the expected error (Sgrid designed for 2D and 3D)
-
-        ds = xr.Dataset(
-            {
-                "grid": (
-                    (),
-                    np.array(1, dtype="int32"),
-                    {
-                        "cf_role": "grid_topology",
-                        "topology_dimension": 1,
-                    },
-                ),
-            },
-            attrs={"Conventions": "SGRID-0.3"},
-        )
-        msg = "SGRID expected dataset with dimensions 2 or 3, got 1 in variable .*."
-        with pytest.raises(
-            ValueError,
-            match=msg,
-        ):
-            sgrid.get_sgrid_grid(ds)
-
     def test_4D_sgrid(self):
         # Check 1D grid raises the expected error (Sgrid designed for 2D and 3D)
 
@@ -73,12 +51,15 @@ class TestSGRID:
             },
             attrs={"Conventions": "SGRID-0.3"},
         )
-        msg = "SGRID expected dataset with dimensions 2 or 3, got 4 in variable .*."
+        msg = (
+                f"SGRID expected dataset with 1-3 spatial dimensions but "
+                f"got 4 in variable '.*'."
+                )
         with pytest.raises(
             ValueError,
             match=msg,
         ):
-            sgrid.get_sgrid_grid(ds)
+            Grid(ds)
 
     def test_get_all_axes(self, all_sgrid):
         # Check valid SGRID datasets generate expected axes for 2D, 2D+vert, 3D datasets
