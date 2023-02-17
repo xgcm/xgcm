@@ -51,10 +51,7 @@ class TestSGRID:
             },
             attrs={"Conventions": "SGRID-0.3"},
         )
-        msg = (
-                f"SGRID expected dataset with 1-3 spatial dimensions but "
-                f"got 4 in variable '.*'."
-                )
+        msg = "SGRID expected dataset with 1-3 spatial dimensions but got 4 in variable '.*'."
         with pytest.raises(
             ValueError,
             match=msg,
