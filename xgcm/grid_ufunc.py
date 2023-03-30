@@ -491,12 +491,13 @@ def as_grid_ufunc(
         Grid universal function signature. Specifies the xgcm.Axis names and
         positions for each input and output variable, e.g.,
 
-        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+        ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)``.
     boundary_width : Dict[str: Tuple[int, int], optional
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
     boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
         A flag indicating how to handle boundaries:
+
         * None: Do not apply any boundary conditions. Raise an error if
           boundary conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
@@ -505,6 +506,7 @@ def as_grid_ufunc(
           value. (i.e. a limited form of Neumann boundary condition.)
         * 'extrapolate': Set values by extrapolating linearly from the two
           points nearest to the edge
+
         Optionally a dict mapping axis name to separate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
@@ -586,7 +588,6 @@ def apply_as_grid_ufunc(
     func : function
         Function to call like `func(*args, **kwargs)` on numpy-like unlabeled
         arrays (`.data`).
-
         Passed directly on to `xarray.apply_ufunc`.
     *args : xarray.DataArray
         One or more input argument to apply the function to. Inputs can be either scalar fields (xr.Dataarray)
@@ -602,7 +603,7 @@ def apply_as_grid_ufunc(
         Grid universal function signature. Specifies the relationship between xgcm.Axis positions before and after the
         operation for each input and output variable, e.g.,
 
-        ``signature="(X:center)->(X:left)"`` for ``func=diff_center_to_left(a)`.
+        ``signature="(X:center)->(X:left)"`` for ``func=diff_center_to_left(a)``.
 
         The axis names in the signature are dummy variables, so do not have to present in the Grid. Instead, these dummy
         variables will be identified with the actual named Axes in the `axis` kwarg in order of appearance. For
@@ -615,6 +616,7 @@ def apply_as_grid_ufunc(
         The axis names here are again dummy variables, each of which must be present in the signature.
     boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
         A flag indicating how to handle boundaries:
+
         * None: Do not apply any boundary conditions. Raise an error if
           boundary conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
@@ -623,6 +625,7 @@ def apply_as_grid_ufunc(
           value. (i.e. a limited form of Neumann boundary condition.)
         * 'extrapolate': Set values by extrapolating linearly from the two
           points nearest to the edge
+
         Optionally a dict mapping axis name to separate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
@@ -827,6 +830,7 @@ def _apply(
     dask,
     **kwargs,
 ) -> Sequence[xr.DataArray]:
+
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
     out_sizes = {
@@ -880,6 +884,7 @@ def _pad_then_rechunk(
     fill_value,
     other_component,
 ):
+
     padded_args = [
         pad(
             a,
@@ -1018,6 +1023,7 @@ def _rechunk_to_merge_in_boundary_chunks(
 
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
+
         original_arg_chunks = original_arg.variable.chunksizes
         merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
             grid,
@@ -1112,6 +1118,7 @@ def _reattach_coords(
 ) -> List[xr.DataArray]:
     results_with_coords = []
     for res in results:
+
         # padding strips all coordinates (including dimension coordinates).
         # Here we centrally restore them from the grid._ds.
         all_matching_coords = {

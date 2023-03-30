@@ -198,6 +198,7 @@ class TestParseSignatureFromTypeHints:
                 return np.array([])
 
     def test_type_hint_as_numpy_ndarray(self):
+
         # This should raise a mypy error, which is then ignored
         @as_grid_ufunc()
         def ufunc1(a: Annotated[str, "X:center"]) -> Annotated[np.ndarray, "X:center"]:
@@ -215,6 +216,7 @@ class TestParseSignatureFromTypeHints:
 
 
 def create_1d_test_grid_ds(ax_name, length):
+
     grid_ds = xr.Dataset(
         coords={
             f"{ax_name}_c": (

@@ -182,6 +182,302 @@ expected_values = {
     },
 }
 
+sgrid_datasets = {
+    "sgrid1D": xr.Dataset(
+        # 1d_left
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 1,
+                    "node_dimensions": "XG",
+                    "face_dimensions": "XC: XG (padding: high)",
+                },
+            ),
+            "data_c": (
+                ["time", "XC"],
+                np.random.rand(1, 20),
+            ),
+            "data_g": (
+                ["time", "XG"],
+                np.random.rand(1, 20),
+            ),
+        },
+        attrs={"Conventions": "SGRID-x.x"},
+        coords={
+            "XGrid": (
+                ["XG"],
+                np.arange(0, 20),
+            ),
+            "XCell": (
+                ["XC"],
+                np.arange(0, 20) + 0.5,
+            ),
+        },
+    ),
+    "sgrid2D": xr.Dataset(
+        # Similar to 2d_left below
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 2,
+                    "node_dimensions": "XG YG",
+                    "face_dimensions": "XC: XG (padding: high) YC: YG (padding: high)",
+                    "node_coordinates": "node_lon node_lat",
+                },
+            ),
+            "data_c": (
+                ["time", "YC", "XC"],
+                np.random.rand(1, 10, 20),
+            ),
+            "data_g": (
+                ["time", "YG", "XG"],
+                np.random.rand(1, 10, 20),
+            ),
+        },
+        attrs={"Conventions": "SGRID-x.x"},
+        coords={
+            "YGrid": (
+                ["YG"],
+                np.arange(0, 10),
+            ),
+            "YCell": (
+                ["YC"],
+                (np.arange(0, 10) + 0.5),
+            ),
+            "XGrid": (
+                ["XG"],
+                np.arange(0, 20),
+            ),
+            "XCell": (
+                ["XC"],
+                np.arange(0, 20) + 0.5,
+            ),
+        },
+    ),
+    "sgrid2Dvert": xr.Dataset(
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 2,
+                    "node_dimensions": "XG YG",
+                    "face_dimensions": "XC: XG (padding: none) YC: YG (padding: none)",
+                    "node_coordinates": "node_lon node_lat",
+                    "vertical_dimensions": "vcell: vnode (padding: both)",
+                },
+            ),
+            "data_c": (
+                ["time", "vcell", "YC", "XC"],
+                np.random.rand(1, 6, N - 1, 2 * N - 1),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "face",
+                },
+            ),
+            "data_g": (
+                ["time", "vnode", "YG", "XG"],
+                np.random.rand(1, 5, N, 2 * N),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "node",
+                },
+            ),
+            "u": (
+                ["time", "vnode", "YC", "XG"],
+                np.random.rand(1, 5, N - 1, 2 * N),
+                {
+                    "description": "x-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "edge1",
+                },
+            ),
+            "v": (
+                ["time", "vnode", "YG", "XC"],
+                np.random.rand(1, 5, N, 2 * N - 1),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "edge2",
+                },
+            ),
+            "w": (
+                ["time", "vcell", "YC", "XC"],
+                np.random.rand(1, 6, N - 1, 2 * N - 1),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face",
+                },
+            ),
+        },
+        attrs={"Conventions": "SGRID-x.x"},
+        coords={
+            "node_lat": (
+                ["YG", "XG"],
+                np.random.rand(N, 2 * N),
+                {
+                    "standard_name": "latitude",
+                    "units": "degree_north",
+                },
+            ),
+            "node_lon": (
+                ["YG", "XG"],
+                np.random.rand(N, 2 * N),
+                {
+                    "standard_name": "longitude",
+                    "units": "degree_east",
+                },
+            ),
+            "vert_coor": (
+                ["vcell"],
+                np.random.rand(6),
+                {
+                    "standard_name": "vertical coordinate",
+                    "units": "[%]",
+                },
+            ),
+        },
+    ),
+    "sgrid3D": xr.Dataset(
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 3,
+                    "node_dimensions": "XG YG knode",
+                    "volume_dimensions": "XC: XG (padding: low) YC: YG (padding: low) kcell: knode (padding: high)",
+                    "node_coordinates": "node_lon node_lat node_alt",
+                },
+            ),
+            "data_c": (
+                ["time", "kcell", "YC", "XC"],
+                np.random.rand(1, N, N, 2 * N),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "volume",
+                },
+            ),
+            "data_g": (
+                ["time", "knode", "YG", "XG"],
+                np.random.rand(1, N, N, 2 * N),
+                {
+                    "description": "some concentration",
+                    "grid": "grid",
+                    "location": "node",
+                },
+            ),
+            "u": (
+                ["time", "knode", "YC", "XG"],
+                np.random.rand(1, N, N, 2 * N),
+                {
+                    "description": "x-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face1",
+                },
+            ),
+            "v": (
+                ["time", "knode", "YG", "XC"],
+                np.random.rand(1, N, N, 2 * N),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face2",
+                },
+            ),
+            "w": (
+                ["time", "kcell", "YC", "XC"],
+                np.random.rand(1, N, N, 2 * N),
+                {
+                    "description": "y-velocity",
+                    "units": "m s-1",
+                    "grid": "grid",
+                    "location": "face3",
+                },
+            ),
+        },
+        attrs={"conventions": "sgrid-x.x"},
+    ),
+}
+sgrid_with_periodicity = {
+    "nonperiodic_sgrid1D": (sgrid_datasets["sgrid1D"], False),
+    "periodic_sgrid1D": (sgrid_datasets["sgrid1D"], True),
+    "nonperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], False),
+    "periodic_sgrid2D": (sgrid_datasets["sgrid2D"], True),
+    "xperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], ["X"]),
+    "yperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], ["Y"]),
+    "sgrid2Dvert": (sgrid_datasets["sgrid2Dvert"], False),
+    "sgrid3D": (sgrid_datasets["sgrid3D"], False),
+}
+
+sgrid_expected_values = {
+    "nonperiodic_sgrid1D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+        }
+    },
+    "periodic_sgrid1D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+        }
+    },
+    "nonperiodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+            "Y": {"center": "YC", "left": "YG"},
+        }
+    },
+    "periodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+            "Y": {"center": "YC", "left": "YG"},
+        }
+    },
+    "xperiodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+            "Y": {"center": "YC", "left": "YG"},
+        }
+    },
+    "yperiodic_sgrid2D": {
+        "axes": {
+            "X": {"center": "XC", "left": "XG"},
+            "Y": {"center": "YC", "left": "YG"},
+        }
+    },
+    "sgrid2Dvert": {
+        "axes": {
+            "X": {"center": "XC", "outer": "XG"},
+            "Y": {"center": "YC", "outer": "YG"},
+            "Z": {"center": "vcell", "inner": "vnode"},
+        }
+    },
+    "sgrid3D": {
+        "axes": {
+            "X": {"center": "XC", "right": "XG"},
+            "Y": {"center": "YC", "right": "YG"},
+            "Z": {"center": "kcell", "left": "knode"},
+        }
+    },
+}
+
 
 @pytest.fixture(scope="module", params=datasets_with_periodicity.keys())
 def all_datasets(request):
@@ -231,11 +527,24 @@ def periodic_2d(request):
 
 @pytest.fixture(
     scope="module",
-    params=["nonperiodic_2d_left", "xperiodic_2d_left", "yperiodic_2d_left"],
+    params=[
+        "nonperiodic_2d_left",
+        "xperiodic_2d_left",
+        "yperiodic_2d_left",
+    ],
 )
 def nonperiodic_2d(request):
     ds, periodic = datasets_with_periodicity[request.param]
     return ds, periodic, expected_values[request.param]
+
+
+@pytest.fixture(
+    scope="module",
+    params=[x for x in sgrid_with_periodicity.keys()],
+)
+def all_sgrid(request):
+    ds, periodic = sgrid_with_periodicity[request.param]
+    return ds, periodic, sgrid_expected_values[request.param]
 
 
 def datasets_grid_metric(grid_type):

@@ -20,6 +20,7 @@ from xgcm.test.test_faceconnections import ds as ds_faces  # noqa: F401
 class TestPadding:
     @pytest.mark.parametrize("fill_value", [np.nan, 0, 1.5])
     def test_padding_fill(self, boundary_width, fill_value):
+
         ds, coords, _ = datasets_grid_metric("C")
         grid = Grid(ds, coords=coords)
         data = ds.tracer
@@ -503,6 +504,7 @@ class TestPaddingFaceConnection:
     def test_face_connections_right_right_swap_axis(
         self, boundary_width, ds_faces, fill_value
     ):
+
         # set a default for boundary widths
         boundary_width = {k: boundary_width.get(k, (0, 0)) for k in ["X", "Y"]}
 

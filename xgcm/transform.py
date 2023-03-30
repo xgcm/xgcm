@@ -99,6 +99,7 @@ def _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2, out
     m = len(theta_hat_1)
 
     for i in range(n):
+
         # handle missing values
         if np.isnan(theta_1[i]) and np.isnan(theta_2[i]):
             continue
@@ -188,6 +189,7 @@ def input_handling(func):
 
     @functools.wraps(func)
     def wrapper_input_handling(*args, **kwargs):
+
         # unpack args
         phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim = args
 
@@ -242,6 +244,7 @@ def linear_interpolation(
 def conservative_interpolation(
     phi, theta, target_theta_levels, phi_dim, theta_dim, target_dim, **kwargs
 ):
+
     out = xr.apply_ufunc(
         interp_1d_conservative,
         phi,

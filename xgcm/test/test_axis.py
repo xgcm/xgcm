@@ -7,6 +7,7 @@ from .datasets import all_datasets, datasets, periodic_1d  # noqa
 
 class TestInit:
     def test_default_init(self, periodic_1d):
+
         # test initialisation
         ds, _, _ = periodic_1d
         axis = Axis(name="X", ds=ds, coords={"center": "XC", "left": "XG"})
