@@ -434,7 +434,6 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
 def test_interp_like(
     metric_axes, metric_name, periodic, boundary, boundary_expected, fill_value
 ):
-
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, periodic=periodic, autoparse_metadata=False)
     grid.set_metrics(metric_axes, metric_name)

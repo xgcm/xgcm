@@ -101,7 +101,6 @@ def test_average_unmatched_missing():
 
 # run this for each axis and each field in dataset
 def _run_single_derivative_test(grid, axis, fld, dx):
-
     dvar_dx = grid.derivative(fld, axis)
     expected = grid.diff(fld, axis) / dx
 
@@ -312,7 +311,6 @@ class TestDifferentGridPositionsParametrized:
             ["dx_t", "dy_t", "dz_t", "area_t", "volume_t"],
             ["xt", "yt", "zt", ["xt", "yt"], ["xt", "yt", "zt"]],
         ):
-
             new = func(ds.tracer, axis, **kwargs)
             expected = _expected_result(
                 ds.tracer, ds[metric_name], grid, dim, axis, funcname, **kwargs

@@ -676,7 +676,6 @@ class Grid:
         # TODO This will call xarray.apply_ufunc once for each axis, but if signatures + kwargs are the same then we
         # TODO only actually need to call apply_ufunc once for those axes
         for signature_1d, ax_name in zip(signatures, axis):
-
             grid_ufunc, remaining_kwargs = _select_grid_ufunc(
                 funcname, signature_1d, module=gridops, **kwargs
             )

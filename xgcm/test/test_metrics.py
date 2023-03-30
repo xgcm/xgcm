@@ -123,7 +123,6 @@ def test_assign_metric(key, metric_vars):
     ],
 )
 def test_iterate_axis_combinations(axes, expected):
-
     actual = list(iterate_axis_combinations(axes))
 
     expected = [set(e) for e in expected]
@@ -276,7 +275,6 @@ def test_get_metric_with_conditions_04b():
 
 
 def test_set_metric():
-
     ds, coords, metrics = datasets_grid_metric("C")
     expected_metrics = {k: [ds[va] for va in v] for k, v in metrics.items()}
 
@@ -290,7 +288,6 @@ def test_set_metric():
     assert len(grid._metrics) > 0
 
     for k, v in expected_metrics.items():
-
         k = frozenset(k)
         assert k in grid._metrics.keys()
         assert k in grid_manual._metrics.keys()
