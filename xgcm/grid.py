@@ -21,7 +21,7 @@ import numpy as np
 import xarray as xr
 from dask.array import Array as Dask_Array
 
-from . import comodo, gridops
+from . import gridops, metadata_parsers
 from .axis import Axis
 from .grid_ufunc import (
     GridUFunc,
@@ -113,6 +113,7 @@ class Grid:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         face_connections : dict
@@ -129,7 +130,59 @@ class Grid:
         ----------
         .. [1] Comodo Conventions https://web.archive.org/web/20160417032300/http://pycomodo.forge.imag.fr/norm.html
         """
+        if not isinstance(ds, xr.Dataset):
+            raise TypeError(
+                f"ds argument to `xgcm.Grid` must be of type xarray.Dataset, but is of type {type(ds)}"
+            )
+
         self._ds = ds
+
+        # Attempt to autoparse metadata from various conventions
+        # Default is to do this to preserve backwards compatability
+        if autoparse_metadata:
+            ds, parsed_kwargs = metadata_parsers.parse_metadata(ds)
+
+            # Loop over input kwargs. If None and parsed alternative available
+            # then replace local variable with autoparsed. If conflict raise error.
+            print(f"coords = {coords}")
+            duplicates = []
+            if "coords" in parsed_kwargs:
+                if coords is None:
+                    coords = parsed_kwargs["coords"]
+                else:
+                    duplicates.append("coords")
+            if "fill_value" in parsed_kwargs:
+                if fill_value is None:
+                    fill_value = parsed_kwargs["fill_value"]
+                else:
+                    duplicates.append("fill_value")
+            if "default_shifts" in parsed_kwargs:
+                if default_shifts is None:
+                    default_shifts = parsed_kwargs["default_shifts"]
+                else:
+                    duplicates.append("default_shifts")
+            if "boundary" in parsed_kwargs:
+                if boundary is None:
+                    boundary = parsed_kwargs["boundary"]
+                else:
+                    duplicates.append("boundary")
+            if "face_connections" in parsed_kwargs:
+                if face_connections is None:
+                    face_connections = parsed_kwargs["face_connections"]
+                else:
+                    duplicates.append("face_connections")
+            if "metrics" in parsed_kwargs:
+                if metrics is None:
+                    metrics = parsed_kwargs["metrics"]
+                else:
+                    duplicates.append("metrics")
+
+            if len(duplicates) > 0:
+                raise ValueError(
+                    f"Autoparsed Grid kwargs: '{', '.join(duplicates)}' conflict with "
+                    f"user-supplied kwargs. Run with 'autoparse_metadata=False', or "
+                    f"autoparse and amend kwargs before calling Grid constructer."
+                )
 
         if boundary:
             warnings.warn(
@@ -168,27 +221,6 @@ class Grid:
             )
 
         if coords is None:
-            coords = {}
-        else:
-            # TODO this is only to retain backwards compatibility
-            # preferred would be to remove this line so autoparsing is combined with user input.
-            autoparse_metadata = False
-
-        if autoparse_metadata:
-            # TODO (Julius in #568) full hierarchy of conventions here
-            # but override with any user-given options
-
-            # try comodo parsing
-            comodo_ax_names = comodo.get_all_axes(ds)
-            parsed_coords = {}
-            for ax_name in comodo_ax_names:
-                parsed_coords[ax_name] = comodo.get_axis_positions_and_coords(
-                    ds, ax_name
-                )
-
-            coords = parsed_coords | coords
-
-        if len(coords) == 0:
             raise ValueError(
                 "Could not determine Axis names - please provide them in the coords kwarg "
                 "or provide a dataset from which they can be parsed"
@@ -523,6 +555,7 @@ class Grid:
             DataArray with desired grid positions for source array
         boundary : str or dict, optional,
             boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
@@ -532,6 +565,7 @@ class Grid:
               the difference at the boundary will be zero.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+
             This sets the default value. It can be overriden by specifying the
             boundary kwarg when calling specific methods.
         fill_value : float, optional
@@ -762,12 +796,13 @@ class Grid:
             Grid universal function signature. Specifies the xgcm.Axis names and
             positions for each input and output variable, e.g.,
 
-            ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
+            ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)``.
         boundary_width : Dict[str: Tuple[int, int]
             The widths of the boundaries at the edge of each array.
             Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
         boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
             A flag indicating how to handle boundaries:
+
             * None: Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
@@ -776,6 +811,7 @@ class Grid:
               value. (i.e. a limited form of Neumann boundary condition.)
             * 'extrapolate': Set values by extrapolating linearly from the two
               points nearest to the edge
+
             Optionally a dict mapping axis name to separate values for each axis
             can be passed.
         fill_value : {float, dict}, optional
@@ -1270,6 +1306,7 @@ class Grid:
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Neumann boundary condition.)
+
         fill_value : float, optional
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional

@@ -3,6 +3,7 @@ import pytest
 import xarray as xr
 
 from xgcm.grid import Grid
+from xgcm.metadata_parsers import parse_comodo, parse_sgrid
 
 from .datasets import all_2d  # noqa: F401
 from .datasets import all_datasets  # noqa: F401
@@ -12,6 +13,7 @@ from .datasets import nonperiodic_1d  # noqa: F401
 from .datasets import nonperiodic_2d  # noqa: F401
 from .datasets import periodic_1d  # noqa: F401
 from .datasets import periodic_2d  # noqa: F401
+from .datasets import sgrid_datasets  # noqa: F401
 
 
 def _assert_axes_equal(ax1, ax2):
@@ -30,33 +32,42 @@ class TestInvalidGrid:
     def test_raise_non_str_axis_name(self, periodic_2d):
         with pytest.raises(TypeError, match="name argument must be of type str"):
             ds, *_ = datasets_grid_metric("C")
-            Grid(ds, coords={1: {"left": "XG"}})
+            Grid(ds, coords={1: {"left": "XG"}}, autoparse_metadata=False)
 
     def test_non_ds_type(self):
         with pytest.raises(
-            TypeError, match="ds argument must be of type xarray.Dataset"
+            TypeError,
+            match="ds argument to `xgcm.Grid` must be of type xarray.Dataset, but is of type .*?",
         ):
-            Grid(4, coords={"ax1": {"left": "XG"}})
+            Grid(4, coords={"ax1": {"left": "XG"}}, autoparse_metadata=False)
 
     def test_invalid_position_name(self):
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
-            Grid(ds, coords={"ax1": {"outer space": "XG"}})
+            Grid(ds, coords={"ax1": {"outer space": "XG"}}, autoparse_metadata=False)
 
     def test_nonexistent_dimension(self):
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
-            Grid(ds, coords={"ax1": {"center": "XGEEEEEEEE"}})
+            Grid(ds, coords={"ax1": {"center": "XGEEEEEEEE"}}, autoparse_metadata=False)
 
     @pytest.mark.xfail(reason="Not yet implemented")
     def test_duplicate_values(self):
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
-            Grid(ds, coords={"ax1": {"left": "xt", "right": "xt"}})
+            Grid(
+                ds,
+                coords={"ax1": {"left": "xt", "right": "xt"}},
+                autoparse_metadata=False,
+            )
 
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
-            Grid(ds, coords={"ax1": {"left": "xt"}, "ax2": {"right": "xt"}})
+            Grid(
+                ds,
+                coords={"ax1": {"left": "xt"}, "ax2": {"right": "xt"}},
+                autoparse_metadata=False,
+            )
 
     def test_inconsistent_lengths(self):
         # TODO incompatible lengths (e.g. outer dim not 1 element longer than center dim)
@@ -95,7 +106,7 @@ def periodic_1d_single_pos():
 
 def test_raise_on_operation_not_valid_for_same_position():
     ds = periodic_1d_single_pos()
-    grid = Grid(ds, coords={"X": {"center": "XC"}})
+    grid = Grid(ds, coords={"X": {"center": "XC"}}, autoparse_metadata=False)
     with pytest.raises(
         NotImplementedError, match="Could not find any pre-defined diff grid ufuncs"
     ):
@@ -146,7 +157,7 @@ def test_create_grid_no_comodo(all_datasets):
         ds_noattr[var].attrs.clear()
 
     coords = expected["axes"]
-    grid = Grid(ds_noattr, periodic=periodic, coords=coords)
+    grid = Grid(ds_noattr, periodic=periodic, coords=coords, autoparse_metadata=False)
 
     for axis_name_expected in grid_expected.axes:
         axis_expected = grid_expected.axes[axis_name_expected]
@@ -160,7 +171,7 @@ def test_grid_no_coords(periodic_1d):
     ds_nocoords = ds.drop_vars(list(ds.dims.keys()))
 
     coords = expected["axes"]
-    grid = Grid(ds_nocoords, periodic=periodic, coords=coords)
+    grid = Grid(ds_nocoords, periodic=periodic, coords=coords, autoparse_metadata=False)
 
     diff = grid.diff(ds["data_c"], "X")
     assert len(diff.coords) == 0
@@ -235,12 +246,12 @@ def test_cumsum(nonperiodic_1d, boundary):
 )
 def test_dask_vs_eager(all_datasets, func, boundary):
     ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid_method = getattr(grid, func)
     eager_result = grid_method(ds.tracer, "X", boundary=boundary)
 
     ds = ds.chunk({"xt": 1, "yt": 1, "time": 1, "zt": 1})
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid_method = getattr(grid, func)
     dask_result = grid_method(ds.tracer, "X", boundary=boundary).compute()
 
@@ -250,8 +261,23 @@ def test_dask_vs_eager(all_datasets, func, boundary):
 def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     """Test axis kwarg input functionality using dict input"""
     ds, _, _ = nonperiodic_1d
-    grid_direct = Grid(ds, periodic=False, boundary="fill", fill_value=5)
-    grid_dict = Grid(ds, periodic=False, boundary={"X": "fill"}, fill_value={"X": 5})
+    ds, grid_kwargs = parse_comodo(ds)
+    grid_direct = Grid(
+        ds,
+        coords=grid_kwargs["coords"],
+        periodic=False,
+        boundary="fill",
+        fill_value=5,
+        autoparse_metadata=False,
+    )
+    grid_dict = Grid(
+        ds,
+        coords=grid_kwargs["coords"],
+        periodic=False,
+        boundary={"X": "fill"},
+        fill_value={"X": 5},
+        autoparse_metadata=False,
+    )
     assert grid_direct.axes["X"].fill_value == grid_dict.axes["X"].fill_value
     assert grid_direct.axes["X"].boundary == grid_dict.axes["X"].boundary
 
@@ -259,21 +285,29 @@ def test_grid_dict_input_boundary_fill(nonperiodic_1d):
 def test_invalid_boundary_error():
     ds = datasets["1d_left"]
     with pytest.raises(ValueError):
-        Grid(ds, boundary="bad")
+        Grid(ds, boundary="bad", autoparse_metadata=False)
     with pytest.raises(ValueError):
-        Grid(ds, boundary={"X": "bad"})
+        Grid(ds, boundary={"X": "bad"}, autoparse_metadata=False)
     with pytest.raises(ValueError):
-        Grid(ds, boundary={"X": 0})
+        Grid(ds, boundary={"X": 0}, autoparse_metadata=False)
     with pytest.raises(ValueError):
-        Grid(ds, boundary=0)
+        Grid(ds, boundary=0, autoparse_metadata=False)
 
 
 def test_invalid_fill_value_error():
     ds = datasets["1d_left"]
+    ds, grid_kwargs = parse_comodo(ds)
     with pytest.raises(TypeError):
-        Grid(ds, fill_value="bad")
+        Grid(
+            ds, coords=grid_kwargs["coords"], fill_value="bad", autoparse_metadata=False
+        )
     with pytest.raises(TypeError):
-        Grid(ds, fill_value={"X": "bad"})
+        Grid(
+            ds,
+            coords=grid_kwargs["coords"],
+            fill_value={"X": "bad"},
+            autoparse_metadata=False,
+        )
 
 
 @pytest.mark.parametrize(
@@ -296,7 +330,7 @@ def test_invalid_fill_value_error():
 def test_keep_coords(funcname, gridtype):
     ds, coords, metrics = datasets_grid_metric(gridtype)
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
     func = getattr(grid, funcname)
     for axis_name in grid.axes.keys():
@@ -325,7 +359,7 @@ def test_keep_coords(funcname, gridtype):
 def test_keep_coords_deprecation():
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
     for axis_name in grid.axes.keys():
         with pytest.warns(DeprecationWarning):
             grid.diff(ds.tracer, axis_name, keep_coords=False)
@@ -333,8 +367,14 @@ def test_keep_coords_deprecation():
 
 def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     ds = datasets["2d_left"]
-    grid1 = Grid(ds, periodic=False)
-    grid2 = Grid(ds, periodic=False, boundary={"X": "fill", "Y": "fill"})
+    ds, grid_kwargs = parse_comodo(ds)
+    grid1 = Grid(ds, coords=grid_kwargs["coords"], autoparse_metadata=False)
+    grid2 = Grid(
+        ds,
+        coords=grid_kwargs["coords"],
+        boundary={"X": "fill", "Y": "fill"},
+        autoparse_metadata=False,
+    )
 
     actual1 = grid1.interp(ds.data_g, ("X", "Y"), boundary={"X": "fill", "Y": "fill"})
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
@@ -396,7 +436,7 @@ def test_interp_like(
 ):
 
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic)
+    grid = Grid(ds, coords=coords, periodic=periodic, autoparse_metadata=False)
     grid.set_metrics(metric_axes, metric_name)
     metric_available = grid._metrics.get(frozenset(metric_axes), None)
     metric_available = metric_available[0]
@@ -417,7 +457,7 @@ def test_input_not_dims():
         data, dims=["x", "y"], coords={"c": (["x", "y"], coord)}
     ).to_dataset(name="data")
     with pytest.raises(ValueError, match="Could not find dimension"):
-        Grid(ds, coords={"X": {"center": "c"}})
+        Grid(ds, coords={"X": {"center": "c"}}, autoparse_metadata=False)
 
 
 def test_input_dim_notfound():
@@ -428,7 +468,7 @@ def test_input_dim_notfound():
     ).to_dataset(name="data")
     msg = r"Could not find dimension `other` \(for the `center` position on axis `X`\) in input dataset."
     with pytest.raises(ValueError, match=msg):
-        Grid(ds, coords={"X": {"center": "other"}})
+        Grid(ds, coords={"X": {"center": "other"}}, autoparse_metadata=False)
 
 
 @pytest.mark.parametrize(
@@ -465,13 +505,19 @@ def test_boundary_global_input(funcname, boundary, fill_value):
         periodic=False,
         boundary=boundary,
         fill_value=fill_value,
+        autoparse_metadata=False,
     )
     func_global = getattr(grid_global, funcname)
     global_result = func_global(ds.tracer, axis)
 
     # Test results by manually specifying fill value/boundary on grid method
     grid_manual = Grid(
-        ds, coords=coords, metrics=metrics, periodic=False, boundary=boundary
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary=boundary,
+        autoparse_metadata=False,
     )
 
     func_manual = getattr(grid_manual, funcname)
@@ -620,3 +666,46 @@ class TestInputErrorApplyAsGridUfunc:
                 axis="X",
                 other_component=[{"wrong": xr.DataArray()}, {"Y": xr.DataArray()}],
             )
+
+
+class TestAutoparsingFunctionalities:
+    def test_autoparse_comodo(self):
+        # Check that autoparsing a comodo dataset produces trhe same grid as
+        # doing it manually
+        ds = datasets["2d_left"]
+        ds_parsed, grid_kwargs = parse_comodo(ds)
+        grid_manual = Grid(
+            ds_parsed, coords=grid_kwargs["coords"], autoparse_metadata=False
+        )
+        grid_autoparsed = Grid(ds)
+        for ax in ["X", "Y"]:
+            _assert_axes_equal(grid_manual.axes[ax], grid_autoparsed.axes[ax])
+        # TODO: Better way would be to define an assert_grid_equal() method
+
+    def test_autoparse_sgrid(self):
+        # Check that autoparsing an sgrid dataset produces trhe same grid as
+        # doing it manually
+        ds = sgrid_datasets["sgrid2D"]
+        ds_parsed, grid_kwargs = parse_sgrid(ds)
+        grid_manual = Grid(
+            ds_parsed, coords=grid_kwargs["coords"], autoparse_metadata=False
+        )
+        grid_autoparsed = Grid(ds)
+        for ax in ["X", "Y"]:
+            _assert_axes_equal(grid_manual.axes[ax], grid_autoparsed.axes[ax])
+        # TODO: Better way would be to define an assert_grid_equal() method
+
+    def test_autoparse_conflict(self):
+        # Check that autoparsing with a kwarg to Grid raises an error
+        ds = datasets["2d_left"]
+        ds_parsed, grid_kwargs = parse_comodo(ds)
+        msg = (
+            "Autoparsed Grid kwargs: .* conflict with "
+            "user-supplied kwargs. Run with 'autoparse_metadata=False', or autoparse "
+            "and amend kwargs before calling Grid constructer."
+        )
+        with pytest.raises(
+            ValueError,
+            match=msg,
+        ):
+            Grid(ds_parsed, coords=grid_kwargs["coords"])
