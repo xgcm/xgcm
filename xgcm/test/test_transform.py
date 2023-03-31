@@ -58,7 +58,7 @@ cases = {
         ),  # same source as in `source_data`
         "expected_data_mask_index": [0, -1],
         "expected_data_mask_value": np.nan,
-        "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "z"}}, "autoparse_metadata": False},
         "transform_kwargs": {"mask_edges": True, "method": "linear"},
     },
     "linear_depth_depth_nomask": {
@@ -78,7 +78,7 @@ cases = {
                 [0.23246861, 0.45175654, 0.58320681],
             ),
         ),  # same source as in `source_data`
-        "grid_kwargs": {"coords": {"Z": {"center": "z"}}},
+        "grid_kwargs": {"coords": {"Z": {"center": "z"}}, "autoparse_metadata": False},
         "transform_kwargs": {"mask_edges": False, "method": "linear"},
     },
     "linear_depth_depth_renamed": {
@@ -98,7 +98,10 @@ cases = {
                 [0.23246861, 0.45175654, 0.58320681],
             ),
         ),  # same source as in `source_data`
-        "grid_kwargs": {"coords": {"Z": {"center": "test"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "test"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "mask_edges": False,
             "method": "linear",
@@ -119,7 +122,10 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -139,7 +145,10 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth"}},
+            "autoparse_metadata": False,
+        },
         # "error": True,  # this currently fails but shouldnt
         "transform_kwargs": {
             "method": "linear",
@@ -160,7 +169,10 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth"}},
+            "autoparse_metadata": False,
+        },
         # "error": True,  # this currently fails but shouldnt
         "transform_kwargs": {
             "method": "linear",
@@ -180,7 +192,10 @@ cases = {
             "data",
             [1.0, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -201,7 +216,10 @@ cases = {
             "data",
             [np.nan, 4.0, 6.0, 5.6, 4.0, 2.0, -0.272727, -0.818182],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -222,7 +240,10 @@ cases = {
             "data",
             [-0.818182, -0.272727, 2.0, 4.0, 5.6, 6.0, 4.0, 1.0],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -249,7 +270,10 @@ cases = {
         "target_data": ("pressure", [1.0e5, 8.5e4, 7.0e4]),
         "expected_coord": ("pressure", [1.0e5, 8.5e4, 7.0e4]),
         "expected_data": ("data", [271.80164362, 275.48088011, 281.01791239]),
-        "grid_kwargs": {"coords": {"Z": {"center": "sigma"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "sigma"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "target_data": "pressure",
             "mask_edges": True,
@@ -267,7 +291,10 @@ cases = {
             "data",
             [0.1, 0.9, 4.0, 0.0],
         ),  # same source as in `source_data`
-        "grid_kwargs": {"coords": {"Z": {"center": "z", "outer": "zc"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "z", "outer": "zc"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {"method": "conservative"},
     },
     "conservative_depth_depth_rename": {
@@ -281,7 +308,10 @@ cases = {
             "data_test_suffix",
             [0.1, 0.9, 4.0, 0.0],
         ),  # same source as in `source_data`
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "suffix": "_test_suffix",
@@ -305,7 +335,10 @@ cases = {
             "data",
             [1, 9],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "target_data": "dens",
@@ -328,7 +361,10 @@ cases = {
             "data",
             [1, 12],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "target_data": "dens",
@@ -350,7 +386,10 @@ cases = {
             "data",
             [0, 9],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "target_data": "dens",
@@ -373,7 +412,10 @@ cases = {
             "data",
             [1, 9],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "target_data": "temp",
@@ -393,7 +435,10 @@ cases = {
             "data",
             [1, 9],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "error": True,  # this will still fail in the mid level tests but should succeed in the high level version (due to implementing interp on the high level method)
         "transform_kwargs": {
             "method": "conservative",
@@ -414,7 +459,10 @@ cases = {
             "data",
             [2210 / 2, 100 + 2210 / 2],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "target_data": "dens",
@@ -434,7 +482,10 @@ cases = {
             "data",
             [1100.0, 4300.0, 6400.0, 3200.0],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "target_data": "dens",
@@ -454,7 +505,10 @@ cases = {
             "data",
             [30, 20, 10],
         ),
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "linear",
             "target_data": "dens",
@@ -474,7 +528,10 @@ cases = {
             [30, 20, 10],
         ),
         "error": True,  # this will still fail in the mid level tests but should succeed in the high level version (due to implementing interp on the high level method)
-        "grid_kwargs": {"coords": {"Z": {"center": "depth", "outer": "depth_bnds"}}},
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
+            "autoparse_metadata": False,
+        },
         "transform_kwargs": {
             "method": "conservative",
             "target_data": "dens",
