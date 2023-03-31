@@ -266,6 +266,7 @@ def create_1d_test_grid(ax_name, length=9):
                 "outer": f"{ax_name}_o",
             }
         },
+        autoparse_metadata=False,
     )
 
 
@@ -291,6 +292,7 @@ def create_2d_test_grid(ax_name_1, ax_name_2, length1=9, length2=11):
                 "outer": f"{ax_name_2}_o",
             },
         },
+        autoparse_metadata=False,
     )
 
 
@@ -840,7 +842,9 @@ class TestPadAfterUFunc:
         ds.coords["Zp1"] = xr.DataArray(
             np.arange(11), dims="Zp1", coords={"Zp1": np.arange(11)}
         )
-        grid = Grid(ds, coords={"Z": {"center": "Z", "outer": "Zp1"}})
+        grid = Grid(
+            ds, coords={"Z": {"center": "Z", "outer": "Zp1"}}, autoparse_metadata=False
+        )
 
         grid.cumsum(ds.drF, "Z", boundary="periodic")
         grid.cumsum(ds.drF, "Z", boundary="extend")
@@ -1119,7 +1123,9 @@ class TestMapOverlapGridops:
             .to_dataset(name="drF")
         )
         ds.coords["Zp1"] = zp1_coord
-        grid = Grid(ds, coords={"Z": {"center": "Z", "outer": "Zp1"}})
+        grid = Grid(
+            ds, coords={"Z": {"center": "Z", "outer": "Zp1"}}, autoparse_metadata=False
+        )
 
         expected_values = np.concatenate(
             (np.array([1.0]), np.linspace(1.5, 9.5, num=9), np.array([10.0]))
