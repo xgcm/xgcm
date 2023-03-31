@@ -830,7 +830,6 @@ def _apply(
     dask,
     **kwargs,
 ) -> Sequence[xr.DataArray]:
-
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
     out_sizes = {
@@ -884,7 +883,6 @@ def _pad_then_rechunk(
     fill_value,
     other_component,
 ):
-
     padded_args = [
         pad(
             a,
@@ -1023,7 +1021,6 @@ def _rechunk_to_merge_in_boundary_chunks(
 
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
-
         original_arg_chunks = original_arg.variable.chunksizes
         merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
             grid,
@@ -1118,7 +1115,6 @@ def _reattach_coords(
 ) -> List[xr.DataArray]:
     results_with_coords = []
     for res in results:
-
         # padding strips all coordinates (including dimension coordinates).
         # Here we centrally restore them from the grid._ds.
         all_matching_coords = {
