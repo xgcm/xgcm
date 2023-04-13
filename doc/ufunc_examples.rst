@@ -52,6 +52,7 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
             "X": {"center": "x_c", "left": "x_g"},
             "Y": {"center": "y_c", "left": "y_g"},
         },
+        autoparse_metadata=False,
     )
     grid
 

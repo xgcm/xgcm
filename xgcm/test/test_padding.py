@@ -21,7 +21,7 @@ class TestPadding:
     @pytest.mark.parametrize("fill_value", [np.nan, 0, 1.5])
     def test_padding_fill(self, boundary_width, fill_value):
         ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
+        grid = Grid(ds, coords=coords, autoparse_metadata=False)
         data = ds.tracer
 
         # iterate over all axes
@@ -49,7 +49,7 @@ class TestPadding:
 
     def test_padding_extend(self, boundary_width):
         ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
+        grid = Grid(ds, coords=coords, autoparse_metadata=False)
         data = ds.tracer
 
         # iterate over all axes
@@ -75,7 +75,7 @@ class TestPadding:
 
     def test_padding_periodic(self, boundary_width):
         ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
+        grid = Grid(ds, coords=coords, autoparse_metadata=False)
         data = ds.tracer
 
         # iterate over all axes
@@ -101,7 +101,7 @@ class TestPadding:
 
     def test_padding_mixed(self, boundary_width):
         ds, coords, _ = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords)
+        grid = Grid(ds, coords=coords, autoparse_metadata=False)
         data = ds.tracer
 
         axis_padding_mapping = {"X": "periodic", "Y": "extend"}
@@ -437,7 +437,10 @@ class TestPaddingFaceConnection:
                 1: {"Y": ((0, "X", False), None)},
             }
         }
-        grid = Grid(ds_faces, face_connections=face_connections)
+        grid = Grid(
+            ds_faces,
+            face_connections=face_connections,
+        )
         data = ds_faces.data_c
 
         # fill in zeros for y boundary width if not given
@@ -512,7 +515,10 @@ class TestPaddingFaceConnection:
                 1: {"Y": (None, (0, "X", True))},
             }
         }
-        grid = Grid(ds_faces, face_connections=face_connections)
+        grid = Grid(
+            ds_faces,
+            face_connections=face_connections,
+        )
         data = ds_faces.data_c
 
         # fill in zeros for y boundary width if not given
@@ -1038,7 +1044,9 @@ class TestPaddingFaceConnection:
                 1: {"Y": (None, (0, "X", True))},
             }
         }
-        grid = Grid(ds_faces, face_connections=face_connections)
+        grid = Grid(
+            ds_faces, face_connections=face_connections, autoparse_metadata=False
+        )
         u = ds_faces.u
         v = ds_faces.v
 

@@ -34,7 +34,13 @@ class TestParametrized:
         # It multiplies the values with a metric like the area, then performs interpolation
         # and divides by the same metric (area) for the new grid position
         ds, coords, metrics = datasets_grid_metric(grid_type)
-        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+        grid = Grid(
+            ds,
+            coords=coords,
+            metrics=metrics,
+            periodic=periodic,
+            autoparse_metadata=False,
+        )
         func = getattr(grid, funcname)
 
         metric = grid.get_metric(ds[variable], metric_weighted)
@@ -53,7 +59,7 @@ class TestParametrized:
         """tests if the output for multiple axis is the same as when
         executing the single axis ops in serial"""
         ds, coords, metrics = datasets_grid_metric(grid_type)
-        grid = Grid(ds, coords=coords, metrics=metrics)
+        grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
         func = getattr(grid, funcname)
         expected = ds[variable]
@@ -86,7 +92,12 @@ def test_average_unmatched_missing():
     ds = xr.Dataset({"data": data})
     ds = ds.assign_coords(weights=weights)
     # create an xgcm grid
-    grid = Grid(ds, coords={"X": {"center": "x"}}, metrics={"X": ["weights"]})
+    grid = Grid(
+        ds,
+        coords={"X": {"center": "x"}},
+        metrics={"X": ["weights"]},
+        autoparse_metadata=False,
+    )
 
     # average the unmasked array
     expected = grid.average(ds.data, "X")
@@ -141,6 +152,7 @@ class TestDerivatives:
             },
             metrics={("X",): ["dXC", "dXG"], ("Y",): ["dYC", "dYG"]},
             periodic=True,
+            autoparse_metadata=False,
         )
 
         # Test x direction
@@ -157,7 +169,7 @@ class TestDerivatives:
         # test derivatives with synthetic C grid data
 
         ds, coords, metrics = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords, metrics=metrics)
+        grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
         # tracer point
         var = "tracer"
@@ -188,7 +200,7 @@ class TestDerivatives:
         # test derivatives with synthetic B grid data
 
         ds, coords, metrics = datasets_grid_metric("B")
-        grid = Grid(ds, coords=coords, metrics=metrics)
+        grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
         # tracer point
         var = "tracer"
@@ -240,7 +252,13 @@ def _expected_result(da, metric, grid, dim, axes, funcname, boundary=None):
 class TestDifferentGridPositionsParametrized:
     def test_bgrid(self, funcname, boundary, periodic):
         ds, coords, metrics = datasets_grid_metric("B")
-        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+        grid = Grid(
+            ds,
+            coords=coords,
+            metrics=metrics,
+            periodic=periodic,
+            autoparse_metadata=False,
+        )
 
         if funcname == "cumint":
             # cumint needs a boundary
@@ -294,7 +312,13 @@ class TestDifferentGridPositionsParametrized:
 
     def test_cgrid(self, funcname, boundary, periodic):
         ds, coords, metrics = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+        grid = Grid(
+            ds,
+            coords=coords,
+            metrics=metrics,
+            periodic=periodic,
+            autoparse_metadata=False,
+        )
 
         if funcname == "cumint":
             # cumint needs a boundary
@@ -360,7 +384,13 @@ class TestDifferentGridPositionsParametrized:
         for dm in del_metrics:
             del metrics[dm]
 
-        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+        grid = Grid(
+            ds,
+            coords=coords,
+            metrics=metrics,
+            periodic=periodic,
+            autoparse_metadata=False,
+        )
 
         func = getattr(grid, funcname)
 
@@ -380,7 +410,7 @@ class TestDifferentGridPositionsParametrized:
             for dm in del_metrics:
                 del metrics[dm]
 
-            grid = Grid(ds, coords=coords, metrics=metrics)
+            grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
             func = getattr(grid, funcname)
 
@@ -398,7 +428,13 @@ class TestDifferentGridPositionsParametrized:
 
     def test_metric_axes_missing_from_array(self, funcname, periodic, boundary):
         ds, coords, metrics = datasets_grid_metric("C")
-        grid = Grid(ds, coords=coords, metrics=metrics, periodic=periodic)
+        grid = Grid(
+            ds,
+            coords=coords,
+            metrics=metrics,
+            periodic=periodic,
+            autoparse_metadata=False,
+        )
 
         if funcname == "cumint":
             # cumint needs a boundary

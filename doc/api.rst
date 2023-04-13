@@ -8,7 +8,7 @@ Grid
    :members:
 
 Grid ufuncs
-====
+===========
 
 .. autosummary::
    :toctree: generated/

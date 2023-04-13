@@ -152,7 +152,9 @@ Our grid object has one Axis (``"X"``), which has two coordinates, on positions 
         }
     )
 
-    grid = Grid(ds, coords={"X": {"center": "x_c", "left": "x_g"}})
+    grid = Grid(
+        ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
+    )
     grid
 
 Our data starts on the cell centers.
@@ -295,7 +297,7 @@ In both cases the result has the same length as the original input array.
 We can also see that the result depends on the choice of boundary conditions.
 
 Automatically Applying Boundary Conditions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Doing this manually is a chore, so xgcm allows you to apply boundary conditions automatically when using grid ufuncs.
 

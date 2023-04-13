@@ -74,7 +74,7 @@ The conda-forge package will be triggered by the Pypi release and you will have 
 Thats it!
 
 How to synchronize examples from xgcm-examples
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Most of the example notebooks in this documentation are located in the seperate repo `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_, which is automatically linked to `pangeo gallery <https://gallery.pangeo.io>`_. These examples are synced into this documentation using git submodules.
 Currently updates in the example repo need to be manually synced to this repo with the following steps:
 

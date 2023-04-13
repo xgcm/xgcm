@@ -10,6 +10,10 @@ v0.9.0 (unreleased)
 
 New Features
 ~~~~~~~~~~~~
+- Methods for autoparsing of dataset metadata to construct a :py:class:`xgcm.Grid` class have been added.
+  Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
+  addition of SGRID conventions (:issue:`109`, :pull:`559`).
+  By `Jack Atkinson <https://github.com/jatkinson1000>`_.
 
 Breaking Changes
 ~~~~~~~~~~~~~~~~
@@ -21,6 +25,7 @@ Breaking Changes
 
 - All functionality for generating c-grid dimensions on incomplete datasets via :py:meth:`xgcm.Grid.autogenerate`,  was removed (:pull:`557`).
    By `Julius Busecke <https://github.com/jbusecke>`_.
+
 Internal Changes
 ~~~~~~~~~~~~~~~~
 - Switch CI environment setup to micromamba (:issue:`576`, :pull:`577`).
@@ -153,7 +158,7 @@ Documentation
 Internal Changes
 ~~~~~~~~~~~~~~~~
 - Switch CI to use mamba (:pull:`412`, :issue:`398`).
- By `Julius Busecke <https://github.com/jbusecke>`_.
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 - Add deprecation warnings for future changes in the API (:issue:`409`,:pull:`411`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
@@ -195,7 +200,7 @@ Documentation
   By `Dianne Deauna <https://github.com/jdldeauna>`_.[*]_
 
 Internal Changes
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 - Fixed metrics tests so some tests that previously did not run now do run, and refactored the metrics tests.
   By `Tom Nicholas <https://github.com/TomNicholas>`_.[*]_
@@ -258,7 +263,6 @@ Bug fixes
 - More reliable handling of missing values in :py:meth:`Grid.average`. Missing values between data and metrics do not have to be aligned by the user anymore. (:pull:`259`). By `Julius Busecke <https://github.com/jbusecke>`_.
 
 - Remove outdated `example_notebooks` folder (:pull:`244`, :issue:`243`). By `Nikolay Koldunov <https://github.com/koldunovn>`_ and `Julius Busecke <https://github.com/jbusecke>`_.
-.. _whats-new.0.5.0:
 
 
 v0.4.0 (2020/9/2)
@@ -272,7 +276,7 @@ New Features
   Default values can be overridden in individual method calls (e.g. :py:meth:`Grid.interp`) as usual.
   By `Deepak Cherian <https://github.com/dcherian>`_.
 
-  Bug fixes
+Bug fixes
 ~~~~~~~~~
 - Fix for parsing fill_values as dictionary (:issue:`218`).
   By `Julius Busecke <https://github.com/jbusecke>`_.

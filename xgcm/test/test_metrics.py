@@ -31,6 +31,7 @@ def test_multiple_metrics_per_axis():
         coords={"X": {"center": "XC", "left": "XG"}},
         metrics={("X",): ["dXC", "dXG"]},
         periodic=True,
+        autoparse_metadata=False,
     )
 
     assert grid.get_metric(ds.foo, ("X",)).equals(ds.dXC.reset_coords(drop=True))
@@ -59,6 +60,7 @@ def test_metrics_2d_grid():
         ds,
         coords={"X": {"center": "XC"}, "Y": {"center": "YC"}},
         metrics={("X",): ["dX"], ("Y",): ["dY"], ("X", "Y"): ["area"]},
+        autoparse_metadata=False,
     )
 
     assert ds.dX.reset_coords(drop=True).equals(grid.get_metric(ds.foo, ("X",)))
@@ -71,6 +73,7 @@ def test_metrics_2d_grid():
         ds,
         coords={"X": {"center": "XC"}, "Y": {"center": "YC"}},
         metrics={("X",): ["dX"], ("Y",): ["dY"]},
+        autoparse_metadata=False,
     )
 
     dxdy = (ds.dX * ds.dY).reset_coords(drop=True).transpose("YC", "XC")
@@ -94,7 +97,7 @@ def test_metrics_2d_grid():
 )
 def test_assign_metric(key, metric_vars):
     ds, coords, _ = datasets_grid_metric("C")
-    _ = Grid(ds, coords=coords, metrics={key: metric_vars})
+    _ = Grid(ds, coords=coords, metrics={key: metric_vars}, autoparse_metadata=False)
 
 
 @pytest.mark.parametrize(
@@ -162,7 +165,7 @@ def test_get_metric_orig(axes, data_var, drop_vars, metric_expected_list):
         ds = ds.drop_vars(drop_vars)
         metrics = {k: [a for a in v if a not in drop_vars] for k, v in metrics.items()}
 
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
     metric = grid.get_metric(ds[data_var], axes)
     expected_metrics = [ds[me].reset_coords(drop=True) for me in metric_expected_list]
     expected = functools.reduce(operator.mul, expected_metrics, 1)
@@ -172,7 +175,7 @@ def test_get_metric_orig(axes, data_var, drop_vars, metric_expected_list):
 def test_get_metric_with_conditions_01():
     # Condition 1: metric with matching axes and dimensions exist
     ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
     get_metric = grid.get_metric(ds.v, ("X", "Y"))
 
     expected_metric = ds["area_n"].reset_coords(drop=True)
@@ -184,7 +187,13 @@ def test_get_metric_with_conditions_01():
 def test_get_metric_with_conditions_02a(periodic):
     # Condition 2, case a: interpolate metric with matching axis to desired dimensions
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, periodic=periodic, boundary="extend")
+    grid = Grid(
+        ds,
+        coords=coords,
+        periodic=periodic,
+        boundary="extend",
+        autoparse_metadata=False,
+    )
     grid.set_metrics(("X", "Y"), "area_e")
 
     get_metric = grid.get_metric(ds.v, ("X", "Y"))
@@ -198,7 +207,7 @@ def test_get_metric_with_conditions_02b():
     # Condition 2, case b: get_metric should select for the metric with matching axes and interpolate from there,
     # even if other metrics in the desired positions are available
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid.set_metrics(("X", "Y"), "area_e")
     grid.set_metrics(("X"), "dx_n")
     grid.set_metrics(("Y"), "dx_n")
@@ -213,7 +222,7 @@ def test_get_metric_with_conditions_02b():
 def test_get_metric_with_conditions_03a():
     # Condition 3: use provided metrics with matching dimensions to calculate for required metric
     ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
 
     grid.set_metrics(("X"), "dx_n")
     grid.set_metrics(("Y"), "dy_n")
@@ -230,7 +239,7 @@ def test_get_metric_with_conditions_03a():
 def test_get_metric_with_conditions_03b():
     # Condition 3: use provided metrics with matching dimensions to calculate for required metric
     ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid.set_metrics(("X", "Y"), "area_t")
     grid.set_metrics(("Z"), "dz_t")
 
@@ -246,7 +255,7 @@ def test_get_metric_with_conditions_03b():
 def test_get_metric_with_conditions_04a():
     # Condition 4, case a: 1 metric on the wrong position (must interpolate before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_n")
 
@@ -261,7 +270,7 @@ def test_get_metric_with_conditions_04a():
 def test_get_metric_with_conditions_04b():
     # Condition 4, case b: 2 metrics in the wrong position (must interpolate both before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords)
+    grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_t")
 
@@ -278,9 +287,9 @@ def test_set_metric():
     ds, coords, metrics = datasets_grid_metric("C")
     expected_metrics = {k: [ds[va] for va in v] for k, v in metrics.items()}
 
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
-    grid_manual = Grid(ds, coords=coords)
+    grid_manual = Grid(ds, coords=coords, autoparse_metadata=False)
 
     for key, value in metrics.items():
         grid_manual.set_metrics(key, value)
@@ -333,7 +342,7 @@ def test_set_metric_overwrite_true(
     metrics = {
         k: [m for m in v if m in exist_metric_varname] for k, v in metrics.items()
     }
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
     for av in add_metric_varname:
         grid.set_metrics(metric_axes, av, overwrite=True)
@@ -362,7 +371,7 @@ def test_set_metric_value_errors(metric_axes, overwrite_metric, add_metric):
     if add_metric is not None:
         ds = ds.assign_coords({overwrite_metric: ds[add_metric] * 10})
 
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
     with pytest.raises(ValueError, match="setting overwrite=True."):
         grid.set_metrics(metric_axes, overwrite_metric)
@@ -374,7 +383,7 @@ def test_set_metric_value_errors(metric_axes, overwrite_metric, add_metric):
 )
 def test_set_metric_key_errors(metric_axes, add_metric):
     ds, coords, metrics = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, metrics=metrics)
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
 
     if len(metric_axes) == 1:
         with pytest.raises(KeyError, match="not found in dataset."):
