@@ -222,6 +222,8 @@ def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
 def test_vector_diff_interp_connected_grid_x_to_y(
     ds, ds_face_connections_x_to_y, no_coords
 ):
+    # TODO: this is not elegant. This test should perhaps not use metadata parsing.
+    # Instead we can use a dataset_factory fixture to create the dataset, and input kwargs with different input options (e.g. no coords)
     if no_coords:
         """Trigger error in https://github.com/xgcm/xgcm/issues/595 and https://github.com/xgcm/xgcm/issues/531 by removing coords from dataset."""
         # parse comodo metadata before removing coords
