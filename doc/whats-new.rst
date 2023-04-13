@@ -15,9 +15,9 @@ New Features
   addition of SGRID conventions (:issue:`109`, :pull:`559`).
   By `Jack Atkinson <https://github.com/jatkinson1000>`_.
 
+
 Breaking Changes
 ~~~~~~~~~~~~~~~~
-
 - All computation methods on the :py:class:`xgcm.Axis` class have been removed, in favour of using the corresponding
   methods on the :py:class:`xgcm.Grid` object. The :py:class:`xgcm.Axis` class has also been removed from public API.
   (:issue:`405`, :pull:`557`).
@@ -39,7 +39,8 @@ Documentation
 
 Bugfixes
 ~~~~~~~~
-
+- Fix bug in :py:meth:`xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate values leading to errors with ECCO data. (:issue:`531`, :issue:`595`, :pull:`597`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 
 v0.8.1 (2022/11/22)
 -------------------

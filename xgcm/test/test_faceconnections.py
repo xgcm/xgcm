@@ -3,6 +3,7 @@ import pytest
 import xarray as xr
 
 from xgcm.grid import Grid
+from xgcm.metadata_parsers import parse_comodo
 
 
 @pytest.fixture(scope="module")
@@ -217,9 +218,28 @@ def test_vector_connected_grid_x_to_y(ds, ds_face_connections_x_to_y, boundary):
     np.testing.assert_allclose(v_out.data, 1)
 
 
-def test_vector_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
-    # simplest scenario with one face connection
-    grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+@pytest.mark.parametrize("no_coords", [True, False])
+def test_vector_diff_interp_connected_grid_x_to_y(
+    ds, ds_face_connections_x_to_y, no_coords
+):
+    # TODO: this is not elegant. This test should perhaps not use metadata parsing.
+    # Instead we can use a dataset_factory fixture to create the dataset, and input kwargs with different input options (e.g. no coords)
+    if no_coords:
+        """Trigger error in https://github.com/xgcm/xgcm/issues/595 and https://github.com/xgcm/xgcm/issues/531 by removing coords from dataset."""
+        # parse comodo metadata before removing coords
+        ds, comodo_grid_kwargs = parse_comodo(ds)
+        ds = ds.drop_vars(
+            [di for di in ds.dims if di != "face"]
+        )  # need to retain the face dimension coordinates here. I wonder if this should actually work without coords?
+        grid = Grid(
+            ds,
+            **comodo_grid_kwargs,
+            face_connections=ds_face_connections_x_to_y,
+            autoparse_metadata=False
+        )
+    else:
+        # simplest scenario with one face connection
+        grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
     # interp u and v to cell center
     vector_center = grid.interp_2d_vector(

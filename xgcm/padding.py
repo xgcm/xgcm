@@ -25,7 +25,7 @@ def _maybe_rename_grid_positions(grid, arr_source, arr_target):
     rename_dict = {}
     for di in arr_target.dims:
         # in case the dimension is already in the source, do nothing.
-        if di not in arr_source:
+        if di not in arr_source.dims:
             # find associated axis
             for axname in grid.axes:
                 all_positions = grid.axes[axname].coords.values()
