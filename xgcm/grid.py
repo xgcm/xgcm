@@ -141,10 +141,6 @@ class Grid:
         # Default is to do this to preserve backwards compatability
         if autoparse_metadata:
             ds, parsed_kwargs = metadata_parsers.parse_metadata(ds)
-
-            # Loop over input kwargs. If None and parsed alternative available
-            # then replace local variable with autoparsed. If conflict raise error.
-            print(f"coords = {coords}")
             duplicates = []
             if "coords" in parsed_kwargs:
                 if coords is None:
