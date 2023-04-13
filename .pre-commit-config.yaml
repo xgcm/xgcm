@@ -10,7 +10,7 @@ repos:
       - id: check-yaml
   - repo: https://github.com/dhruvmanila/remove-print-statements
     rev: v0.5.0
-      hooks:
+    hooks:
       - id: remove-print-statements
         args: ['--verbose']   # Show all the print statements to be removed
   - repo: https://github.com/PyCQA/isort
