@@ -223,8 +223,9 @@ def test_vector_diff_interp_connected_grid_x_to_y(
 ):
     if no_coords:
         """Trigger error in https://github.com/xgcm/xgcm/issues/595 and https://github.com/xgcm/xgcm/issues/531 by removing coords from dataset."""
-        ds = ds.drop_vars(ds.dims)
-
+        ds = ds.drop_vars(
+            [di for di in ds.dims if di != "face"]
+        )  # need to retain the face dimension coordinates here. I wonder if this should actually work without coords?
     # simplest scenario with one face connection
     grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
 
