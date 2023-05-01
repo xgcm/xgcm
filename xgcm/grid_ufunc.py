@@ -337,17 +337,18 @@ class GridUFunc:
     boundary_width : Dict[str: Tuple[int, int], optional
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
         A flag indicating how to handle boundaries:
-        * None: Do not apply any boundary conditions. Raise an error if
-          boundary conditions are required for the operation.
+
+        * None:  Do not apply any boundary conditions. Raise an error if
+            boundary conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
-          (i.e. a Dirichlet boundary condition.)
+            (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Neumann boundary condition.)
-        * 'extrapolate': Set values by extrapolating linearly from the two
-          points nearest to the edge
-        Optionally a dict mapping axis name to separate values for each axis
+            value. (i.e. a limited form of Neumann boundary condition.)
+        * 'periodic': Set values by wrapping around the array on the specified
+            axes. (i.e. a periodic boundary condition.)
+        Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
         The value to use in boundary conditions with `boundary='fill'`.
@@ -495,19 +496,18 @@ def as_grid_ufunc(
     boundary_width : Dict[str: Tuple[int, int], optional
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
         A flag indicating how to handle boundaries:
 
-        * None: Do not apply any boundary conditions. Raise an error if
-          boundary conditions are required for the operation.
+        * None:  Do not apply any boundary conditions. Raise an error if
+            boundary conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
-          (i.e. a Dirichlet boundary condition.)
+            (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Neumann boundary condition.)
-        * 'extrapolate': Set values by extrapolating linearly from the two
-          points nearest to the edge
-
-        Optionally a dict mapping axis name to separate values for each axis
+            value. (i.e. a limited form of Neumann boundary condition.)
+        * 'periodic': Set values by wrapping around the array on the specified
+            axes. (i.e. a periodic boundary condition.)
+        Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
         The value to use in boundary conditions with `boundary='fill'`.
@@ -614,19 +614,18 @@ def apply_as_grid_ufunc(
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {dummy_axis_name: (lower_width, upper_width)}.
         The axis names here are again dummy variables, each of which must be present in the signature.
-    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
         A flag indicating how to handle boundaries:
 
-        * None: Do not apply any boundary conditions. Raise an error if
-          boundary conditions are required for the operation.
+        * None:  Do not apply any boundary conditions. Raise an error if
+            boundary conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
-          (i.e. a Dirichlet boundary condition.)
+            (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Neumann boundary condition.)
-        * 'extrapolate': Set values by extrapolating linearly from the two
-          points nearest to the edge
-
-        Optionally a dict mapping axis name to separate values for each axis
+            value. (i.e. a limited form of Neumann boundary condition.)
+        * 'periodic': Set values by wrapping around the array on the specified
+            axes. (i.e. a periodic boundary condition.)
+        Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
         The value to use in boundary conditions with `boundary='fill'`.

@@ -53,18 +53,17 @@ class Axis:
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
-        boundary : str or dict
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate', 'periodic'}
+        boundary : {None, 'fill', 'extend', 'periodic'}, optional
+            A flag indicating how to handle boundaries:
+
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition where
-              the difference at the boundary will be zero.)
-            * 'periodic' : Wrap arrays around. Equivalent to setting `periodic=True`
-            This sets the default value. It can be overriden by specifying the
-            boundary kwarg when calling specific methods.
+              value. (i.e. a limited form of Neumann boundary condition.)
+            * 'periodic': Set values by wrapping around the array on the specified
+                axes. (i.e. a periodic boundary condition.)
         fill_value : float, optional
             The value to use in the boundary condition when boundary='fill'.
         """
