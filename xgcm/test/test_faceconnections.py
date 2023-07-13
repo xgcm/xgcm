@@ -134,7 +134,7 @@ def test_connection_errors(ds):
 @pytest.mark.parametrize("face_coord_dim", [True, False])
 def test_create_connected_grid(ds, ds_face_connections_x_to_x, face_coord_dim):
     #
-    if not_face_coord_dim:
+    if face_coord_dim:
         ds = ds.drop("face")
 
     # simplest scenario with one face connection
