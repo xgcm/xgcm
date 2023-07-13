@@ -155,7 +155,9 @@ def test_create_connected_grid(ds, ds_face_connections_x_to_x, face_coord_dim):
 def test_create_connected_grid_error_wrong_facedim(ds, ds_face_connections_x_to_x):
     # rename face dimension to trigger error
     ds = ds.rename({"face": "something_else"})
-    with pytest.raises(ValueError, match="something"):
+    with pytest.raises(
+        ValueError, match="Face dimension face does not exist in the dataset."
+    ):
         Grid(ds, face_connections=ds_face_connections_x_to_x)
 
 
