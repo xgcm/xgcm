@@ -42,7 +42,7 @@ Firstly we need a two-dimensional grid, and we use similar coordinate names to t
     grid_ds
 
 
-.. ipython:: python
+.. code-block:: python
 
     from xgcm import Grid
 
@@ -61,7 +61,7 @@ Now we need some data.
 We will create a 2D vector field, with components ``U`` and ``V``.
 We will treat these velocities as if they lie on a vector C-grid, so as velocities they will lie at the cell faces.
 
-.. ipython:: python
+.. code-block:: python
 
     U = np.sin(grid_ds.x_g * 2 * np.pi / 9.5) * np.cos(grid_ds.y_c * 2 * np.pi / 19)
     V = np.cos(grid_ds.x_c * 2 * np.pi / 19) * np.sin(grid_ds.y_g * 2 * np.pi / 19)
@@ -78,7 +78,7 @@ but the ``U`` and ``V`` velocities are defined on different points,
 so plotting the vectors as arrows originating from a common point would technically be incorrect for our C-grid data.
 We can fix this by interpolating the vectors onto co-located points.
 
-.. ipython:: python
+.. code-block:: python
 
     colocated = xr.Dataset()
     colocated["U"] = grid.interp(U, axis="X", to="center")
@@ -87,7 +87,7 @@ We can fix this by interpolating the vectors onto co-located points.
 
 We can now show what this co-located vector field looks like
 
-.. ipython:: python
+.. code-block:: python
 
     @savefig example_vector_field.png width=4in
     colocated.plot.quiver("x_c", "y_c", u="U", v="V")
@@ -98,7 +98,7 @@ Divergence
 
 Let's first import the decorator.
 
-.. ipython:: python
+.. code-block:: python
 
     from xgcm import as_grid_ufunc
 
@@ -106,12 +106,12 @@ Let's first import the decorator.
 In two dimensions, the divergence operator accepts two vector components and returns one scalar result.
 A divergence is the sum of multiple partial derivatives, so first let's define a derivative function like this
 
-.. ipython:: python
+.. code-block:: python
 
     def diff_forward_1d(a):
         return a[..., 1:] - a[..., :-1]
 
-.. ipython:: python
+.. code-block:: python
 
     def diff(arr, axis):
         """First order forward difference along any axis"""
@@ -124,7 +124,7 @@ Therefore our signature should look something like this ``"(X:left,Y:center),(X:
 We also need to pad the data to replace the elements that will be removed by the `diff` function, so
 our grid ufunc can be defined like this
 
-.. ipython:: python
+.. code-block:: python
 
     @as_grid_ufunc(
         "(X:left,Y:center),(X:center,Y:left)->(X:center,Y:center)",
@@ -141,19 +141,19 @@ Here we have treated the components of the ``(U, V)`` vector as independent scal
 
 Now we can compute the divergence of our example vector field
 
-.. ipython:: python
+.. code-block:: python
 
     div = divergence(grid, ds["U"], ds["V"], axis=[("X", "Y"), ("X", "Y")])
 
 We can see the result lies on the expected coordinate positions
 
-.. ipython:: python
+.. code-block:: python
 
     div.coords
 
 and the resulting divergence looks like it corresponds with the arrows of the vector field above
 
-.. ipython:: python
+.. code-block:: python
 
     import matplotlib.pyplot as plt
 
@@ -172,14 +172,14 @@ The gradient is almost like the opposite of divergence in the sense that it acce
 
 Let's first define a tracer field ``T``, which we imagine will start off localised near the center of the domain.
 
-.. ipython:: python
+.. code-block:: python
 
     def gaussian(x_coord, y_coord, x_pos, y_pos, A, w):
         return A * np.exp(
             -0.5 * ((x_coord - x_pos) ** 2 + (y_coord - y_pos) ** 2) / w**2
         )
 
-.. ipython:: python
+.. code-block:: python
 
     ds["T"] = gaussian(grid_ds.x_c, grid_ds.y_c, x_pos=7.5, y_pos=7.5, A=50, w=2)
 
@@ -190,7 +190,7 @@ Computing the first-order gradient will again move the data onto different grid 
 so the signature for a gradient ufunc will need to reflect this
 and our definition is similar to the derivative case.
 
-.. ipython:: python
+.. code-block:: python
 
     def gradient(a):
         a_diff_x = diff(a, axis=-2)
@@ -200,7 +200,7 @@ and our definition is similar to the derivative case.
 
 Now we can compute the gradient of our example scalar field
 
-.. ipython:: python
+.. code-block:: python
 
     ds["grad_T_x"], ds["grad_T_y"] = grid.apply_as_grid_ufunc(
         gradient,
@@ -217,7 +217,7 @@ Now we can compute the gradient of our example scalar field
 
 Again in order to plot this as a vector field we should first interpolate it
 
-.. ipython:: python
+.. code-block:: python
 
     colocated["grad_T_x"] = grid.interp(ds["grad_T_x"], axis="X", to="center")
     colocated["grad_T_y"] = grid.interp(ds["grad_T_y"], axis="Y", to="center")
@@ -225,7 +225,7 @@ Again in order to plot this as a vector field we should first interpolate it
 
 Now we can plot the gradient of the tracer field as a vector field
 
-.. ipython:: python
+.. code-block:: python
 
     ds["T"].plot.contourf(x="x_c", vmax=60)
     colocated.plot.quiver(
@@ -244,18 +244,18 @@ such as calculating the advective flux of a scalar tracer field due to a vector 
 
 Now we can define a simple flux operator (which internally calls our previous gradient function)
 
-.. ipython:: python
+.. code-block:: python
 
     def interp_forward_1d(a):
         return (a[..., :-1] + a[..., 1:]) / 2.0
 
-.. ipython:: python
+.. code-block:: python
 
     def interp_forward(arr, axis):
         """First order forward interpolation along any axis"""
         return np.apply_along_axis(interp_forward_1d, axis, arr)
 
-.. ipython:: python
+.. code-block:: python
 
     @as_grid_ufunc(
         "(X:left,Y:center),(X:center,Y:left),(X:center,Y:center)->(X:left,Y:center),(X:center,Y:left)",
@@ -277,7 +277,7 @@ with which we can solve the basic continuity equation
    \frac{\partial T}{\partial t} + \nabla  \cdot ( \mathbf{u} T ) = 0
 
 
-.. ipython:: python
+.. code-block:: python
 
     def advect(T, U, V, delta_t):
         """Simple solution to the continuity equation for a single timestep of length delta_t."""
@@ -289,7 +289,7 @@ with which we can solve the basic continuity equation
 
 Evaluating this function updates our tracer to what the tracer field might look like one (arbitrary-length) timestep later:
 
-.. ipython:: python
+.. code-block:: python
 
     new_T = advect(ds["T"], ds["U"], ds["V"], delta_t=3)
 
@@ -305,7 +305,7 @@ Vorticity
 
 We can compute vector fields from vector fields too, such as vorticity.
 
-.. ipython:: python
+.. code-block:: python
 
     @as_grid_ufunc(
         "(X:left,Y:center),(X:center,Y:left)->(X:left,Y:left)",
@@ -317,11 +317,11 @@ We can compute vector fields from vector fields too, such as vorticity.
         return v_diff_x[..., 1:] - u_diff_y[..., 1:, :]
 
 
-.. ipython:: python
+.. code-block:: python
 
     vort = vorticity(grid, ds["U"], ds["V"], axis=[("X", "Y"), ("X", "Y")])
 
-.. ipython:: python
+.. code-block:: python
 
     vort.plot(x="x_g", y="y_g")
     colocated.plot.quiver("x_c", "y_c", u="U", v="V")
