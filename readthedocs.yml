@@ -15,3 +15,6 @@ python:
 
 conda:
   environment: doc/environment.yml
+
+sphinx:
+  configuration: docs/conf.py
