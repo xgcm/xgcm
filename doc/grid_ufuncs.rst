@@ -191,11 +191,11 @@ Decorator with signature
 
 Alternatively you can permanently turn a numpy function into a grid ufunc by using the ``@as_grid_ufunc`` decorator.
 
-.. ipython:: python
+.. code-block:: python
 
     from xgcm import as_grid_ufunc
 
-.. ipython:: python
+.. code-block:: python
 
     @as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
     def diff_center_to_left(a):
@@ -203,7 +203,7 @@ Alternatively you can permanently turn a numpy function into a grid ufunc by usi
 
 Now when we call the ``diff_center_to_left`` function, it will act as if we had applied it using ``apply_as_grid_ufunc``.
 
-.. ipython:: python
+.. code-block:: python
 
     diff_center_to_left(grid, da, axis=[["X"]])
 
@@ -214,11 +214,11 @@ Decorator with type hints
 
 Finally you can use type hints to specify the grid positions of the variables instead of passing a ``signature`` argument.
 
-.. ipython:: python
+.. code-block:: python
 
     from typing import Annotated
 
-.. ipython:: python
+.. code-block:: python
 
     @as_grid_ufunc()
     def diff_center_to_left(
@@ -228,7 +228,7 @@ Finally you can use type hints to specify the grid positions of the variables in
 
 Again we call this decorated function, remembering to supply the grid and axis arguments
 
-.. ipython:: python
+.. code-block:: python
 
     diff_center_to_left(grid, da, axis=[["X"]])
 
@@ -252,14 +252,14 @@ but what if we wanted to use a different boundary condition?
 We'll show this using a simple linear interpolation function.
 It has the same signature at the differencing function we used above, but it does not apply any specific boundary condition.
 
-.. ipython:: python
+.. code-block:: python
 
     def interp(a):
         return 0.5 * (a[..., :-1] + a[..., 1:])
 
 This function simply averages each element from the one on its right, but that means the resulting array is shorter by one element.
 
-.. ipython:: python
+.. code-block:: python
 
     arr = np.arange(9)
     arr
@@ -274,7 +274,7 @@ so that the application of ``interp`` still returns an array of the starting len
 
 We could do this manually - implementing a periodic boundary condition would mean first pre-pending the right-most element of the input array onto the left-hand side:
 
-.. ipython:: python
+.. code-block:: python
 
     periodically_padded_arr = np.insert(arr, 0, arr[-1])
     periodically_padded_arr
@@ -284,7 +284,7 @@ We could do this manually - implementing a periodic boundary condition would mea
 
 and implementing a constant zero-padding boundary condition would mean first pre-pending the input array with a zero:
 
-.. ipython:: python
+.. code-block:: python
 
     zero_padded_arr = np.insert(arr, 0, 0)
     zero_padded_arr
@@ -304,7 +304,7 @@ Doing this manually is a chore, so xgcm allows you to apply boundary conditions 
 When doing the padding manually for ``interp``, we had to add one element on the left-hand side of the ```"X"`` axis,
 so we tell xGCM to do the same thing by specifying the keyword argument ``boundary_width={"X": (1, 0)}``,
 
-.. ipython:: python
+.. code-block:: python
 
     @as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
     def interp_center_to_left(a):
@@ -313,7 +313,7 @@ so we tell xGCM to do the same thing by specifying the keyword argument ``bounda
 Now when we run our decorated function `interp_center_to_left`, xgcm will automatically add an extra element to the left hand side for us,
 before applying the operation in the function we decorated.
 
-.. ipython:: python
+.. code-block:: python
 
     # Create new test data with same coordinates but linearly-spaced data
     da = da.copy(data=arr)
@@ -322,7 +322,7 @@ before applying the operation in the function we decorated.
 
 Here a periodic boundary condition has been used as the default, but we can choose other boundary conditions using the ``boundary`` kwarg:
 
-.. ipython:: python
+.. code-block:: python
 
     @as_grid_ufunc(
         signature="(X:center)->(X:left)",
@@ -333,7 +333,7 @@ Here a periodic boundary condition has been used as the default, but we can choo
     def interp_center_to_left_fill_with_zeros(a):
         return interp(a)
 
-.. ipython:: python
+.. code-block:: python
 
     interp_center_to_left_fill_with_zeros(
         grid, da, axis=[["X"]], boundary="fill", fill_value=0
@@ -342,7 +342,7 @@ Here a periodic boundary condition has been used as the default, but we can choo
 We can also choose a different default boundary condition at decorator definition time,
 and then override it at function call time if we prefer.
 
-.. ipython:: python
+.. code-block:: python
 
     interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=0)
 
@@ -381,7 +381,7 @@ The numpy ufunc you are wrapping must be able to act on each element along that 
 This case is parallelized under the hood by calling ``xarray.apply_ufunc``.
 In order to enable working with chunked arrays you must pass the kwarg ``dask='parallelized'`` to ``apply_as_grid_ufunc``.
 
-.. ipython:: python
+.. code-block:: python
 
     # Let's create some 2D data, so we have a dimension over which to broadcast
     da_2d = da.expand_dims(y=4)
@@ -408,7 +408,7 @@ The dask graph in this case is simple, because this is an "embarrasingly paralle
 
 The result is as expected from padding each row independently.
 
-.. ipython:: python
+.. code-block:: python
 
     result.compute()
 
@@ -417,7 +417,7 @@ Parallelizing Along Core Dimensions
 
 The other case is for when your data is chunked along the axis over which you want to apply your ufunc (a "core" dimension").
 
-.. ipython:: python
+.. code-block:: python
 
     chunked_x = da_2d.chunk({"x_c": 2})
     chunked_x
@@ -425,7 +425,7 @@ The other case is for when your data is chunked along the axis over which you wa
 XGCM can also parallelize this case, by calling ``dask.map_overlap``.
 You tell it to invoke ``dask.map_overlap`` by passing ``dask="parallelized"`` and ``map_overlap=True``.
 
-.. ipython:: python
+.. code-block:: python
 
     result = interp_center_to_left(
         grid, chunked_x, axis=[["X"]], dask="allowed", map_overlap=True
@@ -443,7 +443,7 @@ The dask graph is more complicated, because each chunk along the core dim needs 
    :height: 400px
    :alt: Dask task graph for parallelizing along a core dimension
 
-.. ipython:: python
+.. code-block:: python
 
     result.compute()
 
