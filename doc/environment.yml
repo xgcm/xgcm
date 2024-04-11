@@ -28,3 +28,4 @@ dependencies:
     - aiohttp
     - gcsfs
     - cf_xarray
+    - pre-commit
