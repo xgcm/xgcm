@@ -147,7 +147,7 @@ pygments_style = "sphinx"
 # modindex_common_prefix = []
 
 # If true, keep warnings as "system message" paragraphs in the built documents.
-# keep_warnings = False
+keep_warnings = False
 
 
 # -- Options for HTML output ----------------------------------------------
