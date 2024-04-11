@@ -83,3 +83,4 @@ global.lock
 purge.lock
 .DS_Store
 doc/.vscode/settings.json
+doc/generated

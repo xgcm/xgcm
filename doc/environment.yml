@@ -23,3 +23,8 @@ dependencies:
     - sphinx-copybutton
     - sphinxcontrib-srclinks
     - sphinx-panels
+    - intake-esm
+    - requests
+    - aiohttp
+    - gcsfs
+    - cf_xarray
