@@ -576,9 +576,7 @@ class Grid:
     def __repr__(self):
         summary = ["<xgcm.Grid>"]
         for name, axis in self.axes.items():
-            summary.append(
-                "%s Axis (boundary=%r):" % (name, axis.boundary)
-            )
+            summary.append("%s Axis (boundary=%r):" % (name, axis.boundary))
             summary += axis._coord_desc()
         return "\n".join(summary)
 
@@ -873,7 +871,7 @@ class Grid:
         if a global 2D dataset should be interpolated on both X and Y axis, but it is
         only periodic in the X axis (and should be padded along the Y axis), we can do this:
 
-        >>> grid.interp(da, ["X", "Y"], boundary={"X": 'periodic', "Y": 'fill'})
+        >>> grid.interp(da, ["X", "Y"], boundary={"X": "periodic", "Y": "fill"})
         """
         return self._1d_grid_ufunc_dispatch("interp", da, axis, **kwargs)
 
