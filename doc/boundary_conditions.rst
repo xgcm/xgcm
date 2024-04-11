@@ -97,7 +97,7 @@ as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one perio
 
 If we now compute the difference using the 5 conditions:
 
-.. ipython:: python
+.. code-block:: python
 
     grid_no_perio = Grid(ds, periodic=False)
     grid_perio = Grid(ds, periodic=True)
@@ -107,16 +107,15 @@ If we now compute the difference using the 5 conditions:
     g_fill_2 = grid_no_perio.diff(g, "X", boundary="fill", fill_value=5).rename("fill5")
     g_perio = grid_perio.diff(g, "X").rename("periodic")
 
-.. ipython::
+.. code-block:: python
 
-    In [1]: for (i, var) in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
-       ...:     var.plot.line(marker="o", label=var.name)
+    for (i, var) in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
+        var.plot.line(marker="o", label=var.name)
 
-    @suppress
-    In [2]: plt.grid(True)
+    plt.grid(True)
 
     @savefig grid_bc_diff.png
-    In [3]: plt.legend()
+    plt.legend()
 
 As expected the difference at x_c=9 is 0 for the case ``extend``,
 is ``-2 = 1 - 3`` for the periodic case,
