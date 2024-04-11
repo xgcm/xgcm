@@ -170,7 +170,7 @@ Applying directly
 
 The quickest option is to apply our function directly, using ``apply_as_grid_ufunc``
 
-.. ipython:: python
+.. code-block:: python
 
     from xgcm import apply_as_grid_ufunc
 
