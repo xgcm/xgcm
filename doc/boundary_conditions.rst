@@ -65,7 +65,7 @@ We show here the value of the extra added point for 5 cases (extended, filled wi
 and periodic). The periodic condition is not an argument of the methods, but is provided
 as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one periodic and another one not periodic.
 
-.. ipython::
+.. ipython:: python
     :okwarning:
     In [1]: def plot_bc(ds):
        ...:     plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
@@ -107,7 +107,7 @@ If we now compute the difference using the 5 conditions:
     g_fill_2 = grid_no_perio.diff(g, "X", boundary="fill", fill_value=5).rename("fill5")
     g_perio = grid_perio.diff(g, "X").rename("periodic")
 
-.. ipython::
+.. ipython:: python
     :okwarning:
     In [1]: for (i, var) in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
        ...:     var.plot.line(marker="o", label=var.name)
