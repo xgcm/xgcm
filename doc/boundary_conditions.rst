@@ -4,7 +4,6 @@ Boundary Conditions
 -------------------
 
 .. ipython:: python
-    :okwarning:
 
     import xarray as xr
     import numpy as np
@@ -56,7 +55,6 @@ boundary T point after the operation.
 We can illustrate it by creating some data located at the U point:
 
 .. ipython:: python
-    :okwarning:
 
     g = np.sqrt(ds.x_g + 0.5) + np.sin((ds.x_g - 0.5) * 2 * np.pi / 8)
     g
@@ -65,8 +63,8 @@ We show here the value of the extra added point for 5 cases (extended, filled wi
 and periodic). The periodic condition is not an argument of the methods, but is provided
 as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one periodic and another one not periodic.
 
-.. ipython:: python
-    :okwarning:
+.. ipython::
+
     In [1]: def plot_bc(ds):
        ...:     plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
        ...:     #
@@ -97,7 +95,6 @@ as an argument of the ``xgcm.Grid``. We will thus also create 2 grids: one perio
 If we now compute the difference using the 5 conditions:
 
 .. ipython:: python
-    :okwarning:
 
     grid_no_perio = Grid(ds, periodic=False)
     grid_perio = Grid(ds, periodic=True)
@@ -107,8 +104,8 @@ If we now compute the difference using the 5 conditions:
     g_fill_2 = grid_no_perio.diff(g, "X", boundary="fill", fill_value=5).rename("fill5")
     g_perio = grid_perio.diff(g, "X").rename("periodic")
 
-.. ipython:: python
-    :okwarning:
+.. ipython::
+
     In [1]: for (i, var) in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
        ...:     var.plot.line(marker="o", label=var.name)
 
