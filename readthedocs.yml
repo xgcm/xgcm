@@ -6,12 +6,12 @@ submodules:
 build:
   os: "ubuntu-20.04"
   tools:
-    python: "mambaforge-4.10"
+    python: "mambaforge-22.9"
 
 python:
-    install:
-       - method: setuptools
-         path: .
+  install:
+    - method: pip
+      path: .
 
 conda:
   environment: doc/environment.yml
