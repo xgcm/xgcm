@@ -10,7 +10,7 @@ dependencies:
   - future
   - pytest
   - numpydoc
-  - sphinx
+  - sphinx>=5.0
   - matplotlib
   - sphinx_rtd_theme
   - ipykernel
