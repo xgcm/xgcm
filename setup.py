@@ -12,20 +12,8 @@ install_requires = [
     "numpy",
     "future",
 ]
-doc_requires = [
-    "sphinx",
-    "sphinxcontrib-srclinks",
-    "sphinx-pangeo-theme",
-    "numpydoc",
-    "IPython",
-    "nbsphinx",
-]
 
-extras_require = {
-    "complete": install_requires,
-    "docs": doc_requires,
-}
-extras_require["dev"] = extras_require["complete"] + [
+dev_require = install_requires + [
     "pytest",
     "pytest-cov",
     "scipy",
@@ -52,7 +40,7 @@ setup(
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     install_requires=install_requires,
-    extras_require=extras_require,
+    extras_require={"dev": dev_require},
     python_requires=">=3.9",
     long_description=long_description,
     long_description_content_type="text/x-rst",
