@@ -13,6 +13,7 @@ install_requires = [
     "future",
 ]
 doc_requires = [
+    "matplotlib",
     "nbsphinx",
     "sphinx_rtd_theme",
     "sphinxcontrib-applehelp<1.0.5",
