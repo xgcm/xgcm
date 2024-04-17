@@ -16,6 +16,8 @@ python:
   install:
     - method: pip
       path: .
+      extra_requirements:
+        - docs
 
 conda:
   environment: doc/environment.yml
