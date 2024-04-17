@@ -3,9 +3,9 @@ dependencies:
   - python=3.9
   - numba
   - pandoc
-  - sphinx<5
   - pip
   - pip:
+    - sphinx==4.5.0
     - netcdf4
     - cartopy
     - matplotlib
@@ -21,11 +21,12 @@ dependencies:
     - sphinxcontrib-srclinks
     - sphinx-panels
     - sphinxcontrib-srclinks
-    # - sphinx_rtd_theme
-    # - sphinx-pangeo-theme
-    # - ipykernel
+    - sphinx_rtd_theme
+    - sphinx-pangeo-theme
+    - ipykernel
     - ipython>=8.5.0
     - nbsphinx
-    # - jupyter_client
+    - jupyter_client
+    - pickleshare
 
 
