@@ -13,7 +13,7 @@ install_requires = [
     "future",
 ]
 doc_requires = [
-    "sphinx",
+    "sphinx>=5.0",
     "sphinxcontrib-srclinks",
     "sphinx-pangeo-theme",
     "numpydoc",
