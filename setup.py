@@ -15,7 +15,7 @@ install_requires = [
 doc_requires = [
     "nbsphinx",
     "sphinx_rtd_theme",
-    "sphinxcontrib-applehelp<1.0.5", 
+    "sphinxcontrib-applehelp<1.0.5",
     "sphinxcontrib-devhelp<1.0.6",
     "sphinxcontrib-htmlhelp<2.0.5",
     "sphinxcontrib-serializinghtml<1.1.10",
