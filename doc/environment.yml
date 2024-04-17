@@ -27,5 +27,3 @@ dependencies:
     - ipython>=8.5.0
     - nbsphinx
     # - jupyter_client
-
-
