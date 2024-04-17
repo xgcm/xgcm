@@ -28,5 +28,3 @@ dependencies:
     - nbsphinx
     - jupyter_client
     - pickleshare
-
-
