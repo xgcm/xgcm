@@ -609,7 +609,8 @@ class TestGridUFuncNoPadding:
 
 
 class TestGridUfuncWithPadding:
-    def test_1d_padded_but_no_change_in_grid_position(self):
+    @pytest.mark.parametrize("vector", [True, False])
+    def test_1d_padded_but_no_change_in_grid_position(self, vector):
         def diff_center_to_center_second_order(a):
             return 0.5 * (a[..., 2:] - a[..., :-2])
 
@@ -621,6 +622,10 @@ class TestGridUfuncWithPadding:
         expected = xr.DataArray(
             diffed, dims=["depth_c"], coords={"depth_c": grid._ds.depth_c}
         )
+
+        # # wrap dataarray in vector syntax
+        if vector:
+            da = {"depth": da}
 
         # Test direct application
         result = apply_as_grid_ufunc(
