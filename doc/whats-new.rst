@@ -39,6 +39,9 @@ Documentation
 
 Bugfixes
 ~~~~~~~~
+- Fix broken cell executions in `Transforming Vertical Coordinates` notebook. The `doc/environment.yml` has been modified to reflect the dependencies of this notebook (:pull:`627`). 
+  By `Shubham Gupta <https://github.com/IamShubhamGupto> _`
+  
 - Fix broken docs build due to broken backwards compatibility in sphinx extensions (:pull:`631`)
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
