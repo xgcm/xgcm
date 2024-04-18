@@ -1,9 +1,20 @@
 name: test_env_xgcm_docs
+channels:
+  - conda-forge
+  - defaults
+  - anaconda
 dependencies:
   - python=3.9
-#  - python-graphviz
   - pandoc
   - pip
+  - numba
+  - llvmlite
+  - intake-esm
+  - requests
+  - aiohttp
+  - gcsfs
+  - cf_xarray
+
   - pip:
     - sphinx==4.5.0
     - netcdf4
@@ -18,12 +29,6 @@ dependencies:
     - pangeo-sphinx-book-theme
     - sphinx-copybutton
     - sphinx-panels
-    - intake-esm
-    - requests
-    - aiohttp
-    - gcsfs
-    - cf_xarray
-    - pre-commit
     - sphinxcontrib-srclinks
     - sphinx_rtd_theme
     - sphinx-pangeo-theme
@@ -32,5 +37,4 @@ dependencies:
     - nbsphinx
     - jupyter_client
     - pickleshare
-    - numba
-    - llvmlite
+    - pre-commit
