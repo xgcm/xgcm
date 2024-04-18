@@ -19,7 +19,3 @@ python:
 
 conda:
   environment: doc/environment.yml
-
-sphinx:
-  configuration: doc/conf.py
-  fail_on_warning: false
