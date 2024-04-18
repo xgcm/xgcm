@@ -5,13 +5,11 @@ dependencies:
 #  - python-graphviz
   - pandoc
   - pip
-  - llvmlite
   - pip:
     - sphinx==4.5.0
     - netcdf4
     - cartopy
     - matplotlib
-    - nbsphinx
     - numpydoc
     - sphinxcontrib-applehelp<1.0.5
     - sphinxcontrib-devhelp<1.0.6
@@ -20,7 +18,6 @@ dependencies:
     - sphinxcontrib-qthelp<1.0.7
     - pangeo-sphinx-book-theme
     - sphinx-copybutton
-    - sphinxcontrib-srclinks
     - sphinx-panels
     - intake-esm
     - requests
@@ -36,3 +33,4 @@ dependencies:
     - nbsphinx
     - jupyter_client
     - pickleshare
+    - llvmlite
