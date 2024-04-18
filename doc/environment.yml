@@ -5,6 +5,7 @@ dependencies:
 #  - python-graphviz
   - pandoc
   - pip
+  - llvmlite
   - pip:
     - sphinx==4.5.0
     - netcdf4
