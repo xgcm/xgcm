@@ -83,4 +83,8 @@ global.lock
 purge.lock
 .DS_Store
 doc/.vscode/settings.json
+
 doc/generated
+# docs artifacts
+doc/*.png
+

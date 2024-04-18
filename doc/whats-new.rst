@@ -39,6 +39,9 @@ Documentation
 
 Bugfixes
 ~~~~~~~~
+- Fix broken docs build due to broken backwards compatibility in sphinx extensions (:pull:`631`)
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
 - Fix bug that did not allow to create grids with faceconnections if the face dimension was coordinate-less. (:issue:`616`, :pull:`616`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
 

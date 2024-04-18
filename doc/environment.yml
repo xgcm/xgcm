@@ -1,24 +1,24 @@
 name: test_env_xgcm_docs
 dependencies:
   - python=3.9
-  - xarray
-  - netcdf4
-  - cartopy
-  - dask
-  - numpy
   - numba
   - future
   - pytest
-  - numpydoc
-  - sphinx==4.5.0
-  - matplotlib
-  - sphinx_rtd_theme==1.1.1
-  - ipykernel
-  - ipython>=8.5.0
 #  - python-graphviz
+  - pandoc
+  - pip
   - pip:
+    - sphinx==4.5.0
+    - netcdf4
+    - cartopy
+    - matplotlib
     - nbsphinx
-    - jupyter_client
+    - numpydoc
+    - sphinxcontrib-applehelp<1.0.5
+    - sphinxcontrib-devhelp<1.0.6
+    - sphinxcontrib-htmlhelp<2.0.5
+    - sphinxcontrib-serializinghtml<1.1.10
+    - sphinxcontrib-qthelp<1.0.7
     - pangeo-sphinx-book-theme
     - sphinx-copybutton==0.5.1
     - sphinxcontrib-srclinks
@@ -29,4 +29,11 @@ dependencies:
     - gcsfs
     - cf_xarray
     - pre-commit
-    - sphinxcontrib-applehelp==1.0.2
+    - sphinxcontrib-srclinks
+    - sphinx_rtd_theme
+    - sphinx-pangeo-theme
+    - ipykernel
+    - ipython>=8.5.0
+    - nbsphinx
+    - jupyter_client
+    - pickleshare

@@ -833,7 +833,7 @@ def _apply(
     # Determine expected output dimension sizes from grid._ds
     # Only required when dask='parallelized'
     out_sizes = {
-        out_dim: grid._ds.dims[out_dim] for arg in out_core_dims for out_dim in arg
+        out_dim: grid._ds.sizes[out_dim] for arg in out_core_dims for out_dim in arg
     }
 
     # Perform operation via xarray.apply_ufunc
