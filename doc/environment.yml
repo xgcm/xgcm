@@ -2,8 +2,6 @@ name: test_env_xgcm_docs
 dependencies:
   - python=3.9
   - numba
-  - future
-  - pytest
 #  - python-graphviz
   - pandoc
   - pip
@@ -20,7 +18,7 @@ dependencies:
     - sphinxcontrib-serializinghtml<1.1.10
     - sphinxcontrib-qthelp<1.0.7
     - pangeo-sphinx-book-theme
-    - sphinx-copybutton==0.5.1
+    - sphinx-copybutton
     - sphinxcontrib-srclinks
     - sphinx-panels
     - intake-esm
