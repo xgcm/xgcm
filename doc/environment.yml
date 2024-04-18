@@ -1,7 +1,6 @@
 name: test_env_xgcm_docs
 dependencies:
   - python=3.9
-  - numba
 #  - python-graphviz
   - pandoc
   - pip
@@ -33,4 +32,5 @@ dependencies:
     - nbsphinx
     - jupyter_client
     - pickleshare
+    - numba
     - llvmlite
