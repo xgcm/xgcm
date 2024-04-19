@@ -8,9 +8,6 @@ Boundary Conditions
     import xarray as xr
     import numpy as np
     from xgcm import Grid
-    import warnings
-
-    warnings.filterwarnings("ignore")
 
     ds = xr.Dataset(
         coords={

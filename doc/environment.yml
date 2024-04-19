@@ -2,13 +2,12 @@ name: test_env_xgcm_docs
 channels:
   - conda-forge
   - defaults
-  - anaconda
+  - numba/label/dev
 dependencies:
   - python=3.9
   - pandoc
   - pip
   - numba
-  - llvmlite
   - intake-esm
   - requests
   - aiohttp
