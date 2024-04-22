@@ -46,15 +46,15 @@ ReadTheDocs
 
 Create the doc environment with::
 
-    pip install ".[dev]"
+    conda env create -f ci/environment.yml
 
 Activate the environment with::
 
-    conda activate test_env_xgcm_docs
+    conda activate test_env_xgcm
 
 Finally install xgcm itself in the now activated environment::
 
-    pip install -e .
+    pip install ".[dev]"
 
 Now you can start editing the documentation
 
