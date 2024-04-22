@@ -38,11 +38,11 @@ Documentation
 ~~~~~~~~~~~~~
 
 - Added steps to setup ReadTheDocs build locally under `doc/contributor_guide.rst`.
-  By By `Shubham Gupta <https://github.com/IamShubhamGupto> _`
+  By `Shubham Gupta <https://github.com/IamShubhamGupto> _`
 
 Bugfixes
 ~~~~~~~~
-- Fix broken cell executions in `Transforming Vertical Coordinates` notebook. The `doc/environment.yml` has been modified to reflect the dependencies of this notebook (:pull:`627`).
+- Fix broken cell executions in `Transforming Vertical Coordinates` notebook. The `doc/environment.yml` and `dev` requirements has been modified to reflect the dependencies of this notebook (:pull:`627`).
   By `Shubham Gupta <https://github.com/IamShubhamGupto> _`
 
 - Fix broken docs build due to broken backwards compatibility in sphinx extensions (:pull:`631`)

@@ -36,4 +36,3 @@ dependencies:
     - nbsphinx
     - jupyter_client
     - pickleshare
-    - pre-commit
