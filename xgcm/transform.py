@@ -1,6 +1,7 @@
 """
 Classes and functions for 1D coordinate transformation.
 """
+
 import functools
 import warnings
 
