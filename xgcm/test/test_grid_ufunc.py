@@ -106,8 +106,7 @@ class TestParseSignatureFromTypeHints:
         with pytest.raises(ValueError, match="Must specify axis positions"):
 
             @as_grid_ufunc()
-            def ufunc():
-                ...
+            def ufunc(): ...
 
     # TODO test hints without annotations
     # TODO test hints with annotations that don't conform to Xgcm
@@ -595,9 +594,7 @@ class TestGridUFuncNoPadding:
 
         # Test decorator
         @as_grid_ufunc()
-        def grad_to_inner(
-            a: Annotated[np.ndarray, "X:center,Y:center"]
-        ) -> Tuple[
+        def grad_to_inner(a: Annotated[np.ndarray, "X:center,Y:center"]) -> Tuple[
             Annotated[np.ndarray, "X:inner,Y:center"],
             Annotated[np.ndarray, "X:center,Y:inner"],
         ]:
@@ -855,8 +852,7 @@ class TestDaskNoOverlap:
         # Create 2D test data
         ...
 
-    def test_chunked_core_dims_overlap_turned_off(self):
-        ...
+    def test_chunked_core_dims_overlap_turned_off(self): ...
 
 
 class TestDaskOverlap:
