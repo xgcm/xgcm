@@ -1,15 +1,24 @@
 name: test_env_xgcm_docs
+channels:
+  - conda-forge
+  - defaults
+  - numba/label/dev
 dependencies:
   - python=3.9
-  - numba
   - pandoc
   - pip
+  - numba
+  - intake-esm
+  - requests
+  - aiohttp
+  - gcsfs
+  - cf_xarray
+
   - pip:
     - sphinx==4.5.0
     - netcdf4
     - cartopy
     - matplotlib
-    - nbsphinx
     - numpydoc
     - sphinxcontrib-applehelp<1.0.5
     - sphinxcontrib-devhelp<1.0.6
@@ -18,7 +27,6 @@ dependencies:
     - sphinxcontrib-qthelp<1.0.7
     - pangeo-sphinx-book-theme
     - sphinx-copybutton
-    - sphinxcontrib-srclinks
     - sphinx-panels
     - sphinxcontrib-srclinks
     - sphinx_rtd_theme

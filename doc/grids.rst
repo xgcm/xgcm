@@ -176,7 +176,7 @@ each other; they are subject to standard
 When we create an :class:`xgcm.Grid`, we need to specify that they are part
 of the same axis. We do this using the ``coords`` keyword argument, as follows:
 
-.. ipython:: python
+.. code-block:: python
 
     from xgcm import Grid
 
@@ -222,14 +222,14 @@ changes/additions) with ``autoparse_metadata=False``.
 
 For example:
 
-.. ipython:: python
+.. code-block:: python
 
     grid = xgcm.Grid(ds)
 
 will return a ``Grid`` object constructed from xgcm's best attempts to autoparse any
 metadata in the dataset according to internal hierarchies, whilst
 
-.. ipython:: python
+.. code-block:: python
 
     ds = xr.Dataset(
         {
@@ -328,7 +328,7 @@ table below.
 
 We create an :py:class:`xarray.Dataset` with such attributes as follows:
 
-.. ipython:: python
+.. code-block:: python
 
     ds = xr.Dataset(
         coords={
@@ -350,7 +350,7 @@ We create an :py:class:`xarray.Dataset` with such attributes as follows:
 We can now create a ``Grid`` object from this dataset without manually
 specifying ``coords``:
 
-.. ipython:: python
+.. code-block:: python
 
     grid = Grid(ds)
     grid
@@ -363,7 +363,7 @@ Core Grid Operations: ``diff``, ``interp``, and ``cumsum``
 Regardless of how our ``Grid`` object was created, we can now use it to
 interpolate or take differences along the axis. First we create some test data:
 
-.. ipython:: python
+.. code-block:: python
 
     import matplotlib.pyplot as plt
 
@@ -375,7 +375,7 @@ interpolate or take differences along the axis. First we create some test data:
 
 We interpolate as follows:
 
-.. ipython:: python
+.. code-block:: python
 
     da_interp = grid.interp(da, axis="X")
     da_interp
@@ -390,14 +390,14 @@ points.
 
 The same position shift happens with a difference operation:
 
-.. ipython:: python
+.. code-block:: python
 
     da_diff = grid.diff(da, axis="X")
     da_diff
 
 We can reverse the difference operation by taking a cumsum:
 
-.. ipython:: python
+.. code-block:: python
 
     grid.cumsum(da_diff, "X")
 
@@ -408,7 +408,7 @@ By default, these grid operations will drop any coordinate that are not
 dimensions. The keep_coords argument allow to preserve compatible coordinates.
 For example:
 
-.. ipython:: python
+.. code-block:: python
 
     da2 = da + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
     da2 = da2.assign_coords(h=da2.y**2)
