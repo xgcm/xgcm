@@ -392,7 +392,7 @@ def transform(
         target_da_other_dims = set(target_da.dims) - set(axis.coords.values())
         if not target_da_other_dims.issubset(da_other_dims):
             raise ValueError(
-                f"Found additional dimensions [{target_da_other_dims-da_other_dims}]"
+                f"Found additional dimensions [{target_da_other_dims - da_other_dims}]"
                 "in `target_data` not found in `da`. This could mean that the target "
                 "array is not on the same position along other axes."
                 " If the additional dimensions are associated witha staggered axis, "
