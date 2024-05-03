@@ -117,18 +117,23 @@ def _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2, out
             theta_max = theta_1[i]
 
         for j in range(m):
-            if (theta_hat_1[j] > theta_max) or (theta_hat_2[j] < theta_min):
-                # there is no overlap between the cell and the bin
-                pass
-            elif theta_max == theta_min:
-                output[j] += phi[i]
+            if np.isnan(phi[i]):
+                # missing values in phi (the input data) need to be excluded
+                # here or the whole target bin will be NaN
+                continue
             else:
-                # from here on there is some overlap
-                theta_hat_min = max(theta_min, theta_hat_1[j])
-                theta_hat_max = min(theta_max, theta_hat_2[j])
-                alpha = (theta_hat_max - theta_hat_min) / (theta_max - theta_min)
-                # now assign based on this weight
-                output[j] += alpha * phi[i]
+                if (theta_hat_1[j] > theta_max) or (theta_hat_2[j] < theta_min):
+                    # there is no overlap between the cell and the bin
+                    pass
+                elif theta_max == theta_min:
+                    output[j] += phi[i]
+                else:
+                    # from here on there is some overlap
+                    theta_hat_min = max(theta_min, theta_hat_1[j])
+                    theta_hat_max = min(theta_max, theta_hat_2[j])
+                    alpha = (theta_hat_max - theta_hat_min) / (theta_max - theta_min)
+                    # now assign based on this weight
+                    output[j] += alpha * phi[i]
 
 
 def interp_1d_conservative(phi, theta, target_theta_bins):
