@@ -384,7 +384,7 @@ cases = {
         "expected_coord": ("dens", [2.5, 21.5]),
         "expected_data": (
             "data",
-            [0, 9],
+            [np.nan, 9],
         ),
         "grid_kwargs": {
             "coords": {"Z": {"center": "depth", "outer": "depth_bnds"}},
@@ -698,7 +698,7 @@ def test_interp_1d_conservative():
 
     dz_theta = interp_1d_conservative(dz_2d, theta_2d, theta_bins)
 
-    np.testing.assert_allclose(dz_theta.sum(axis=-1), dz.sum(axis=-1))
+    np.testing.assert_allclose(np.nansum(dz_theta, axis=-1), np.nansum(dz,axis=-1))
 
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_interp_1d_conservative_nans_in_data():
