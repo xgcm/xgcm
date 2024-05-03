@@ -699,7 +699,7 @@ def test_interp_1d_conservative():
 
     dz_theta = interp_1d_conservative(dz_2d, theta_2d, theta_bins)
 
-    np.testing.assert_allclose(np.nansum(dz_theta, axis=-1), np.nansum(dz,axis=-1))
+    np.testing.assert_allclose(np.nansum(dz_theta, axis=-1), np.nansum(dz, axis=-1))
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
