@@ -680,6 +680,7 @@ def test_interp_1d_linear():
     phi_at_theta = interp_1d_linear(phi, theta, target_theta_levels, mask_edges=False)
     np.testing.assert_allclose(phi_at_theta, phi_at_theta_expected, rtol=1e-4)
 
+
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_interp_1d_conservative():
     nz = 30
@@ -700,10 +701,11 @@ def test_interp_1d_conservative():
 
     np.testing.assert_allclose(np.nansum(dz_theta, axis=-1), np.nansum(dz,axis=-1))
 
+
 @pytest.mark.skipif(numba is None, reason="numba required")
 def test_interp_1d_conservative_nans_in_data():
-    """We want the algorithm to ignore nans in the data, and preserve 
-    the integral of the non-nan values. Basically a transform to a single 
+    """We want the algorithm to ignore nans in the data, and preserve
+    the integral of the non-nan values. Basically a transform to a single
     cell should always return the sum of all values along the transform axis."""
     phi = np.array([1, 2, np.nan])
     theta = np.array([30, 40, 50, 60])
@@ -711,7 +713,6 @@ def test_interp_1d_conservative_nans_in_data():
 
     out = interp_1d_conservative(phi, theta, target)
     np.testing.assert_allclose(np.nansum(phi), out)
-
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
