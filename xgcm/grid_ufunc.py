@@ -1022,8 +1022,10 @@ def _rechunk_to_merge_in_boundary_chunks(
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
         # I find 'original_arg' is a dict and will get error if directly use 'original_arg.variables'
-        original_arg_chunks = original_arg[list(original_arg.keys())[0]].variable.chunksizes
-        
+        original_arg_chunks = original_arg[
+            list(original_arg.keys())[0]
+        ].variable.chunksizes
+
         merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
             grid,
             padded_arg,
