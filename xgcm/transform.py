@@ -252,8 +252,8 @@ def conservative_interpolation(
         input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
         output_core_dims=[["remapped"]],
         dask="parallelized",
+        dask_gufunc_kwargs={"output_sizes": {"remapped": len(target_theta_levels) - 1}},
         # Since we are introducing a new dimension instead of changing it we need to declare the output size.
-        output_sizes={"remapped": len(target_theta_levels) - 1},
         output_dtypes=[phi.dtype],
     ).rename({"remapped": target_dim})
 
