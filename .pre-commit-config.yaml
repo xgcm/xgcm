@@ -13,7 +13,7 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 24.4.2 #make sure to sync with blackdoc beneath
+    rev: 24.8.0 #make sure to sync with blackdoc beneath
     hooks:
       - id: black
   - repo: https://github.com/keewis/blackdoc
@@ -22,11 +22,11 @@ repos:
       - id: blackdoc
         additional_dependencies: ["black==22.3.0"]
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.0
+    rev: 7.1.1
     hooks:
       - id: flake8
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.0
+    rev: v1.11.1
     hooks:
       - id: mypy
         # `properies` & `asv_bench` are copied from setup.cfg.
