@@ -327,14 +327,14 @@ def transform(
         interpreted as cell center (method='linear' and method='log') or
         cell bounds (method='conservative).
         Values correspond to `target_data` or the existing coordinate
-        along the axis (if `target_data=None`). 
+        along the axis (if `target_data=None`).
     target_data : xr.DataArray, optional
         Data to transform onto (e.g. a tracer like density or temperature).
         Defaults to None, which infers the appropriate coordinate along
         `axis` (e.g. the depth).
     target_dim : str, optional
-        Dimension name associated with the `target` points. If `target` has more than one dimension, this 
-        parameter must be explicitly set to specify which dimension corresponds to the transformation. If `target` 
+        Dimension name associated with the `target` points. If `target` has more than one dimension, this
+        parameter must be explicitly set to specify which dimension corresponds to the transformation. If `target`
         is one-dimensional, `target_dim` is inferred automatically.
     method : str, optional
         Method used to transform, by default "linear"
@@ -423,7 +423,7 @@ def transform(
                 else:
                     if target_dim is not None and target_dim not in target.dims:
                         raise ValueError(
-                                f"The specified `target_dim` {target_dim} is not within the dimensions of the target: [{target.dims}]."
+                            f"The specified `target_dim` {target_dim} is not within the dimensions of the target: [{target.dims}]."
                         )
             else:
                 # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
