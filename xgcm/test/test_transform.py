@@ -545,22 +545,25 @@ def construct_test_source_data(case_param_dict):
     # make sure the original dict is not modified
     case_param_dict = {k: v for k, v in case_param_dict.items()}
 
-    def _construct_ds(param_dict, prefix):
+    def _construct_da(param_dict, prefix):
+
         data = param_dict[prefix + "_data"][1]
 
-        ds = xr.Dataset(
-            {
-                param_dict[prefix + "_data"][0]: xr.DataArray(
-                    data,
-                    dims=[param_dict[prefix + "_coord"][0]],
-                    coords={
-                        param_dict[prefix + "_coord"][0]: param_dict[prefix + "_coord"][
-                            1
-                        ]
-                    },
-                )
-            }
-        )
+        return xr.DataArray(
+                data,
+                dims=[param_dict[prefix + "_coord"][0]],
+                coords={
+                    param_dict[prefix + "_coord"][0]: param_dict[prefix + "_coord"][1]
+                },
+                name=param_dict[prefix + "_data"][0]
+            )
+
+    def _construct_ds(param_dict, prefix):
+
+
+        da = _construct_da(param_dict, prefix)
+        ds = xr.Dataset(data_vars={da.name: da})
+
         # Add additional data
         if (
             prefix + "_additional_data" in param_dict.keys()
@@ -587,12 +590,7 @@ def construct_test_source_data(case_param_dict):
 
     source = _construct_ds(case_param_dict, "source")
     expected = _construct_ds(case_param_dict, "expected")
-    target = xr.DataArray(
-        case_param_dict["target_data"][1],
-        dims=[case_param_dict["target_coord"][0]],
-        coords={case_param_dict["target_coord"][0]: case_param_dict["target_coord"][1]},
-        name=case_param_dict["target_data"][0],
-    )
+    target = _construct_da(case_param_dict, "target")
 
     # parse the 'target_data' from the actual source
     transform_kwargs = {k: v for k, v in case_param_dict["transform_kwargs"].items()}
