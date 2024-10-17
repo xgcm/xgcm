@@ -34,7 +34,7 @@ repos:
         exclude: "properties|asv_bench|_typed_ops.py"
         additional_dependencies: [
             # Type stubs
-            types-pkg_resources,
+            types-setuptools,
             types-PyYAML,
             typing-extensions,
             # Dependencies that are typed
