@@ -53,7 +53,6 @@ exclude = ["docs", "tests", "tests.*", "docs.*"]
 [tool.setuptools_scm]
 write_to = "xgcm/_version.py"
 write_to_template = '__version__ = "{version}"'
-tag_regex = r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$"
 
 [tool.setuptools.commands]
 aliases = {test = "pytest"}
