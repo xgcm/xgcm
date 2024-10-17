@@ -359,17 +359,18 @@ def pad(
     boundary_width :
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
         A flag indicating how to handle boundaries:
-        * None: Defaults to `periodic`
-        * 'periodic' : Wrap array along the specified axes
+
+        * None:  Do not apply any boundary conditions. Raise an error if
+            boundary conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
-          (i.e. a Dirichlet boundary condition.)
+            (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
-          value. (i.e. a limited form of Neumann boundary condition.)
-        * 'extrapolate': Set values by extrapolating linearly from the two
-          points nearest to the edge
-        Optionally a dict mapping axis name to separate values for each axis
+            value. (i.e. a limited form of Neumann boundary condition.)
+        * 'periodic': Set values by wrapping around the array on the specified
+            axes. (i.e. a periodic boundary condition.)
+        Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value :
         The value to use in boundary conditions with `boundary='fill'`.

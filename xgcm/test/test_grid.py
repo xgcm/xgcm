@@ -183,9 +183,7 @@ def test_grid_repr(all_datasets):
     assert r[0] == "<xgcm.Grid>"
 
 
-@pytest.mark.parametrize(
-    "boundary", ["extend", "fill", pytest.param("extrapolate", marks=pytest.mark.xfail)]
-)
+@pytest.mark.parametrize("boundary", ["extend", "fill"])
 def test_cumsum(nonperiodic_1d, boundary):
     ds, periodic, expected = nonperiodic_1d
     grid = Grid(ds, boundary="periodic")
@@ -235,7 +233,6 @@ def test_cumsum(nonperiodic_1d, boundary):
     "boundary",
     [
         "fill",
-        pytest.param("extrapolate", marks=pytest.mark.xfail),
         "extend",
         {"X": "fill", "Y": "extend"},
         {"X": "extend", "Y": "fill"},
@@ -395,30 +392,9 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     [
         ({"X": "fill", "Y": "fill"}, {"X": "fill", "Y": "fill"}),
         ({"X": "extend", "Y": "extend"}, {"X": "extend", "Y": "extend"}),
-        pytest.param(
-            {"X": "extrapolate", "Y": "extrapolate"},
-            {"X": "extrapolate", "Y": "extrapolate"},
-            marks=pytest.mark.xfail(
-                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
-            ),
-        ),
         ("fill", {"X": "fill", "Y": "fill"}),
         ("extend", {"X": "extend", "Y": "extend"}),
-        pytest.param(
-            "extrapolate",
-            {"X": "extrapolate", "Y": "extrapolate"},
-            marks=pytest.mark.xfail(
-                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
-            ),
-        ),
         ({"X": "extend", "Y": "fill"}, {"X": "extend", "Y": "fill"}),
-        pytest.param(
-            {"X": "extrapolate", "Y": "fill"},
-            {"X": "extrapolate", "Y": "fill"},
-            marks=pytest.mark.xfail(
-                reason="padding via extrapolation not yet supported in grid_ufunc refactor"
-            ),
-        ),
         pytest.param(
             "fill",
             {"X": "fill", "Y": "extend"},
