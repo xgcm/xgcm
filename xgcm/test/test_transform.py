@@ -108,6 +108,110 @@ cases = {
             "suffix": "_test_suffix",
         },
     },
+    "linear_depth_depth_nomask_multidim_target": {
+        "source_coord": ("z", [5, 25, 60]),
+        "source_data": (
+            "data",
+            [0.23246861, 0.45175654, 0.58320681],
+        ),  # random numbers
+        "source_additional_data_coord": ("z", [5, 25, 60]),
+        "source_additional_data": ("depth", [5, 25, 60]),
+        # 2D target
+        "target_dims": (
+            "eta_rho",
+            "s_rho",
+        ),  # eta_rho: horizontal dimension; s_rho: vertical dimension
+        "target_coord": (
+            "layer_depth_rho",
+            np.array([[0, 7, 30, 60, 70], [5, 10, 25, 50, 100]]),
+        ),
+        "target_data": (
+            "layer_depth_rho",
+            np.array([[0, 7, 30, 60, 70], [5, 10, 25, 50, 100]]),
+        ),
+        "expected_dims": ("eta_rho", "s_rho"),
+        "expected_coord": (
+            "layer_depth_rho",
+            np.array([[0, 7, 30, 60, 70], [5, 10, 25, 50, 100]]),
+        ),
+        "expected_data": (
+            "data",
+            np.array(
+                [
+                    np.interp(
+                        [0, 7, 30, 60, 70],
+                        [5, 25, 60],
+                        [0.23246861, 0.45175654, 0.58320681],
+                    ),
+                    np.interp(
+                        [5, 10, 25, 50, 100],
+                        [5, 25, 60],
+                        [0.23246861, 0.45175654, 0.58320681],
+                    ),
+                ]
+            ),  # 2D interpolation for both sets
+        ),
+        "grid_kwargs": {"coords": {"Z": {"center": "z"}}, "autoparse_metadata": False},
+        "transform_kwargs": {
+            "mask_edges": False,
+            "method": "linear",
+            "target_data": "depth",
+            "target_dim": "s_rho",
+        },
+    },
+    "linear_depth_depth_multidim_target": {
+        "source_coord": ("z", [5, 25, 60]),
+        "source_data": (
+            "data",
+            [0.23246861, 0.45175654, 0.58320681],
+        ),  # random numbers
+        "source_additional_data_coord": ("z", [5, 25, 60]),
+        "source_additional_data": ("depth", [5, 25, 60]),
+        # 2D target
+        "target_dims": (
+            "eta_rho",
+            "s_rho",
+        ),  # eta_rho: horizontal dimension; s_rho: vertical dimension
+        "target_coord": (
+            "layer_depth_rho",
+            np.array([[0, 7, 30, 60, 70], [5, 10, 25, 50, 100]]),
+        ),
+        "target_data": (
+            "layer_depth_rho",
+            np.array([[0, 7, 30, 60, 70], [5, 10, 25, 50, 100]]),
+        ),
+        "expected_dims": ("eta_rho", "s_rho"),
+        "expected_coord": (
+            "layer_depth_rho",
+            np.array([[0, 7, 30, 60, 70], [5, 10, 25, 50, 100]]),
+        ),
+        "expected_data": (
+            "data",
+            np.array(
+                [
+                    np.interp(
+                        [0, 7, 30, 60, 70],
+                        [5, 25, 60],
+                        [0.23246861, 0.45175654, 0.58320681],
+                    ),
+                    np.interp(
+                        [5, 10, 25, 50, 100],
+                        [5, 25, 60],
+                        [0.23246861, 0.45175654, 0.58320681],
+                    ),
+                ]
+            ),  # 2D interpolation for both sets
+        ),
+        "expected_data_mask_index": [[0, 0], [0, -1], [1, -1]],
+        "expected_data_mask_value": np.nan,
+        "grid_kwargs": {"coords": {"Z": {"center": "z"}}, "autoparse_metadata": False},
+        "transform_kwargs": {
+            "mask_edges": True,
+            "method": "linear",
+            "target_data": "depth",
+            "target_dim": "s_rho",
+        },
+    },
     # example of interpolating onto a tracer that increases with depth
     # but with inverted target
     "linear_depth_dens": {
@@ -545,22 +649,33 @@ def construct_test_source_data(case_param_dict):
     # make sure the original dict is not modified
     case_param_dict = {k: v for k, v in case_param_dict.items()}
 
-    def _construct_ds(param_dict, prefix):
+    def _construct_da(param_dict, prefix):
+
         data = param_dict[prefix + "_data"][1]
 
-        ds = xr.Dataset(
-            {
-                param_dict[prefix + "_data"][0]: xr.DataArray(
-                    data,
-                    dims=[param_dict[prefix + "_coord"][0]],
-                    coords={
-                        param_dict[prefix + "_coord"][0]: param_dict[prefix + "_coord"][
-                            1
-                        ]
-                    },
+        if f"{prefix}_dims" in param_dict.keys():
+            dims = param_dict[prefix + "_dims"]
+            coords = {
+                param_dict[prefix + "_coord"][0]: (
+                    param_dict[prefix + "_dims"],
+                    param_dict[prefix + "_coord"][1],
                 )
             }
+        else:
+            dims = [param_dict[prefix + "_coord"][0]]
+            coords = {
+                param_dict[prefix + "_coord"][0]: param_dict[prefix + "_coord"][1]
+            }
+
+        return xr.DataArray(
+            data, dims=dims, coords=coords, name=param_dict[prefix + "_data"][0]
         )
+
+    def _construct_ds(param_dict, prefix):
+
+        da = _construct_da(param_dict, prefix)
+        ds = xr.Dataset(data_vars={da.name: da})
+
         # Add additional data
         if (
             prefix + "_additional_data" in param_dict.keys()
@@ -568,6 +683,7 @@ def construct_test_source_data(case_param_dict):
         ):
             add_data = param_dict[prefix + "_additional_data"]
             add_data_coord = param_dict[prefix + "_additional_data_coord"]
+
             ds[add_data[0]] = xr.DataArray(
                 add_data[1],
                 dims=[add_data_coord[0]],
@@ -582,17 +698,15 @@ def construct_test_source_data(case_param_dict):
         # mask values from the output
         if prefix + "_data_mask_index" in param_dict.keys():
             for ii in param_dict[prefix + "_data_mask_index"]:
-                ds.data.data[ii] = param_dict[prefix + "_data_mask_value"]
+                if isinstance(ii, (list, tuple)):  # Multi-dimensional index case
+                    ds.data.data[tuple(ii)] = param_dict[prefix + "_data_mask_value"]
+                else:  # One-dimensional index case
+                    ds.data.data[ii] = param_dict[prefix + "_data_mask_value"]
         return ds
 
     source = _construct_ds(case_param_dict, "source")
     expected = _construct_ds(case_param_dict, "expected")
-    target = xr.DataArray(
-        case_param_dict["target_data"][1],
-        dims=[case_param_dict["target_coord"][0]],
-        coords={case_param_dict["target_coord"][0]: case_param_dict["target_coord"][1]},
-        name=case_param_dict["target_data"][0],
-    )
+    target = _construct_da(case_param_dict, "target")
 
     # parse the 'target_data' from the actual source
     transform_kwargs = {k: v for k, v in case_param_dict["transform_kwargs"].items()}
@@ -624,7 +738,9 @@ def all_cases(request):
 
 @pytest.fixture(
     # scope="module",
-    params=[c for c in list(cases.keys()) if "linear" in c],
+    params=[
+        c for c in list(cases.keys()) if "linear" in c and "multidim_target" not in c
+    ],
 )
 def linear_cases(request):
     return construct_test_source_data(cases[request.param])
@@ -648,6 +764,17 @@ def conservative_cases(request):
     ],  # just pick a few to test the broadcasting and dask
 )
 def multidim_cases(request):
+    return construct_test_source_data(cases[request.param])
+
+
+@pytest.fixture(
+    # scope="module",
+    params=[
+        "linear_depth_depth_nomask_multidim_target",
+        "linear_depth_depth_multidim_target",
+    ],
+)
+def spatially_varying_vertical_target_coord_cases(request):
     return construct_test_source_data(cases[request.param])
 
 
@@ -781,7 +908,7 @@ def test_mid_level_linear(linear_cases):
                 source_dim,
                 source_dim,
                 target_dim,
-                **transform_kwargs
+                **transform_kwargs,
             )
     else:
         interpolated = linear_interpolation(
@@ -791,7 +918,7 @@ def test_mid_level_linear(linear_cases):
             source_dim,
             source_dim,
             target_dim,
-            **transform_kwargs
+            **transform_kwargs,
         )
         xr.testing.assert_allclose(interpolated, expected[output_name])
         assert interpolated.name == output_name
@@ -833,7 +960,7 @@ def test_mid_level_conservative(conservative_cases):
                 source_dim,
                 bounds_dim,
                 target_dim,
-                **transform_kwargs
+                **transform_kwargs,
             )
     else:
         transformed = conservative_interpolation(
@@ -843,7 +970,7 @@ def test_mid_level_conservative(conservative_cases):
             source_dim,
             bounds_dim,
             target_dim,
-            **transform_kwargs
+            **transform_kwargs,
         )
         xr.testing.assert_allclose(transformed, expected[output_name])
         # make sure that the extensive quantitiy is actually conserved
@@ -999,7 +1126,7 @@ def test_grid_transform_bypass_checks(bypass_checks):
         target,
         target_data=target_data,
         bypass_checks=bypass_checks,
-        **transform_kwargs
+        **transform_kwargs,
     )
 
     xr.testing.assert_allclose(transformed, expected.data)
@@ -1075,6 +1202,29 @@ def test_grid_transform_multidim(request, client, multidim_cases):
     _, expected_broadcasted = xr.broadcast(transformed, expected)
 
     xr.testing.assert_allclose(transformed, expected_broadcasted.data)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+@pytest.mark.parametrize("client", all_clients)
+def test_grid_transform_multidim_with_target_dim(
+    request, client, spatially_varying_vertical_target_coord_cases
+):
+    """This test uses a vertical target coordinate that is spatially varying."""
+
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        spatially_varying_vertical_target_coord_cases
+    )
+    target_data = transform_kwargs.pop("target_data", None)
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    # the high level tests should deal with all error cases
+    client = request.getfixturevalue(client)
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    transformed = grid.transform(
+        source.data, axis, target, target_data=target_data, **transform_kwargs
+    ).load()
+    xr.testing.assert_allclose(transformed, expected.data)
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
