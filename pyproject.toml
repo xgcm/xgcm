@@ -61,12 +61,21 @@ aliases = {test = "pytest"}
 addopts = "-v"
 
 [tool.ruff]
-extend-select = ["T201"]
 exclude = [
     "__init__.py",
     ".eggs",
     "doc"
 ]
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+extend-select = ["T201"]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+select = ["E4", "E7", "E9", "F"]
 ignore = [
     "E203",  # whitespace before ':'
     "E402",  # module level import not at top of file
@@ -76,16 +85,6 @@ ignore = [
     "F811",  # redefinition of unused name from import
     "F722",  # allows type hinting as Gridded[DataArray, "(X:center)"]
 ]
-# Same as Black.
-line-length = 88
-indent-width = 4
-
-[tool.ruff.lint]
-# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
-# McCabe complexity (`C901`) by default.
-select = ["E4", "E7", "E9", "F"]
-ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
