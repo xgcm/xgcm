@@ -57,6 +57,9 @@ write_to_template = '__version__ = "{version}"'
 [tool.setuptools.commands]
 aliases = {test = "pytest"}
 
+[tool.pytest.ini_options]
+addopts = "-v"
+
 [tool.ruff]
 extend-select = ["T201"]
 exclude = [
@@ -76,19 +79,6 @@ ignore = [
 # Same as Black.
 line-length = 88
 indent-width = 4
-
-[tool.ruff.isort]
-profile = "black"
-skip_gitignore = true
-force_to_top = true
-default_section = "THIRDPARTY"
-known_first_party = ["xgcm"]
-skip = [
-    "doc/conf.py"
-]
-
-[tool.pytest.ini_options]
-addopts = "-v"
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
