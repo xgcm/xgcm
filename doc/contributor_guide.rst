@@ -9,7 +9,7 @@ contributions.
 Did you notice a bug? Are you missing a feature? A good first starting place is to
 open an issue in the `github issues page <https://github.com/xgcm/xgcm/issues>`_.
 
-Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples). Notebooks from there will be rendered in [pangeo-gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/).
+Want to show off a cool example using xgcm? Please consider contributing to `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_. Notebooks from there will be rendered in `pangeo-gallery <https://gallery.pangeo.io/repos/xgcm/xgcm-examples/>`_.
 
 
 In order to contribute to xgcm, please fork the repository and submit a pull request.
@@ -63,9 +63,9 @@ How to release a new version of xgcm (for maintainers only)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The process of releasing at this point is very easy.
 
-We need only two things: A PR to update the documentation and and making a release on github.
+We need only two things: A PR to update the documentation and making a release on github.
 
-1. Make sure that all the new features/bugfixes etc are appropriately documented in `doc/whats-new.rst`, add the date to the current release and make an empty (unreleased) entry for the next minor release as a PR.
+1. Make sure that all the new features/bugfixes etc are appropriately documented in ``doc/whats-new.rst``, add the date to the current release and make an empty (unreleased) entry for the next minor release as a PR.
 2. Navigate to the 'tags' symbol on the repos main page, click on 'Releases' and on 'Draft new release' on the right. Add the version number and a short description and save the release.
 
 From here the github actions take over and package things for `Pypi <https://pypi.org/project/xgcm/>`_.
