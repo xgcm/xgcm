@@ -67,13 +67,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Create conda environment
-      uses: mamba-org/provision-with-micromamba@main
+      uses: mamba-org/setup-micromamba@v1
       with:
-        cache-downloads: true
-        micromamba-version: 'latest'
+        micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
         environment-file: ci/environment-core-deps.yml
-        extra-specs: |
+        create-args: >-
           python=3.10
+        post-cleanup: 'all'
+        cache-environment: true
+        cache-downloads: true
     - name: Install XGCM
       run: |
         python -m pip install -e . --no-deps
@@ -93,13 +95,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Create conda environment
-      uses: mamba-org/provision-with-micromamba@main
+      uses: mamba-org/setup-micromamba@v1
       with:
-        cache-downloads: true
-        micromamba-version: 'latest'
+        micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
         environment-file: ci/environment-upstream-dev.yml
-        extra-specs: |
-          python=<3.11
+        create-args: >-
+          python=3.12
+        post-cleanup: 'all'
+        cache-environment: true
+        cache-downloads: true
     - name: Install XGCM
       run: |
         python -m pip install -e . --no-deps
