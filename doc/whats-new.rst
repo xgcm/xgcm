@@ -39,12 +39,18 @@ Documentation
 
 Bugfixes
 ~~~~~~~~
+- Fix bug in :py:meth:`xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate
+  values leading to errors with ECCO data. (:issue:`531`, :issue:`595`, :pull:`597`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
+- Remove remaining mentions of `extrapolate` as boundary option (:pull:`602`).
+  By `Julius Busecke <https://github.com/jbusecke>`_.
+
 - Fix broken docs build due to broken backwards compatibility in sphinx extensions (:pull:`631`)
   By `Julius Busecke <https://github.com/jbusecke>`_.
 
 - Fix bug that did not allow to create grids with faceconnections if the face dimension was coordinate-less. (:issue:`616`, :pull:`616`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
-
 
 - Fix bug in :py:meth:`xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate values leading to errors with ECCO data. (:issue:`531`, :issue:`595`, :pull:`597`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
