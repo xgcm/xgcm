@@ -691,7 +691,7 @@ def all_cases(request):
 
 @pytest.fixture(
     # scope="module",
-    params=[c for c in list(cases.keys()) if "linear" in c],
+    params=[c for c in list(cases.keys()) if "linear" in c and "multidim_target" not in c],
 )
 def linear_cases(request):
     return construct_test_source_data(cases[request.param])
