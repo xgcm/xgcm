@@ -313,7 +313,8 @@ def transform(
       velocity). N given `target` values are interpreted as cell-bounds
       and the returned array will have N-1 elements along the newly
       created coordinate, with coordinate values that are interpolated
-      between `target` values.
+      between `target` values. This method does currently not work
+      for multi-dimensional targets.
     Parameters
     ----------
     grid : xgcm.Grid
