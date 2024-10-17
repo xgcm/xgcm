@@ -25,12 +25,6 @@ classifiers = [
 ]
 license = { text = "MIT" }
 keywords = ["pangeo", "simulations", "grids"]
-dependencies = [
-    "aiohttp",
-    "tqdm",
-    "backoff",
-    "requests",
-]
 
 dependencies = [
     "xarray>=0.20.0",
