@@ -17,7 +17,7 @@ New Features
 
 - Vertical coordinate transformations are now also supported for multi-dimensional targets, for example a
   terrain-following (spatially varying) vertical coordinate. This feature currently only works with the linear
-  interpolation method (:issue: `614`, :pull:`642`).
+  interpolation method (:issue:`614`, :pull:`642`).
   By `Nora Loose <https://github.com/noraloose>`_.
 
 Breaking Changes
