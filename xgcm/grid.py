@@ -143,7 +143,6 @@ class Grid:
 
             # Loop over input kwargs. If None and parsed alternative available
             # then replace local variable with autoparsed. If conflict raise error.
-            print(f"coords = {coords}")
             duplicates = []
             if "coords" in parsed_kwargs:
                 if coords is None:
