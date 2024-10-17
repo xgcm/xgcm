@@ -1,6 +1,7 @@
 """
 Classes and functions for 1D coordinate transformation.
 """
+
 import functools
 import warnings
 
@@ -261,8 +262,8 @@ def conservative_interpolation(
         input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
         output_core_dims=[["remapped"]],
         dask="parallelized",
+        dask_gufunc_kwargs={"output_sizes": {"remapped": len(target_theta_levels) - 1}},
         # Since we are introducing a new dimension instead of changing it we need to declare the output size.
-        output_sizes={"remapped": len(target_theta_levels) - 1},
         output_dtypes=[phi.dtype],
     ).rename({"remapped": target_dim})
 
@@ -401,7 +402,7 @@ def transform(
         target_da_other_dims = set(target_da.dims) - set(axis.coords.values())
         if not target_da_other_dims.issubset(da_other_dims):
             raise ValueError(
-                f"Found additional dimensions [{target_da_other_dims-da_other_dims}]"
+                f"Found additional dimensions [{target_da_other_dims - da_other_dims}]"
                 "in `target_data` not found in `da`. This could mean that the target "
                 "array is not on the same position along other axes."
                 " If the additional dimensions are associated witha staggered axis, "

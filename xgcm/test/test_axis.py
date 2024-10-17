@@ -97,5 +97,4 @@ def test_get_axis_dim_num(periodic_1d):
     assert num == da.get_axis_num("XG")
 
 
-def test_assert_axes_equal():
-    ...
+def test_assert_axes_equal(): ...

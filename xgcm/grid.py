@@ -102,7 +102,7 @@ class Grid:
         default_shifts : dict
             A dictionary of dictionaries specifying default grid position
             shifts (e.g. ``{'X': {'center': 'left', 'left': 'center'}}``)
-        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
             A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
@@ -111,9 +111,8 @@ class Grid:
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Neumann boundary condition.)
-            * 'extrapolate': Set values by extrapolating linearly from the two
-              points nearest to the edge
-
+            * 'periodic': Set values by wrapping around the array on the specified
+                axes. (i.e. a periodic boundary condition.)
             Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         face_connections : dict
@@ -205,18 +204,6 @@ class Grid:
             warnings.warn(
                 "The default fill_value will be changed to nan (from 0.0 previously) "
                 "in future versions. Provide `fill_value=0.0` to preserve previous behavior.",
-                category=DeprecationWarning,
-            )
-
-        extrapolate_warning = False
-        if boundary == "extrapolate":
-            extrapolate_warning = True
-        if isinstance(boundary, dict):
-            if any([k == "extrapolate" for k in boundary.keys()]):
-                extrapolate_warning = True
-        if extrapolate_warning:
-            warnings.warn(
-                "The `boundary='extrapolate'` option will no longer be supported in future releases.",
                 category=DeprecationWarning,
             )
 
@@ -340,7 +327,10 @@ class Grid:
         axis_connections = {}
 
         facedim = list(fc.keys())[0]
-        assert facedim in self._ds
+        if facedim not in self._ds.dims:
+            raise ValueError(
+                f"Face dimension {facedim} does not exist in the dataset. Found {list(self._ds.dims)} instead"
+            )
 
         face_links = fc[facedim]
         for fidx, face_axis_links in face_links.items():
@@ -553,21 +543,19 @@ class Grid:
             DataArray to interpolate to the position of like
         like : DataArray
             DataArray with desired grid positions for source array
-        boundary : str or dict, optional,
-            boundary can either be one of {None, 'fill', 'extend', 'extrapolate'}
+        boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
+            A flag indicating how to handle boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
-              value. (i.e. a limited form of Neumann boundary condition where
-              the difference at the boundary will be zero.)
-            * 'extrapolate': Set values by extrapolating linearly from the two
-              points nearest to the edge
-
-            This sets the default value. It can be overriden by specifying the
-            boundary kwarg when calling specific methods.
+              value. (i.e. a limited form of Neumann boundary condition.)
+            * 'periodic': Set values by wrapping around the array on the specified
+                axes. (i.e. a periodic boundary condition.)
+            Optionally a dict mapping axis name to seperate values for each axis
+            can be passed.
         fill_value : float, optional
             The value to use in the boundary condition when `boundary='fill'`.
 
@@ -799,19 +787,18 @@ class Grid:
         boundary_width : Dict[str: Tuple[int, int]
             The widths of the boundaries at the edge of each array.
             Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-        boundary : {None, 'fill', 'extend', 'extrapolate', dict}, optional
+        boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
             A flag indicating how to handle boundaries:
 
-            * None: Do not apply any boundary conditions. Raise an error if
+            * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
             * 'fill':  Set values outside the array boundary to fill_value
               (i.e. a Dirichlet boundary condition.)
             * 'extend': Set values outside the array to the nearest array
               value. (i.e. a limited form of Neumann boundary condition.)
-            * 'extrapolate': Set values by extrapolating linearly from the two
-              points nearest to the edge
-
-            Optionally a dict mapping axis name to separate values for each axis
+            * 'periodic': Set values by wrapping around the array on the specified
+                axes. (i.e. a periodic boundary condition.)
+            Optionally a dict mapping axis name to seperate values for each axis
             can be passed.
         fill_value : {float, dict}, optional
             The value to use in boundary conditions with `boundary='fill'`.
