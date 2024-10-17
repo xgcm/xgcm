@@ -18,9 +18,12 @@ from xgcm.grid import Grid
 try:
     import numba  # type: ignore
 
-    from ..transform import (conservative_interpolation,
-                             interp_1d_conservative, interp_1d_linear,
-                             linear_interpolation)
+    from ..transform import (
+        conservative_interpolation,
+        interp_1d_conservative,
+        interp_1d_linear,
+        linear_interpolation,
+    )
 except ImportError:
     numba = None
 
@@ -778,7 +781,7 @@ def test_mid_level_linear(linear_cases):
                 source_dim,
                 source_dim,
                 target_dim,
-                **transform_kwargs
+                **transform_kwargs,
             )
     else:
         interpolated = linear_interpolation(
@@ -788,7 +791,7 @@ def test_mid_level_linear(linear_cases):
             source_dim,
             source_dim,
             target_dim,
-            **transform_kwargs
+            **transform_kwargs,
         )
         xr.testing.assert_allclose(interpolated, expected[output_name])
         assert interpolated.name == output_name
@@ -830,7 +833,7 @@ def test_mid_level_conservative(conservative_cases):
                 source_dim,
                 bounds_dim,
                 target_dim,
-                **transform_kwargs
+                **transform_kwargs,
             )
     else:
         transformed = conservative_interpolation(
@@ -840,7 +843,7 @@ def test_mid_level_conservative(conservative_cases):
             source_dim,
             bounds_dim,
             target_dim,
-            **transform_kwargs
+            **transform_kwargs,
         )
         xr.testing.assert_allclose(transformed, expected[output_name])
         # make sure that the extensive quantitiy is actually conserved
@@ -996,7 +999,7 @@ def test_grid_transform_bypass_checks(bypass_checks):
         target,
         target_data=target_data,
         bypass_checks=bypass_checks,
-        **transform_kwargs
+        **transform_kwargs,
     )
 
     xr.testing.assert_allclose(transformed, expected.data)

@@ -8,9 +8,13 @@ import xarray as xr
 from xarray.testing import assert_equal
 
 from xgcm.grid import Grid, _select_grid_ufunc
-from xgcm.grid_ufunc import (GridUFunc, _GridUFuncSignature,
-                             _parse_signature_from_string, apply_as_grid_ufunc,
-                             as_grid_ufunc)
+from xgcm.grid_ufunc import (
+    GridUFunc,
+    _GridUFuncSignature,
+    _parse_signature_from_string,
+    apply_as_grid_ufunc,
+    as_grid_ufunc,
+)
 
 
 class TestParseSignatureFromString:
@@ -110,7 +114,7 @@ class TestParseSignatureFromTypeHints:
     def test_annotated_args(self):
         @as_grid_ufunc()
         def ufunc(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:center"]:
             return np.array([])
 
@@ -118,7 +122,7 @@ class TestParseSignatureFromTypeHints:
 
         @as_grid_ufunc()
         def ufunc(
-            a: Annotated[np.ndarray, "X:center,Y:center"]
+            a: Annotated[np.ndarray, "X:center,Y:center"],
         ) -> Annotated[np.ndarray, "X:center"]:
             return np.array([])
 
@@ -135,7 +139,7 @@ class TestParseSignatureFromTypeHints:
 
         @as_grid_ufunc()
         def ufunc(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:left,Y:right"]:
             return np.array([])
 
@@ -143,7 +147,7 @@ class TestParseSignatureFromTypeHints:
 
         @as_grid_ufunc()
         def ufunc(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Tuple[Annotated[np.ndarray, "X:left"], Annotated[np.ndarray, "Y:right"]]:
             return np.array([]), np.array([])
 
@@ -157,7 +161,7 @@ class TestParseSignatureFromTypeHints:
 
             @as_grid_ufunc()
             def ufunc(
-                a: Annotated[np.ndarray, "nonsense"]  # type: ignore
+                a: Annotated[np.ndarray, "nonsense"],  # type: ignore
             ) -> Annotated[np.ndarray, "X:center"]:
                 return np.array([])
 
@@ -165,7 +169,7 @@ class TestParseSignatureFromTypeHints:
 
             @as_grid_ufunc()
             def ufunc(
-                a: Annotated[np.ndarray, "X:Mars"]
+                a: Annotated[np.ndarray, "X:Mars"],
             ) -> Annotated[np.ndarray, "X:center"]:
                 return np.array([])
 
@@ -177,7 +181,7 @@ class TestParseSignatureFromTypeHints:
 
             @as_grid_ufunc()
             def ufunc(
-                a: Annotated[np.ndarray, "X:center"]
+                a: Annotated[np.ndarray, "X:center"],
             ) -> Annotated[np.ndarray, "X:Venus"]:
                 return np.array([])
 
@@ -188,7 +192,7 @@ class TestParseSignatureFromTypeHints:
 
             @as_grid_ufunc(signature="(X:center)->(X:left)")
             def ufunc(
-                a: Annotated[np.ndarray, "X:center"]
+                a: Annotated[np.ndarray, "X:center"],
             ) -> Annotated[np.ndarray, "X:left"]:
                 return np.array([])
 
@@ -203,7 +207,7 @@ class TestParseSignatureFromTypeHints:
         # This should pass mypy without raising any errors
         @as_grid_ufunc()
         def ufunc3(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:center"]:
             print(a.strides)
             return a
@@ -297,7 +301,7 @@ class TestGridUFuncNoPadding:
 
         @as_grid_ufunc()
         def diff_center_to_left(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1)
 
@@ -368,7 +372,7 @@ class TestGridUFuncNoPadding:
         # Test decorator
         @as_grid_ufunc()
         def diff_center_to_left(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1)
 
@@ -412,7 +416,7 @@ class TestGridUFuncNoPadding:
         # Test decorator
         @as_grid_ufunc(dask="parallelized")
         def interp_center_to_inner(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:inner"]:
             return 0.5 * (a[:-1] + a[1:])
 
@@ -461,7 +465,7 @@ class TestGridUFuncNoPadding:
         # Test decorator
         @as_grid_ufunc(dask="allowed")
         def diff_overlap(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:left"]:
             return map_overlap(diff_center_to_left, a, depth=1, boundary="periodic")
 
@@ -500,7 +504,7 @@ class TestGridUFuncNoPadding:
         # Test decorator
         @as_grid_ufunc()
         def diff_center_to_left(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:left"]:
             return a - np.roll(a, shift=-1, axis=-1)
 
@@ -590,7 +594,9 @@ class TestGridUFuncNoPadding:
 
         # Test decorator
         @as_grid_ufunc()
-        def grad_to_inner(a: Annotated[np.ndarray, "X:center,Y:center"]) -> Tuple[
+        def grad_to_inner(
+            a: Annotated[np.ndarray, "X:center,Y:center"],
+        ) -> Tuple[
             Annotated[np.ndarray, "X:inner,Y:center"],
             Annotated[np.ndarray, "X:center,Y:inner"],
         ]:
@@ -897,7 +903,7 @@ class TestDaskOverlap:
             map_overlap=True,
         )
         def diff_center_to_left(
-            a: Annotated[np.ndarray, "X:center"]
+            a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:left"]:
             return a[..., 1:] - a[..., :-1]
 
@@ -959,7 +965,7 @@ class TestDaskOverlap:
             map_overlap=True,
         )
         def diff_outer_to_center(
-            a: Annotated[np.ndarray, "X:outer"]
+            a: Annotated[np.ndarray, "X:outer"],
         ) -> Annotated[np.ndarray, "X:center"]:
             """Mocking up a function which can only act on in-memory arrays, and requires no padding"""
             if isinstance(a, np.ndarray):

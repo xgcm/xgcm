@@ -4,8 +4,18 @@ import itertools
 import operator
 import warnings
 from collections import OrderedDict
-from typing import (Any, Callable, Dict, Iterable, List, Mapping, Optional,
-                    Sequence, Tuple, Union)
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import xarray as xr
@@ -13,10 +23,15 @@ from dask.array import Array as Dask_Array
 
 from . import gridops, metadata_parsers
 from .axis import Axis
-from .grid_ufunc import (GridUFunc, _check_data_input, _GridUFuncSignature,
-                         _has_chunked_core_dims,
-                         _maybe_unpack_vector_component, _reattach_coords,
-                         apply_as_grid_ufunc)
+from .grid_ufunc import (
+    GridUFunc,
+    _check_data_input,
+    _GridUFuncSignature,
+    _has_chunked_core_dims,
+    _maybe_unpack_vector_component,
+    _reattach_coords,
+    apply_as_grid_ufunc,
+)
 from .metrics import iterate_axis_combinations
 from .padding import pad
 

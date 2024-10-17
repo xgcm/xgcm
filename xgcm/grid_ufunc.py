@@ -1,8 +1,20 @@
 import re
 import string
 import warnings
-from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Literal, Mapping,
-                    Optional, Sequence, Tuple, Union, get_type_hints)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    get_type_hints,
+)
 
 import numpy as np
 import xarray as xr
@@ -32,7 +44,7 @@ _SIGNATURE = f"^{_ARGUMENT_LIST}->{_ARGUMENT_LIST}$"
 
 
 def _maybe_unpack_vector_component(
-    data: Union[xr.DataArray, Dict[str, xr.DataArray]]
+    data: Union[xr.DataArray, Dict[str, xr.DataArray]],
 ) -> xr.DataArray:
     if isinstance(data, dict):
         [da] = list(data.values())  # this will raise if more than one element
@@ -240,7 +252,7 @@ def _parse_signature_from_string(
 
 
 def _parse_signature_from_type_hints(
-    hints: Dict[str, Any]
+    hints: Dict[str, Any],
 ) -> Tuple[T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST, T_AX_POS_LIST]:
     """
     Parse signatures from type annotations for a grid-aware universal function.
@@ -942,7 +954,7 @@ def _map_func_over_core_dims(
     single_dim_chunktype = Tuple[int, ...]
 
     def _dict_to_numbered_axes(
-        sizes: Mapping[str, single_dim_chunktype]
+        sizes: Mapping[str, single_dim_chunktype],
     ) -> Tuple[single_dim_chunktype, ...]:
         """This implicitly crystallises the order of the given mapping"""
         return tuple(sizes.values())
