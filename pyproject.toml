@@ -58,6 +58,7 @@ write_to_template = '__version__ = "{version}"'
 aliases = {test = "pytest"}
 
 [tool.ruff]
+extend-select = ["T201"]
 exclude = [
     "__init__.py",
     ".eggs",
@@ -71,7 +72,6 @@ ignore = [
     "E265",  # block comment should start with ‘# ’
     "F811",  # redefinition of unused name from import
     "F722",  # allows type hinting as Gridded[DataArray, "(X:center)"]
-    "E704"   # multiple statements on one line
 ]
 # Same as Black.
 line-length = 88
