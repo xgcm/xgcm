@@ -18,12 +18,9 @@ from xgcm.grid import Grid
 try:
     import numba  # type: ignore
 
-    from ..transform import (
-        conservative_interpolation,
-        interp_1d_conservative,
-        interp_1d_linear,
-        linear_interpolation,
-    )
+    from ..transform import (conservative_interpolation,
+                             interp_1d_conservative, interp_1d_linear,
+                             linear_interpolation)
 except ImportError:
     numba = None
 

@@ -8,13 +8,9 @@ import xarray as xr
 from xarray.testing import assert_equal
 
 from xgcm.grid import Grid, _select_grid_ufunc
-from xgcm.grid_ufunc import (
-    GridUFunc,
-    _GridUFuncSignature,
-    _parse_signature_from_string,
-    apply_as_grid_ufunc,
-    as_grid_ufunc,
-)
+from xgcm.grid_ufunc import (GridUFunc, _GridUFuncSignature,
+                             _parse_signature_from_string, apply_as_grid_ufunc,
+                             as_grid_ufunc)
 
 
 class TestParseSignatureFromString:

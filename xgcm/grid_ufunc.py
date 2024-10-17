@@ -1,20 +1,8 @@
 import re
 import string
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-    get_type_hints,
-)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Literal, Mapping,
+                    Optional, Sequence, Tuple, Union, get_type_hints)
 
 import numpy as np
 import xarray as xr
