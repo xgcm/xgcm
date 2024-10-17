@@ -19,10 +19,13 @@ A good step by step tutorial for this can be found in the
 
 Environments
 ^^^^^^^^^^^^
+
+xgcm
+++++++++++++
 The easiest way to start developing xgcm pull requests,
 is to install one of the conda environments provided in the `ci folder <https://github.com/xgcm/xgcm/tree/master/ci>`_::
 
-    conda env create -f ci/environment-py3.8.yml
+    conda env create -f ci/environment.yml
 
 Activate the environment with::
 
@@ -37,6 +40,23 @@ A good first step is to check if all the tests pass locally::
     pytest -v
 
 And now you can develop away...
+
+ReadTheDocs
+++++++++++++
+
+Create the doc environment with::
+
+    conda env create -f ci/environment.yml
+
+Activate the environment with::
+
+    conda activate test_env_xgcm
+
+Finally install xgcm itself in the now activated environment::
+
+    pip install ".[dev]"
+
+Now you can start editing the documentation
 
 Code Formatting
 ^^^^^^^^^^^^^^^
