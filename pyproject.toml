@@ -54,9 +54,6 @@ exclude = ["docs", "tests", "tests.*", "docs.*"]
 write_to = "xgcm/_version.py"
 write_to_template = '__version__ = "{version}"'
 
-[tool.setuptools.commands]
-aliases = {test = "pytest"}
-
 [tool.pytest.ini_options]
 addopts = "-v"
 
