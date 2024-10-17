@@ -327,7 +327,10 @@ class Grid:
         axis_connections = {}
 
         facedim = list(fc.keys())[0]
-        assert facedim in self._ds
+        if facedim not in self._ds.dims:
+            raise ValueError(
+                f"Face dimension {facedim} does not exist in the dataset. Found {list(self._ds.dims)} instead"
+            )
 
         face_links = fc[facedim]
         for fidx, face_axis_links in face_links.items():

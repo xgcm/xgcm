@@ -131,7 +131,12 @@ def test_connection_errors(ds):
     pass
 
 
-def test_create_connected_grid(ds, ds_face_connections_x_to_x):
+@pytest.mark.parametrize("face_coord_dim", [True, False])
+def test_create_connected_grid(ds, ds_face_connections_x_to_x, face_coord_dim):
+    #
+    if face_coord_dim:
+        ds = ds.drop("face")
+
     # simplest scenario with one face connection
     grid = Grid(ds, face_connections=ds_face_connections_x_to_x)
 
@@ -145,6 +150,15 @@ def test_create_connected_grid(ds, ds_face_connections_x_to_x):
     assert xaxis._connections[0][1][1] is xaxis
     assert xaxis._connections[1][0][0] == 0
     assert xaxis._connections[1][0][1] is xaxis
+
+
+def test_create_connected_grid_error_wrong_facedim(ds, ds_face_connections_x_to_x):
+    # rename face dimension to trigger error
+    ds = ds.rename({"face": "something_else"})
+    with pytest.raises(
+        ValueError, match="Face dimension face does not exist in the dataset."
+    ):
+        Grid(ds, face_connections=ds_face_connections_x_to_x)
 
 
 def test_diff_interp_connected_grid_x_to_x(ds, ds_face_connections_x_to_x):

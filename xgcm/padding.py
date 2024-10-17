@@ -1,6 +1,7 @@
 """
 Handle all padding.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Mapping, Optional, Tuple, Union
