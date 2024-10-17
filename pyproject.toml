@@ -68,7 +68,6 @@ ignore = [
     "E402",  # module level import not at top of file
     "E501",  # line too long
     "E731",  # do not assign a lambda expression, use a def
-    "W503",  # line break before binary operator
     "E265",  # block comment should start with ‘# ’
     "F811",  # redefinition of unused name from import
     "F722",  # allows type hinting as Gridded[DataArray, "(X:center)"]
