@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create conda environment
-        uses: mamba-org/setup-micromamba@v1
+        uses: mamba-org/setup-micromamba@v2
         with:
           micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
           environment-file: ci/environment.yml
@@ -67,7 +67,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Create conda environment
-      uses: mamba-org/setup-micromamba@v1
+      uses: mamba-org/setup-micromamba@v2
       with:
         micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
         environment-file: ci/environment-core-deps.yml
@@ -95,7 +95,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Create conda environment
-      uses: mamba-org/setup-micromamba@v1
+      uses: mamba-org/setup-micromamba@v2
       with:
         micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
         environment-file: ci/environment-upstream-dev.yml
