@@ -249,7 +249,7 @@ def test_vector_diff_interp_connected_grid_x_to_y(
             ds,
             **comodo_grid_kwargs,
             face_connections=ds_face_connections_x_to_y,
-            autoparse_metadata=False
+            autoparse_metadata=False,
         )
     else:
         # simplest scenario with one face connection
