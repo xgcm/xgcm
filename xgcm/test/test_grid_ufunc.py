@@ -201,6 +201,7 @@ class TestParseSignatureFromTypeHints:
         @as_grid_ufunc()
         def ufunc1(a: Annotated[str, "X:center"]) -> Annotated[np.ndarray, "X:center"]:
             # np.ndarray has a .strides method but str doesn't (and nor does xr.DataArray)
+            assert isinstance(a, np.ndarray)
             return a  # type: ignore
 
         # This should pass mypy without raising any errors
@@ -208,6 +209,7 @@ class TestParseSignatureFromTypeHints:
         def ufunc3(
             a: Annotated[np.ndarray, "X:center"],
         ) -> Annotated[np.ndarray, "X:center"]:
+            assert isinstance(a, np.ndarray)
             return a
 
 
