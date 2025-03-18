@@ -146,10 +146,10 @@ def test_create_connected_grid(ds, ds_face_connections_x_to_x, face_coord_dim):
     # this is a bad test because it tests the details of the implementation,
     # not the behavior. But it is useful for now
     assert xaxis._facedim == "face"
-    assert xaxis._connections[0][1][0] == 1
-    assert xaxis._connections[0][1][1] is xaxis
-    assert xaxis._connections[1][0][0] == 0
-    assert xaxis._connections[1][0][1] is xaxis
+    assert xaxis._face_connections[0][1][0] == 1
+    assert xaxis._face_connections[0][1][1] is xaxis
+    assert xaxis._face_connections[1][0][0] == 0
+    assert xaxis._face_connections[1][0][1] is xaxis
 
 
 def test_create_connected_grid_error_wrong_facedim(ds, ds_face_connections_x_to_x):

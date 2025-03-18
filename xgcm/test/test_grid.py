@@ -25,7 +25,7 @@ def _assert_axes_equal(ax1, ax2):
     assert ax1._default_shifts == ax2._default_shifts
     # TODO: make this work...
     # assert ax1._facedim == ax2._facedim
-    # assert ax1._connections == ax2._connections
+    # assert ax1._face_connections == ax2._face_connections
 
 
 class TestInvalidGrid:

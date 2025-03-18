@@ -76,7 +76,7 @@ def _pad_face_connections(
     other_component: Optional[Dict[str, xr.DataArray]] = None,
 ):
     facedim = grid._facedim
-    connections = grid._connections
+    connections = grid._face_connections
 
     if isinstance(da, dict):
         isvector = True
@@ -412,7 +412,7 @@ def pad(
     data = _strip_all_coords(data)
 
     # If any axis has connections we need to use the complex padding
-    if grid._connections:
+    if grid._face_connections:
         da_padded = _pad_face_connections(
             data,
             grid,

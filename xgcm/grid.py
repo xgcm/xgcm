@@ -242,7 +242,7 @@ class Grid:
 
         # Set properties on grid object.
         self._facedim = list(face_connections.keys())[0] if face_connections else None
-        self._connections = face_connections if face_connections else None
+        self._face_connections = face_connections if face_connections else None
         # TODO: I think of the face connection data as grid not axes properties, since they almost by defintion
         # TODO: involve multiple axes. In a future PR we should remove this info from the axes
         # TODO: but make sure to properly port the checking functionality!
@@ -386,7 +386,7 @@ class Grid:
 
         for axis, axis_links in axis_connections.items():
             self.axes[axis]._facedim = facedim
-            self.axes[axis]._connections = axis_links
+            self.axes[axis]._face_connections = axis_links
 
     def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
