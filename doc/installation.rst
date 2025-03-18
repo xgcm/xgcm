@@ -32,18 +32,15 @@ Installation from GitHub
 
 xgcm is under active development. To obtain the latest development version,
 you may clone the `source repository <https://github.com/xgcm/xgcm>`_
-and install it::
-
-    git clone https://github.com/xgcm/xgcm.git
-    cd xgcm
-    python setup.py install
-
-or simply::
+and install it using pip::
 
     pip install git+https://github.com/xgcm/xgcm.git
 
+More comprehensive instructions for installing a development environment can be found in the [Contributor Guide](https://xgcm.readthedocs.io/en/latest/contributor_guide.html).
+
 Users are encouraged to `fork <https://help.github.com/articles/fork-a-repo/>`_
 xgcm and submit issues_ and `pull requests`_.
+
 
 .. _dask: http://dask.pydata.org
 .. _numpy: https://numpy.org
