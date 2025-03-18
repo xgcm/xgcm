@@ -82,6 +82,10 @@ From the xgcm root directory do::
 
     cd doc/xgcm-examples
 
+If this directory is empty, it means your original install did not pull the submodule; to configure the submodule, do::
+
+    git submodule update --init
+
 You are now in a seperate git repository and can pull all updates::
 
     git pull
