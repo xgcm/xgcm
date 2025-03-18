@@ -42,7 +42,6 @@ Users are encouraged to `fork <https://help.github.com/articles/fork-a-repo/>`_
 xgcm and submit issues_ and `pull requests`_.
 
 
-
 .. _dask: http://dask.pydata.org
 .. _numpy: https://numpy.org
 .. _xarray: http://xarray.pydata.org
