@@ -455,6 +455,12 @@ def transform(
             logarithmic=(method == "log"),
         )
     elif method == "conservative":
+        if isinstance(target, xr.DataArray):
+            if len(target.dims) > 1:
+                raise ValueError(
+                    f"Conservative transformation is not yet supported for multi-dimensional targets, e.g. with dimensions: {target.dims}"
+                )
+
         # the conservative method requires `target_data` to be on the `outer` coordinate.
         # If that is not the case (a very common use case like transformation on any tracer),
         # we need to infer the boundary values (using the interp logic)
