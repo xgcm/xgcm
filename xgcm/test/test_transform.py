@@ -650,7 +650,6 @@ def construct_test_source_data(case_param_dict):
     case_param_dict = {k: v for k, v in case_param_dict.items()}
 
     def _construct_da(param_dict, prefix):
-
         data = param_dict[prefix + "_data"][1]
 
         if f"{prefix}_dims" in param_dict.keys():
@@ -672,7 +671,6 @@ def construct_test_source_data(case_param_dict):
         )
 
     def _construct_ds(param_dict, prefix):
-
         da = _construct_da(param_dict, prefix)
         ds = xr.Dataset(data_vars={da.name: da})
 
