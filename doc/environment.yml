@@ -3,6 +3,7 @@ dependencies:
   - python=3.9
   - numba
   - pandoc
+  - pre-commit
   - pip
   - pip:
     - sphinx==4.5.0

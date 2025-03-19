@@ -22,7 +22,7 @@ Environments
 The easiest way to start developing xgcm pull requests,
 is to install one of the conda environments provided in the `ci folder <https://github.com/xgcm/xgcm/tree/master/ci>`_::
 
-    conda env create -f ci/environment-py3.8.yml
+    conda env create -f ci/environment.yml
 
 Activate the environment with::
 
@@ -59,11 +59,34 @@ and install it in the xgcm root directory with::
 
 and your code will be properly formatted before each commit.
 
+Building the documentation locally
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install the following conda environment::
+
+    conda env create -f doc/environment.yml
+
+Now activate the environment with::
+
+    conda activate test_env_xgcm_docs
+
+Install xgcm itself in the now activated environment::
+
+    pip install -e .
+
+Navigate to the docs folder and build the docs::
+
+    cd doc
+    make clean
+    make html
+
+You can now open ``doc/_build/html/index.html`` in a web browser.
+
+
 How to release a new version of xgcm (for maintainers only)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The process of releasing at this point is very easy.
 
-We need only two things: A PR to update the documentation and making a release on github.
+We need only two things: A PR to update the documentation and a release on github.
 
 1. Make sure that all the new features/bugfixes etc are appropriately documented in ``doc/whats-new.rst``, add the date to the current release and make an empty (unreleased) entry for the next minor release as a PR.
 2. Navigate to the 'tags' symbol on the repos main page, click on 'Releases' and on 'Draft new release' on the right. Add the version number and a short description and save the release.
@@ -81,6 +104,10 @@ Currently updates in the example repo need to be manually synced to this repo wi
 From the xgcm root directory do::
 
     cd doc/xgcm-examples
+
+If this directory is empty, it means your original install did not pull the submodule; to configure the submodule, do::
+
+    git submodule update --init
 
 You are now in a seperate git repository and can pull all updates::
 
