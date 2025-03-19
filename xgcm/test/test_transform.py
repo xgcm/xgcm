@@ -212,6 +212,47 @@ cases = {
             "target_dim": "s_rho",
         },
     },
+    "conservative_depth_depth_multidim_target": {
+        "source_coord": ("z", [5, 25, 60]),
+        "source_bounds_coord": ("zc", [0, 10, 50, 75]),
+        "source_data": ("data", [1, 4, 0]),
+        "source_additional_data_coord": (
+            "zc",
+            [0, 10, 50, 75],
+        ),
+        "source_additional_data": ("zc", [0, 10, 50, 75]),
+        # 2D target
+        "target_dims": (
+            "eta_rho",
+            "s_w",
+        ),  # eta_rho: horizontal dimension; s_w: vertical dimension
+        "target_coord": (
+            "interface_depth_rho",
+            np.array([[0, 1, 10, 50, 80], [0, 5, 20, 30, 100]]),
+        ),
+        "target_data": (
+            "interface_depth_rho",
+            np.array([[0, 1, 10, 50, 80], [0, 5, 20, 30, 100]]),
+        ),
+        "expected_dims": ("eta_rho", "s_w"),
+        "expected_coord": (
+            "interface_depth_rho",
+            np.array([[0.5, 5.5, 30, 65], [2.5, 12.5, 25, 65]]),
+        ),
+        "expected_data": (
+            "data",
+            np.array([[0.1, 0.9, 4.0, 0.0], [0.5, 1.5, 1.0, 2.0]]),
+        ),
+        "grid_kwargs": {
+            "coords": {"Z": {"center": "z", "outer": "zc"}},
+            "autoparse_metadata": False,
+        },
+        "transform_kwargs": {
+            "method": "conservative",
+            "target_data": "zc",
+            "target_dim": "s_w",
+        },
+    },
     # example of interpolating onto a tracer that increases with depth
     # but with inverted target
     "linear_depth_dens": {
@@ -726,16 +767,31 @@ def construct_test_source_data(case_param_dict):
     )
 
 
+# TODO: once conservative method is implemented for multi-dimensional
+# targets, remove the exception from this list
 @pytest.fixture(
-    # scope="module",
-    params=list(cases.keys()),
+    params=[
+        c
+        for c in list(cases.keys())
+        if not ("conservative" in c and "multidim_target" in c)
+    ],
 )
-def all_cases(request):
+def all_cases_except_conservative_multidim(request):
     return construct_test_source_data(cases[request.param])
 
 
 @pytest.fixture(
-    # scope="module",
+    params=[
+        c
+        for c in list(cases.keys())
+        if ("conservative" in c and "multidim_target" in c)
+    ],
+)
+def conservative_multidim_cases(request):
+    return construct_test_source_data(cases[request.param])
+
+
+@pytest.fixture(
     params=[
         c for c in list(cases.keys()) if "linear" in c and "multidim_target" not in c
     ],
@@ -745,8 +801,11 @@ def linear_cases(request):
 
 
 @pytest.fixture(
-    # scope="module",
-    params=[c for c in list(cases.keys()) if "conservative" in c],
+    params=[
+        c
+        for c in list(cases.keys())
+        if "conservative" in c and "multidim_target" not in c
+    ],
 )
 def conservative_cases(request):
     return construct_test_source_data(cases[request.param])
@@ -766,7 +825,6 @@ def multidim_cases(request):
 
 
 @pytest.fixture(
-    # scope="module",
     params=[
         "linear_depth_depth_nomask_multidim_target",
         "linear_depth_depth_multidim_target",
@@ -980,8 +1038,10 @@ def test_mid_level_conservative(conservative_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_grid_transform(all_cases):
-    source, grid_kwargs, target, transform_kwargs, expected, error_flag = all_cases
+def test_grid_transform(all_cases_except_conservative_multidim):
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        all_cases_except_conservative_multidim
+    )
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
@@ -997,7 +1057,21 @@ def test_grid_transform(all_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_conservative_interp_warn():
+def test_conservative_interp_error_if_multidim_target_dim(conservative_multidim_cases):
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        conservative_multidim_cases
+    )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    with pytest.raises(NotImplementedError):
+        _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_interp_warn_if_no_cell_bounds():
     (
         source,
         grid_kwargs,
@@ -1010,7 +1084,10 @@ def test_conservative_interp_warn():
     axis = list(grid_kwargs["coords"].keys())[0]
 
     grid = Grid(source, periodic=False, **grid_kwargs)
-    with pytest.warns(UserWarning):
+    with pytest.warns(
+        UserWarning,
+        match="The `target data` input is not located on the cell bounds. This method will continue with linear interpolation with repeated boundary values.",
+    ):
         _ = grid.transform(source.data, axis, target, **transform_kwargs)
 
 
