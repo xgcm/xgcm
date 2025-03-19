@@ -272,6 +272,7 @@ def transform(
     da,
     target,
     target_data=None,
+    target_dim=None,
     method="linear",
     mask_edges=True,
     bypass_checks=False,
@@ -285,7 +286,9 @@ def transform(
     axis, like depth. xgcm automatically detects the appropriate
     coordinate and then transforms the data from the input
     positions to the desired positions defined in `target`. This
-    is the default behavior. The method can also be used for more
+    is the default behavior. If the `target` has more than one
+    dimension, the `target_dim` has to be explicitly set. Otherwise,
+    it is inferred from `target`. The method can also be used for more
     complex cases like transforming a dataarray into new
     coordinates that are defined by e.g. a tracer field like
     temperature, density, etc.
@@ -310,7 +313,8 @@ def transform(
       velocity). N given `target` values are interpreted as cell-bounds
       and the returned array will have N-1 elements along the newly
       created coordinate, with coordinate values that are interpolated
-      between `target` values.
+      between `target` values. This method does currently not work
+      for multi-dimensional targets.
     Parameters
     ----------
     grid : xgcm.Grid
@@ -324,15 +328,15 @@ def transform(
         interpreted as cell center (method='linear' and method='log') or
         cell bounds (method='conservative).
         Values correspond to `target_data` or the existing coordinate
-        along the axis (if `target_data=None`). The name of the
-        resulting new coordinate is determined by the input type.
-        When passed as numpy array the resulting dimension is named
-        according to `target_data`, if provided as xr.Dataarray
-        naming is inferred from the `target` input.
+        along the axis (if `target_data=None`).
     target_data : xr.DataArray, optional
         Data to transform onto (e.g. a tracer like density or temperature).
         Defaults to None, which infers the appropriate coordinate along
         `axis` (e.g. the depth).
+    target_dim : str, optional
+        Dimension name associated with the `target` points. If `target` has more than one dimension, this
+        parameter must be explicitly set to specify which dimension corresponds to the transformation. If `target`
+        is one-dimensional, `target_dim` is inferred automatically.
     method : str, optional
         Method used to transform, by default "linear"
     mask_edges : bool, optional
@@ -347,17 +351,21 @@ def transform(
     suffix : str, optional
         Customizable suffix to the name of the output array. This will
         be added to the original name of `da`. Defaults to `_transformed`.
+
     Returns
     -------
     xr.DataArray
         The transformed data
+
+    Notes
+    -----
+    - If `target` is multi-dimensional, you must specify `target_dim` explicitly.
+    - If `target_dim` is not specified and `target_data` has no name, a default name "TRANSFORMED_DIMENSION" will be used for the transformed dimension.
+    - For `conservative` transformations, `target_data` must be located on cell bounds.
+
     """
 
     axis = grid.axes[axis_name]
-
-    # Theoretically we should be able to use a multidimensional `target`, which would need the additional information provided with `target_dim`.
-    # But the feature is not tested yet, thus setting this to default value internally (resulting in error in `_parse_target`, when a multidim `target` is passed)
-    target_dim = None
 
     # raise error if axis is periodic
     if axis.boundary == "periodic":
@@ -407,20 +415,22 @@ def transform(
         if target_data is None:
             target_data = grid._ds[target_data_dim]
 
-        # Infer target_dim from target
-        if isinstance(target, xr.DataArray):
-            if len(target.dims) == 1:
-                if target_dim is None:
-                    target_dim = list(target.dims)[0]
+        if target_dim is None:
+            # Infer target_dim from target
+            if isinstance(target, xr.DataArray):
+                if len(target.dims) == 1:
+                    if target_dim is None:
+                        target_dim = list(target.dims)[0]
+                else:
+                    if target_dim is not None and target_dim not in target.dims:
+                        raise ValueError(
+                            f"The specified `target_dim` {target_dim} is not within the dimensions of the target: [{target.dims}]."
+                        )
             else:
-                if target_dim is None:
-                    raise ValueError(
-                        f"Cant infer `target_dim` from `target` since it has more than 1 dimension [{target.dims}]. This is currently not supported. `."
-                    )
-        else:
-            # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
-            _target_data_name_handling(target_data)
-            target_dim = target_data.name
+                # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
+                _target_data_name_handling(target_data)
+                target_dim = target_data.name
+        if not isinstance(target, xr.DataArray):
             target = xr.DataArray(
                 target, dims=[target_dim], coords={target_dim: target}
             )
@@ -445,6 +455,12 @@ def transform(
             logarithmic=(method == "log"),
         )
     elif method == "conservative":
+        if isinstance(target, xr.DataArray):
+            if target_dim is not None and len(target_dim) > 1:
+                raise NotImplementedError(
+                    "Conservative transformation is not yet supported for multi-dimensional targets."
+                )
+
         # the conservative method requires `target_data` to be on the `outer` coordinate.
         # If that is not the case (a very common use case like transformation on any tracer),
         # we need to infer the boundary values (using the interp logic)
