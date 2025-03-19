@@ -79,7 +79,7 @@ Navigate to the docs folder and build the docs::
     make clean
     make html
 
-You can now open `doc/_build/html/index.html` in a web browser.
+You can now open ``doc/_build/html/index.html`` in a web browser.
 
 
 How to release a new version of xgcm (for maintainers only)
