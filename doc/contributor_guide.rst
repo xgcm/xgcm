@@ -59,6 +59,29 @@ and install it in the xgcm root directory with::
 
 and your code will be properly formatted before each commit.
 
+Building the documentation locally
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install the following conda environment::
+
+    conda env create -f doc/environment.yml
+
+Now activate the environment with::
+
+    conda activate test_env_xgcm
+
+Install xgcm itself in the now activated environment::
+
+    pip install -e .
+
+Navigate to the docs folder and build the docs::
+
+    cd doc
+    make clean
+    make html
+
+You can now open `doc/_build/html/index.html` in a web browser.
+
+
 How to release a new version of xgcm (for maintainers only)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The process of releasing at this point is very easy.
