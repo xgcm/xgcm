@@ -67,7 +67,7 @@ Install the following conda environment::
 
 Now activate the environment with::
 
-    conda activate test_env_xgcm
+    conda activate test_env_xgcm_docs
 
 Install xgcm itself in the now activated environment::
 
