@@ -39,6 +39,8 @@ Documentation
 
 Bugfixes
 ~~~~~~~~
+- Fix bug in :py:meth:`xgcm.transfrom.transform` that violated tracer conservation when using conservative interpolation in the presence of nans. (:pull:`635`)
+  By `Julius Busecke <https://github.com/jbusecke>`_.
 - Fix bug in :py:meth:`xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate
   values leading to errors with ECCO data. (:issue:`531`, :issue:`595`, :pull:`597`).
   By `Julius Busecke <https://github.com/jbusecke>`_.
