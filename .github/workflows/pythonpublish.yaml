@@ -1,29 +1,42 @@
-name: Upload Python Package
-
+name: Build and Upload xmip to PyPI
 on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "*"
   release:
-    types: [created]
+    types:
+      - published
 
 jobs:
-  deploy:
-    if: github.repository == 'xgcm/xgcm'
+  build-artifacts:
     runs-on: ubuntu-latest
+    if: github.repository == 'xgcm/xgcm'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: "3.x"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools setuptools-scm wheel twine
-      - name: Build and publish
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          python -m pip install --upgrade setuptools setuptools-scm build twine
+      - name: Build only
+        if: github.event_name != 'release'
         run: |
-          python setup.py sdist bdist_wheel
-          python setup.py --version
+          python -m build
+          twine check dist/*
+      - name: Build and publish
+        if: github.event_name == 'release'
+        env:
+          TWINE_USERNAME: "__token__"
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          python -m build
           twine check dist/*
           twine upload dist/*
