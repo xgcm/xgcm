@@ -1,4 +1,4 @@
-name: Build and Upload xmip to PyPI
+name: Build and Upload xGCM to PyPI
 on:
   push:
     branches:
