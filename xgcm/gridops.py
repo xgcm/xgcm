@@ -15,7 +15,7 @@ through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufun
 
 
 # TODO can we allow for grouping these definitions into classes? Similar to pytest tests?
-
+# TODO what is the best way to generalize the Diff and Cumsum ufuncs so that they have a sense of directionality?
 
 # Diff
 
