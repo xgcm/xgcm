@@ -189,7 +189,7 @@ class Axis:
 
         if len(candidates) == 0:
             raise KeyError(
-                f"None of the DataArray's dims {da.dims} were found in axis " "coords."
+                f"None of the DataArray's dims {da.dims} were found in axis coords."
             )
         elif len(candidates) > 1:
             raise KeyError(
