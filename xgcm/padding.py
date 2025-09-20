@@ -412,7 +412,7 @@ def pad(
     data = _strip_all_coords(data)
 
     # If any axis has connections we need to use the complex padding
-    if grid._face_connections:
+    if grid._face_connections is not None:
         da_padded = _pad_face_connections(
             data,
             grid,
