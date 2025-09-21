@@ -58,6 +58,10 @@ class Grid:
     An object with multiple :class:`xgcm.Axis` objects representing different
     independent axes.
     """
+    _facedim: Optional[str]
+    _face_connections: Optional[Dict[str, Any]]
+    _ds: xr.Dataset
+    _metrics: Dict[Tuple[str, ...], List[xr.DataArray]]
 
     def __init__(
         self,
@@ -268,7 +272,7 @@ class Grid:
         if face_connections is not None:
             self._assign_face_connections(face_connections)
 
-        self._metrics: Dict[Tuple[str], List[str]] = {}
+        self._metrics: = {}
 
         if metrics is not None:
             for key, value in metrics.items():
