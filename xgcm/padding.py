@@ -78,6 +78,12 @@ def _pad_face_connections(
     facedim = grid._facedim
     connections = grid._face_connections
 
+    # Add explicit checks for mypy
+    if connections is None:
+        raise ValueError("Grid connections cannot be None")
+    if facedim is None:
+        raise ValueError("Face dimension cannot be None")
+
     if isinstance(da, dict):
         isvector = True
         vectoraxis, da = da.popitem()
