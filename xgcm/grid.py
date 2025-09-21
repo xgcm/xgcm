@@ -58,6 +58,7 @@ class Grid:
     An object with multiple :class:`xgcm.Axis` objects representing different
     independent axes.
     """
+
     _facedim: Optional[str]
     _face_connections: Optional[Dict[str, Any]]
     _ds: xr.Dataset
