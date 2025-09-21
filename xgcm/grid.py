@@ -272,7 +272,7 @@ class Grid:
         if face_connections is not None:
             self._assign_face_connections(face_connections)
 
-        self._metrics: = {}
+        self._metrics = {}
 
         if metrics is not None:
             for key, value in metrics.items():
