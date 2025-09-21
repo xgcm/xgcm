@@ -59,6 +59,11 @@ class Grid:
     independent axes.
     """
 
+    _facedim: Optional[str]
+    _face_connections: Optional[Dict[str, Any]]
+    _ds: xr.Dataset
+    _metrics: Dict[Tuple[str, ...], List[xr.DataArray]]
+
     def __init__(
         self,
         ds: xr.Dataset,
@@ -69,7 +74,9 @@ class Grid:
             Mapping[str, str]
         ] = None,  # TODO check if one default shift can be applied to many Axes
         boundary: Optional[Union[str, Mapping[str, str]]] = None,
-        face_connections=None,  # TODO type hint this
+        face_connections: Optional[
+            Dict[str, Any]
+        ] = None,  # TODO: add more specific typing
         metrics: Optional[Mapping[Tuple[str], List[str]]] = None,  # TODO type hint this
         autoparse_metadata: bool = True,
     ):
@@ -241,8 +248,12 @@ class Grid:
         fill_value_dict = self._map_kwargs_over_axes(fill_value, axes=all_axes)
 
         # Set properties on grid object.
-        self._facedim = list(face_connections.keys())[0] if face_connections else None
-        self._face_connections = face_connections if face_connections else None
+        if face_connections is not None and face_connections:
+            self._facedim = list(face_connections.keys())[0]
+            self._face_connections = face_connections
+        else:
+            self._facedim = None
+            self._face_connections = None
         # TODO: I think of the face connection data as grid not axes properties, since they almost by defintion
         # TODO: involve multiple axes. In a future PR we should remove this info from the axes
         # TODO: but make sure to properly port the checking functionality!
@@ -262,7 +273,7 @@ class Grid:
         if face_connections is not None:
             self._assign_face_connections(face_connections)
 
-        self._metrics: Dict[Tuple[str], List[str]] = {}
+        self._metrics = {}
 
         if metrics is not None:
             for key, value in metrics.items():

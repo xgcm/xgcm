@@ -78,6 +78,12 @@ def _pad_face_connections(
     facedim = grid._facedim
     connections = grid._face_connections
 
+    # Add explicit checks for mypy
+    if connections is None:
+        raise ValueError("Grid connections cannot be None")
+    if facedim is None:
+        raise ValueError("Face dimension cannot be None")
+
     if isinstance(da, dict):
         isvector = True
         vectoraxis, da = da.popitem()
@@ -88,7 +94,7 @@ def _pad_face_connections(
         # TODO: Using the logic above I could save a bunch of operations below. If we are never swapping axes (_get_all_connection_axes(connections, facedim)) = 1)
         # TODO: We do not need to deal with other components
         # TODO: Need to integrate that choice deeper in the loop\.
-        if other_component:
+        if other_component is not None:
             _, da_partner = other_component.popitem()
         else:
             # TODO: cover with a test.
@@ -412,7 +418,7 @@ def pad(
     data = _strip_all_coords(data)
 
     # If any axis has connections we need to use the complex padding
-    if grid._face_connections:
+    if grid._face_connections is not None:
         da_padded = _pad_face_connections(
             data,
             grid,

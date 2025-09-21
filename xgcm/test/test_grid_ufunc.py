@@ -73,7 +73,7 @@ class TestParseSignatureFromString:
             "(x:left),(y:left)->",
             "((x:left))->(x:left)",
             "((x:left))->(x:left)",
-            "(x:left)->(x:left)," "(i)->(i)",
+            "(x:left)->(x:left),(i)->(i)",
             "(X:centre)->()",
         ],
     )
