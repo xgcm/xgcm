@@ -69,7 +69,9 @@ class Grid:
             Mapping[str, str]
         ] = None,  # TODO check if one default shift can be applied to many Axes
         boundary: Optional[Union[str, Mapping[str, str]]] = None,
-        face_connections: Optional[Dict[str, Any]] = None,  # TODO: add more specific typing
+        face_connections: Optional[
+            Dict[str, Any]
+        ] = None,  # TODO: add more specific typing
         metrics: Optional[Mapping[Tuple[str], List[str]]] = None,  # TODO type hint this
         autoparse_metadata: bool = True,
     ):
