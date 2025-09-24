@@ -134,6 +134,24 @@ class TestPadding:
         xr.testing.assert_allclose(expected, result)
 
 
+def test_strip_only_padded_coords():
+    """Tests coordinates along dimensions not involved in padding are still propagated. See GH issue #575."""
+    ds, coords, _ = datasets_grid_metric("C")
+    grid = Grid(ds, coords=coords)
+    original = ds.tracer
+
+    result = pad(
+        original,
+        grid,
+        boundary={"X": "periodic"},
+        boundary_width={"X": (1, 1)},
+    )
+
+    xr.testing.assert_equal(original.coords["time"], result.coords["time"])
+    xr.testing.assert_equal(original.coords["yt"], result.coords["yt"])
+    xr.testing.assert_equal(original.coords["zt"], result.coords["zt"])
+
+
 # TODO: Make sure that we cannot specify mixed methods for padding if the input is something like `cube-sphere` or `tripolar`
 
 
