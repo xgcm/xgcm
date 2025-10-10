@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - codecov
+  - cf_xarray
   - dask
   - numba
   - numpy
