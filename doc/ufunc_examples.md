@@ -237,10 +237,10 @@ Now we can compute the gradient of our example scalar field
     )
 ```
 
-:::{note}
+```{note}
 Notice we used the `apply_as_grid_ufunc` syntax here instead of the `as_grid_ufunc` decorator.
 The result is the same.
-:::
+```
 
 Again in order to plot this as a vector field we should first interpolate it
 
@@ -308,9 +308,9 @@ Now we can define a simple flux operator (which internally calls our previous gr
 We can use this operator in conjunction with our divergence operator in order to build an advection operator,
 with which we can solve the basic continuity equation
 
-$$
+```{math}
 \frac{\partial T}{\partial t} + \nabla  \cdot ( \mathbf{u} T ) = 0
-$$
+```
 
 
 ```{eval-rst}
