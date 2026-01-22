@@ -42,30 +42,32 @@ jump down to {ref}`face_connections_spec`.
 The simplest possible scenario is two faces connected at one side. Consider
 the following dataset
 
-```{ipython} python
-import numpy as np
-import xarray as xr
+```{eval-rst}
+.. ipython:: python
 
-N = 25
-ds = xr.Dataset(
-    {"data_c": (["face", "y", "x"], np.random.rand(2, N, N))},
-    coords={
-        "x": (("x",), np.arange(N), {"axis": "X"}),
-        "xl": (
-            ("xl"),
-            np.arange(N) - 0.5,
-            {"axis": "X", "c_grid_axis_shift": -0.5},
-        ),
-        "y": (("y",), np.arange(N), {"axis": "Y"}),
-        "yl": (
-            ("yl"),
-            np.arange(N) - 0.5,
-            {"axis": "Y", "c_grid_axis_shift": -0.5},
-        ),
-        "face": (("face",), [0, 1]),
-    },
-)
-ds
+    import numpy as np
+    import xarray as xr
+
+    N = 25
+    ds = xr.Dataset(
+        {"data_c": (["face", "y", "x"], np.random.rand(2, N, N))},
+        coords={
+            "x": (("x",), np.arange(N), {"axis": "X"}),
+            "xl": (
+                ("xl"),
+                np.arange(N) - 0.5,
+                {"axis": "X", "c_grid_axis_shift": -0.5},
+            ),
+            "y": (("y",), np.arange(N), {"axis": "Y"}),
+            "yl": (
+                ("yl"),
+                np.arange(N) - 0.5,
+                {"axis": "Y", "c_grid_axis_shift": -0.5},
+            ),
+            "face": (("face",), [0, 1]),
+        },
+    )
+    ds
 ```
 
 The dataset has two spatial axes (`X` and `Y`), plus an additional dimension
@@ -78,14 +80,16 @@ Let's imagine the two faces are joined in the following way:
 
 We can construct a grid that understands this connection in the following way
 
-```{ipython} python
-import xgcm
+```{eval-rst}
+.. ipython:: python
 
-face_connections = {
-    "face": {0: {"X": (None, (1, "X", False))}, 1: {"X": ((0, "X", False), None)}}
-}
-grid = xgcm.Grid(ds, face_connections=face_connections)
-grid
+    import xgcm
+
+    face_connections = {
+        "face": {0: {"X": (None, (1, "X", False))}, 1: {"X": ((0, "X", False), None)}}
+    }
+    grid = xgcm.Grid(ds, face_connections=face_connections)
+    grid
 ```
 
 The `face_connections` dictionary tells xgcm that `face` is the name of the
@@ -101,12 +105,14 @@ across the connected faces.
 
 ### Two Faces with Rotated Axes
 
-```{ipython} python
-face_connections = {
-    "face": {0: {"X": (None, (1, "Y", False))}, 1: {"Y": ((0, "X", False), None)}}
-}
-grid = xgcm.Grid(ds, face_connections=face_connections)
-grid
+```{eval-rst}
+.. ipython:: python
+
+    face_connections = {
+        "face": {0: {"X": (None, (1, "Y", False))}, 1: {"Y": ((0, "X", False), None)}}
+    }
+    grid = xgcm.Grid(ds, face_connections=face_connections)
+    grid
 ```
 
 ### Cubed Sphere
@@ -121,61 +127,65 @@ topology for a cubed sphere grid is shown in the figure below:
 This geomtry has six faces. We can generate an xarray Dataset that has two
 spatial dimensions and a face dimension as follows:
 
-```{ipython} python
-ds = xr.Dataset(
-    {"data_c": (["face", "y", "x"], np.random.rand(6, N, N))},
-    coords={
-        "x": (("x",), np.arange(N), {"axis": "X"}),
-        "xl": (
-            ("xl"),
-            np.arange(N) - 0.5,
-            {"axis": "X", "c_grid_axis_shift": -0.5},
-        ),
-        "y": (("y",), np.arange(N), {"axis": "Y"}),
-        "yl": (
-            ("yl"),
-            np.arange(N) - 0.5,
-            {"axis": "Y", "c_grid_axis_shift": -0.5},
-        ),
-        "face": (("face",), np.arange(6)),
-    },
-)
-ds
+```{eval-rst}
+.. ipython:: python
+
+    ds = xr.Dataset(
+        {"data_c": (["face", "y", "x"], np.random.rand(6, N, N))},
+        coords={
+            "x": (("x",), np.arange(N), {"axis": "X"}),
+            "xl": (
+                ("xl"),
+                np.arange(N) - 0.5,
+                {"axis": "X", "c_grid_axis_shift": -0.5},
+            ),
+            "y": (("y",), np.arange(N), {"axis": "Y"}),
+            "yl": (
+                ("yl"),
+                np.arange(N) - 0.5,
+                {"axis": "Y", "c_grid_axis_shift": -0.5},
+            ),
+            "face": (("face",), np.arange(6)),
+        },
+    )
+    ds
 ```
 
 We specify the face connections and create the `Grid` object as follows:
 
-```{ipython} python
-face_connections = {
-    "face": {
-        0: {
-            "X": ((3, "X", False), (1, "X", False)),
-            "Y": ((4, "Y", False), (5, "Y", False)),
-        },
-        1: {
-            "X": ((0, "X", False), (2, "X", False)),
-            "Y": ((4, "X", False), (5, "X", True)),
-        },
-        2: {
-            "X": ((1, "X", False), (3, "X", False)),
-            "Y": ((4, "Y", True), (5, "Y", True)),
-        },
-        3: {
-            "X": ((2, "X", False), (0, "X", False)),
-            "Y": ((4, "X", True), (5, "X", False)),
-        },
-        4: {
-            "X": ((3, "Y", True), (1, "Y", False)),
-            "Y": ((2, "Y", True), (0, "Y", False)),
-        },
-        5: {
-            "X": ((3, "Y", False), (1, "Y", True)),
-            "Y": ((0, "Y", False), (2, "Y", True)),
-        },
+```{eval-rst}
+.. ipython:: python
+
+    face_connections = {
+        "face": {
+            0: {
+                "X": ((3, "X", False), (1, "X", False)),
+                "Y": ((4, "Y", False), (5, "Y", False)),
+            },
+            1: {
+                "X": ((0, "X", False), (2, "X", False)),
+                "Y": ((4, "X", False), (5, "X", True)),
+            },
+            2: {
+                "X": ((1, "X", False), (3, "X", False)),
+                "Y": ((4, "Y", True), (5, "Y", True)),
+            },
+            3: {
+                "X": ((2, "X", False), (0, "X", False)),
+                "Y": ((4, "X", True), (5, "X", False)),
+            },
+            4: {
+                "X": ((3, "Y", True), (1, "Y", False)),
+                "Y": ((2, "Y", True), (0, "Y", False)),
+            },
+            5: {
+                "X": ((3, "Y", False), (1, "Y", True)),
+                "Y": ((0, "Y", False), (2, "Y", True)),
+            },
+        }
     }
-}
-grid = xgcm.Grid(ds, face_connections=face_connections)
-grid
+    grid = xgcm.Grid(ds, face_connections=face_connections)
+    grid
 ```
 
 For a real-world example of how to use face connections, check out the

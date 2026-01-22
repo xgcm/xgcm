@@ -138,23 +138,25 @@ a single physical axis. This dataset will contain two coordinates:
 
 We create it as follows.
 
-```{ipython} python
-import xarray as xr
-import numpy as np
+```{eval-rst}
+.. ipython:: python
 
-ds = xr.Dataset(
-    coords={
-        "x_c": (
-            ["x_c"],
-            np.arange(1, 10),
-        ),
-        "x_g": (
-            ["x_g"],
-            np.arange(0.5, 9),
-        ),
-    }
-)
-ds
+    import xarray as xr
+    import numpy as np
+
+    ds = xr.Dataset(
+        coords={
+            "x_c": (
+                ["x_c"],
+                np.arange(1, 10),
+            ),
+            "x_g": (
+                ["x_g"],
+                np.arange(0.5, 9),
+            ),
+        }
+    )
+    ds
 ```
 
 :::{note}
@@ -171,13 +173,15 @@ each other; they are subject to standard
 When we create an {class}`xgcm.Grid`, we need to specify that they are part
 of the same axis. We do this using the `coords` keyword argument, as follows:
 
-```{ipython} python
-from xgcm import Grid
+```{eval-rst}
+.. ipython:: python
 
-grid = Grid(
-    ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
-)
-grid
+    from xgcm import Grid
+
+    grid = Grid(
+        ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
+    )
+    grid
 ```
 
 The printed information about the grid indicates that xgcm has successfully
@@ -216,42 +220,46 @@ changes/additions) with `autoparse_metadata=False`.
 
 For example:
 
-```{ipython} python
-grid = xgcm.Grid(ds)
+```{eval-rst}
+.. ipython:: python
+
+    grid = xgcm.Grid(ds)
 ```
 
 will return a `Grid` object constructed from xgcm's best attempts to autoparse any
 metadata in the dataset according to internal hierarchies, whilst
 
-```{ipython} python
-ds = xr.Dataset(
-    {
-        "grid": (
-            (),
-            np.array(1, dtype="int32"),
-            {
-                "cf_role": "grid_topology",
-                "topology_dimension": 1,
-                "node_dimensions": "x_g",
-                "face_dimensions": "x_c: x_g (padding: high)",
-            },
-        ),
-    },
-    attrs={"Conventions": "SGRID-0.3"},
-    coords={
-        "x_c": (
-            ["x_c"],
-            np.arange(1, 10),
-        ),
-        "x_g": (
-            ["x_g"],
-            np.arange(0.5, 9),
-        ),
-    },
-)
+```{eval-rst}
+.. ipython:: python
 
-ds_sgrid, grid_kwargs_sgrid = xgcm.metadata_parsers.parse_sgrid(ds)
-grid = xgcm.Grid(ds, coords=grid_kwargs_sgrid["coords"], autoparse_metadata=False)
+    ds = xr.Dataset(
+        {
+            "grid": (
+                (),
+                np.array(1, dtype="int32"),
+                {
+                    "cf_role": "grid_topology",
+                    "topology_dimension": 1,
+                    "node_dimensions": "x_g",
+                    "face_dimensions": "x_c: x_g (padding: high)",
+                },
+            ),
+        },
+        attrs={"Conventions": "SGRID-0.3"},
+        coords={
+            "x_c": (
+                ["x_c"],
+                np.arange(1, 10),
+            ),
+            "x_g": (
+                ["x_g"],
+                np.arange(0.5, 9),
+            ),
+        },
+    )
+
+    ds_sgrid, grid_kwargs_sgrid = xgcm.metadata_parsers.parse_sgrid(ds)
+    grid = xgcm.Grid(ds, coords=grid_kwargs_sgrid["coords"], autoparse_metadata=False)
 ```
 
 explicitly extracts SGRID metadata which is then used to construct a `Grid` object
@@ -310,31 +318,35 @@ table below.
 
 We create an {py:class}`xarray.Dataset` with such attributes as follows:
 
-```{ipython} python
-ds = xr.Dataset(
-    coords={
-        "x_c": (
-            ["x_c"],
-            np.arange(1, 10),
-            {"axis": "X"},
-        ),
-        "x_g": (
-            ["x_g"],
-            np.arange(0.5, 9),
-            {"axis": "X", "c_grid_axis_shift": -0.5},
-        ),
-    }
-)
-ds
+```{eval-rst}
+.. ipython:: python
+
+    ds = xr.Dataset(
+        coords={
+            "x_c": (
+                ["x_c"],
+                np.arange(1, 10),
+                {"axis": "X"},
+            ),
+            "x_g": (
+                ["x_g"],
+                np.arange(0.5, 9),
+                {"axis": "X", "c_grid_axis_shift": -0.5},
+            ),
+        }
+    )
+    ds
 ```
 
 (This is the same as the first example, just with additional attributes.)
 We can now create a `Grid` object from this dataset without manually
 specifying `coords`:
 
-```{ipython} python
-grid = Grid(ds)
-grid
+```{eval-rst}
+.. ipython:: python
+
+    grid = Grid(ds)
+    grid
 ```
 
 We see that the resulting `Grid` object is the same as in the manual example.
@@ -344,21 +356,25 @@ We see that the resulting `Grid` object is the same as in the manual example.
 Regardless of how our `Grid` object was created, we can now use it to
 interpolate or take differences along the axis. First we create some test data:
 
-```{ipython} python
-import matplotlib.pyplot as plt
+```{eval-rst}
+.. ipython:: python
 
-da = np.sin(ds.x_c * 2 * np.pi / 9)
-print(da)
-@savefig grid_test_data.png
-da.plot()
-plt.close()
+    import matplotlib.pyplot as plt
+
+    da = np.sin(ds.x_c * 2 * np.pi / 9)
+    print(da)
+    @savefig grid_test_data.png
+    da.plot()
+    plt.close()
 ```
 
 We interpolate as follows:
 
-```{ipython} python
-da_interp = grid.interp(da, axis="X")
-da_interp
+```{eval-rst}
+.. ipython:: python
+
+    da_interp = grid.interp(da, axis="X")
+    da_interp
 ```
 
 We see that the output is on the `x_g` points rather than the original `x_c`
@@ -371,15 +387,19 @@ compatible with `grid`.
 
 The same position shift happens with a difference operation:
 
-```{ipython} python
-da_diff = grid.diff(da, axis="X")
-da_diff
+```{eval-rst}
+.. ipython:: python
+
+    da_diff = grid.diff(da, axis="X")
+    da_diff
 ```
 
 We can reverse the difference operation by taking a cumsum:
 
-```{ipython} python
-grid.cumsum(da_diff, "X")
+```{eval-rst}
+.. ipython:: python
+
+    grid.cumsum(da_diff, "X")
 ```
 
 Which is approximately equal to the original `da`, modulo the numerical errors
@@ -389,11 +409,13 @@ By default, these grid operations will drop any coordinate that are not
 dimensions. The keep_coords argument allow to preserve compatible coordinates.
 For example:
 
-```{ipython} python
-da2 = da + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
-da2 = da2.assign_coords(h=da2.y**2)
-print(da2)
-grid.interp(da2, "X", keep_coords=True)
+```{eval-rst}
+.. ipython:: python
+
+    da2 = da + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
+    da2 = da2.assign_coords(h=da2.y**2)
+    print(da2)
+    grid.interp(da2, "X", keep_coords=True)
 ```
 
 So far we have just discussed simple grids (i.e. regular grids with a single
