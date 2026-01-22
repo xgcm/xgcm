@@ -51,6 +51,7 @@ extensions = [
     "IPython.sphinxext.ipython_directive",
     # "IPython.sphinxext.ipython_console_highlighting",
     "sphinxcontrib.srclinks",
+    "myst_parser",
 ]
 
 # never execute notebooks: avoids lots of expensive imports on rtd
@@ -86,7 +87,10 @@ numpydoc_show_class_members = False
 templates_path = ["_templates"]
 
 # The suffix of source filenames.
-source_suffix = ".rst"
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'

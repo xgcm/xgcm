@@ -29,3 +29,4 @@ dependencies:
     - nbsphinx
     - jupyter_client
     - pickleshare
+    - myst_parser
