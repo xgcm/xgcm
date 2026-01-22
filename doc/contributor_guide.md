@@ -1,120 +1,147 @@
-.. _contributor_guide:
-
-Contributor Guide
------------------
+(contributor_guide)=
+# Contributor Guide
 
 **xgcm** is meant to be a community driven package and we welcome feedback and
 contributions.
 
 Did you notice a bug? Are you missing a feature? A good first starting place is to
-open an issue in the `github issues page <https://github.com/xgcm/xgcm/issues>`_.
+open an issue in the [github issues page](https://github.com/xgcm/xgcm/issues).
 
-Want to show off a cool example using xgcm? Please consider contributing to `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_. Notebooks from there will be rendered in `pangeo-gallery <https://gallery.pangeo.io/repos/xgcm/xgcm-examples/>`_.
+Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples). Notebooks from there will be rendered in [pangeo-gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/).
 
 
 In order to contribute to xgcm, please fork the repository and submit a pull request.
 A good step by step tutorial for this can be found in the
-`xarray contributor guide <https://xarray.pydata.org/en/stable/contributing.html#working-with-the-code>`_.
+[xarray contributor guide](https://xarray.pydata.org/en/stable/contributing.html#working-with-the-code).
 
 
-Environments
-^^^^^^^^^^^^
+## Environments
+
 The easiest way to start developing xgcm pull requests,
-is to install one of the conda environments provided in the `ci folder <https://github.com/xgcm/xgcm/tree/master/ci>`_::
+is to install one of the conda environments provided in the [ci folder](https://github.com/xgcm/xgcm/tree/master/ci):
 
-    conda env create -f ci/environment.yml
+```
+conda env create -f ci/environment.yml
+```
 
-Activate the environment with::
+Activate the environment with:
 
-    conda activate test_env_xgcm
+```
+conda activate test_env_xgcm
+```
 
-Finally install xgcm itself in the now activated environment::
+Finally install xgcm itself in the now activated environment:
 
-    pip install -e .
+```
+pip install -e .
+```
 
-A good first step is to check if all the tests pass locally::
+A good first step is to check if all the tests pass locally:
 
-    pytest -v
+```
+pytest -v
+```
 
 And now you can develop away...
 
-Code Formatting
-^^^^^^^^^^^^^^^
+## Code Formatting
 
-We use `black <https://github.com/python/black>`_ as code formatter and pull request will
+We use [black](https://github.com/python/black) as code formatter and pull request will
 fail in the CI if not properly formatted.
 
-All conda environments contain black and you can reformat code using::
+All conda environments contain black and you can reformat code using:
 
-    black xgcm
+```
+black xgcm
+```
 
-`pre-commit <https://pre-commit.com/>`_ provides an automated way to reformat your code
-prior to each commit. Simply install pre-commit::
+[pre-commit](https://pre-commit.com/) provides an automated way to reformat your code
+prior to each commit. Simply install pre-commit:
 
-    pip install pre-commit
+```
+pip install pre-commit
+```
 
-and install it in the xgcm root directory with::
+and install it in the xgcm root directory with:
 
-    pre-commit install
+```
+pre-commit install
+```
 
 and your code will be properly formatted before each commit.
 
-Building the documentation locally
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Install the following conda environment::
+## Building the documentation locally
 
-    conda env create -f doc/environment.yml
+Install the following conda environment:
 
-Now activate the environment with::
+```
+conda env create -f doc/environment.yml
+```
 
-    conda activate test_env_xgcm_docs
+Now activate the environment with:
 
-Install xgcm itself in the now activated environment::
+```
+conda activate test_env_xgcm_docs
+```
 
-    pip install -e .
+Install xgcm itself in the now activated environment:
 
-Navigate to the docs folder and build the docs::
+```
+pip install -e .
+```
 
-    cd doc
-    make clean
-    make html
+Navigate to the docs folder and build the docs:
 
-You can now open ``doc/_build/html/index.html`` in a web browser.
+```
+cd doc
+make clean
+make html
+```
+
+You can now open `doc/_build/html/index.html` in a web browser.
 
 
-How to release a new version of xgcm (for maintainers only)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## How to release a new version of xgcm (for maintainers only)
+
 The process of releasing at this point is very easy.
 
 We need only two things: A PR to update the documentation and a release on github.
 
-1. Make sure that all the new features/bugfixes etc are appropriately documented in ``doc/whats-new.rst``, add the date to the current release and make an empty (unreleased) entry for the next minor release as a PR.
+1. Make sure that all the new features/bugfixes etc are appropriately documented in `doc/whats-new.md`, add the date to the current release and make an empty (unreleased) entry for the next minor release as a PR.
 2. Navigate to the 'tags' symbol on the repos main page, click on 'Releases' and on 'Draft new release' on the right. Add the version number and a short description and save the release.
 
-From here the github actions take over and package things for `Pypi <https://pypi.org/project/xgcm/>`_.
-The conda-forge package will be triggered by the Pypi release and you will have to approve a PR in `xgcm-feedstock <https://github.com/conda-forge/xgcm-feedstock>`_. This takes a while, usually a few hours to a day.
+From here the github actions take over and package things for [Pypi](https://pypi.org/project/xgcm/).
+The conda-forge package will be triggered by the Pypi release and you will have to approve a PR in [xgcm-feedstock](https://github.com/conda-forge/xgcm-feedstock). This takes a while, usually a few hours to a day.
 
 Thats it!
 
-How to synchronize examples from xgcm-examples
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Most of the example notebooks in this documentation are located in the seperate repo `xgcm-examples <https://github.com/xgcm/xgcm-examples>`_, which is automatically linked to `pangeo gallery <https://gallery.pangeo.io>`_. These examples are synced into this documentation using git submodules.
+## How to synchronize examples from xgcm-examples
+
+Most of the example notebooks in this documentation are located in the seperate repo [xgcm-examples](https://github.com/xgcm/xgcm-examples), which is automatically linked to [pangeo gallery](https://gallery.pangeo.io). These examples are synced into this documentation using git submodules.
 Currently updates in the example repo need to be manually synced to this repo with the following steps:
 
-From the xgcm root directory do::
+From the xgcm root directory do:
 
-    cd doc/xgcm-examples
+```
+cd doc/xgcm-examples
+```
 
-If this directory is empty, it means your original install did not pull the submodule; to configure the submodule, do::
+If this directory is empty, it means your original install did not pull the submodule; to configure the submodule, do:
 
-    git submodule update --init
+```
+git submodule update --init
+```
 
-You are now in a seperate git repository and can pull all updates::
+You are now in a seperate git repository and can pull all updates:
 
-    git pull
+```
+git pull
+```
 
-Now navigate back to the xgcm repo::
+Now navigate back to the xgcm repo:
 
-    cd -
+```
+cd -
+```
 
-And commit, push like usual to create a pull request.::
+And commit, push like usual to create a pull request.
