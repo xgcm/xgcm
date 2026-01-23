@@ -47,7 +47,7 @@ pytest-xdist = "*"
 codecov= "*"
 
 [feature.test.tasks]
-tests = "pytest"
+tests = "pytest -n auto"
 typing_extensions = "*" # TODO: Move?
 
 [feature.docs.pypi-dependencies]
@@ -76,7 +76,8 @@ default = { features = [
 ], solve-group = "main" }
 
 test-core = { features = ["test"] }
-test = { features = ["test", 'extra'] }
+test-latest = { features = ["test", 'extra'] }
+# test-upstream = { features = ["test", 'extra'] } # TODO: Add upstream nightly deps
 test-minimum = { features = ["test", "minimum"] }
 test-py311 = { features = ["test", "py311"] }
 docs = { features = ["docs"], solve-group = "docs" }
