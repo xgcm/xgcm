@@ -53,6 +53,7 @@ jobs:
           - test-minimum
           - test-py311
           - test-core
+          - test-nightly
     env:
       PIXI_ENV: ${{ matrix.pixi-env }}
     steps:

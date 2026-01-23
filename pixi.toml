@@ -40,11 +40,25 @@ xarray = "0.20.*"
 [feature.py311.dependencies]
 python = "3.11.*"
 
+[feature.py313.dependencies]
+python = "3.13.*"
+
 [feature.test.dependencies]
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 codecov= "*"
+
+[feature.nightly.pypi-dependencies]
+xgcm = { path = ".", editable = true }
+
+[feature.nightly.pypi-options.dependency-overrides]
+numpy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+scipy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+
+dask = { git = "https://github.com/dask/dask" }
+distributed = { git = "https://github.com/dask/distributed" }
+xarray = { git = "https://github.com/pydata/xarray" }
 
 [feature.test.tasks]
 tests = "pytest -n auto"
@@ -77,7 +91,12 @@ default = { features = [
 
 test-core = { features = ["test"] }
 test-latest = { features = ["test", 'extra'] }
-# test-upstream = { features = ["test", 'extra'] } # TODO: Add upstream nightly deps
+test-nightly = { features = [
+  "py313",
+  "nightly",
+  "test",
+], no-default-feature = true }
+
 test-minimum = { features = ["test", "minimum"] }
 test-py311 = { features = ["test", "py311"] }
 docs = { features = ["docs"], solve-group = "docs" }
