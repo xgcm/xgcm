@@ -86,3 +86,8 @@ doc/.vscode/settings.json
 
 # docs artifacts
 doc/*.png
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+pixi.lock

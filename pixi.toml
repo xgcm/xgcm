@@ -1,0 +1,82 @@
+[workspace]
+name = "xgcm-dev"
+preview = ["pixi-build"]
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[package]
+name = "xgcm"
+version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
+license = "MIT" # can remove this once https://github.com/prefix-dev/pixi-build-backends/issues/397 is resolved
+
+[package.build]
+backend = { name = "pixi-build-python", version = "0.4.*" }
+
+[package.host-dependencies]
+setuptools = "*"
+setuptools_scm = "*"
+
+
+[package.run-dependencies] # keep section in sync with pyproject.toml dependencies
+python = ">=3.9"
+xarray = ">=0.20.0"
+dask = "*"
+numpy = "*"
+future = "*"
+
+[dependencies]
+xgcm = { path = "." }
+
+[feature.extra.dependencies]
+numba = "*"
+scipy = "*"
+
+[feature.minimum.dependencies]
+python = "3.9.*"
+xarray = "0.20.*"
+
+# TODO: Update with rest of core deps
+
+[feature.py311.dependencies]
+python = "3.11.*"
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+codecov= "*"
+
+[feature.test.tasks]
+tests = "pytest"
+typing_extensions = "*" # TODO: Move?
+
+[feature.docs.pypi-dependencies]
+markdown=">=3.9"
+mdx-include=">=1.4.2"
+mkdocs-material=">=9.1.19"
+mkdocs=">=1.1.2"
+mkdocstrings-python=">=1.18.2"
+pyyaml=">=6.0.1"
+
+[feature.docs.tasks]
+docs = "mkdocs serve"
+
+[feature.pre-commit.dependencies]
+pre_commit = "*"
+
+[feature.pre-commit.tasks]
+lint = "pre-commit run --all-files"
+
+
+[environments]
+default = { features = [
+  "test",
+  "extra",
+  "pre-commit",
+], solve-group = "main" }
+
+test-core = { features = ["test"] }
+test = { features = ["test", 'extra'] }
+test-minimum = { features = ["test", "minimum"] }
+test-py311 = { features = ["test", "py311"] }
+docs = { features = ["docs"], solve-group = "docs" }
