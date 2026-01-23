@@ -68,6 +68,7 @@ typing_extensions = "*" # TODO: Move?
 markdown=">=3.9"
 mdx-include=">=1.4.2"
 mkdocs-material=">=9.1.19"
+mkdocs-autoapi = "*"
 mkdocs=">=1.1.2"
 mkdocstrings-python=">=1.18.2"
 pyyaml=">=6.0.1"

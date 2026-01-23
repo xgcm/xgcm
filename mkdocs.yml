@@ -46,7 +46,8 @@ plugins:
           show_if_no_docstring: true
           show_signature_annotations: true
   search: {}
+  # mkdocs-autoapi:
+  #   autoapi_add_nav_entry: Reference
 
 nav:
   - Home: index.md
-  - Python API: api.md
