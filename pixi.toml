@@ -23,13 +23,13 @@ xarray = ">=0.20.0"
 dask = "*"
 numpy = "*"
 future = "*"
+scipy = "*" # TODO: `xgcm/test/test_grid_ufunc.py::TestGridUFuncNoPadding::test_1d_changing_size_dask_parallelized` failing if scipy isn't put here. Is scipy a core dependency? If no - move to `feature.extra` and fix test.
 
 [dependencies]
 xgcm = { path = "." }
 
 [feature.extra.dependencies]
 numba = "*"
-scipy = "*"
 
 [feature.minimum.dependencies]
 python = "3.9.*"
