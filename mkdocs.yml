@@ -21,9 +21,15 @@ theme:
 
 plugins:
   autorefs: {}
-  execute: {}
-  # mkdocs-jupyter:
-  #   include_source: true
+  execute:
+    exclude:
+      # TODO: Fix
+      - 'grid_metrics.ipynb'
+      - 'transform.ipynb'
+      - 'xgcm-examples/*'
+  mkdocs-jupyter:
+    include_source: true
+    execute: false
   mkdocstrings:
     handlers:
       python:

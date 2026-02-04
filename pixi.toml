@@ -31,6 +31,9 @@ xgcm = { path = "." }
 [feature.extra.dependencies]
 numba = "*"
 
+[feature.notebooks.dependencies]
+netcdf4 = "*"
+
 [feature.minimum.dependencies]
 python = "3.9.*"
 xarray = "0.20.*"
@@ -75,6 +78,7 @@ mkdocs-execute-plugin = "*"
 mkdocstrings-python=">=1.18.2"
 pyyaml=">=6.0.1"
 matplotlib="*"
+graphviz = "*"
 
 [feature.docs.tasks]
 docs = "mkdocs serve"
@@ -103,4 +107,4 @@ test-nightly = { features = [
 
 test-minimum = { features = ["test", "minimum"] }
 test-py311 = { features = ["test", "py311"] }
-docs = { features = ["docs"], solve-group = "docs" }
+docs = { features = ["docs", "extra", "notebooks"], solve-group = "docs" }

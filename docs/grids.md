@@ -156,9 +156,9 @@ When we create an `xgcm.Grid`, we need to specify that they are part
 of the same axis. We do this using the `coords` keyword argument, as follows:
 
 ```python
-from xgcm import Grid
+import xgcm
 
-grid = Grid(
+grid = xgcm.Grid(
     ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
 )
 grid
@@ -317,7 +317,7 @@ We can now create a `Grid` object from this dataset without manually
 specifying `coords`:
 
 ```python
-grid = Grid(ds)
+grid = xgcm.Grid(ds)
 grid
 ```
 
