@@ -29,5 +29,3 @@ climate science. xgcm is part of the [Pangeo] initiative.
 [dask]: http://dask.pydata.org
 [xarray]: http://xarray.pydata.org
 [Arakawa Grids]: https://en.wikipedia.org/wiki/Arakawa_grids
-
-## Contents
