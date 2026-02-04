@@ -89,15 +89,15 @@ one extra point. These positions are visualized in the figure below.
 
 *The different possible positions of a variable `f` along an axis.*
 
-xgcm represents an axis internally using the [xgcm.Axis][] class.
+xgcm represents an axis internally using the `xgcm.Axis` class.
 
 Although it is technically possible to create an `Axis` directly, the recommended way to
-to use xgcm is by creating a single [xgcm.Grid][] object, containing multiple axes
+to use xgcm is by creating a single `xgcm.Grid` object, containing multiple axes
 for each physical dimension.
 
 ## Creating `Grid` Objects
 
-The core object in xgcm is an [xgcm.Grid][]. A `Grid` object should be
+The core object in xgcm is an `xgcm.Grid`. A `Grid` object should be
 constructed once and then used whenever grid-aware operations are required
 during the course of a data analysis routine.
 Xgcm operates on `xarray.Dataset` and `xarray.DataArray`
@@ -105,7 +105,7 @@ objects. A basic understanding of
 xarray data structures is therefore needed to
 understand xgcm.
 
-When constructing an [xgcm.Grid][] object, we need to pass an
+When constructing an `xgcm.Grid` object, we need to pass an
 `xarray.Dataset` object containing all of the necessary coordinates
 for the different axes we wish to use.
 We also have to tell xgcm how those
@@ -159,7 +159,7 @@ ds
 At this point, xarray has no idea that `x_c` and `x_g` are related to
 each other; they are subject to standard
 xarray broadcasting rules.
-When we create an [xgcm.Grid][], we need to specify that they are part
+When we create an `xgcm.Grid`, we need to specify that they are part
 of the same axis. We do this using the `coords` keyword argument, as follows:
 
 ```python

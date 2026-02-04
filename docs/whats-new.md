@@ -5,7 +5,7 @@
 
 ### New Features
 
-- Methods for autoparsing of dataset metadata to construct a [xgcm.Grid][] class have been added.
+- Methods for autoparsing of dataset metadata to construct a `xgcm.Grid` class have been added.
   Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
   addition of SGRID conventions ([#109](https://github.com/xgcm/xgcm/issues/109), [#559](https://github.com/xgcm/xgcm/pull/559)).
   By [Jack Atkinson](https://github.com/jatkinson1000).
@@ -17,12 +17,12 @@
 
 ### Breaking Changes
 
-- All computation methods on the [xgcm.Axis][] class have been removed, in favour of using the corresponding
-  methods on the [xgcm.Grid][] object. The [xgcm.Axis][] class has also been removed from public API.
+- All computation methods on the `xgcm.Axis` class have been removed, in favour of using the corresponding
+  methods on the `xgcm.Grid` object. The `xgcm.Axis` class has also been removed from public API.
   ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557)).
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
-- All functionality for generating c-grid dimensions on incomplete datasets via [Grid.autogenerate][xgcm.Grid.autogenerate],  was removed ([#557](https://github.com/xgcm/xgcm/pull/557)).
+- All functionality for generating c-grid dimensions on incomplete datasets via `Grid.autogenerate`,  was removed ([#557](https://github.com/xgcm/xgcm/pull/557)).
    By [Julius Busecke](https://github.com/jbusecke).
 
 ### Internal Changes
@@ -37,9 +37,9 @@
 
 ### Bugfixes
 
-- Fix bug in [xgcm.transform.transform][xgcm.transform.transform] that violated tracer conservation when using conservative interpolation in the presence of nans. ([#635](https://github.com/xgcm/xgcm/pull/635))
+- Fix bug in `xgcm.transform.transform` that violated tracer conservation when using conservative interpolation in the presence of nans. ([#635](https://github.com/xgcm/xgcm/pull/635))
   By [Julius Busecke](https://github.com/jbusecke).
-- Fix bug in [xgcm.padding._maybe_rename_grid_positions][xgcm.padding._maybe_rename_grid_positions] where dimensions were assumed to have coordinate
+- Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate
   values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
   By [Julius Busecke](https://github.com/jbusecke).
 
@@ -52,7 +52,7 @@
 - Fix bug that did not allow to create grids with faceconnections if the face dimension was coordinate-less. ([#616](https://github.com/xgcm/xgcm/issues/616), [#616](https://github.com/xgcm/xgcm/pull/616)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Fix bug in [xgcm.padding._maybe_rename_grid_positions][xgcm.padding._maybe_rename_grid_positions] where dimensions were assumed to have coordinate values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
+- Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ## v0.8.1 (2022/11/22) {#whats-new-0-8-1}
@@ -64,7 +64,7 @@
 
 ### Internal Changes
 
-- Rewrote cumsum to use a different code path from [apply_as_grid_ufunc][xgcm.apply_as_grid_ufunc] internally,
+- Rewrote cumsum to use a different code path from `apply_as_grid_ufunc` internally,
   which makes it less susceptible to subtle bugs like the one reported in [#507](https://github.com/xgcm/xgcm/issues/507). ([#558](https://github.com/xgcm/xgcm/pull/558)).
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
@@ -112,8 +112,8 @@
 
 ### New Features
 
-- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions [apply_as_grid_ufunc][xgcm.grid_ufunc.apply_as_grid_ufunc]
-  and [as_grid_ufunc][xgcm.grid_ufunc.as_grid_ufunc]. ([#362](https://github.com/xgcm/xgcm/pull/362), [#344](https://github.com/xgcm/xgcm/issues/344))
+- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions `apply_as_grid_ufunc`
+  and `as_grid_ufunc`. ([#362](https://github.com/xgcm/xgcm/pull/362), [#344](https://github.com/xgcm/xgcm/issues/344))
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
 - Padding of vector fields for complex topologies via a dictionary-like syntax has been added ([#459](https://github.com/xgcm/xgcm/pull/459)).
@@ -126,7 +126,7 @@
 
 ### Internal Changes
 
-- All computation methods on the `Grid` object are now re-routed through [apply_as_grid_ufunc][xgcm.grid_ufunc.apply_as_grid_ufunc].
+- All computation methods on the `Grid` object are now re-routed through `apply_as_grid_ufunc`.
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
 ### Documentation
@@ -161,16 +161,16 @@
 
 ### New Features
 
-- [Grid.set_metrics][xgcm.Grid.set_metrics] now enables adding metrics to a grid object ([#336](https://github.com/xgcm/xgcm/pull/336), [#199](https://github.com/xgcm/xgcm/issues/199)).
+- `Grid.set_metrics` now enables adding metrics to a grid object ([#336](https://github.com/xgcm/xgcm/pull/336), [#199](https://github.com/xgcm/xgcm/issues/199)).
   By [Dianne Deauna](https://github.com/jdldeauna) under the [SIParCS internship](https://www2.cisl.ucar.edu/siparcs-2021-projects#8).
 
-- [Grid.get_metric][xgcm.Grid.get_metric] refactored, and now incorporates [Grid.interp_like][xgcm.Grid.interp_like] to allow for automatic interpolation of missing metrics from available values on surrounding positions ([#345](https://github.com/xgcm/xgcm/pull/345), [#354](https://github.com/xgcm/xgcm/pull/354)).
+- `Grid.get_metric` refactored, and now incorporates `Grid.interp_like` to allow for automatic interpolation of missing metrics from available values on surrounding positions ([#345](https://github.com/xgcm/xgcm/pull/345), [#354](https://github.com/xgcm/xgcm/pull/354)).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
-- [Grid.set_metrics][xgcm.Grid.set_metrics] enables overwriting of previously assigned metrics to a grid object, and allows for multiple metrics on the same axes (must be different dimensions) ([#351](https://github.com/xgcm/xgcm/pull/351), [#199](https://github.com/xgcm/xgcm/issues/199)).
+- `Grid.set_metrics` enables overwriting of previously assigned metrics to a grid object, and allows for multiple metrics on the same axes (must be different dimensions) ([#351](https://github.com/xgcm/xgcm/pull/351), [#199](https://github.com/xgcm/xgcm/issues/199)).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
-- [Grid.interp_like][xgcm.Grid.interp_like] enables users to interpolate arrays onto the grid positions of another array, and can specify boundary conditions and fill values ([#234](https://github.com/xgcm/xgcm/issues/234) , [#343](https://github.com/xgcm/xgcm/issues/343), [#350](https://github.com/xgcm/xgcm/pull/350)).
+- `Grid.interp_like` enables users to interpolate arrays onto the grid positions of another array, and can specify boundary conditions and fill values ([#234](https://github.com/xgcm/xgcm/issues/234) , [#343](https://github.com/xgcm/xgcm/issues/343), [#350](https://github.com/xgcm/xgcm/pull/350)).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
 - Better input checking when creating a grid object avoids creating grid positions on dataset coordinates which are not 1D ([#208](https://github.com/xgcm/xgcm/issues/208), [#358](https://github.com/xgcm/xgcm/pull/358)).
@@ -238,12 +238,12 @@
 
 ### New Features
 
-- [Grid.transform][xgcm.Grid.transform] and [Axis.transform][xgcm.Axis.transform] now enable 1-dimensional coordinate transformation ([#205](https://github.com/xgcm/xgcm/pull/205), [#222](https://github.com/xgcm/xgcm/issues/222)).
+- `Grid.transform` and `Axis.transform` now enable 1-dimensional coordinate transformation ([#205](https://github.com/xgcm/xgcm/pull/205), [#222](https://github.com/xgcm/xgcm/issues/222)).
   By [Ryan Abernathey](https://github.com/rabernat) and [Julius Busecke](https://github.com/jbusecke).
 
 ### Bug fixes
 
-- More reliable handling of missing values in [Grid.average][xgcm.Grid.average]. Missing values between data and metrics do not have to be aligned by the user anymore. ([#259](https://github.com/xgcm/xgcm/pull/259)). By [Julius Busecke](https://github.com/jbusecke).
+- More reliable handling of missing values in `Grid.average`. Missing values between data and metrics do not have to be aligned by the user anymore. ([#259](https://github.com/xgcm/xgcm/pull/259)). By [Julius Busecke](https://github.com/jbusecke).
 
 - Remove outdated `example_notebooks` folder ([#244](https://github.com/xgcm/xgcm/pull/244), [#243](https://github.com/xgcm/xgcm/issues/243)). By [Nikolay Koldunov](https://github.com/koldunovn) and [Julius Busecke](https://github.com/jbusecke).
 
@@ -255,8 +255,8 @@
 - Support for keeping compatible coordinates in most Grid operations ([#186](https://github.com/xgcm/xgcm/issues/186)).
   By [Aurélien Ponte](https://github.com/apatlpo).
 
-- Support for specifying default `boundary` and `fill_value` in the [xgcm.Grid][] constructor.
-  Default values can be overridden in individual method calls (e.g. [Grid.interp][xgcm.Grid.interp]) as usual.
+- Support for specifying default `boundary` and `fill_value` in the `xgcm.Grid` constructor.
+  Default values can be overridden in individual method calls (e.g. `Grid.interp`) as usual.
   By [Deepak Cherian](https://github.com/dcherian).
 
 ### Bug fixes
@@ -278,10 +278,10 @@ This release adds support for [model grid metrics](https://xgcm.readthedocs.io/e
 
 ### New Features
 
-- Support for 'grid-aware' average and cumsum using [Grid.average][xgcm.Grid.average] and [Grid.cumsum][xgcm.Grid.cumsum] ([#162](https://github.com/xgcm/xgcm/issues/162)).
+- Support for 'grid-aware' average and cumsum using `Grid.average` and `Grid.cumsum` ([#162](https://github.com/xgcm/xgcm/issues/162)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Support for 'grid-aware' integration using [Grid.integrate][xgcm.Grid.integrate] ([#130](https://github.com/xgcm/xgcm/issues/130)).
+- Support for 'grid-aware' integration using `Grid.integrate` ([#130](https://github.com/xgcm/xgcm/issues/130)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Bug fixes
@@ -293,12 +293,12 @@ This release adds support for [model grid metrics](https://xgcm.readthedocs.io/e
   By [Ryan Abernathey](https://github.com/rabernat).
 
 - Fixed bug in
-  [Grid.derivative][xgcm.Grid.derivative] ([#132](https://github.com/xgcm/xgcm/issues/132)).
+  `Grid.derivative` ([#132](https://github.com/xgcm/xgcm/issues/132)).
   By [Timothy Smith](https://github.com/timothyas).
 
 ### Documentation
 
-- Added docs for [Grid.derivative][xgcm.Grid.derivative] ([#163](https://github.com/xgcm/xgcm/issues/163))
+- Added docs for `Grid.derivative` ([#163](https://github.com/xgcm/xgcm/issues/163))
   By [Timothy Smith](https://github.com/timothyas).
 
 - Add binderized examples ([#141](https://github.com/xgcm/xgcm/issues/141)).

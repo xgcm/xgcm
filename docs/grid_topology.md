@@ -87,8 +87,8 @@ face number 0 is connected along the X axis to nothing on the left and to face
 number 1 on the right. A complementary connection exists from face number 1.
 These connections are checked for consistency.
 
-We can now use [Grid.interp][xgcm.Grid.interp] and
-[Grid.diff][xgcm.Grid.diff] to correctly interpolate and difference
+We can now use `Grid.interp` and
+`Grid.diff` to correctly interpolate and difference
 across the connected faces.
 
 ### Two Faces with Rotated Axes
