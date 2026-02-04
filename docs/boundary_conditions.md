@@ -1,8 +1,13 @@
+---
+execute: true
+---
+
 # Boundary Conditions {#boundary-conditions}
 
 ```python
 import xarray as xr
 import numpy as np
+import matplotlib.pyplot as plt
 from xgcm import Grid
 
 ds = xr.Dataset(
@@ -62,26 +67,26 @@ and periodic). The periodic condition is not an argument of the methods, but is 
 as an argument of the `xgcm.Grid`. We will thus also create 2 grids: one periodic and another one not periodic.
 
 ```python
-In [1]: def plot_bc(ds):
-   ...:     plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
-   ...:     #
-   ...:     plt.scatter([ds.x_g[-1] + 1], [g[-1]], color="C1", label="extend", marker="v")
-   ...:     plt.plot(
-   ...:         [ds.x_g[-1], ds.x_g[-1] + 1], [g[-1], g[-1]], "--", color="C1", label="_"
-   ...:     )
-   ...:     #
-   ...:     plt.scatter([ds.x_g[-1] + 1], [0], color="C2", label="fill0", marker="s")
-   ...:     plt.scatter([ds.x_g[-1] + 1], [5], color="C3", label="fill5", marker="P")
-   ...:     #
-   ...:     plt.scatter([ds.x_g[-1] + 1], g[0], color="C4", label="periodic", marker="X")
-   ...:     plt.plot([ds.x_g[0], ds.x_g[-1] + 1], [g[0], g[0]], "--", color="C4", label="_")
-   ...:     #
-   ...:     plt.xlabel("x_g")
-   ...:     plt.legend()
-   ...:     return
-In [2]: plt.grid(True)
-In [3]: plot_bc(ds)
-In [4]: plt.close()
+def plot_bc(ds):
+    plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
+    #
+    plt.scatter([ds.x_g[-1] + 1], [g[-1]], color="C1", label="extend", marker="v")
+    plt.plot(
+        [ds.x_g[-1], ds.x_g[-1] + 1], [g[-1], g[-1]], "--", color="C1", label="_"
+    )
+    #
+    plt.scatter([ds.x_g[-1] + 1], [0], color="C2", label="fill0", marker="s")
+    plt.scatter([ds.x_g[-1] + 1], [5], color="C3", label="fill5", marker="P")
+    #
+    plt.scatter([ds.x_g[-1] + 1], g[0], color="C4", label="periodic", marker="X")
+    plt.plot([ds.x_g[0], ds.x_g[-1] + 1], [g[0], g[0]], "--", color="C4", label="_")
+    #
+    plt.xlabel("x_g")
+    plt.legend()
+
+plt.grid(True)
+plot_bc(ds)
+plt.close()
 ```
 
 If we now compute the difference using the 5 conditions:
@@ -97,10 +102,10 @@ g_perio = grid_perio.diff(g, "X").rename("periodic")
 ```
 
 ```python
-In [1]: for (i, var) in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
-   ...:     var.plot.line(marker="o", label=var.name)
-In [2]: plt.grid(True)
-In [3]: plt.legend()
+for (i, var) in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
+    var.plot.line(marker="o", label=var.name)
+plt.grid(True)
+plt.legend()
 ```
 
 As expected the difference at x_c=9 is 0 for the case `extend`,

@@ -21,8 +21,9 @@ theme:
 
 plugins:
   autorefs: {}
-  mkdocs-jupyter:
-    include_source: true
+  execute: {}
+  # mkdocs-jupyter:
+  #   include_source: true
   mkdocstrings:
     handlers:
       python:

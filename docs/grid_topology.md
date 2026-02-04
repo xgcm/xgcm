@@ -1,3 +1,7 @@
+---
+execute: true
+---
+
 # Grid Topology {#grid-topology}
 
 !!! warning

@@ -1,3 +1,7 @@
+---
+execute: true
+---
+
 # Grid Ufuncs {#grid-ufuncs}
 
 ## Concept of a Grid Ufunc

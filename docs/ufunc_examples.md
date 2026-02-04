@@ -1,3 +1,7 @@
+---
+execute: true
+---
+
 # Grid Ufunc Examples {#ufunc-examples}
 
 This page contains examples of different Grid Ufuncs that you might find useful.
