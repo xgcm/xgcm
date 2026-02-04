@@ -67,7 +67,7 @@ U = np.sin(grid_ds.x_g * 2 * np.pi / 9.5) * np.cos(grid_ds.y_c * 2 * np.pi / 19)
 V = np.cos(grid_ds.x_c * 2 * np.pi / 19) * np.sin(grid_ds.y_g * 2 * np.pi / 19)
 
 ds = xr.Dataset({"V": V, "U": U})
-ds
+print(ds)
 ```
 
 

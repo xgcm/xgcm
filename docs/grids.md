@@ -139,7 +139,7 @@ ds = xr.Dataset(
         ),
     }
 )
-ds
+print(ds)
 ```
 
 !!! note
@@ -309,7 +309,7 @@ ds = xr.Dataset(
         ),
     }
 )
-ds
+print(ds)
 ```
 
 (This is the same as the first example, just with additional attributes.)

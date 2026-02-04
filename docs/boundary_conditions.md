@@ -24,7 +24,7 @@ ds = xr.Dataset(
         ),
     }
 )
-ds
+print(ds)
 ```
 
 ## Boundary condition choices

@@ -64,7 +64,7 @@ ds = xr.Dataset(
         "face": (("face",), [0, 1]),
     },
 )
-ds
+print(ds)
 ```
 
 The dataset has two spatial axes (`X` and `Y`), plus an additional dimension
@@ -134,7 +134,7 @@ ds = xr.Dataset(
         "face": (("face",), np.arange(6)),
     },
 )
-ds
+print(ds)
 ```
 
 We specify the face connections and create the `Grid` object as follows:
