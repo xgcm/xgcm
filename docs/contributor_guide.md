@@ -1,5 +1,4 @@
-(contributor_guide)=
-# Contributor Guide
+# Contributor Guide {#contributor-guide}
 
 **xgcm** is meant to be a community driven package and we welcome feedback and
 contributions.
@@ -72,33 +71,11 @@ and your code will be properly formatted before each commit.
 
 ## Building the documentation locally
 
-Install the following conda environment:
+With pixi installed, run:
 
 ```
-conda env create -f docs/environment.yml
+pixi run -e docs docs
 ```
-
-Now activate the environment with:
-
-```
-conda activate test_env_xgcm_docs
-```
-
-Install xgcm itself in the now activated environment:
-
-```
-pip install -e .
-```
-
-Navigate to the docs folder and build the docs:
-
-```
-cd doc
-make clean
-make html
-```
-
-You can now open `docs/_build/html/index.html` in a web browser.
 
 
 ## How to release a new version of xgcm (for maintainers only)

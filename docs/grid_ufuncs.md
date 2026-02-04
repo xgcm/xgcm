@@ -1,5 +1,4 @@
-(grid_ufuncs)=
-# Grid Ufuncs
+# Grid Ufuncs {#grid-ufuncs}
 
 ## Concept of a Grid Ufunc
 
@@ -20,9 +19,9 @@ Grid ufuncs allow us to:
 
 - Avoid mistakes by stating that functions are only valid for data on specific grid positions,
 - Neatly promote numpy functions to grid-aware xarray functions,
-- Conveniently apply {ref}`Boundary conditions` and {ref}`Grid Topology`,
+- Conveniently apply [Boundary conditions](boundary_conditions.md) and [Grid Topology](grid_topology.md),
 - Boost performance relative to chaining many `Grid.diff` or `Grid.interp` operations,
-- Immediately parallelize our operations with dask (see {ref}`Parallelizing with Dask`).
+- Immediately parallelize our operations with dask (see [Parallelizing with Dask](grid_ufuncs.md#parallelizing-with-dask)).
 
 [numpy generalized universal function]: https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
 [concept of "core dims"]: https://xarray.pydata.org/en/stable/generated/xarray.apply_ufunc.html
@@ -55,115 +54,83 @@ After performing its numerical operation the single return value from this funct
 
 To give you an idea of how we might use grid ufuncs here is a table of possible grid ufuncs and their corresponding signatures:
 
-```{list-table} Example signatures for different grid ufuncs
-:widths: 25 25 50
-:header-rows: 1
+| Name | Signature | Description |
+|------|-----------|-------------|
+| `diff_center_to_left(a)` | `"(X:center)->(X:left)"` | Backward difference |
+| `interp_center_to_left(a)` | `"(X:center)->(X:left)"` | Backward interpolation |
+| `diff_left_to_center(a)` | `"(X:left)->(X:center)"` | Forward difference |
+| `interp_left_to_center(a)` | `"(X:left)->(X:center)"` | Forward interpolation |
+| `diff_center_to_center(a)` | `"(X:center)->(X:center)"` | Second order central difference |
+| `mean_depth(w)` | `"(depth:center)->()"` | Reduction |
+| `inner_product_left_right(a, b)` | `"(X:left),(X:right)->()"` | Reduction of two variables |
+| `u_grid_vorticity(u, v)` | `"(lon:left,lat:center),(lon:center,lat:left)->(lon:left,lat:left)"` | Complex example calculating vorticity on an Arakawa U-grid in 2D |
 
-* - Name
-  - Signature
-  - Description
-* - `diff_center_to_left(a)`
-  - `"(X:center)->(X:left)"`
-  - Backward difference
-* - `interp_center_to_left(a)`
-  - `"(X:center)->(X:left)"`
-  - Backward interpolation
-* - `diff_left_to_center(a)`
-  - `"(X:left)->(X:center)"`
-  - Forward difference
-* - `interp_left_to_center(a)`
-  - `"(X:left)->(X:center)"`
-  - Forward interpolation
-* - `diff_center_to_center(a)`
-  - `"(X:center)->(X:center)"`
-  - Second order central difference
-* - `mean_depth(w)`
-  - `"(depth:center)->()"`
-  - Reduction
-* - `inner_product_left_right(a, b)`
-  - `"(X:left),(X:right)->()"`
-  - Reduction of two variables
-* - `u_grid_vorticity(u, v)`
-  - `"(lon:left,lat:center),(lon:center,lat:left)->(lon:left,lat:left)"`
-  - Complex example calculating vorticity on an Arakawa U-grid in 2D
-```
-
-:::{note}
-Remember the axis names in the signature are dummy names - in the example above you could apply `mean_depth` along
-an axis not called `"depth"` if you wish.
-
-The `axis` argument is the one which must correspond to an `xgcm.Axis` of the grid.
-Therefore applying a grid ufunc with signature `"(X:center)->()"` or `"(depth:center)->()"` along `axis='X'` will
-yield identical results in both cases.
-:::
+!!! note
+    Remember the axis names in the signature are dummy names - in the example above you could apply `mean_depth` along
+    an axis not called `"depth"` if you wish.
+    
+    The `axis` argument is the one which must correspond to an `xgcm.Axis` of the grid.
+    Therefore applying a grid ufunc with signature `"(X:center)->()"` or `"(depth:center)->()"` along `axis='X'` will
+    yield identical results in both cases.
 
 
 ## Defining New Grid Ufuncs
 
 Let's imagine we have a numpy function which does forward differencing along one dimension, with an implicit periodic boundary condition.
 
-```{eval-rst}
-.. ipython:: python
-
-    import numpy as np
+```python
+import numpy as np
 ```
 
-```{eval-rst}
-.. ipython:: python
-
-    def diff_forward(a):
-        return a - np.roll(a, -1, axis=-1)
+```python
+def diff_forward(a):
+    return a - np.roll(a, -1, axis=-1)
 ```
 
 All this function does is subtract each element of the given array from the element immediately to its right,
 with the ends of the array wrapped around in a periodic fashion.
 If we imagine this function acting on a variable located at the cell centers,
-our {ref}`axis-positions` diagram suggests that the result would lie on the left-hand cell edges.
+our [axis positions](grids.md#axis-positions) diagram suggests that the result would lie on the left-hand cell edges.
 Therefore the signature of this function could be
 `"(ax1:center)->(ax1:left)"`.
 
-:::{note}
-XGCM assumes the function acts along the last axis of the numpy array, which is why we have specified `axis=-1` here.
-:::
+!!! note
+    XGCM assumes the function acts along the last axis of the numpy array, which is why we have specified `axis=-1` here.
 
 There are multiple options for how to apply this numpy ufunc as a grid ufunc.
 
-We're going to need a grid object, and some data, so we use the same demonstration grid and dataarray that we defined when we introduced {ref}`grids`.
+We're going to need a grid object, and some data, so we use the same demonstration grid and dataarray that we defined when we introduced [Grids](grids.md).
 Our grid object has one Axis (`"X"`), which has two coordinates, on positions `"center"` and `"left"`.
 
-```{eval-rst}
-.. ipython:: python
+```python
+import xarray as xr
 
-    import xarray as xr
+from xgcm import Grid
 
-    from xgcm import Grid
+ds = xr.Dataset(
+    coords={
+        "x_c": (
+            ["x_c"],
+            np.arange(1, 10),
+        ),
+        "x_g": (
+            ["x_g"],
+            np.arange(0.5, 9),
+        ),
+    }
+)
 
-    ds = xr.Dataset(
-        coords={
-            "x_c": (
-                ["x_c"],
-                np.arange(1, 10),
-            ),
-            "x_g": (
-                ["x_g"],
-                np.arange(0.5, 9),
-            ),
-        }
-    )
-
-    grid = Grid(
-        ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
-    )
-    grid
+grid = Grid(
+    ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
+)
+grid
 ```
 
 Our data starts on the cell centers.
 
-```{eval-rst}
-.. ipython:: python
-
-    da = np.sin(ds.x_c * 2 * np.pi / 9)
-    da
+```python
+da = np.sin(ds.x_c * 2 * np.pi / 9)
+da
 ```
 
 
@@ -171,16 +138,14 @@ Our data starts on the cell centers.
 
 The quickest option is to apply our function directly, using `apply_as_grid_ufunc`
 
-```{eval-rst}
-.. ipython:: python
+```python
+from xgcm import apply_as_grid_ufunc
 
-    from xgcm import apply_as_grid_ufunc
+result = apply_as_grid_ufunc(
+    diff_forward, da, axis=[["X"]], signature="(ax1:center)->(ax1:left)", grid=grid
+)
 
-    result = apply_as_grid_ufunc(
-        diff_forward, da, axis=[["X"]], signature="(ax1:center)->(ax1:left)", grid=grid
-    )
-
-    result
+result
 ```
 
 Here we have applied the grid ufunc to the data, along the axis `"X"` of the grid.
@@ -193,26 +158,20 @@ We can see that the result has been shifted onto the output grid positions along
 
 Alternatively you can permanently turn a numpy function into a grid ufunc by using the `@as_grid_ufunc` decorator.
 
-```{eval-rst}
-.. ipython:: python
-
-    from xgcm import as_grid_ufunc
+```python
+from xgcm import as_grid_ufunc
 ```
 
-```{eval-rst}
-.. ipython:: python
-
-    @as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
-    def diff_center_to_left(a):
-        return diff_forward(a)
+```python
+@as_grid_ufunc(signature="(ax1:center)->(ax1:left)")
+def diff_center_to_left(a):
+    return diff_forward(a)
 ```
 
 Now when we call the `diff_center_to_left` function, it will act as if we had applied it using `apply_as_grid_ufunc`.
 
-```{eval-rst}
-.. ipython:: python
-
-    diff_center_to_left(grid, da, axis=[["X"]])
+```python
+diff_center_to_left(grid, da, axis=[["X"]])
 ```
 
 Notice that we still need to provide the `grid` and `axis` arguments when we call the decorated function.
@@ -221,37 +180,30 @@ Notice that we still need to provide the `grid` and `axis` arguments when we cal
 
 Finally you can use type hints to specify the grid positions of the variables instead of passing a `signature` argument.
 
-```{eval-rst}
-.. ipython:: python
-
-    from typing import Annotated
+```python
+from typing import Annotated
 ```
 
-```{eval-rst}
-.. ipython:: python
-
-    @as_grid_ufunc()
-    def diff_center_to_left(
-        a: Annotated[np.ndarray, "ax1:center"]
-    ) -> Annotated[np.ndarray, "ax1:left"]:
-        return diff_forward(a)
+```python
+@as_grid_ufunc()
+def diff_center_to_left(
+    a: Annotated[np.ndarray, "ax1:center"]
+) -> Annotated[np.ndarray, "ax1:left"]:
+    return diff_forward(a)
 ```
 
 Again we call this decorated function, remembering to supply the grid and axis arguments
 
-```{eval-rst}
-.. ipython:: python
-
-    diff_center_to_left(grid, da, axis=[["X"]])
+```python
+diff_center_to_left(grid, da, axis=[["X"]])
 ```
 
 The signature argument is incompatible with using `Annotated` to annotate the types of any of the function arguments
 - i.e. you cannot mix the signature approach with the type hinting approach.
 
-:::{note}
-If you want to use type hints to specify a signature with multiple return arguments, your return value should be type hinted as a tuple of annotated hints, e.g.
-`Tuple[Annotated[np.ndarray, "ax1:left"], Annotated[np.ndarray, "ax1:right"]]`.
-:::
+!!! note
+    If you want to use type hints to specify a signature with multiple return arguments, your return value should be type hinted as a tuple of annotated hints, e.g.
+    `Tuple[Annotated[np.ndarray, "ax1:left"], Annotated[np.ndarray, "ax1:right"]]`.
 
 ## Boundaries and Padding
 
@@ -263,25 +215,21 @@ but what if we wanted to use a different boundary condition?
 We'll show this using a simple linear interpolation function.
 It has the same signature at the differencing function we used above, but it does not apply any specific boundary condition.
 
-```{eval-rst}
-.. ipython:: python
-
-    def interp(a):
-        return 0.5 * (a[..., :-1] + a[..., 1:])
+```python
+def interp(a):
+    return 0.5 * (a[..., :-1] + a[..., 1:])
 ```
 
 This function simply averages each element from the one on its right, but that means the resulting array is shorter by one element.
 
-```{eval-rst}
-.. ipython:: python
+```python
+arr = np.arange(9)
+arr
+arr.shape
 
-    arr = np.arange(9)
-    arr
-    arr.shape
-
-    interpolated = interp(arr)
-    interpolated
-    interpolated.shape
+interpolated = interp(arr)
+interpolated
+interpolated.shape
 ```
 
 Applying a boundary condition during this operation is equivalent to choosing how to pad the original array
@@ -289,27 +237,23 @@ so that the application of `interp` still returns an array of the starting lengt
 
 We could do this manually - implementing a periodic boundary condition would mean first pre-pending the right-most element of the input array onto the left-hand side:
 
-```{eval-rst}
-.. ipython:: python
+```python
+periodically_padded_arr = np.insert(arr, 0, arr[-1])
+periodically_padded_arr
 
-    periodically_padded_arr = np.insert(arr, 0, arr[-1])
-    periodically_padded_arr
-
-    interpolated_periodically = interp(periodically_padded_arr)
-    interpolated_periodically.shape
+interpolated_periodically = interp(periodically_padded_arr)
+interpolated_periodically.shape
 ```
 
 and implementing a constant zero-padding boundary condition would mean first pre-pending the input array with a zero:
 
-```{eval-rst}
-.. ipython:: python
+```python
+zero_padded_arr = np.insert(arr, 0, 0)
+zero_padded_arr
 
-    zero_padded_arr = np.insert(arr, 0, 0)
-    zero_padded_arr
-
-    interpolated_with_zero_padding = interp(zero_padded_arr)
-    interpolated_with_zero_padding
-    interpolated_with_zero_padding.shape
+interpolated_with_zero_padding = interp(zero_padded_arr)
+interpolated_with_zero_padding
+interpolated_with_zero_padding.shape
 ```
 
 In both cases the result has the same length as the original input array.
@@ -322,71 +266,59 @@ Doing this manually is a chore, so xgcm allows you to apply boundary conditions 
 When doing the padding manually for `interp`, we had to add one element on the left-hand side of the ``"X"`` axis,
 so we tell xGCM to do the same thing by specifying the keyword argument `boundary_width={"X": (1, 0)}`,
 
-```{eval-rst}
-.. ipython:: python
-
-    @as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
-    def interp_center_to_left(a):
-        return interp(a)
+```python
+@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+def interp_center_to_left(a):
+    return interp(a)
 ```
 
 Now when we run our decorated function `interp_center_to_left`, xgcm will automatically add an extra element to the left hand side for us,
 before applying the operation in the function we decorated.
 
-```{eval-rst}
-.. ipython:: python
+```python
+# Create new test data with same coordinates but linearly-spaced data
+da = da.copy(data=arr)
 
-    # Create new test data with same coordinates but linearly-spaced data
-    da = da.copy(data=arr)
-
-    interp_center_to_left(grid, da, axis=[["X"]])
+interp_center_to_left(grid, da, axis=[["X"]])
 ```
 
 Here a periodic boundary condition has been used as the default, but we can choose other boundary conditions using the `boundary` kwarg:
 
-```{eval-rst}
-.. ipython:: python
-
-    @as_grid_ufunc(
-        signature="(X:center)->(X:left)",
-        boundary_width={"X": (1, 0)},
-        boundary="fill",
-        fill_value=0,
-    )
-    def interp_center_to_left_fill_with_zeros(a):
-        return interp(a)
+```python
+@as_grid_ufunc(
+    signature="(X:center)->(X:left)",
+    boundary_width={"X": (1, 0)},
+    boundary="fill",
+    fill_value=0,
+)
+def interp_center_to_left_fill_with_zeros(a):
+    return interp(a)
 ```
 
-```{eval-rst}
-.. ipython:: python
-
-    interp_center_to_left_fill_with_zeros(
-        grid, da, axis=[["X"]], boundary="fill", fill_value=0
-    )
+```python
+interp_center_to_left_fill_with_zeros(
+    grid, da, axis=[["X"]], boundary="fill", fill_value=0
+)
 ```
 
 We can also choose a different default boundary condition at decorator definition time,
 and then override it at function call time if we prefer.
 
-```{eval-rst}
-.. ipython:: python
-
-    interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=0)
+```python
+interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=0)
 ```
 
-For more advanced examples of grid ufuncs, see the page on {ref}`ufunc examples`.
+For more advanced examples of grid ufuncs, see the page on [Ufunc Examples](ufunc_examples.md).
 
 ## Metrics
 
-:::{note}
-Automatically supplying metrics directly to grid ufuncs is not yet implemented, but will be soon!
-For now, if you need a metric in your grid ufunc, simply include it as an input and pass it explicitly.
-To work with metrics outside of grid ufuncs see the documentation page on metrics.
-:::
+!!! note
+    Automatically supplying metrics directly to grid ufuncs is not yet implemented, but will be soon!
+    For now, if you need a metric in your grid ufunc, simply include it as an input and pass it explicitly.
+    To work with metrics outside of grid ufuncs see the documentation page on metrics.
 
 
-(Parallelizing with Dask)=
-## Parallelizing with Dask
+## Parallelizing with Dask {#parallelizing-with-dask}
 
 The grid ufunc apparatus is designed so that if your data is chunked, it will apply your ufunc operation in a dask-efficient manner.
 There are two cases of interest to understand: parallelizing an operation over data chunked along a "broadcast" dimension, and
@@ -405,17 +337,15 @@ The numpy ufunc you are wrapping must be able to act on each element along that 
 This case is parallelized under the hood by calling `xarray.apply_ufunc`.
 In order to enable working with chunked arrays you must pass the kwarg `dask='parallelized'` to `apply_as_grid_ufunc`.
 
-```{eval-rst}
-.. ipython:: python
+```python
+# Let's create some 2D data, so we have a dimension over which to broadcast
+da_2d = da.expand_dims(y=4)
 
-    # Let's create some 2D data, so we have a dimension over which to broadcast
-    da_2d = da.expand_dims(y=4)
+# Let's also chunk it along the new "broadcast" dimension
+chunked_y = da_2d.chunk({"y": 1})
+chunked_y
 
-    # Let's also chunk it along the new "broadcast" dimension
-    chunked_y = da_2d.chunk({"y": 1})
-    chunked_y
-
-    result = interp_center_to_left(grid, chunked_y, axis=[["X"]], dask="parallelized")
+result = interp_center_to_left(grid, chunked_y, axis=[["X"]], dask="parallelized")
 ```
 
 
@@ -428,39 +358,30 @@ The dask graph in this case is simple, because this is an "embarrasingly paralle
 result.data.visualize(optimize_graph=True)
 ```
 
-```{image} images/parallelize_broadcast.png
-:height: 400px
-:alt: Dask task graph for parallelizing along a broadcast dimension
-```
+![Dask task graph for parallelizing along a broadcast dimension](images/parallelize_broadcast.png)
 
 The result is as expected from padding each row independently.
 
-```{eval-rst}
-.. ipython:: python
-
-    result.compute()
+```python
+result.compute()
 ```
 
 ### Parallelizing Along Core Dimensions
 
 The other case is for when your data is chunked along the axis over which you want to apply your ufunc (a "core" dimension").
 
-```{eval-rst}
-.. ipython:: python
-
-    chunked_x = da_2d.chunk({"x_c": 2})
-    chunked_x
+```python
+chunked_x = da_2d.chunk({"x_c": 2})
+chunked_x
 ```
 
 XGCM can also parallelize this case, by calling `dask.map_overlap`.
 You tell it to invoke `dask.map_overlap` by passing `dask="parallelized"` and `map_overlap=True`.
 
-```{eval-rst}
-.. ipython:: python
-
-    result = interp_center_to_left(
-        grid, chunked_x, axis=[["X"]], dask="allowed", map_overlap=True
-    )
+```python
+result = interp_center_to_left(
+    grid, chunked_x, axis=[["X"]], dask="allowed", map_overlap=True
+)
 ```
 
 If your ufunc operates on individual chunks independently, then `dask.map_blocks` would have been sufficient,
@@ -471,15 +392,10 @@ The dask graph is more complicated, because each chunk along the core dim needs 
 result.data.visualize(optimize_graph=True)
 ```
 
-```{image} images/parallelize_core.png
-:height: 400px
-:alt: Dask task graph for parallelizing along a core dimension
-```
+![Dask task graph for parallelizing along a core dimension](images/parallelize_core.png)
 
-```{eval-rst}
-.. ipython:: python
-
-    result.compute()
+```python
+result.compute()
 ```
 
 There is one limitation of this feature: you cannot use `map_overlap` with grid ufuncs that change length along a core dimension

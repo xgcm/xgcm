@@ -31,24 +31,3 @@ climate science. xgcm is part of the [Pangeo] initiative.
 [Arakawa Grids]: https://en.wikipedia.org/wiki/Arakawa_grids
 
 ## Contents
-
-```{toctree}
-:maxdepth: 1
-
-installation
-grids
-grid_topology
-grid_metrics
-grid_ufuncs
-ufunc_examples
-boundary_conditions
-transform
-xgcm-examples/02_mitgcm
-xgcm-examples/01_eccov4
-xgcm-examples/03_MOM6
-xgcm-examples/04_nemo_idealized
-xgcm-examples/05_autogenerate
-whats-new
-contributor_guide
-api
-```

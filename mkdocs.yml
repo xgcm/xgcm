@@ -51,5 +51,34 @@ plugins:
   # mkdocs-autoapi:
   #   autoapi_add_nav_entry: Reference
 
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
 nav:
   - Home: index.md
+  - Installation: installation.md
+  - Simple Grids: grids.md
+  - Grid Topology: grid_topology.md
+  - Grid Metrics: grid_metrics.ipynb
+  - Grid Ufuncs: grid_ufuncs.md
+  - Ufunc Examples: ufunc_examples.md
+  - Boundary Conditions: boundary_conditions.md
+  - Transform: transform.ipynb
+  - Examples:
+      - MITgcm: xgcm-examples/02_mitgcm.ipynb
+      - MITgcm ECCOv4: xgcm-examples/01_eccov4.ipynb
+      - MOM6: xgcm-examples/03_MOM6.ipynb
+      - NEMO: xgcm-examples/04_nemo_idealized.ipynb
+      - Generate missing C-grid coordinates: xgcm-examples/05_autogenerate.ipynb
+  - "What's New": whats-new.md
+  - Contributor Guide: contributor_guide.md
+  - API: api.md

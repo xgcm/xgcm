@@ -1,67 +1,62 @@
-```{currentmodule} xgcm
-```
-
 # What's New
 
-## v0.9.0 (unreleased)
+## v0.9.0 (unreleased) {#whats-new-0-9-0}
 
-(whats-new.0.9.0)=
 
 ### New Features
 
-- Methods for autoparsing of dataset metadata to construct a {py:class}`xgcm.Grid` class have been added.
+- Methods for autoparsing of dataset metadata to construct a [xgcm.Grid][] class have been added.
   Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
-  addition of SGRID conventions ({issue}`109`, {pull}`559`).
+  addition of SGRID conventions ([#109](https://github.com/xgcm/xgcm/issues/109), [#559](https://github.com/xgcm/xgcm/pull/559)).
   By [Jack Atkinson](https://github.com/jatkinson1000).
 
 - Vertical coordinate transformations are now also supported for multi-dimensional targets, for example a
   terrain-following (spatially varying) vertical coordinate. This feature currently only works with the linear
-  interpolation method ({issue}`614`, {pull}`642`).
+  interpolation method ([#614](https://github.com/xgcm/xgcm/issues/614), [#642](https://github.com/xgcm/xgcm/pull/642)).
   By [Nora Loose](https://github.com/noraloose).
 
 ### Breaking Changes
 
-- All computation methods on the {py:class}`xgcm.Axis` class have been removed, in favour of using the corresponding
-  methods on the {py:class}`xgcm.Grid` object. The {py:class}`xgcm.Axis` class has also been removed from public API.
-  ({issue}`405`, {pull}`557`).
+- All computation methods on the [xgcm.Axis][] class have been removed, in favour of using the corresponding
+  methods on the [xgcm.Grid][] object. The [xgcm.Axis][] class has also been removed from public API.
+  ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557)).
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
-- All functionality for generating c-grid dimensions on incomplete datasets via {py:meth}`xgcm.Grid.autogenerate`,  was removed ({pull}`557`).
+- All functionality for generating c-grid dimensions on incomplete datasets via [Grid.autogenerate][xgcm.Grid.autogenerate],  was removed ([#557](https://github.com/xgcm/xgcm/pull/557)).
    By [Julius Busecke](https://github.com/jbusecke).
 
 ### Internal Changes
 
-- Switch CI environment setup to micromamba ({issue}`576`, {pull}`577`).
+- Switch CI environment setup to micromamba ([#576](https://github.com/xgcm/xgcm/issues/576), [#577](https://github.com/xgcm/xgcm/pull/577)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- pre-commit autoupdate frequency reduced ({pull}`563`).
+- pre-commit autoupdate frequency reduced ([#563](https://github.com/xgcm/xgcm/pull/563)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Documentation
 
 ### Bugfixes
 
-- Fix bug in {py:meth}`xgcm.transfrom.transform` that violated tracer conservation when using conservative interpolation in the presence of nans. ({pull}`635`)
+- Fix bug in [xgcm.transform.transform][xgcm.transform.transform] that violated tracer conservation when using conservative interpolation in the presence of nans. ([#635](https://github.com/xgcm/xgcm/pull/635))
   By [Julius Busecke](https://github.com/jbusecke).
-- Fix bug in {py:meth}`xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate
-  values leading to errors with ECCO data. ({issue}`531`, {issue}`595`, {pull}`597`).
-  By [Julius Busecke](https://github.com/jbusecke).
-
-- Remove remaining mentions of `extrapolate` as boundary option ({pull}`602`).
+- Fix bug in [xgcm.padding._maybe_rename_grid_positions][xgcm.padding._maybe_rename_grid_positions] where dimensions were assumed to have coordinate
+  values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Fix broken docs build due to broken backwards compatibility in sphinx extensions ({pull}`631`)
+- Remove remaining mentions of `extrapolate` as boundary option ([#602](https://github.com/xgcm/xgcm/pull/602)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Fix bug that did not allow to create grids with faceconnections if the face dimension was coordinate-less. ({issue}`616`, {pull}`616`).
+- Fix broken docs build due to broken backwards compatibility in sphinx extensions ([#631](https://github.com/xgcm/xgcm/pull/631))
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Fix bug in {py:meth}`xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate values leading to errors with ECCO data. ({issue}`531`, {issue}`595`, {pull}`597`).
+- Fix bug that did not allow to create grids with faceconnections if the face dimension was coordinate-less. ([#616](https://github.com/xgcm/xgcm/issues/616), [#616](https://github.com/xgcm/xgcm/pull/616)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-## v0.8.1 (2022/11/22)
+- Fix bug in [xgcm.padding._maybe_rename_grid_positions][xgcm.padding._maybe_rename_grid_positions] where dimensions were assumed to have coordinate values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
+  By [Julius Busecke](https://github.com/jbusecke).
 
-(whats-new.0.8.1)=
+## v0.8.1 (2022/11/22) {#whats-new-0-8-1}
+
 
 ### New Features
 
@@ -69,8 +64,8 @@
 
 ### Internal Changes
 
-- Rewrote cumsum to use a different code path from {py:func}`~xgcm.apply_as_grid_ufunc` internally,
-  which makes it less susceptible to subtle bugs like the one reported in {issue}`507`. ({pull}`558`).
+- Rewrote cumsum to use a different code path from [apply_as_grid_ufunc][xgcm.apply_as_grid_ufunc] internally,
+  which makes it less susceptible to subtle bugs like the one reported in [#507](https://github.com/xgcm/xgcm/issues/507). ([#558](https://github.com/xgcm/xgcm/pull/558)).
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
 ### Documentation
@@ -81,119 +76,115 @@
 
 ### Bugfixes
 
-- Fix bug where chunked core dims of only a single chunk triggered errors. ({pull}`558`, {issue}`518`, {issue}`522`)
+- Fix bug where chunked core dims of only a single chunk triggered errors. ([#558](https://github.com/xgcm/xgcm/pull/558), [#518](https://github.com/xgcm/xgcm/issues/518), [#522](https://github.com/xgcm/xgcm/issues/522))
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
 
-## v0.8.0 (2022/06/14)
+## v0.8.0 (2022/06/14) {#whats-new-0-8-0}
 
-(whats-new.0.8.0)=
 
 ### New Features
 
-- Addition of logarithmic interpolation to transform ({pull}`483`).
+- Addition of logarithmic interpolation to transform ([#483](https://github.com/xgcm/xgcm/pull/483)).
   By [Jonathan Thielen](https://github.com/jthielen).
 
 ### Breaking Changes
 
 ### Internal Changes
 
-- Switching code linting to the pre-commit.ci service ({pull}`490`).
+- Switching code linting to the pre-commit.ci service ([#490](https://github.com/xgcm/xgcm/pull/490)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Documentation
 
-- Fix 'suggest edits' button in docs ({pull}`512`, {issue}`503`).
+- Fix 'suggest edits' button in docs ([#512](https://github.com/xgcm/xgcm/pull/512), [#503](https://github.com/xgcm/xgcm/issues/503)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Bugfixes
 
-- Fix formatting of the CITATION.cff file ({pull}`500`).
+- Fix formatting of the CITATION.cff file ([#500](https://github.com/xgcm/xgcm/pull/500)).
   By [Julius Busecke](https://github.com/jbusecke).
-- Fix bug with cumsum when data chunked with dask. ({pull}`415`, {issue}`507`)
+- Fix bug with cumsum when data chunked with dask. ([#415](https://github.com/xgcm/xgcm/pull/415), [#507](https://github.com/xgcm/xgcm/issues/507))
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
-## v0.7.0 (2022/4/20)
+## v0.7.0 (2022/4/20) {#whats-new-0-7-0}
 
-(whats-new.0.7.0)=
 
 ### New Features
 
-- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions {py:meth}`~xgcm.grid_ufunc.apply_as_grid_ufunc`
-  and {py:meth}`~xgcm.grid_ufunc.as_grid_ufunc`. ({pull}`362`, {issue}`344`)
+- Turn numpy-style ufuncs into grid-aware "grid-ufuncs" via new functions [apply_as_grid_ufunc][xgcm.grid_ufunc.apply_as_grid_ufunc]
+  and [as_grid_ufunc][xgcm.grid_ufunc.as_grid_ufunc]. ([#362](https://github.com/xgcm/xgcm/pull/362), [#344](https://github.com/xgcm/xgcm/issues/344))
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
-- Padding of vector fields for complex topologies via a dictionary-like syntax has been added ({pull}`459`).
+- Padding of vector fields for complex topologies via a dictionary-like syntax has been added ([#459](https://github.com/xgcm/xgcm/pull/459)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Breaking Changes
 
-- Removed the `extrapolate` boundary option ({pull}`470`).
+- Removed the `extrapolate` boundary option ([#470](https://github.com/xgcm/xgcm/pull/470)).
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
 ### Internal Changes
 
-- All computation methods on the `Grid` object are now re-routed through {py:meth}`~xgcm.grid_ufunc.apply_as_grid_ufunc`.
+- All computation methods on the `Grid` object are now re-routed through [apply_as_grid_ufunc][xgcm.grid_ufunc.apply_as_grid_ufunc].
   By [Thomas Nicholas](https://github.com/tomnicholas).
 
 ### Documentation
 
-- Switch to pangeo-book-scheme ({pull}`482`).
+- Switch to pangeo-book-scheme ([#482](https://github.com/xgcm/xgcm/pull/482)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Add CITATION.cff file ({pull}`450`).
+- Add CITATION.cff file ([#450](https://github.com/xgcm/xgcm/pull/450)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 
 ## v0.6.1 (2022/02/15)
 
-(whats-new.0.6.1)=
 
 
-### Documentation
+### Documentation {#whats-new-0-6-1}
 
-- Switch RTD build to use mamba for increased speed and reduced memory useage ({pull}`401`).
+- Switch RTD build to use mamba for increased speed and reduced memory useage ([#401](https://github.com/xgcm/xgcm/pull/401)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Internal Changes
 
-- Switch CI to use mamba ({pull}`412`, {issue}`398`).
+- Switch CI to use mamba ([#412](https://github.com/xgcm/xgcm/pull/412), [#398](https://github.com/xgcm/xgcm/issues/398)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Add deprecation warnings for future changes in the API ({issue}`409`,{pull}`411`).
+- Add deprecation warnings for future changes in the API ([#409](https://github.com/xgcm/xgcm/issues/409),[#411](https://github.com/xgcm/xgcm/pull/411)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 
-## v0.6.0 (2021/11/03)
+## v0.6.0 (2021/11/03) {#whats-new-0-6-0}
 
-(whats-new.0.6.0)=
 
 ### New Features
 
-- {py:meth}`~xgcm.grid.Grid.set_metrics` now enables adding metrics to a grid object ({pull}`336`, {issue}`199`).
+- [Grid.set_metrics][xgcm.Grid.set_metrics] now enables adding metrics to a grid object ([#336](https://github.com/xgcm/xgcm/pull/336), [#199](https://github.com/xgcm/xgcm/issues/199)).
   By [Dianne Deauna](https://github.com/jdldeauna) under the [SIParCS internship](https://www2.cisl.ucar.edu/siparcs-2021-projects#8).
 
-- {py:meth}`~xgcm.grid.Grid.get_metric` refactored, and now incorporates {py:meth}`~xgcm.grid.Grid.interp_like` to allow for automatic interpolation of missing metrics from available values on surrounding positions ({pull}`345`, {pull}`354`).
+- [Grid.get_metric][xgcm.Grid.get_metric] refactored, and now incorporates [Grid.interp_like][xgcm.Grid.interp_like] to allow for automatic interpolation of missing metrics from available values on surrounding positions ([#345](https://github.com/xgcm/xgcm/pull/345), [#354](https://github.com/xgcm/xgcm/pull/354)).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
-- {py:meth}`~xgcm.grid.Grid.set_metrics` enables overwriting of previously assigned metrics to a grid object, and allows for multiple metrics on the same axes (must be different dimensions) ({pull}`351`, {issue}`199`).
+- [Grid.set_metrics][xgcm.Grid.set_metrics] enables overwriting of previously assigned metrics to a grid object, and allows for multiple metrics on the same axes (must be different dimensions) ([#351](https://github.com/xgcm/xgcm/pull/351), [#199](https://github.com/xgcm/xgcm/issues/199)).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
-- {py:meth}`~xgcm.grid.Grid.interp_like` enables users to interpolate arrays onto the grid positions of another array, and can specify boundary conditions and fill values ({issue}`234` , {issue}`343`, {pull}`350`).
+- [Grid.interp_like][xgcm.Grid.interp_like] enables users to interpolate arrays onto the grid positions of another array, and can specify boundary conditions and fill values ([#234](https://github.com/xgcm/xgcm/issues/234) , [#343](https://github.com/xgcm/xgcm/issues/343), [#350](https://github.com/xgcm/xgcm/pull/350)).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
-- Better input checking when creating a grid object avoids creating grid positions on dataset coordinates which are not 1D ({issue}`208`, {pull}`358`).
+- Better input checking when creating a grid object avoids creating grid positions on dataset coordinates which are not 1D ([#208](https://github.com/xgcm/xgcm/issues/208), [#358](https://github.com/xgcm/xgcm/pull/358)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 [^siparcs]: under the [SIParCS internship](https://www2.cisl.ucar.edu/siparcs-2021-projects#8)
 
 ### Breaking Changes
 
-- Drop support for Python 3.6 ({issue}`360`, {pull}`361`). By [Julius Busecke](https://github.com/jbusecke).
+- Drop support for Python 3.6 ([#360](https://github.com/xgcm/xgcm/issues/360), [#361](https://github.com/xgcm/xgcm/pull/361)). By [Julius Busecke](https://github.com/jbusecke).
 
 ### Documentation
 
-- Added documentation on boundary conditions ({issue}`273`, {pull}`325`)
+- Added documentation on boundary conditions ([#273](https://github.com/xgcm/xgcm/issues/273), [#325](https://github.com/xgcm/xgcm/pull/325))
   By [Romain Caneill](https://github.com/rcaneill).
 - Updated metrics documentation for new methods in [Grid Metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics.html).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
@@ -207,83 +198,79 @@
 
 - Removed dependency on docrep, which as docrep 2.7 used a GPL licence, implicitly changed the license of xGCM.
   Therefore xGCM now has a valid MIT license, instead of accidentally being a GPL licence as it was before.
-  ({issue}`308`, {pull}`384`)
+  ([#308](https://github.com/xgcm/xgcm/issues/308), [#384](https://github.com/xgcm/xgcm/pull/384))
   By [Tom Nicholas](https://github.com/TomNicholas).[^siparcs]
 
 ### Deprecations
 
-- The `keep_coords` kwarg is now deprecated, and will be removed in the next version. ({issue}`382`)
+- The `keep_coords` kwarg is now deprecated, and will be removed in the next version. ([#382](https://github.com/xgcm/xgcm/issues/382))
   By [Tom Nicholas](https://github.com/TomNicholas).[^siparcs]
 
 
 
 ## v0.5.2 (2021/5/27)
 
-(whats-new.0.5.2)=
 
-### Bug fixes
+### Bug fixes {#whats-new-0-5-2}
 
-- Raise more useful errors when datasets are provided as arguments to grid.transform ({pull}`329`, {issue}`328`). By [Julius Busecke](https://github.com/jbusecke).
+- Raise more useful errors when datasets are provided as arguments to grid.transform ([#329](https://github.com/xgcm/xgcm/pull/329), [#328](https://github.com/xgcm/xgcm/issues/328)). By [Julius Busecke](https://github.com/jbusecke).
 
 
 ### Documentation
 
-- Updated Realistic Data examples in [Transforming Vertical Coordinates](https://xgcm.readthedocs.io/en/latest/transform.html) ({pull}`322`)
+- Updated Realistic Data examples in [Transforming Vertical Coordinates](https://xgcm.readthedocs.io/en/latest/transform.html) ([#322](https://github.com/xgcm/xgcm/pull/322))
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
-- Migrated model example notebooks to [xgcm-examples](https://github.com/xgcm/xgcm-examples) which integrates with [pangeo gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/) ({pull}`294`)
+- Migrated model example notebooks to [xgcm-examples](https://github.com/xgcm/xgcm-examples) which integrates with [pangeo gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/) ([#294](https://github.com/xgcm/xgcm/pull/294))
   By [Julius Busecke](https://github.com/jbusecke).
 
 ## v0.5.1 (2020/10/16)
 
-(whats-new.0.5.1)=
 
-### Bug fixes
+### Bug fixes {#whats-new-0-5-1}
 
-- Add support for older numba versions (<0.49) ({pull}`263`, {issue}`262`). By [Navid Constantinou](https://github.com/navidcy).
-
+- Add support for older numba versions (<0.49) ([#263](https://github.com/xgcm/xgcm/pull/263), [#262](https://github.com/xgcm/xgcm/issues/262)). By [Navid Constantinou](https://github.com/navidcy).
 
 
-## v0.5.0 (2020/9/28)
 
-(whats-new.0.5.0)=
+## v0.5.0 (2020/9/28) {#whats-new-0-5-0}
+
 
 ### New Features
 
-- {py:meth}`~xgcm.grid.Grid.transform` and {py:meth}`~xgcm.grid.Axis.transform` now enable 1-dimensional coordinate transformation ({pull}`205`, {issue}`222`).
+- [Grid.transform][xgcm.Grid.transform] and [Axis.transform][xgcm.Axis.transform] now enable 1-dimensional coordinate transformation ([#205](https://github.com/xgcm/xgcm/pull/205), [#222](https://github.com/xgcm/xgcm/issues/222)).
   By [Ryan Abernathey](https://github.com/rabernat) and [Julius Busecke](https://github.com/jbusecke).
 
 ### Bug fixes
 
-- More reliable handling of missing values in {py:meth}`Grid.average`. Missing values between data and metrics do not have to be aligned by the user anymore. ({pull}`259`). By [Julius Busecke](https://github.com/jbusecke).
+- More reliable handling of missing values in [Grid.average][xgcm.Grid.average]. Missing values between data and metrics do not have to be aligned by the user anymore. ([#259](https://github.com/xgcm/xgcm/pull/259)). By [Julius Busecke](https://github.com/jbusecke).
 
-- Remove outdated `example_notebooks` folder ({pull}`244`, {issue}`243`). By [Nikolay Koldunov](https://github.com/koldunovn) and [Julius Busecke](https://github.com/jbusecke).
+- Remove outdated `example_notebooks` folder ([#244](https://github.com/xgcm/xgcm/pull/244), [#243](https://github.com/xgcm/xgcm/issues/243)). By [Nikolay Koldunov](https://github.com/koldunovn) and [Julius Busecke](https://github.com/jbusecke).
 
 
 ## v0.4.0 (2020/9/2)
 
 ### New Features
 
-- Support for keeping compatible coordinates in most Grid operations ({issue}`186`).
+- Support for keeping compatible coordinates in most Grid operations ([#186](https://github.com/xgcm/xgcm/issues/186)).
   By [Aurélien Ponte](https://github.com/apatlpo).
 
-- Support for specifying default `boundary` and `fill_value` in the {py:class}`Grid` constructor.
-  Default values can be overridden in individual method calls (e.g. {py:meth}`Grid.interp`) as usual.
+- Support for specifying default `boundary` and `fill_value` in the [xgcm.Grid][] constructor.
+  Default values can be overridden in individual method calls (e.g. [Grid.interp][xgcm.Grid.interp]) as usual.
   By [Deepak Cherian](https://github.com/dcherian).
 
 ### Bug fixes
 
-- Fix for parsing fill_values as dictionary ({issue}`218`).
+- Fix for parsing fill_values as dictionary ([#218](https://github.com/xgcm/xgcm/issues/218)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Internal Changes
 
-- Complete refactor of the CI to github actions ({issue}`214`).
+- Complete refactor of the CI to github actions ([#214](https://github.com/xgcm/xgcm/issues/214)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-(whats-new.0.4.0)=
 
-## v0.3.0 (31 January 2020)
+## v0.3.0 (31 January 2020) {#whats-new-0-4-0}
 
 This release adds support for [model grid metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics.html) , bug fixes and extended documentation.
 
@@ -291,51 +278,51 @@ This release adds support for [model grid metrics](https://xgcm.readthedocs.io/e
 
 ### New Features
 
-- Support for 'grid-aware' average and cumsum using {py:class}`~xgcm.Grid.average` and {py:class}`~xgcm.Grid.cumsum` ({issue}`162`).
+- Support for 'grid-aware' average and cumsum using [Grid.average][xgcm.Grid.average] and [Grid.cumsum][xgcm.Grid.cumsum] ([#162](https://github.com/xgcm/xgcm/issues/162)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Support for 'grid-aware' integration using {py:class}`~xgcm.Grid.integrate` ({issue}`130`).
+- Support for 'grid-aware' integration using [Grid.integrate][xgcm.Grid.integrate] ([#130](https://github.com/xgcm/xgcm/issues/130)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ### Bug fixes
 
-- Fix for broken stale build ({issue}`155`).
+- Fix for broken stale build ([#155](https://github.com/xgcm/xgcm/issues/155)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Fixed bug in handling of grid metrics. ({issue}`136`).
+- Fixed bug in handling of grid metrics. ([#136](https://github.com/xgcm/xgcm/issues/136)).
   By [Ryan Abernathey](https://github.com/rabernat).
 
 - Fixed bug in
-  {py:class}`~xgcm.Grid.derivative` ({issue}`132`).
+  [Grid.derivative][xgcm.Grid.derivative] ([#132](https://github.com/xgcm/xgcm/issues/132)).
   By [Timothy Smith](https://github.com/timothyas).
 
 ### Documentation
 
-- Added docs for {py:class}`~xgcm.Grid.derivative` ({issue}`163`)
+- Added docs for [Grid.derivative][xgcm.Grid.derivative] ([#163](https://github.com/xgcm/xgcm/issues/163))
   By [Timothy Smith](https://github.com/timothyas).
 
-- Add binderized examples ({issue}`141`).
+- Add binderized examples ([#141](https://github.com/xgcm/xgcm/issues/141)).
   By [Ryan Abernathey](https://github.com/rabernat).
 
-- Simplify example notebooks ({issue}`140`).
+- Simplify example notebooks ([#140](https://github.com/xgcm/xgcm/issues/140)).
   By [Ryan Abernathey](https://github.com/rabernat).
 
-- Execute example notebook during doc build ({issue}`138`).
+- Execute example notebook during doc build ([#138](https://github.com/xgcm/xgcm/issues/138)).
   By [Ryan Abernathey](https://github.com/rabernat).
 
-- Added contributor guide to docs ({issue}`137`).
+- Added contributor guide to docs ([#137](https://github.com/xgcm/xgcm/issues/137)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 
 ### Internal Changes
 
-- Added GitHub Action to publish xgcm to PyPI on release ({issue}`170`).
+- Added GitHub Action to publish xgcm to PyPI on release ([#170](https://github.com/xgcm/xgcm/issues/170)).
   By [Anderson Banihirwe](https://github.com/andersy005).
 
-- Reorganized environment names for CI ({issue}`139`).
+- Reorganized environment names for CI ([#139](https://github.com/xgcm/xgcm/issues/139)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Added automatic code formatting via [black](https://black.readthedocs.io/en/stable/) ({issue}`131`).
+- Added automatic code formatting via [black](https://black.readthedocs.io/en/stable/) ([#131](https://github.com/xgcm/xgcm/issues/131)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 
