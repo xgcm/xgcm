@@ -7,6 +7,7 @@ repo_url: "https://github.com/xgcm/xgcm"
 
 theme:
   name: material
+  logo: images/logo.png
   icon:
     repo: fontawesome/brands/github
   features:
@@ -16,18 +17,7 @@ theme:
     - navigation.tracking
     - toc.follow
   palette:
-    # See options to customise your color scheme here:
-    # https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      toggle:
-        icon: material/weather-sunny
-        name: Switch to light mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
+    scheme: default
 
 plugins:
   autorefs: {}
@@ -62,6 +52,10 @@ markdown_extensions:
   - md_in_html
   - toc:
       permalink: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
   - Home: index.md

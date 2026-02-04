@@ -62,24 +62,13 @@ of coordinates that all lie along the same *physical dimension* but describe
 different positions relative to a grid cell. There are currently five
 possible positions supported by xgcm.
 
-> `center`
->     The variable values are located at the cell center.
->
-> `left`
->     The variable values are located at the left (i.e. lower) face of the
->     cell.
->
-> `right`
->     The variable values are located at the right (i.e. upper) face of the
->     cell.
->
-> `inner`
->     The variable values are located on the cell faces, excluding both
->     outer boundaries.
->
-> `outer`
->     The variable values are located on the cell faces, including both
->     outer boundaries.
+| Position | Description |
+|----------|-------------|
+| `center` | The variable values are located at the cell center. |
+| `left`   | The variable values are located at the left (i.e. lower) face of the cell. |
+| `right`  | The variable values are located at the right (i.e. upper) face of the cell. |
+| `inner`  | The variable values are located on the cell faces, excluding both outer boundaries. |
+| `outer`  | The variable values are located on the cell faces, including both outer boundaries. |
 
 The first three (`center`, `left`, and `right`) all have the same length
 along the axis dimension, while `inner` has one fewer point and `outer` has
