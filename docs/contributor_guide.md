@@ -14,64 +14,37 @@ A good step by step tutorial for this can be found in the
 [xarray contributor guide](https://xarray.pydata.org/en/stable/contributing.html#working-with-the-code).
 
 
-## Environments
+## Development Setup
 
-The easiest way to start developing xgcm pull requests,
-is to install one of the conda environments provided in the [ci folder](https://github.com/xgcm/xgcm/tree/master/ci):
-
-```
-conda env create -f ci/environment.yml
-```
-
-Activate the environment with:
+We use [Pixi](https://pixi.sh) for development. After forking and cloning the repository:
 
 ```
-conda activate test_env_xgcm
+pixi install
 ```
 
-Finally install xgcm itself in the now activated environment:
+This installs xgcm in editable mode with all development dependencies.
+
+## Running Tests
 
 ```
-pip install -e .
+pixi run tests
 ```
-
-A good first step is to check if all the tests pass locally:
-
-```
-pytest -v
-```
-
-And now you can develop away...
 
 ## Code Formatting
 
-We use [black](https://github.com/python/black) as code formatter and pull request will
-fail in the CI if not properly formatted.
-
-All conda environments contain black and you can reformat code using:
+We use [pre-commit](https://pre-commit.com/) for code formatting. To run linting:
 
 ```
-black xgcm
+pixi run lint
 ```
 
-[pre-commit](https://pre-commit.com/) provides an automated way to reformat your code
-prior to each commit. Simply install pre-commit:
-
-```
-pip install pre-commit
-```
-
-and install it in the xgcm root directory with:
+To auto-format before each commit, install the pre-commit hooks:
 
 ```
 pre-commit install
 ```
 
-and your code will be properly formatted before each commit.
-
-## Building the documentation locally
-
-With pixi installed, run:
+## Building the Documentation
 
 ```
 pixi run -e docs docs
