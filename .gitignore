@@ -91,3 +91,6 @@ docs/*.png
 .pixi/*
 !.pixi/config.toml
 pixi.lock
+
+# mkdocs build
+site/**

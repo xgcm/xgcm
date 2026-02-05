@@ -66,6 +66,9 @@ xarray = { git = "https://github.com/pydata/xarray" }
 tests = "pytest -n auto"
 typing_extensions = "*" # TODO: Move?
 
+[feature.docs.dependencies]
+graphviz = "*"
+
 [feature.docs.pypi-dependencies]
 markdown=">=3.9"
 mdx-include=">=1.4.2"
@@ -81,6 +84,7 @@ graphviz = "*"
 
 [feature.docs.tasks]
 docs = "mkdocs serve"
+docs-build = "mkdocs build"
 
 [feature.pre-commit.dependencies]
 pre_commit = "*"

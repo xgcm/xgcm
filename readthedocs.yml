@@ -11,6 +11,6 @@ build:
       - asdf global pixi latest
     install:
       - pixi install -e docs
-      - pixi shell -e docs
-mkdocs:
-  configuration: mkdocs.yml
+    build:
+      html:
+        - NO_COLOR=1 pixi run -e docs mkdocs build --strict --site-dir $READTHEDOCS_OUTPUT/html
