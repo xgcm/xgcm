@@ -68,10 +68,10 @@ typing_extensions = "*" # TODO: Move?
 
 [feature.docs.dependencies]
 graphviz = "*"
+python-graphviz = "*"
 
 [feature.docs.pypi-dependencies]
 markdown=">=3.9"
-mdx-include=">=1.4.2"
 mkdocs-material=">=9.1.19"
 mkdocs-autoapi = "*"
 mkdocs=">=1.1.2"
@@ -83,8 +83,9 @@ matplotlib="*"
 graphviz = "*"
 
 [feature.docs.tasks]
-docs = "mkdocs serve"
-docs-build = "mkdocs build"
+_setup-graphviz = "dot -c"
+docs = { cmd = "mkdocs serve", depends-on = ['_setup-graphviz'] }
+docs-build = { cmd = "mkdocs build", depends-on = ['_setup-graphviz'] }
 
 [feature.pre-commit.dependencies]
 pre_commit = "*"
