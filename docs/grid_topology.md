@@ -77,6 +77,7 @@ We can construct a grid that understands this connection in the following way:
 
 ```python
 import xgcm
+
 face_connections = {
     "face": {0: {"X": (None, (1, "X", False))}, 1: {"X": ((0, "X", False), None)}}
 }

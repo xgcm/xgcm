@@ -71,9 +71,7 @@ def plot_bc(ds):
     plt.plot(ds.x_g, g, marker="o", color="C6", label="g")
     #
     plt.scatter([ds.x_g[-1] + 1], [g[-1]], color="C1", label="extend", marker="v")
-    plt.plot(
-        [ds.x_g[-1], ds.x_g[-1] + 1], [g[-1], g[-1]], "--", color="C1", label="_"
-    )
+    plt.plot([ds.x_g[-1], ds.x_g[-1] + 1], [g[-1], g[-1]], "--", color="C1", label="_")
     #
     plt.scatter([ds.x_g[-1] + 1], [0], color="C2", label="fill0", marker="s")
     plt.scatter([ds.x_g[-1] + 1], [5], color="C3", label="fill5", marker="P")
@@ -83,6 +81,7 @@ def plot_bc(ds):
     #
     plt.xlabel("x_g")
     plt.legend()
+
 
 plt.grid(True)
 plot_bc(ds)

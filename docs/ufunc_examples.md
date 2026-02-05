@@ -169,9 +169,7 @@ Let's first define a tracer field `T`, which we imagine will start off localised
 
 ```python
 def gaussian(x_coord, y_coord, x_pos, y_pos, A, w):
-    return A * np.exp(
-        -0.5 * ((x_coord - x_pos) ** 2 + (y_coord - y_pos) ** 2) / w**2
-    )
+    return A * np.exp(-0.5 * ((x_coord - x_pos) ** 2 + (y_coord - y_pos) ** 2) / w**2)
 ```
 
 ```python
@@ -219,9 +217,7 @@ Now we can plot the gradient of the tracer field as a vector field
 
 ```python
 ds["T"].plot.contourf(x="x_c", vmax=60)
-colocated.plot.quiver(
-    "x_c", "y_c", u="grad_T_x", v="grad_T_y", color="0.5", scale=200
-)
+colocated.plot.quiver("x_c", "y_c", u="grad_T_x", v="grad_T_y", color="0.5", scale=200)
 plt.gcf()
 ```
 

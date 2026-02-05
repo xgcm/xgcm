@@ -63,7 +63,7 @@ jobs:
         uses: Parcels-code/pixi-lock/restore@2b823a4a804631370fbde7e6088ee5db71a26c60
         with:
           cache-key: ${{ needs.cache-pixi-lock.outputs.cache-key }}
-      
+
       - uses: prefix-dev/setup-pixi@v0.9.0
         with:
           pixi-version: ${{ needs.cache-pixi-lock.outputs.pixi-version }}
@@ -80,4 +80,3 @@ jobs:
           env_vars: PIXI_ENV
           name: codecov-umbrella
           fail_ci_if_error: false
-
