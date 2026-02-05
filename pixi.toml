@@ -1,0 +1,114 @@
+[workspace]
+name = "xgcm-dev"
+preview = ["pixi-build"]
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[package]
+name = "xgcm"
+version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
+
+[package.build]
+backend = { name = "pixi-build-python", version = "0.4.*" }
+
+[package.host-dependencies]
+setuptools = "*"
+setuptools_scm = "*"
+
+
+[package.run-dependencies] # keep section in sync with pyproject.toml dependencies
+python = ">=3.9"
+xarray = ">=0.20.0"
+dask = "*"
+numpy = "*"
+future = "*"
+scipy = "*" # TODO: `xgcm/test/test_grid_ufunc.py::TestGridUFuncNoPadding::test_1d_changing_size_dask_parallelized` failing if scipy isn't put here. Is scipy a core dependency? If no - move to `feature.extra` and fix test.
+
+[dependencies]
+xgcm = { path = "." }
+
+[feature.extra.dependencies]
+numba = "*"
+
+[feature.notebooks.dependencies]
+netcdf4 = "*"
+
+[feature.minimum.dependencies]
+python = "3.9.*"
+xarray = "0.20.*"
+
+# TODO: Update with rest of core deps
+
+[feature.py311.dependencies]
+python = "3.11.*"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+codecov= "*"
+
+[feature.nightly.pypi-dependencies]
+xgcm = { path = ".", editable = true }
+
+[feature.nightly.pypi-options.dependency-overrides]
+numpy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+scipy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
+
+dask = { git = "https://github.com/dask/dask" }
+distributed = { git = "https://github.com/dask/distributed" }
+xarray = { git = "https://github.com/pydata/xarray" }
+
+[feature.test.tasks]
+tests = "pytest -n auto"
+typing_extensions = "*" # TODO: Move?
+
+[feature.docs.dependencies]
+graphviz = "*"
+python-graphviz = "*"
+
+[feature.docs.pypi-dependencies]
+markdown=">=3.9"
+mkdocs-material=">=9.1.19"
+mkdocs-autoapi = "*"
+mkdocs=">=1.1.2"
+mkdocs-jupyter = "*"
+mkdocs-execute-plugin = "*"
+mkdocstrings-python=">=1.18.2"
+pyyaml=">=6.0.1"
+matplotlib="*"
+graphviz = "*"
+
+[feature.docs.tasks]
+_setup-graphviz = "dot -c"
+docs = { cmd = "mkdocs serve", depends-on = ['_setup-graphviz'] }
+docs-build = { cmd = "mkdocs build", depends-on = ['_setup-graphviz'] }
+
+[feature.pre-commit.dependencies]
+pre_commit = "*"
+
+[feature.pre-commit.tasks]
+lint = "pre-commit run --all-files"
+
+
+[environments]
+default = { features = [
+  "test",
+  "extra",
+  "pre-commit",
+], solve-group = "main" }
+
+test-core = { features = ["test"] }
+test-latest = { features = ["test", 'extra'] }
+test-nightly = { features = [
+  "py313",
+  "nightly",
+  "test",
+], no-default-feature = true }
+
+test-minimum = { features = ["test", "minimum"] }
+test-py311 = { features = ["test", "py311"] }
+docs = { features = ["docs", "extra", "notebooks"], solve-group = "docs" }

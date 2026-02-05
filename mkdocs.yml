@@ -1,0 +1,85 @@
+site_name: xgcm
+site_url: https://xgcm.readthedocs.io/
+site_author: "xgcm developers"
+
+repo_name: "xgcm/xgcm"
+repo_url: "https://github.com/xgcm/xgcm"
+
+theme:
+  name: material
+  logo: images/logo.png
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - search.suggest
+    - search.highlight
+    - navigation.expand
+    - navigation.tracking
+    - toc.follow
+  palette:
+    scheme: default
+
+plugins:
+  autorefs: {}
+  execute:
+    exclude:
+      # TODO: Fix
+      - 'grid_metrics.ipynb'
+      - 'transform.ipynb'
+      - 'xgcm-examples/*'
+  mkdocs-jupyter:
+    include_source: true
+    execute: false
+  mkdocstrings:
+    handlers:
+      python:
+        paths: [.]
+        inventories:
+          - https://docs.python.org/3/objects.inv
+          - https://docs.pydantic.dev/latest/objects.inv
+        options:
+          members_order: source
+          separate_signature: true
+          filters: ["!^_"]
+          show_root_heading: true
+          show_if_no_docstring: true
+          show_signature_annotations: true
+  search: {}
+  # mkdocs-autoapi:
+  #   autoapi_add_nav_entry: Reference
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Simple Grids: grids.md
+  - Grid Topology: grid_topology.md
+  - Grid Metrics: grid_metrics.ipynb
+  - Grid Ufuncs: grid_ufuncs.md
+  - Ufunc Examples: ufunc_examples.md
+  - Boundary Conditions: boundary_conditions.md
+  - Transform: transform.ipynb
+  - Examples:
+      - MITgcm: xgcm-examples/02_mitgcm.ipynb
+      - MITgcm ECCOv4: xgcm-examples/01_eccov4.ipynb
+      - MOM6: xgcm-examples/03_MOM6.ipynb
+      - NEMO: xgcm-examples/04_nemo_idealized.ipynb
+      - Generate missing C-grid coordinates: xgcm-examples/05_autogenerate.ipynb
+  - "What's New": whats-new.md
+  - Contributor Guide: contributor_guide.md
+  - API: api.md
