@@ -49,7 +49,7 @@ pre-commit install
 ```
 pixi run -e docs docs
 ```
-
+This will start a live preview running on `http://127.0.0.1:8000/`
 
 ## How to release a new version of xgcm (for maintainers only)
 
