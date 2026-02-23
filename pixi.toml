@@ -84,7 +84,7 @@ graphviz = "*"
 
 [feature.docs.tasks]
 _setup-graphviz = "dot -c"
-docs = { cmd = "mkdocs serve", depends-on = ['_setup-graphviz'] }
+docs-serve = { cmd = "mkdocs serve --livereload", depends-on = ['_setup-graphviz'] }
 docs-build = { cmd = "mkdocs build", depends-on = ['_setup-graphviz'] }
 
 [feature.pre-commit.dependencies]
