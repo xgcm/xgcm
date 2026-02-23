@@ -57,7 +57,7 @@ jobs:
     env:
       PIXI_ENV: ${{ matrix.pixi-env }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Restore cached pixi lockfile
         uses: Parcels-code/pixi-lock/restore@2b823a4a804631370fbde7e6088ee5db71a26c60
@@ -73,7 +73,7 @@ jobs:
         run: |
           pixi run -e ${{matrix.pixi-env}} tests --cov=./ --cov-report=xml
       - name: Upload code coverage to Codecov
-        uses: codecov/codecov-action@v5.5.1
+        uses: codecov/codecov-action@v5.5.2
         with:
           file: ./coverage.xml
           flags: unittests
