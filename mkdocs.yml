@@ -70,8 +70,9 @@ nav:
   - Simple Grids: grids.md
   - Grid Topology: grid_topology.md
   - Grid Metrics: grid_metrics.ipynb
-  - Grid Ufuncs: grid_ufuncs.md
-  - Ufunc Examples: ufunc_examples.md
+  - Grid Ufuncs:
+    - Concept of a Grid Ufunc: grid_ufuncs.md
+    - Ufunc Examples: ufunc_examples.md
   - Boundary Conditions: boundary_conditions.md
   - Transform: transform.ipynb
   - Examples:
