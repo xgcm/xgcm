@@ -33,7 +33,13 @@
 - pre-commit autoupdate frequency reduced ([#563](https://github.com/xgcm/xgcm/pull/563)).
   By [Julius Busecke](https://github.com/jbusecke).
 
+- Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
 ### Documentation
+
+- Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
 ### Bugfixes
 
