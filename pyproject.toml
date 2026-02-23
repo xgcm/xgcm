@@ -158,14 +158,14 @@ codecov= "*"
 
 [tool.pixi.feature.nightly.pypi-dependencies]
 xgcm = { path = ".", editable = true }
+xarray = { git = "https://github.com/pydata/xarray" }
+scipy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 
 [tool.pixi.feature.nightly.pypi-options.dependency-overrides]
 numpy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
-scipy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 
 dask = { git = "https://github.com/dask/dask" }
 distributed = { git = "https://github.com/dask/distributed" }
-xarray = { git = "https://github.com/pydata/xarray" }
 
 [tool.pixi.feature.test.tasks]
 tests = "pytest -n auto"
