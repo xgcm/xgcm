@@ -47,7 +47,7 @@ pre-commit install
 ## Building the Documentation
 
 ```
-pixi run -e docs docs
+pixi run docs-serve
 ```
 This will start a live preview running on `http://127.0.0.1:8000/`
 
