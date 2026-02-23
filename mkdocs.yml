@@ -18,6 +18,7 @@ theme:
     - toc.follow
   palette:
     scheme: default
+    primary: white
 
 plugins:
   autorefs: {}
