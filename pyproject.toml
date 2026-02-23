@@ -169,7 +169,6 @@ xarray = { git = "https://github.com/pydata/xarray" }
 
 [tool.pixi.feature.test.tasks]
 tests = "pytest -n auto"
-typing_extensions = "*" # TODO: Move?
 
 [tool.pixi.feature.docs.dependencies]
 graphviz = "*"
