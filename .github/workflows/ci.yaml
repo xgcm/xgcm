@@ -27,7 +27,7 @@ jobs:
       pixi-version: ${{ steps.pixi-lock.outputs.pixi-version }}
     steps:
       - uses: actions/checkout@v4
-      - uses: Parcels-code/pixi-lock/create-and-cache@2b823a4a804631370fbde7e6088ee5db71a26c60 # TODO: Update to action in prefix-dev once available
+      - uses: Parcels-code/pixi-lock/create-and-cache@a9aee67fa67426e6b0297fa5bef80600572be153
         id: pixi-lock
         with:
           pixi-version: ${{env.PIXI_VERSION}}
@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Restore cached pixi lockfile
-        uses: Parcels-code/pixi-lock/restore@2b823a4a804631370fbde7e6088ee5db71a26c60
+        uses: Parcels-code/pixi-lock/restore@a9aee67fa67426e6b0297fa5bef80600572be153
         with:
           cache-key: ${{ needs.cache-pixi-lock.outputs.cache-key }}
 
