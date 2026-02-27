@@ -12,10 +12,14 @@ repos:
     # Ruff version.
     rev: v0.13.0
     hooks:
-      # Run the linter.
       - id: ruff
-        args: [ --fix ]
-      # Run the formatter.
+        name: ruff lint (.py)
+        args: [--fix, --show-fixes]
+        types_or: [python]
+      - id: ruff
+        name: ruff isort (.ipynb)
+        args: [--select, I, --fix]
+        types_or: [jupyter]
       - id: ruff-format
   - repo: https://github.com/keewis/blackdoc
     rev: v0.4.1

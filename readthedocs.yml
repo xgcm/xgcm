@@ -4,18 +4,17 @@ submodules:
   include: all
 
 build:
-  os: "ubuntu-20.04"
+  os: ubuntu-lts-latest
   tools:
-    python: "mambaforge-22.9"
-
-# Build from the doc/ directory with Sphinx
-sphinx:
-  configuration: doc/conf.py
-
-python:
-  install:
-    - method: pip
-      path: .
-
-conda:
-  environment: doc/environment.yml
+    # just so RTD stops complaining
+    python: "latest"
+  jobs:
+    create_environment:
+      - asdf plugin add pixi
+      - asdf install pixi latest
+      - asdf global pixi latest
+    install:
+      - pixi install -e docs
+    build:
+      html:
+        - NO_COLOR=1 pixi run -e docs mkdocs build --strict --site-dir $READTHEDOCS_OUTPUT/html
