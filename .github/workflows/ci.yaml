@@ -26,7 +26,7 @@ jobs:
       cache-key: ${{ steps.pixi-lock.outputs.cache-key }}
       pixi-version: ${{ steps.pixi-lock.outputs.pixi-version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: Parcels-code/pixi-lock/create-and-cache@a9aee67fa67426e6b0297fa5bef80600572be153
         id: pixi-lock
         with:
