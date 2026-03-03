@@ -111,7 +111,7 @@ def test_raise_on_operation_not_valid_for_same_position():
 
 
 @pytest.mark.parametrize(
-    "boundary",
+    "padding",
     [
         "fill",
         "extend",
@@ -119,24 +119,24 @@ def test_raise_on_operation_not_valid_for_same_position():
     ],
 )
 @pytest.mark.parametrize("fill_value", [0, 1.0])
-def test_grid_create(all_datasets, boundary, fill_value):
+def test_grid_create(all_datasets, padding, fill_value):
     ds, periodic, expected = all_datasets
     grid = Grid(ds, periodic=periodic)
 
     assert grid is not None
 
     for ax in grid.axes.values():
-        assert ax.boundary == "periodic" if periodic else "fill"
+        assert ax.padding == "periodic" if periodic else "fill"
         assert ax.fill_value == 0.0
 
-    grid = Grid(ds, periodic=periodic, boundary=boundary, fill_value=fill_value)
+    grid = Grid(ds, periodic=periodic, padding=padding, fill_value=fill_value)
 
     for name, ax in grid.axes.items():
-        if isinstance(boundary, dict):
-            expected = boundary.get(name)
+        if isinstance(padding, dict):
+            expected = padding.get(name)
         else:
-            expected = boundary
-        assert ax.boundary == expected
+            expected = padding
+        assert ax.padding == expected
 
         if isinstance(fill_value, dict):
             expected = fill_value.get(name)
@@ -183,38 +183,38 @@ def test_grid_repr(all_datasets):
     assert r[0] == "<xgcm.Grid>"
 
 
-@pytest.mark.parametrize("boundary", ["extend", "fill"])
-def test_cumsum(nonperiodic_1d, boundary):
+@pytest.mark.parametrize("padding", ["extend", "fill"])
+def test_cumsum(nonperiodic_1d, padding):
     ds, periodic, expected = nonperiodic_1d
-    grid = Grid(ds, boundary="periodic")
+    grid = Grid(ds, padding="periodic")
 
-    cumsum_g = grid.cumsum(ds.data_g, axis="X", to="center", boundary=boundary)
+    cumsum_g = grid.cumsum(ds.data_g, axis="X", to="center", padding=padding)
 
     to = grid.axes["X"].default_shifts["center"]
-    cumsum_c = grid.cumsum(ds.data_c, axis="X", to=to, boundary=boundary)
+    cumsum_c = grid.cumsum(ds.data_c, axis="X", to=to, padding=padding)
 
     cumsum_c_raw = np.cumsum(ds.data_c.data)
     cumsum_g_raw = np.cumsum(ds.data_g.data)
 
     if to == "right":
         np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw)
-        fill_value = 0.0 if boundary == "fill" else cumsum_g_raw[0]
+        fill_value = 0.0 if padding == "fill" else cumsum_g_raw[0]
         np.testing.assert_allclose(
             cumsum_g.data, np.hstack([fill_value, cumsum_g_raw[:-1]])
         )
     elif to == "left":
         np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw)
-        fill_value = 0.0 if boundary == "fill" else cumsum_c_raw[0]
+        fill_value = 0.0 if padding == "fill" else cumsum_c_raw[0]
         np.testing.assert_allclose(
             cumsum_c.data, np.hstack([fill_value, cumsum_c_raw[:-1]])
         )
     elif to == "inner":
         np.testing.assert_allclose(cumsum_c.data, cumsum_c_raw[:-1])
-        fill_value = 0.0 if boundary == "fill" else cumsum_g_raw[0]
+        fill_value = 0.0 if padding == "fill" else cumsum_g_raw[0]
         np.testing.assert_allclose(cumsum_g.data, np.hstack([fill_value, cumsum_g_raw]))
     elif to == "outer":
         np.testing.assert_allclose(cumsum_g.data, cumsum_g_raw[:-1])
-        fill_value = 0.0 if boundary == "fill" else cumsum_c_raw[0]
+        fill_value = 0.0 if padding == "fill" else cumsum_c_raw[0]
         np.testing.assert_allclose(cumsum_c.data, np.hstack([fill_value, cumsum_c_raw]))
 
     # not much point doing this...we don't have the right test datasets
@@ -222,7 +222,7 @@ def test_cumsum(nonperiodic_1d, boundary):
     # other_positions = {'left', 'right', 'inner', 'outer'}.difference({to})
     # for pos in other_positions:
     #     with pytest.raises(KeyError):
-    #         axis.cumsum(ds.data_c, to=pos, boundary=boundary)
+    #         axis.cumsum(ds.data_c, to=pos, padding=padding)
 
 
 @pytest.mark.parametrize(
@@ -230,7 +230,7 @@ def test_cumsum(nonperiodic_1d, boundary):
     ["interp", "max", "min", "diff", "cumsum"],
 )
 @pytest.mark.parametrize(
-    "boundary",
+    "padding",
     [
         "fill",
         "extend",
@@ -238,16 +238,16 @@ def test_cumsum(nonperiodic_1d, boundary):
         {"X": "extend", "Y": "fill"},
     ],
 )
-def test_dask_vs_eager(all_datasets, func, boundary):
+def test_dask_vs_eager(all_datasets, func, padding):
     ds, coords, metrics = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid_method = getattr(grid, func)
-    eager_result = grid_method(ds.tracer, "X", boundary=boundary)
+    eager_result = grid_method(ds.tracer, "X", padding=padding)
 
     ds = ds.chunk({"xt": 1, "yt": 1, "time": 1, "zt": 1})
     grid = Grid(ds, coords=coords, autoparse_metadata=False)
     grid_method = getattr(grid, func)
-    dask_result = grid_method(ds.tracer, "X", boundary=boundary).compute()
+    dask_result = grid_method(ds.tracer, "X", padding=padding).compute()
 
     xr.testing.assert_allclose(dask_result, eager_result)
 
@@ -260,7 +260,7 @@ def test_grid_dict_input_boundary_fill(nonperiodic_1d):
         ds,
         coords=grid_kwargs["coords"],
         periodic=False,
-        boundary="fill",
+        padding="fill",
         fill_value=5,
         autoparse_metadata=False,
     )
@@ -268,24 +268,24 @@ def test_grid_dict_input_boundary_fill(nonperiodic_1d):
         ds,
         coords=grid_kwargs["coords"],
         periodic=False,
-        boundary={"X": "fill"},
+        padding={"X": "fill"},
         fill_value={"X": 5},
         autoparse_metadata=False,
     )
     assert grid_direct.axes["X"].fill_value == grid_dict.axes["X"].fill_value
-    assert grid_direct.axes["X"].boundary == grid_dict.axes["X"].boundary
+    assert grid_direct.axes["X"].padding == grid_dict.axes["X"].padding
 
 
-def test_invalid_boundary_error():
+def test_invalid_padding_error():
     ds = datasets["1d_left"]
     with pytest.raises(ValueError):
-        Grid(ds, boundary="bad", autoparse_metadata=False)
+        Grid(ds, padding="bad", autoparse_metadata=False)
     with pytest.raises(ValueError):
-        Grid(ds, boundary={"X": "bad"}, autoparse_metadata=False)
+        Grid(ds, padding={"X": "bad"}, autoparse_metadata=False)
     with pytest.raises(ValueError):
-        Grid(ds, boundary={"X": 0}, autoparse_metadata=False)
+        Grid(ds, padding={"X": 0}, autoparse_metadata=False)
     with pytest.raises(ValueError):
-        Grid(ds, boundary=0, autoparse_metadata=False)
+        Grid(ds, padding=0, autoparse_metadata=False)
 
 
 def test_invalid_fill_value_error():
@@ -359,18 +359,18 @@ def test_keep_coords_deprecation():
             grid.diff(ds.tracer, axis_name, keep_coords=False)
 
 
-def test_boundary_kwarg_same_as_grid_constructor_kwarg():
+def test_padding_kwarg_same_as_grid_constructor_kwarg():
     ds = datasets["2d_left"]
     ds, grid_kwargs = parse_comodo(ds)
     grid1 = Grid(ds, coords=grid_kwargs["coords"], autoparse_metadata=False)
     grid2 = Grid(
         ds,
         coords=grid_kwargs["coords"],
-        boundary={"X": "fill", "Y": "fill"},
+        padding={"X": "fill", "Y": "fill"},
         autoparse_metadata=False,
     )
 
-    actual1 = grid1.interp(ds.data_g, ("X", "Y"), boundary={"X": "fill", "Y": "fill"})
+    actual1 = grid1.interp(ds.data_g, ("X", "Y"), padding={"X": "fill", "Y": "fill"})
     actual2 = grid2.interp(ds.data_g, ("X", "Y"))
 
     xr.testing.assert_identical(actual1, actual2)
@@ -388,7 +388,7 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
 )
 @pytest.mark.parametrize("periodic", [True, False])
 @pytest.mark.parametrize(
-    "boundary, boundary_expected",
+    "padding, padding_expected",
     [
         ({"X": "fill", "Y": "fill"}, {"X": "fill", "Y": "fill"}),
         ({"X": "extend", "Y": "extend"}, {"X": "extend", "Y": "extend"}),
@@ -399,13 +399,13 @@ def test_boundary_kwarg_same_as_grid_constructor_kwarg():
             "fill",
             {"X": "fill", "Y": "extend"},
             marks=pytest.mark.xfail,
-            id="boundary not equal to boundary_expected",
+            id="padding not equal to padding_expected",
         ),
     ],
 )
 @pytest.mark.parametrize("fill_value", [None, 0.1])
 def test_interp_like(
-    metric_axes, metric_name, periodic, boundary, boundary_expected, fill_value
+    metric_axes, metric_name, periodic, padding, padding_expected, fill_value
 ):
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(ds, coords=coords, periodic=periodic, autoparse_metadata=False)
@@ -413,10 +413,10 @@ def test_interp_like(
     metric_available = grid._metrics.get(frozenset(metric_axes), None)
     metric_available = metric_available[0]
     interp_metric = grid.interp_like(
-        metric_available, ds.u, boundary=boundary, fill_value=fill_value
+        metric_available, ds.u, padding=padding, fill_value=fill_value
     )
     expected_metric = grid.interp(
-        ds[metric_name], metric_axes, boundary=boundary_expected, fill_value=fill_value
+        ds[metric_name], metric_axes, padding=padding_expected, fill_value=fill_value
     )
 
     xr.testing.assert_allclose(interp_metric, expected_metric)
@@ -456,46 +456,44 @@ def test_input_dim_notfound():
     ],
 )
 @pytest.mark.parametrize(
-    "boundary",
+    "padding",
     ["fill", "extend"],
 )
 @pytest.mark.parametrize(
     "fill_value",
     [0, 10, None],
 )
-def test_boundary_global_input(funcname, boundary, fill_value):
-    """Test that globally defined boundary values result in
+def test_padding_global_input(funcname, padding, fill_value):
+    """Test that globally defined padding values result in
     the same output as when the parameters are defined the grid methods
     """
     ds, coords, metrics = datasets_grid_metric("C")
     axis = "X"
-    # Test results by globally specifying fill value/boundary on grid object
+    # Test results by globally specifying fill value/padding on grid object
     grid_global = Grid(
         ds,
         coords=coords,
         metrics=metrics,
         periodic=False,
-        boundary=boundary,
+        padding=padding,
         fill_value=fill_value,
         autoparse_metadata=False,
     )
     func_global = getattr(grid_global, funcname)
     global_result = func_global(ds.tracer, axis)
 
-    # Test results by manually specifying fill value/boundary on grid method
+    # Test results by manually specifying fill value/padding on grid method
     grid_manual = Grid(
         ds,
         coords=coords,
         metrics=metrics,
         periodic=False,
-        boundary=boundary,
+        padding=padding,
         autoparse_metadata=False,
     )
 
     func_manual = getattr(grid_manual, funcname)
-    manual_result = func_manual(
-        ds.tracer, axis, boundary=boundary, fill_value=fill_value
-    )
+    manual_result = func_manual(ds.tracer, axis, padding=padding, fill_value=fill_value)
     xr.testing.assert_allclose(global_result, manual_result)
 
 

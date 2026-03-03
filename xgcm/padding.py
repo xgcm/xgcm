@@ -347,29 +347,30 @@ def _pad_basic(
 def pad(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
-    boundary_width: Optional[Dict[str, Tuple[int, int]]],
-    boundary: Optional[Union[str, Mapping[str, str]]] = None,
+    padding_width: Optional[Dict[str, Tuple[int, int]]],
+    padding: Optional[Union[str, Mapping[str, str]]] = None,
     fill_value: Optional[Union[float, Mapping[str, float]]] = None,
     other_component: Optional[Dict[str, xr.DataArray]] = None,
+    **kwargs,
 ):
     """
-    Pads the boundary of given arrays along given Axes, according to information in Axes.boundary.
+    Pads the boundary of given arrays along given Axes, according to information in Axes.padding.
     Parameters
     ----------
     data :
-        Array to pad according to boundary and boundary_width.
+        Array to pad according to padding and padding_width.
         If a dictionary is passed the input is assumed to be a vector component
         (with the directionof that component identified by the dict key, matching one of the grid axes)
     grid : xgcm.Grid
-        Grid object specifiying the topology and default boundary conditions to use for padding.
-    boundary_width :
+        Grid object specifiying the topology and default padding conditions to use for padding.
+    padding_width :
         The widths of the boundaries at the edge of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+    padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+        A flag indicating how to handle padding:
 
-        * None:  Do not apply any boundary conditions. Raise an error if
-            boundary conditions are required for the operation.
+        * None:  Do not apply any padding conditions. Raise an error if
+            padding conditions are required for the operation.
         * 'fill':  Set values outside the array boundary to fill_value
             (i.e. a Dirichlet boundary condition.)
         * 'extend': Set values outside the array to the nearest array
@@ -379,7 +380,7 @@ def pad(
         Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value :
-        The value to use in boundary conditions with `boundary='fill'`.
+        The value to use in padding conditions with `padding='fill'`.
         Optionally a dict mapping axis name to separate values for each axis
         can be passed. Default is 0.
     other_component :
@@ -388,12 +389,22 @@ def pad(
         dict key, matching one of the grid axes)
     """
 
-    # TODO rename this globally
-    padding = boundary
-    padding_width = boundary_width
+    # TODO - remove deprecation handling
+    if "boundary" in kwargs:
+        raise ValueError(
+            "Argument 'boundary' has been renamed to 'padding'. "
+            "Please use 'padding' instead."
+        )
+
+    # TODO - remove deprecation handling
+    if "boundary_width" in kwargs:
+        raise ValueError(
+            "Argument 'boundary_width' has been renamed to 'padding_width'. "
+            "Please use 'padding_width' instead."
+        )
 
     # Always promote the padding/fill_value to a dict of form {ax: kwarg}.
-    padding = grid._complete_user_kwargs_using_axis_defaults(padding, "boundary")
+    padding = grid._complete_user_kwargs_using_axis_defaults(padding, "padding")
     fill_value = grid._complete_user_kwargs_using_axis_defaults(
         fill_value, "fill_value"
     )
