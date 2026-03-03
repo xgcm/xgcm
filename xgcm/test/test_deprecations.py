@@ -23,10 +23,10 @@ def test_periodic_true_deprecation():
         )
 
 
-def test_boundary_deprecation():
+def test_padding_deprecation():
     ds = datasets["2d_left"]
     with pytest.raises(
-        DeprecationWarning, match="The `boundary` argument is deprecated"
+        ValueError, match="Argument 'boundary' has been renamed to 'padding'"
     ):
         xgcm.Grid(
             ds,

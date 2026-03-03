@@ -17,7 +17,7 @@ class TestInit:
 
         # test default values of attributes
         assert axis.default_shifts == {"left": "center", "center": "left"}
-        assert axis.boundary == "periodic"
+        assert axis.padding == "periodic"
 
     def test_override_defaults(self, periodic_1d):
         # test initialisation
@@ -28,7 +28,7 @@ class TestInit:
             coords={"center": "XC", "left": "XG"},
             # TODO does this make sense as default shifts?
             default_shifts={"left": "inner", "center": "outer"},
-            boundary="fill",
+            padding="fill",
         )
 
         # test attributes
@@ -38,7 +38,7 @@ class TestInit:
         # test default values of attributes
         # TODO (these deafult shift values make no physical sense)
         assert axis.default_shifts == {"left": "inner", "center": "outer"}
-        assert axis.boundary == "fill"
+        assert axis.padding == "fill"
 
     def test_inconsistent_dims(self, periodic_1d):
         """Test when xgcm coord names are not present in dataset dims"""
@@ -62,12 +62,12 @@ class TestInit:
                 default_shifts={"left": "left", "center": "center"},
             )
 
-        with pytest.raises(ValueError, match="boundary must be one of"):
+        with pytest.raises(ValueError, match="padding must be one of"):
             Axis(
                 name="foo",
                 ds=ds,
                 coords={"center": "XC", "left": "XG"},
-                boundary="blargh",
+                padding="blargh",
             )
 
     def test_repr(self, periodic_1d):

@@ -191,7 +191,7 @@ def test_get_metric_with_conditions_02a(periodic):
         ds,
         coords=coords,
         periodic=periodic,
-        boundary="extend",
+        padding="extend",
         autoparse_metadata=False,
     )
     grid.set_metrics(("X", "Y"), "area_e")
