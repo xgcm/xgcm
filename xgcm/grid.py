@@ -35,13 +35,6 @@ from .grid_ufunc import (
 from .metrics import iterate_axis_combinations
 from .padding import pad
 
-try:
-    import numba  # type: ignore
-
-    from .transform import transform
-except ImportError:
-    numba = None
-
 from typing import Literal
 
 
@@ -1547,8 +1540,9 @@ class Grid:
 
 
         """
-        # check optional numba dependency
-        if numba is None:
+        try:
+            from .transform import transform
+        except ImportError:
             raise ImportError(
                 "The transform functionality of xgcm requires numba. Install using `conda install numba`."
             )
