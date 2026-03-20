@@ -1,7 +1,7 @@
 xgcm: General Circulation Model Postprocessing with xarray
 ==========================================================
 
-|pypi| |conda forge| |conda-forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style| |pre-commit|
+|pypi| |conda forge| |conda-forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style| |pre-commit| |effver|
 
 Binder Examples
 ---------------
@@ -84,3 +84,6 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
 .. |pre-commit| image:: https://results.pre-commit.ci/badge/github/xgcm/xgcm/master.svg
    :target: https://results.pre-commit.ci/latest/github/xgcm/xgcm/master
    :alt: pre-commit.ci status
+.. |effver| image:: https://img.shields.io/badge/version_scheme-EffVer-0097a7
+   :target: https://jacobtomlinson.dev/effver
+   :alt: EffVer Versioning
