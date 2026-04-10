@@ -32,13 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools setuptools-scm build twine
-      - name: Build only
-        if: github.event_name != 'release'
-        run: |
-          python -m build
-          twine check dist/*
       - name: Build
-        if: github.event_name == 'release'
         run: |
           python -m build
           twine check dist/*
