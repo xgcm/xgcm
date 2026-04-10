@@ -10,10 +10,15 @@ on:
     types:
       - published
 
+permissions: {}
+
 jobs:
   build-artifacts:
     runs-on: ubuntu-latest
     if: github.repository == 'xgcm/xgcm'
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -32,12 +37,11 @@ jobs:
         run: |
           python -m build
           twine check dist/*
-      - name: Build and publish
+      - name: Build
         if: github.event_name == 'release'
-        env:
-          TWINE_USERNAME: "__token__"
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
           python -m build
           twine check dist/*
-          twine upload dist/*
+      - name: Publish to PyPI
+        if: github.event_name == 'release'
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

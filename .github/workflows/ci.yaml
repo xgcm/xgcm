@@ -18,10 +18,13 @@ concurrency:
 env:
   PIXI_VERSION: "v0.63.0"
 
+permissions: {}
 
 jobs:
   cache-pixi-lock:
     runs-on: ubuntu-slim
+    permissions:
+      contents: read
     outputs:
       cache-key: ${{ steps.pixi-lock.outputs.cache-key }}
       pixi-version: ${{ steps.pixi-lock.outputs.pixi-version }}
@@ -42,6 +45,8 @@ jobs:
     needs: ["cache-pixi-lock"]
     if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     timeout-minutes: 60
     defaults:
       run:
@@ -89,6 +94,7 @@ jobs:
     name: GHA Security Analysis using Zizmor
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       security-events: write # Required for upload-sarif (used by zizmor-action) to upload SARIF files.
     steps:
       - name: Checkout repository
