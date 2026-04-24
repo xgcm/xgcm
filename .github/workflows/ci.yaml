@@ -73,7 +73,7 @@ jobs:
         with:
           cache-key: ${{ needs.cache-pixi-lock.outputs.cache-key }}
 
-      - uses: prefix-dev/setup-pixi@fef5c9568ca6c4ff7707bf840ab0692ba3f08293 # v0.9.0
+      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
         with:
           pixi-version: ${{ needs.cache-pixi-lock.outputs.pixi-version }}
           cache: true
