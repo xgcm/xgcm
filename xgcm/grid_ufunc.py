@@ -942,7 +942,8 @@ def _map_func_over_core_dims(
     # Need to transpose the numpy axis arguments to leave core dims at end
     # else they won't match up inside mapped_func after xr.apply_ufunc does its transposition
     transposed_original_args = [
-        arg.transpose(..., *in_core_dims[i]) for i, arg in enumerate(original_args)
+        _maybe_unpack_vector_component(arg).transpose(..., *in_core_dims[i])
+        for i, arg in enumerate(original_args)
     ]
 
     boundary_width_per_numpy_axis = {
@@ -1020,7 +1021,8 @@ def _rechunk_to_merge_in_boundary_chunks(
 
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
-        original_arg_chunks = original_arg.variable.chunksizes
+        original_arg_da = _maybe_unpack_vector_component(original_arg)
+        original_arg_chunks = original_arg_da.variable.chunksizes
         merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
             grid,
             padded_arg,
