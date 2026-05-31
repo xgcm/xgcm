@@ -1072,3 +1072,131 @@ class TestPaddingFaceConnection:
             )
             if di in padded_simple.coords:
                 xr.testing.assert_allclose(padded_complex[di], padded_simple[di])
+
+
+# ---------------------------------------------------------------------------
+# Bipolar / tripolar fold connections
+# ---------------------------------------------------------------------------
+# A fold joins two edges of the *same* axis (e.g. the north edges of two faces)
+# and mirrors the halo along the tangential (in-seam) axis. The 4th element of a
+# connection tuple, `fold=True`, requests this. These tests pad the north (Y
+# "right") edge directly with an explicit boundary_width so the fold is exercised
+# regardless of the default diff/interp shift direction.
+
+_FOLD_CONNECTIONS = {
+    "face": {
+        0: {"X": (None, (1, "X", False)), "Y": (None, (1, "Y", False, True))},
+        1: {"X": ((0, "X", False), None), "Y": (None, (0, "Y", False, True))},
+    }
+}
+
+# pad the north (Y-right) edge by one row; do not pad X (so the X connection is
+# only declared, letting the fold infer the tangential mirror axis).
+_FOLD_BW = {"X": (0, 0), "Y": (0, 1)}
+
+
+def test_face_connections_fold_scalar(ds_faces):  # noqa: F811
+    grid = Grid(ds_faces, face_connections=_FOLD_CONNECTIONS)
+    data = ds_faces.data_c.reset_coords(drop=True).reset_index(
+        ds_faces.data_c.dims, drop=True
+    )
+
+    f0 = data.isel(face=0)
+    f1 = data.isel(face=1)
+    # north halo = partner face's north row, mirrored along x
+    f0_add = f1.isel(y=slice(-1, None)).isel(x=slice(None, None, -1))
+    f1_add = f0.isel(y=slice(-1, None)).isel(x=slice(None, None, -1))
+    f0_exp = xr.concat([f0, f0_add], dim="y")
+    f1_exp = xr.concat([f1, f1_add], dim="y")
+    expected = xr.concat([f0_exp, f1_exp], dim="face")
+
+    result = pad(
+        data,
+        grid,
+        boundary_width=_FOLD_BW,
+        boundary="fill",
+        fill_value=0.0,
+        other_component=None,
+    )
+    xr.testing.assert_allclose(result, expected)
+
+
+def test_face_connections_fold_vector(ds_faces):  # noqa: F811
+    grid = Grid(ds_faces, face_connections=_FOLD_CONNECTIONS)
+    u = ds_faces.u.reset_coords(drop=True).reset_index(ds_faces.u.dims, drop=True)
+    v = ds_faces.v.reset_coords(drop=True).reset_index(ds_faces.v.dims, drop=True)
+
+    # Across the fold both horizontal velocity components are mirrored along x
+    # AND reverse sign (the seam acts as a 180-degree pivot about the pole).
+    u0, u1 = u.isel(face=0), u.isel(face=1)
+    v0, v1 = v.isel(face=0), v.isel(face=1)
+
+    u0_add = -u1.isel(y=slice(-1, None)).isel(xl=slice(None, None, -1))
+    u1_add = -u0.isel(y=slice(-1, None)).isel(xl=slice(None, None, -1))
+    u_expected = xr.concat(
+        [
+            xr.concat([u0, u0_add], dim="y"),
+            xr.concat([u1, u1_add], dim="y"),
+        ],
+        dim="face",
+    )
+
+    v0_add = -v1.isel(yl=slice(-1, None)).isel(x=slice(None, None, -1))
+    v1_add = -v0.isel(yl=slice(-1, None)).isel(x=slice(None, None, -1))
+    v_expected = xr.concat(
+        [
+            xr.concat([v0, v0_add], dim="yl"),
+            xr.concat([v1, v1_add], dim="yl"),
+        ],
+        dim="face",
+    )
+
+    u_result = pad(
+        {"X": u},
+        grid,
+        boundary_width=_FOLD_BW,
+        boundary="fill",
+        fill_value=0.0,
+        other_component={"Y": v},
+    )
+    xr.testing.assert_allclose(u_result, u_expected)
+
+    v_result = pad(
+        {"Y": v},
+        grid,
+        boundary_width=_FOLD_BW,
+        boundary="fill",
+        fill_value=0.0,
+        other_component={"X": u},
+    )
+    xr.testing.assert_allclose(v_result, v_expected)
+
+
+def test_face_connections_fold_self(ds_faces):  # noqa: F811
+    # a single face whose north edge folds onto itself (i <-> Ni - i), with X
+    # periodic via a self-connection so the fold can find the tangential axis.
+    fc = {
+        "face": {
+            0: {
+                "X": ((0, "X", False), (0, "X", False)),
+                "Y": (None, (0, "Y", False, True)),
+            }
+        }
+    }
+    ds1 = ds_faces.isel(face=slice(0, 1))
+    grid = Grid(ds1, face_connections=fc)
+    data = ds1.data_c.reset_coords(drop=True).reset_index(ds1.data_c.dims, drop=True)
+
+    f0 = data.isel(face=0)
+    f0_add = f0.isel(y=slice(-1, None)).isel(x=slice(None, None, -1))
+    expected = xr.concat([xr.concat([f0, f0_add], dim="y")], dim="face")
+
+    result = pad(
+        data,
+        grid,
+        boundary_width=_FOLD_BW,
+        boundary="fill",
+        fill_value=0.0,
+        other_component=None,
+    )
+    xr.testing.assert_allclose(result, expected)

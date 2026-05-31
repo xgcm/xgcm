@@ -346,9 +346,13 @@ class Grid:
                 def check_neighbor(link, position):
                     if link is None:
                         return
-                    idx, ax, rev = link
-                    # need to swap position if the link is reversed
-                    correct_position = int(not position) if rev else position
+                    # links are (face, axis, reverse) tuples, with an optional 4th
+                    # element `fold` (defaults to False) for bipolar/tripolar seams.
+                    idx, ax, rev, *_r = link
+                    fold = _r[0] if _r else False
+                    # need to swap position if the link is reversed, or a fold,
+                    # since both join same-side edges (e.g. north-to-north).
+                    correct_position = int(not position) if (rev or fold) else position
                     try:
                         neighbor_link = face_links[idx][ax][correct_position]
                     except (KeyError, IndexError):
@@ -356,7 +360,8 @@ class Grid:
                             "Couldn't find a face link for face %r"
                             "in axis %r at position %r" % (idx, ax, correct_position)
                         )
-                    idx_n, ax_n, rev_n = neighbor_link
+                    idx_n, ax_n, rev_n, *_rn = neighbor_link
+                    fold_n = _rn[0] if _rn else False
                     if ax not in self.axes:
                         raise KeyError("axis %r is not a valid axis" % ax)
                     if ax_n not in self.axes:
@@ -372,17 +377,22 @@ class Grid:
                             "dimension %r" % (idx, facedim)
                         )
                     # check for consistent links from / to neighbor
-                    if (idx_n != fidx) or (ax_n != axis) or (rev_n != rev):
+                    if (
+                        (idx_n != fidx)
+                        or (ax_n != axis)
+                        or (rev_n != rev)
+                        or (fold_n != fold)
+                    ):
                         raise ValueError(
                             "Face link mismatch: neighbor doesn't"
                             " correctly link back to this face. "
                             "face: %r, axis: %r, position: %r, "
-                            "rev: %r, link: %r, neighbor_link: %r"
-                            % (fidx, axis, position, rev, link, neighbor_link)
+                            "rev: %r, fold: %r, link: %r, neighbor_link: %r"
+                            % (fidx, axis, position, rev, fold, link, neighbor_link)
                         )
                     # convert the axis name to an acutal axis object
                     actual_axis = self.axes[ax]
-                    return idx, actual_axis, rev
+                    return idx, actual_axis, rev, fold
 
                 left = check_neighbor(link_left, 1)
                 right = check_neighbor(link_right, 0)

@@ -171,7 +171,13 @@ def _pad_face_connections(
                 if width > 0:
                     if connection:
                         # apply face connection logic #
-                        source_face, source_axis, reverse = connection
+                        # connections are (face, axis, reverse) tuples, with an
+                        # optional 4th element `fold` (defaults to False). A fold
+                        # connection (e.g. the bipolar Arctic seam of a tripolar
+                        # grid) joins two edges of the *same* axis and mirrors the
+                        # halo along the tangential (in-seam) dimension.
+                        source_face, source_axis, reverse, *_rest = connection
+                        fold = _rest[0] if _rest else False
 
                         # is the connection along the same axis or not
                         swap_axis = False
@@ -200,8 +206,10 @@ def _pad_face_connections(
                         # I am thinking about how to make this easier later
                         if is_right:
                             # the right connection should be padded with the leftmost index
-                            # of the source unless reverse is true
-                            if reverse:
+                            # of the source unless reverse is true. A fold joins two
+                            # right (or two left) edges, so it reads the same far edge
+                            # as a reversed connection.
+                            if reverse or fold:
                                 source_slice_index = slice(-2 * width, -width)
                             else:
                                 source_slice_index = slice(width, 2 * width)
@@ -211,7 +219,7 @@ def _pad_face_connections(
                         else:
                             # the left connection should be padded with the rightmost index
                             # of the source unless reverse is true
-                            if reverse:
+                            if reverse or fold:
                                 source_slice_index = slice(width, 2 * width)
                             else:
                                 source_slice_index = slice(-2 * width, -width)
@@ -256,6 +264,37 @@ def _pad_face_connections(
                             if isvector:
                                 if vectoraxis != axname:
                                     source_slice = -source_slice
+
+                        # Fold (e.g. the bipolar/tripolar Arctic seam): the halo is
+                        # mirrored along the in-seam (tangential) dimension. Because
+                        # face connections only ever join horizontal axes, the other
+                        # axes connected on this face are exactly the in-plane axes
+                        # perpendicular to the fold axis -- the ones to mirror.
+                        if fold:
+                            tangential_axes = [
+                                ax for ax in connection_single if ax != axname
+                            ]
+                            if not tangential_axes:
+                                raise ValueError(
+                                    "Could not determine the in-seam axis for a fold "
+                                    f"connection on axis {axname!r} of face {i}. "
+                                    "Declare the perpendicular axis as a connection "
+                                    "(e.g. periodic) so the fold knows which "
+                                    "dimension to mirror."
+                                )
+                            for tax in tangential_axes:
+                                _, tdim = grid.axes[tax]._get_position_name(
+                                    source_slice
+                                )
+                                source_slice = source_slice.isel(
+                                    {tdim: slice(None, None, -1)}
+                                )
+                            if isvector:
+                                # Both horizontal velocity components reverse sign
+                                # across the fold (the seam acts as a 180-degree pivot
+                                # about the pole), matching the NEMO/MOM north-fold
+                                # convention.
+                                source_slice = -source_slice
 
                         source_slice = source_slice.squeeze()
 

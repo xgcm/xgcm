@@ -69,6 +69,21 @@ def ds_face_connections_x_to_y_reverse():
 
 
 @pytest.fixture(scope="module")
+def ds_face_connections_fold():
+    # A bipolar/tripolar-style fold: two faces joined along the *same* axis (Y)
+    # at the same-side (here the Y "left"/south edge so the default center->left
+    # diff exercises it), with the halo mirrored along the tangential X axis.
+    # The 4th tuple element (fold=True) requests the tangential mirror. X is also
+    # connected so the fold can infer which axis to mirror.
+    return {
+        "face": {
+            0: {"X": (None, (1, "X", False)), "Y": ((1, "Y", False, True), None)},
+            1: {"X": ((0, "X", False), None), "Y": ((0, "Y", False, True), None)},
+        }
+    }
+
+
+@pytest.fixture(scope="module")
 def cs():
     # cubed-sphere
     N = 25
@@ -200,6 +215,30 @@ def test_diff_interp_connected_grid_x_to_y(ds, ds_face_connections_x_to_y):
         0.5 * (ds.data_c.data[1, 0, :].ravel() + ds.data_c.data[0, ::-1, -1].ravel()),
     )
     # TODO: checking all the other boundaries
+
+
+def test_diff_interp_connected_grid_fold(ds, ds_face_connections_fold):
+    # bipolar-style fold: same-axis (Y) connection with a tangential (X) mirror
+    grid = Grid(ds, face_connections=ds_face_connections_fold, periodic=False)
+
+    diff_y = grid.diff(ds.data_c, "Y", boundary="fill")
+    interp_y = grid.interp(ds.data_c, "Y", boundary="fill")
+
+    # the south halo of each face is the partner face's south row, mirrored in X.
+    # so at face 1's first Y point the neighbor across the fold is face 0's first
+    # Y row reversed in x.
+    np.testing.assert_allclose(
+        diff_y.data[1, 0, :], ds.data_c.data[1, 0, :] - ds.data_c.data[0, 0, ::-1]
+    )
+    np.testing.assert_allclose(
+        interp_y.data[1, 0, :],
+        0.5 * (ds.data_c.data[1, 0, :] + ds.data_c.data[0, 0, ::-1]),
+    )
+
+    # symmetric for face 0
+    np.testing.assert_allclose(
+        diff_y.data[0, 0, :], ds.data_c.data[0, 0, :] - ds.data_c.data[1, 0, ::-1]
+    )
 
 
 @pytest.mark.parametrize("boundary", ["periodic", "fill"])

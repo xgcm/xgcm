@@ -207,6 +207,22 @@ connection) or a three element tuple with the following contents
 face to the left edge of another face. A reversed connection connects
 left to left, or right to right.
 
+An optional fourth element specifies a **fold** connection
+
+```
+(<FACE DIMENSION VALUE>, `<AXIS NAME>`, <REVERSE CONNECTION>, <FOLD>)
+```
+
+`<FOLD>` is a boolean (default `False`). A fold joins two same-side edges of the
+*same* axis (e.g. the northern edge of one face to the northern edge of another)
+and mirrors the exchanged halo along the *tangential* (in-seam) axis. This is the
+connection needed for the **bipolar Arctic seam of a tripolar grid** (as used by
+MOM6, NEMO and MOM5), where the northernmost row folds onto itself so that
+column `i` is identified with its mirror column `N − i`. For vector fields both
+horizontal components reverse sign across the fold (the seam acts as a 180°
+pivot about the pole). See the
+[MOM6 tripolar example](xgcm-examples/03_MOM6.ipynb) for a worked case.
+
 !!! note
     We may consider adding standard `face_connections` dictionaries for common
     models (e.g. MITgcm, GEOS, etc.) as a convenience within xgcm. If you would
