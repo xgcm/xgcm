@@ -349,24 +349,23 @@ def test_vector_diff_interp_connected_grid_x_to_y_dask(
         )
 
 
-@pytest.mark.xfail(
-    raises=ValueError,
-    reason="map_overlap path does not support face-connection vectors with a "
-    "chunked core dim, see https://github.com/xgcm/xgcm/issues/708",
-)
-def test_vector_diff_connected_grid_x_to_y_dask_multichunk(
-    ds, ds_face_connections_x_to_y
+@pytest.mark.parametrize("method", ["interp_2d_vector", "diff_2d_vector"])
+def test_vector_diff_interp_connected_grid_x_to_y_dask_multichunk(
+    ds, ds_face_connections_x_to_y, method
 ):
-    """Known failure: see https://github.com/xgcm/xgcm/issues/708.
+    """Regression test for https://github.com/xgcm/xgcm/issues/708.
 
     When a vector component has more than one chunk along its core dimension,
     ``_1d_grid_ufunc_dispatch`` routes through the ``map_overlap`` path
-    (``_map_func_over_core_dims``). Face-connection padding changes the number
-    of blocks along the core dim, but the ``adjust_chunks`` spec handed to dask
-    still expects the pre-pad block count, so the computation fails with
-    ``ValueError: Dimension 0 has 2 blocks, adjust_chunks specified with 1
-    blocks``. Unlike #704 (fixed, single-chunk case), this path is not yet
-    supported. When this starts passing, fix #708 and remove the xfail marker.
+    (``_map_func_over_core_dims``) instead of the single-chunk path exercised by
+    ``test_vector_diff_interp_connected_grid_x_to_y_dask`` (#704). Padding a
+    vector component across a face connection pulls in data from the connected
+    face, which forces dask to rechunk the *non-core* dims (e.g. splitting the
+    face dim). The ``adjust_chunks`` spec handed to dask used to be derived from
+    the pre-pad array, so it still expected the original block count and the
+    computation failed with ``ValueError: Dimension 0 has 2 blocks,
+    adjust_chunks specified with 1 blocks``. The result must now match the numpy
+    path exactly.
     """
     pytest.importorskip("dask")
 
@@ -376,14 +375,34 @@ def test_vector_diff_connected_grid_x_to_y_dask_multichunk(
     u = ds.u.chunk({"xl": 10})
     v = ds.v.chunk({"yl": 10})
 
-    vector_out = grid.diff_2d_vector(
+    vector_out = getattr(grid, method)(
         {"X": u, "Y": v},
         to="center",
         boundary="fill",
         fill_value=100,
     )
-    # The failure surfaces on compute (lazy graph construction may succeed).
-    vector_out["X"].compute()
+    u_c = vector_out["X"]
+
+    # The result should stay on the dask path, with the core dim still chunked.
+    assert u_c.chunks is not None
+    assert len(u_c.variable.chunksizes["x"]) > 1
+
+    # Values must match the numpy path: first point is normal, last point picks
+    # up the rotated neighbour across the face connection.
+    if method == "interp_2d_vector":
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], 0.5 * (ds.u.data[0, 0, :] + ds.u.data[0, 1, :])
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], 0.5 * (ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0])
+        )
+    else:
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], ds.u.data[0, 1, :] - ds.u.data[0, 0, :]
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], -ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0]
+        )
 
 
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
