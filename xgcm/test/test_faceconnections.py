@@ -295,6 +295,60 @@ def test_vector_diff_interp_connected_grid_x_to_y(
         _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, boundary="fill")
 
 
+@pytest.mark.parametrize("method", ["interp_2d_vector", "diff_2d_vector"])
+def test_vector_diff_interp_connected_grid_x_to_y_dask(
+    ds, ds_face_connections_x_to_y, method
+):
+    """Regression test for https://github.com/xgcm/xgcm/issues/704.
+
+    When the vector components are dask-backed, padding splits the core
+    dimension into boundary chunks, so the operation goes through
+    ``_rechunk_to_merge_in_boundary_chunks``. That helper used to assume the
+    argument was always a ``DataArray`` and raised
+    ``AttributeError: 'dict' object has no attribute 'variable'`` when handed
+    the ``{"X": u}`` vector-component dict (see the traceback in #704). Here we
+    keep the inputs lazy (single chunk per core dim) so the result must match
+    the numpy path exactly.
+    """
+    pytest.importorskip("dask")
+
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+
+    # Keep the components lazy with a single chunk per core dim. This mirrors
+    # the #704 scenario: map_overlap stays False, but padding still chunks the
+    # core dim, exercising _rechunk_to_merge_in_boundary_chunks.
+    u = ds.u.chunk()
+    v = ds.v.chunk()
+
+    vector_out = getattr(grid, method)(
+        {"X": u, "Y": v},
+        to="center",
+        boundary="fill",
+        fill_value=100,
+    )
+    u_c = vector_out["X"]
+
+    # The result should stay on the dask path.
+    assert u_c.chunks is not None
+
+    # Values must match the numpy path: first point is normal, last point picks
+    # up the rotated neighbour across the face connection.
+    if method == "interp_2d_vector":
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], 0.5 * (ds.u.data[0, 0, :] + ds.u.data[0, 1, :])
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], 0.5 * (ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0])
+        )
+    else:
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], ds.u.data[0, 1, :] - ds.u.data[0, 0, :]
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], -ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0]
+        )
+
+
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
     _ = Grid(cs, face_connections=cubed_sphere_connections)
 
