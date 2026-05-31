@@ -349,6 +349,43 @@ def test_vector_diff_interp_connected_grid_x_to_y_dask(
         )
 
 
+@pytest.mark.xfail(
+    raises=ValueError,
+    reason="map_overlap path does not support face-connection vectors with a "
+    "chunked core dim, see https://github.com/xgcm/xgcm/issues/708",
+)
+def test_vector_diff_connected_grid_x_to_y_dask_multichunk(
+    ds, ds_face_connections_x_to_y
+):
+    """Known failure: see https://github.com/xgcm/xgcm/issues/708.
+
+    When a vector component has more than one chunk along its core dimension,
+    ``_1d_grid_ufunc_dispatch`` routes through the ``map_overlap`` path
+    (``_map_func_over_core_dims``). Face-connection padding changes the number
+    of blocks along the core dim, but the ``adjust_chunks`` spec handed to dask
+    still expects the pre-pad block count, so the computation fails with
+    ``ValueError: Dimension 0 has 2 blocks, adjust_chunks specified with 1
+    blocks``. Unlike #704 (fixed, single-chunk case), this path is not yet
+    supported. When this starts passing, fix #708 and remove the xfail marker.
+    """
+    pytest.importorskip("dask")
+
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+
+    # >1 chunk along the core dim flips the dispatch onto the map_overlap path.
+    u = ds.u.chunk({"xl": 10})
+    v = ds.v.chunk({"yl": 10})
+
+    vector_out = grid.diff_2d_vector(
+        {"X": u, "Y": v},
+        to="center",
+        boundary="fill",
+        fill_value=100,
+    )
+    # The failure surfaces on compute (lazy graph construction may succeed).
+    vector_out["X"].compute()
+
+
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
     _ = Grid(cs, face_connections=cubed_sphere_connections)
 
