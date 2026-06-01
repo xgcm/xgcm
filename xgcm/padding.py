@@ -19,6 +19,151 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
     None: "wrap",  # current default is periodic. This should achieve that.
 }
 
+# ---------------------------------------------------------------------------
+# Bipolar / tripolar north-fold boundary
+# ---------------------------------------------------------------------------
+# A "fold" boundary expresses the bipolar Arctic seam of a tripolar grid (MOM6,
+# NEMO, MOM5, Oceananigans): the northern edge of the (single-tile) grid folds
+# onto itself, mirroring the zonal axis about the pole, and reversing the sign
+# of vector components (the fold is a 180-degree pivot about the pole).
+#
+# Axis convention: the *fold axis is the meridional "Y" axis* (the one whose
+# northern edge folds -- you declare the fold boundary on it), and the *seam
+# axis is the zonal "X" axis* (the periodic axis it mirrors along, inferred
+# automatically as the periodic partner). Everything below is therefore written
+# purely in terms of X and Y, e.g.
+# ``boundary={"X": "periodic", "Y": {"fold": "corner"}}``.
+#
+# The value names the *pivot type*: the cell sublattice the pole sits on in each
+# direction -- a cell ``center``, or a cell ``edge`` (a face/corner, i.e. offset
+# half a cell) -- in the usual ocean-model T/U/V/F shorthand:
+#
+#   center / T : (X=center, Y=center)   -- pole on a tracer (T) point
+#   corner / F : (X=edge,   Y=edge)     -- pole on a cell corner (F) point
+#   U          : (X=edge,   Y=center)   -- pole on a U (east/west face) point
+#   V          : (X=center, Y=edge)     -- pole on a V (north/south face) point
+#
+# Only the *north* (upper) edge of the Y axis folds; the south edge uses the
+# ``"south"`` mode (default ``"fill"``).
+#
+# (Internally the two roles are keyed "seam" (= X) and "fold" (= Y), so the grid
+# need not literally name its axes "X"/"Y"; "X" and "Y" here just mean the zonal
+# seam axis and the meridional fold axis.)
+_PIVOT_ALIASES = {
+    # keyed by role: "seam" == the zonal X axis, "fold" == the meridional Y axis
+    "center": {"seam": "center", "fold": "center"},  # T  : X=center, Y=center
+    "t": {"seam": "center", "fold": "center"},
+    "corner": {"seam": "edge", "fold": "edge"},  # F  : X=edge,   Y=edge
+    "f": {"seam": "edge", "fold": "edge"},
+    "u": {"seam": "edge", "fold": "center"},  # U  : X=edge,   Y=center
+    "v": {"seam": "center", "fold": "edge"},  # V  : X=center, Y=edge
+}
+
+
+def _is_fold_boundary(boundary) -> bool:
+    """True if a (per-axis) boundary value requests a north fold."""
+    return isinstance(boundary, Mapping) and "fold" in boundary
+
+
+def _position_kind(position: str) -> str:
+    """Collapse an xgcm position to the center/edge sublattice it lives on."""
+    return "center" if position == "center" else "edge"
+
+
+# For the seam (X) mirror we reflect each field about the pole using its physical
+# cell coordinate, which is robust for every position -- including ``outer`` /
+# symmetric memory (length N+1, with a duplicated periodic endpoint) where a
+# plain reversal+roll would be off by the wrap. With cell coordinate
+# ``x_k = k + offset`` (offset 0 on a left/outer face, 0.5 at a center, 1 on a
+# right/inner face), the partner index of output point ``k`` is
+# ``(C - k - 2*offset) mod N`` with ``N`` the number of cells (the zonal period)
+# and ``C = 0`` for an edge pivot or ``1`` for a center pivot.
+_SEAM_POSITION = {
+    # position: (2*offset, delta) with N = len(dim) - delta
+    "center": (1, 0),
+    "left": (0, 0),
+    "right": (2, 0),
+    "outer": (0, 1),
+    "inner": (2, -1),
+}
+
+
+def _seam_partner_indices(position: str, pivot_seam: str, length: int) -> np.ndarray:
+    """Source indices mirroring a seam-axis dim about the pole (see note above)."""
+    two_offset, delta = _SEAM_POSITION[position]
+    n_cells = length - delta
+    c = 0 if pivot_seam == "edge" else 1
+    k = np.arange(length)
+    return (c - k - two_offset) % n_cells
+
+
+def _parse_fold_boundary(boundary: Mapping) -> Dict:
+    """Validate a fold boundary value and return a normalized dict.
+
+    Returns ``{"fold": <alias str or {axis: position} mapping>, "south": <mode>}``.
+    The pivot is resolved to X/Y (seam/fold) center-vs-edge roles later (in
+    ``_pad_fold``), once the seam (zonal X) axis is known.
+    """
+    if not _is_fold_boundary(boundary):
+        raise ValueError(f"Not a fold boundary value: {boundary!r}")
+    extra = set(boundary) - {"fold", "south"}
+    if extra:
+        raise ValueError(
+            f"Unknown keys {sorted(extra)} in fold boundary {dict(boundary)!r}. "
+            "Allowed keys are 'fold' (pivot type) and 'south' (south-edge mode)."
+        )
+    pivot = boundary["fold"]
+    if isinstance(pivot, str):
+        if pivot.lower() not in _PIVOT_ALIASES:
+            raise ValueError(
+                f"Unknown fold pivot {pivot!r}. Use one of "
+                f"{sorted({k for k in _PIVOT_ALIASES})} "
+                "or an explicit {axis: position} mapping."
+            )
+    elif isinstance(pivot, Mapping):
+        # explicit per-axis pivot positions, e.g. {"X": "right", "Y": "center"}
+        if not pivot:
+            raise ValueError("Explicit fold pivot mapping must not be empty.")
+    else:
+        raise ValueError(
+            f"Fold pivot must be a name ({sorted({k for k in _PIVOT_ALIASES})}) "
+            f"or an {{axis: position}} mapping, got {pivot!r}."
+        )
+    south = boundary.get("south", "fill")
+    if south not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
+        raise ValueError(
+            f"Fold 'south' mode must be one of "
+            f"{list(_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG)}, got {south!r}."
+        )
+    return {"fold": pivot, "south": south}
+
+
+def _resolve_pivot(pivot, fold_axis: str, seam_axis: str) -> Dict[str, str]:
+    """Resolve a pivot spec to ``{'seam': center|edge, 'fold': center|edge}``.
+
+    Here ``'seam'`` is the zonal (X) axis and ``'fold'`` is the meridional (Y)
+    axis. An explicit ``{axis: position}`` pivot is keyed by the grid's actual
+    axis names (``seam_axis``/``fold_axis``); a named alias (center/corner/U/V)
+    maps straight to the X/Y center-edge pair.
+    """
+    if isinstance(pivot, str):
+        return dict(_PIVOT_ALIASES[pivot.lower()])
+    # explicit {axis_name: position} mapping
+    roles = {}
+    for axname, position in pivot.items():
+        if axname == fold_axis:
+            roles["fold"] = _position_kind(position)
+        elif axname == seam_axis:
+            roles["seam"] = _position_kind(position)
+        else:
+            raise ValueError(
+                f"Fold pivot axis {axname!r} is neither the fold axis "
+                f"{fold_axis!r} nor the seam axis {seam_axis!r}."
+            )
+    roles.setdefault("seam", "center")
+    roles.setdefault("fold", "center")
+    return roles
+
 
 def _maybe_rename_grid_positions(grid, arr_source, arr_target):
     # Checks and renames all dimensions in arr_source to the grid
@@ -344,6 +489,110 @@ def _pad_basic(
     return da_padded
 
 
+def _fold_north_halo(
+    da: xr.DataArray,
+    grid: Grid,
+    fold_axis: str,
+    seam_axis: str,
+    pivot: Dict[str, str],
+    width: int,
+    isvector: bool,
+) -> xr.DataArray:
+    """Build the northern (upper) halo for a single field across a north fold.
+
+    ``fold_axis`` is the meridional (Y) axis whose north edge folds; ``seam_axis``
+    is the zonal (X) axis it mirrors along. The halo rows are the interior rows
+    just below the fold, mirrored along X about the pole; vector components
+    additionally flip sign (the fold is a 180-degree pivot about the pole). See
+    the module-level note on fold boundaries for the pivot/offset conventions.
+    """
+    fold_position, fold_dim = grid.axes[fold_axis]._get_position_name(da)
+    seam_position, seam_dim = grid.axes[seam_axis]._get_position_name(da)
+
+    fold_kind = _position_kind(fold_position)
+
+    # --- pick the source rows along the fold (Y) axis -----------------------
+    # The topmost row is the (redundant) pole row exactly when the field's
+    # Y position coincides with the pivot's; then we start one row in.
+    skip = 1 if fold_kind == pivot["fold"] else 0
+    # reverse the fold (Y) axis so index 0 is the northern interior edge, then
+    # take `width` rows starting `skip` in -> rows ordered north-to-further-south,
+    # i.e. the correct order to concatenate above the interior.
+    reversed_fold = da.isel({fold_dim: slice(None, None, -1)})
+    halo = reversed_fold.isel({fold_dim: slice(skip, skip + width)})
+
+    # --- mirror along the seam (X) axis about the pole ----------------------
+    # gather each output column from its mirror partner (handles every position,
+    # including outer/symmetric-memory grids).
+    idx = _seam_partner_indices(seam_position, pivot["seam"], halo.sizes[seam_dim])
+    halo = halo.isel({seam_dim: idx})
+
+    if isvector:
+        # both horizontal components reverse sign across the fold
+        halo = -halo
+
+    return halo
+
+
+def _pad_fold(
+    da: Union[xr.DataArray, Dict[str, xr.DataArray]],
+    grid: Grid,
+    padding_width: Dict[str, Tuple[int, int]],
+    padding: Dict[str, str],
+    fill_value: Dict[str, float],
+):
+    """Pad a single-tile grid that has one or more north-fold boundaries.
+
+    The *north* (upper) edge of each fold (Y) axis is filled from the mirrored
+    interior (`_fold_north_halo`); the south edge and every non-fold axis use the
+    ordinary `_pad_basic` machinery.
+    """
+    if isinstance(da, dict):
+        isvector = True
+        _, da = da.popitem()
+    else:
+        isvector = False
+
+    fold_axes = {
+        ax for ax in padding_width if ax in grid._folds and padding_width[ax][1] > 0
+    }
+
+    # 1. Attach the northern fold halo for each fold axis (computed from the
+    #    unpadded interior so the seam mirror sees the full periodic row).
+    for fax in fold_axes:
+        info = grid._folds[fax]
+        pivot = _resolve_pivot(info["pivot"], fax, info["seam_axis"])
+        _, fold_dim = grid.axes[fax]._get_position_name(da)
+        width = padding_width[fax][1]
+        halo = _fold_north_halo(
+            da, grid, fax, info["seam_axis"], pivot, width, isvector
+        )
+        halo = halo.drop_vars([co for co in halo.coords])
+        da = xr.concat(
+            [da, halo],
+            dim=fold_dim,
+            coords="minimal",
+            compat="override",
+            join="override",
+        )
+
+    # 2. Basic-pad everything else: non-fold axes at full width, and the south
+    #    edge of each fold axis with its `south` mode (north already folded).
+    basic_width = {}
+    basic_padding = {}
+    for ax, widths in padding_width.items():
+        if ax in grid._folds:
+            # the north edge is folded (or not padded); the south edge uses the
+            # fold's `south` mode. Never hand the fold spec to `_pad_basic`.
+            basic_width[ax] = (widths[0], 0)
+            basic_padding[ax] = grid._folds[ax]["south"]
+        else:
+            basic_width[ax] = widths
+            basic_padding[ax] = padding[ax]
+
+    return _pad_basic(da, grid, basic_width, basic_padding, fill_value)
+
+
 def pad(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
@@ -427,6 +676,10 @@ def pad(
             fill_value,
             other_component=other_component,
         )
+    elif getattr(grid, "_folds", None) and any(
+        ax in grid._folds for ax in padding_width
+    ):
+        da_padded = _pad_fold(data, grid, padding_width, padding, fill_value)
     else:
         da_padded = _pad_basic(data, grid, padding_width, padding, fill_value)  # type: ignore
 

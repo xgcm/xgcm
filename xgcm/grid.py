@@ -33,7 +33,7 @@ from .grid_ufunc import (
     apply_as_grid_ufunc,
 )
 from .metrics import iterate_axis_combinations
-from .padding import pad
+from .padding import _is_fold_boundary, pad
 
 from typing import Literal
 
@@ -266,6 +266,10 @@ class Grid:
         if face_connections is not None:
             self._assign_face_connections(face_connections)
 
+        # Resolve & validate any north-fold boundaries (a cross-axis property:
+        # the seam axis is inferred here, where all axes are visible).
+        self._validate_folds()
+
         self._metrics = {}
 
         if metrics is not None:
@@ -391,6 +395,43 @@ class Grid:
         for axis, axis_links in axis_connections.items():
             self.axes[axis]._facedim = facedim
             self.axes[axis]._face_connections = axis_links
+
+    def _validate_folds(self):
+        """Resolve north-fold boundaries and infer their seam axis.
+
+        A fold boundary (e.g. ``boundary={"Y": {"fold": "corner"}}``) is declared
+        on the fold axis -- the meridional ("Y") axis -- but the seam axis it
+        mirrors along -- the zonal ("X") axis -- is a cross-axis property. Infer
+        it here as the periodic axis orthogonal to the fold axis, and record
+        everything in ``self._folds`` keyed by fold-axis name.
+        """
+        self._folds: Dict[str, Dict[str, Any]] = {}
+        for axname, axis in self.axes.items():
+            boundary = axis._boundary
+            if not _is_fold_boundary(boundary):
+                continue
+            seam_candidates = [
+                other
+                for other, oax in self.axes.items()
+                if other != axname and oax._boundary == "periodic"
+            ]
+            if len(seam_candidates) == 0:
+                raise ValueError(
+                    f"A fold boundary on axis {axname!r} requires a periodic seam "
+                    "axis (the zonal wrap), but no other axis is periodic. Set e.g. "
+                    "boundary={'X': 'periodic', '" + str(axname) + "': {'fold': ...}}."
+                )
+            if len(seam_candidates) > 1:
+                raise ValueError(
+                    f"A fold boundary on axis {axname!r} is ambiguous: more than one "
+                    f"periodic axis could be the seam ({seam_candidates}). Multiple "
+                    "candidate seam axes are not supported."
+                )
+            self._folds[axname] = {
+                "seam_axis": seam_candidates[0],
+                "pivot": boundary["fold"],
+                "south": boundary["south"],
+            }
 
     def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
