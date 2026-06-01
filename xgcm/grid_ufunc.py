@@ -457,6 +457,7 @@ class GridUFunc:
         **kwargs,
     ):
         boundary = kwargs.pop("boundary", self.boundary)
+        fill_value = kwargs.pop("fill_value", self.fill_value)
         dask = kwargs.pop("dask", self.dask)
         map_overlap = kwargs.pop("map_overlap", self.map_overlap)
         pad_before_func = kwargs.pop("pad_before_func", self.pad_before_func)
@@ -468,6 +469,7 @@ class GridUFunc:
             signature=self.signature,
             boundary_width=self.boundary_width,
             boundary=boundary,
+            fill_value=fill_value,
             dask=dask,
             map_overlap=map_overlap,
             pad_before_func=pad_before_func,
