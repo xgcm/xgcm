@@ -46,6 +46,14 @@
 
 ### Bugfixes
 
+- Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
+  on grids with face connections when a vector component is a dask array chunked into more than one chunk
+  along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,
+  rechunked array, so face-connection padding that rechunks non-core dimensions no longer raises
+  `ValueError: Dimension 0 has 2 blocks, adjust_chunks specified with 1 blocks`
+  ([#708](https://github.com/xgcm/xgcm/issues/708)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Fix bug in `xgcm.transform.transform` that violated tracer conservation when using conservative interpolation in the presence of nans. ([#635](https://github.com/xgcm/xgcm/pull/635))
   By [Julius Busecke](https://github.com/jbusecke).
 - Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate

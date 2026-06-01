@@ -959,14 +959,31 @@ def _map_func_over_core_dims(
         """This implicitly crystallises the order of the given mapping"""
         return tuple(sizes.values())
 
-    # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have
-    # But in this case output chunks are the same as input chunks
-    # (as we disallowed axis positions for which this is not the case)
+    # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have.
+    # Along the core dims the output chunks match the *original* (pre-pad) chunks, because the ufunc
+    # consumes the boundary padding (we disallowed axis positions for which this is not the case).
     original_chunksizes = [arg.variable.chunksizes for arg in transposed_original_args]
     # TODO first argument only because map_overlap can't handle multiple return values (I think)
     true_chunksizes = original_chunksizes[0]
     # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
     true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
+
+    # The core dims are the only axes whose chunks are deliberately changed (by padding + rechunking).
+    core_numpy_axes = set(boundary_width_per_numpy_axis)
+
+    def _output_chunks_per_numpy_axis(arg):
+        # On grids with face connections, padding a vector component pulls in data from a connected
+        # face, which can force dask to rechunk *non-core* dims (e.g. splitting the face dim). The
+        # number of blocks per non-core dim must match the array actually handed to map_overlap, so
+        # we read those from the (padded, rechunked) input rather than the original. Core dims keep
+        # their original chunks, since the ufunc trims the padding back to the unpadded size.
+        actual_chunks = arg.chunks
+        return tuple(
+            true_chunksizes_per_numpy_axis[axis]
+            if axis in core_numpy_axes
+            else actual_chunks[axis]
+            for axis in range(arg.ndim)
+        )
 
     # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
     # calls map_blocks automatically in that scenario)
@@ -979,7 +996,7 @@ def _map_func_over_core_dims(
             boundary="none",
             trim=False,
             meta=np.array([], dtype=out_dtypes[0]),
-            chunks=true_chunksizes_per_numpy_axis,
+            chunks=_output_chunks_per_numpy_axis(a[0]),
         )
 
     return mapped_func
