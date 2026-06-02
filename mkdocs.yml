@@ -82,6 +82,7 @@ nav:
       - MOM6: xgcm-examples/03_MOM6.ipynb
       - NEMO: xgcm-examples/04_nemo_idealized.ipynb
       - Generate missing C-grid coordinates: xgcm-examples/05_autogenerate.ipynb
+      - Tripolar fold (vorticity, 3 models): xgcm-examples/06_tripolar_fold.ipynb
   - "What's New": whats-new.md
   - Contributor Guide: contributor_guide.md
   - API: api.md
