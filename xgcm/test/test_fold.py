@@ -1,7 +1,9 @@
-"""Tests for the bipolar/tripolar north-fold boundary.
+"""Tests for the bipolar north-fold boundary.
 
-A fold boundary is requested as a per-axis ``boundary`` value on the (single
-tile) fold axis -- the meridional "Y" axis -- e.g.
+The global grids these serve are *tripolar* (South Pole + two Arctic poles); the
+north fold itself is *bipolar* -- its seam is the line joining the two northern
+poles. A fold boundary is requested as a per-axis ``boundary`` value on the
+(single tile) fold axis -- the meridional "Y" axis -- e.g.
 ``boundary={"X": "periodic", "Y": {"fold": "corner"}}``. The northern edge of
 the grid folds onto itself: the seam (zonal "X") axis is mirrored about the pole
 and vector components reverse sign. See ``xgcm/padding.py`` for the pivot/offset

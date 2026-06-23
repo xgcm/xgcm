@@ -212,3 +212,144 @@ left to left, or right to right.
     models (e.g. MITgcm, GEOS, etc.) as a convenience within xgcm. If you would
     like to pursue this, please open a
     [github issue](https://github.com/xgcm/xgcm/issues).
+
+## The Bipolar North Fold (Tripolar Grids) {#north-fold}
+
+Many global ocean models (MOM6/OM4, NEMO/ORCA, MOM5, Oceananigans) avoid the
+coordinate singularity at the geographic North Pole by displacing it onto land
+and pairing it with a second displaced pole. Such grids are called **tripolar**:
+they carry three singularities — the ordinary South Pole plus the two Arctic
+poles. Logically the grid is still a single rectangular tile, but its **northern
+edge folds onto itself** along the **bipolar seam**, the line joining the two
+northern poles; the top row is welded to a mirror-image of itself running the
+other way.
+
+So the two words describe different things: the *grid* is **tripolar** (three
+poles), while the *fold* — this boundary condition — is **bipolar** (its seam
+connects the two northern poles). xgcm calls the feature a *north fold*.
+
+Because the fold lives on the upper edge of one tile — not between separate faces —
+it is *not* a [face connection](#face-connections-spec). Instead it is requested
+as a per-axis `boundary` value on the meridional (fold) axis, with the zonal
+(seam) axis marked periodic:
+
+```python
+import numpy as np
+import xarray as xr
+import xgcm
+
+N = 8
+ds = xr.Dataset(
+    coords={
+        "x_c": ("x_c", np.arange(N)),
+        "x_g": ("x_g", np.arange(N) - 0.5),
+        "y_c": ("y_c", np.arange(N)),
+        "y_g": ("y_g", np.arange(N) - 0.5),
+    },
+)
+ds["sst"] = (("y_c", "x_c"), np.cos(2 * np.pi * np.arange(N) / N) + np.zeros((N, 1)))
+
+grid = xgcm.Grid(
+    ds,
+    coords={
+        "X": {"center": "x_c", "left": "x_g"},
+        "Y": {"center": "y_c", "left": "y_g"},
+    },
+    boundary={"X": "periodic", "Y": {"fold": "corner"}},
+    autoparse_metadata=False,
+)
+grid
+```
+
+With the fold in place, `interp`, `diff`, `derivative`, and the rest of the grid
+operators stitch correctly across the top edge instead of falling back to an
+ordinary boundary. To see what the fold actually does, label each cell of the
+northern row by its column index and pad a single halo row across the seam — the
+halo comes back as the interior row **mirrored about the pole**:
+
+```python
+from xgcm.padding import pad
+
+cols = xr.DataArray(np.broadcast_to(np.arange(N), (N, N)), dims=("y_c", "x_c"))
+halo = pad(cols, grid, boundary_width={"Y": (0, 1)}).isel(y_c=-1)
+
+print("interior north row (cells labelled by column):", cols.isel(y_c=-1).values)
+print("folded halo row    (mirrored about the pole) :", halo.values)
+```
+
+Every `Grid` operator that reaches across the northern edge — `grid.diff(ds.sst,
+"Y")`, `grid.interp`, `grid.derivative`, … — pads this halo automatically.
+
+### The four pivot conventions
+
+The value of `"fold"` names the **pivot**: the staggered grid position that the
+fold's fixed point (the pole) sits on. A C-grid stores variables at four kinds of
+position — tracer centers (T), cell corners (F), and the two velocity faces
+(U, V) — so there are four conventions, and the seam reflects each field about
+the pole that matches *its* position:
+
+![The four north-fold pivot conventions](images/fold_pivots.png)
+
+| `fold` value | Aliases | Pole position (X, Y) | Used by |
+|---|---|---|---|
+| `"center"` | `"t"` | center, center | MOM5, generic tracer pole |
+| `"corner"` | `"f"` | edge, edge | MOM6 / OM4, NEMO / ORCA |
+| `"u"` | | edge, center | Oceananigans `TripolarGrid` (tracer zipper) |
+| `"v"` | | center, edge | north/south velocity-face pole |
+
+The seam is **bipolar**: a periodic reflection has *two* fixed points, half a
+domain apart (the stars above). Whether the pole sits on a cell edge or a cell
+center in X sets their zonal location; whether it sits on an edge or center in Y
+sets whether the topmost grid row lies exactly *on* the fold line (a redundant
+row, which xgcm skips) or half a cell below it.
+
+These four exhaust the possibilities — the pivot depends only on whether each
+axis lands on a cell center or a cell edge, and a center/edge pair on each of two
+axes is four cases. If you would rather name the positions directly than recall
+the T/F/U/V vocabulary, pass an explicit `{axis: position}` mapping using your
+grid's own axis names; it resolves to the same four. For example
+`{"fold": {"X": "center", "Y": "left"}}` is just another way to write `"v"`
+(any non-center Y position — `left`, `right`, `inner`, `outer` — counts as an
+edge).
+
+### How the halo is filled
+
+To evaluate an operator across the top edge, xgcm pads a northern **halo** by
+reflecting the interior about the nearest pole. A **scalar** (tracer, layer
+thickness, …) is mirrored as-is; a **vector component** (a velocity, a flux) is
+mirrored *and* sign-flipped, because folding the grid rotates the local axes by
+180°:
+
+![How the north fold fills the halo](images/fold_halo.png)
+
+So that vector components flip correctly, pass the partner component via
+`other_component`, exactly as for [vector face connections](grids.md). Folding
+the same `u` data as a scalar versus as a vector shows the difference — the
+vector halo is the scalar halo with the sign reversed:
+
+```python
+ds["u"] = (("y_c", "x_g"), np.broadcast_to(np.arange(1, N + 1), (N, N)).astype(float))
+ds["v"] = (("y_g", "x_c"), np.zeros((N, N)))  # U-point / V-point components
+
+scalar = pad(ds.u, grid, boundary_width={"Y": (0, 1)}).isel(y_c=-1)
+vector = pad({"X": ds.u}, grid, boundary_width={"Y": (0, 1)},
+             other_component={"Y": ds.v}).isel(y_c=-1)
+
+print("u folded as a scalar (mirror)            :", scalar.values)
+print("u folded as a vector (mirror + sign flip):", vector.values)
+```
+
+The same applies to the high-level operators: `grid.diff({"X": ds.u}, "Y",
+other_component={"Y": ds.v})` differences the `u` component across the fold with
+the sign handled for you.
+
+The fold is applied purely in the padding layer as an indexed gather, so it stays
+lazy and works with multi-chunk dask arrays. For a worked example on real model
+output from three different codes — including a Rossby-number diagnostic that is
+continuous across the seam — see the
+[Tripolar fold example](xgcm-examples/06_tripolar_fold.ipynb).
+
+!!! note
+    Only the **north** edge folds; the south edge of the fold axis uses an
+    ordinary mode (default `fill`), overridable via the `"south"` key, e.g.
+    `{"fold": "corner", "south": "extend"}`.

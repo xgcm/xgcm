@@ -20,12 +20,15 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
 }
 
 # ---------------------------------------------------------------------------
-# Bipolar / tripolar north-fold boundary
+# Bipolar north-fold boundary
 # ---------------------------------------------------------------------------
-# A "fold" boundary expresses the bipolar Arctic seam of a tripolar grid (MOM6,
-# NEMO, MOM5, Oceananigans): the northern edge of the (single-tile) grid folds
-# onto itself, mirroring the zonal axis about the pole, and reversing the sign
-# of vector components (the fold is a 180-degree pivot about the pole).
+# A "fold" boundary expresses the bipolar north fold of a tripolar ocean grid
+# (MOM6, NEMO, MOM5, Oceananigans). Such grids are *tripolar* -- they carry three
+# singularities: the ordinary South Pole plus two poles displaced over Arctic
+# land. The northern edge of the (single-tile) logical grid folds onto itself
+# along the *bipolar seam* -- the line joining those two northern poles -- so the
+# fold mirrors the zonal axis about the seam and reverses the sign of vector
+# components (a 180-degree pivot about each pole).
 #
 # Axis convention: the *fold axis is the meridional "Y" axis* (the one whose
 # northern edge folds -- you declare the fold boundary on it), and the *seam
