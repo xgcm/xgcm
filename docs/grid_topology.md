@@ -332,8 +332,9 @@ ds["u"] = (("y_c", "x_g"), np.broadcast_to(np.arange(1, N + 1), (N, N)).astype(f
 ds["v"] = (("y_g", "x_c"), np.zeros((N, N)))  # U-point / V-point components
 
 scalar = pad(ds.u, grid, boundary_width={"Y": (0, 1)}).isel(y_c=-1)
-vector = pad({"X": ds.u}, grid, boundary_width={"Y": (0, 1)},
-             other_component={"Y": ds.v}).isel(y_c=-1)
+vector = pad(
+    {"X": ds.u}, grid, boundary_width={"Y": (0, 1)}, other_component={"Y": ds.v}
+).isel(y_c=-1)
 
 print("u folded as a scalar (mirror)            :", scalar.values)
 print("u folded as a vector (mirror + sign flip):", vector.values)
