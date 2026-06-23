@@ -15,6 +15,16 @@
   interpolation method ([#614](https://github.com/xgcm/xgcm/issues/614), [#642](https://github.com/xgcm/xgcm/pull/642)).
   By [Nora Loose](https://github.com/noraloose).
 
+- Add a bipolar north-fold boundary condition for tripolar ocean grids (MOM6, NEMO, MOM5,
+  Oceananigans), requested as a per-axis boundary on the fold axis, e.g.
+  `boundary={"X": "periodic", "Y": {"fold": "corner"}}`. The northern edge of the logical grid
+  folds onto itself along the bipolar seam joining the two northern poles: the zonal axis is
+  mirrored about the pole and vector components reverse sign, so `interp`/`diff`/`derivative`
+  work across the Arctic seam. The pivot (`center`/`T`, `corner`/`F`, `U`, `V`) names the
+  staggered position the pole sits on ([#194](https://github.com/xgcm/xgcm/issues/194),
+  [#711](https://github.com/xgcm/xgcm/pull/711)).
+  By [Henri Drake](https://github.com/hdrake).
+
 ### Breaking Changes
 
 - All computation methods on the `xgcm.Axis` class have been removed, in favour of using the corresponding
