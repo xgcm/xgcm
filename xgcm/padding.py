@@ -273,7 +273,9 @@ def _pad_face_connections(
                         # clobbered the orthogonal connected edge -- and, because the
                         # axes are iterated in `set` (hash-seed) order, which edge ended
                         # up wrong varied from run to run.
-                        if target_dim not in source_slice.dims:  # 1-element padding slice
+                        if (
+                            target_dim not in source_slice.dims
+                        ):  # 1-element padding slice
                             source_slice = source_slice.expand_dims([target_dim])
 
                         # Emulate the way xarray.pad deals with dimension coordinates:
