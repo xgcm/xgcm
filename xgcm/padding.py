@@ -264,14 +264,21 @@ def _pad_face_connections(
                             [co for co in source_slice.coords]
                         )
 
-                        # Here I am trying to emulate the way xarray.pad deals with dimension coordinates
-                        # I will set them to nan in any case. This might change later.
-                        if target_dim in target_slice.coords:
-                            if (
-                                target_dim not in source_slice.dims
-                            ):  # in case this a 1 element padding slice
-                                source_slice = source_slice.expand_dims([target_dim])
+                        # The squeeze above drops the length-1 `target_dim` from the
+                        # source slice. Restore it unconditionally so the concat below
+                        # always sees matching dimensions. Previously this only happened
+                        # when `target_dim` carried a coordinate variable; on a grid
+                        # whose padded dims have no coordinates the slice stayed 1-D and
+                        # `xr.concat(..., join="override")` silently transposed and
+                        # clobbered the orthogonal connected edge -- and, because the
+                        # axes are iterated in `set` (hash-seed) order, which edge ended
+                        # up wrong varied from run to run.
+                        if target_dim not in source_slice.dims:  # 1-element padding slice
+                            source_slice = source_slice.expand_dims([target_dim])
 
+                        # Emulate the way xarray.pad deals with dimension coordinates:
+                        # blank them out (only relevant when the dim has a coordinate).
+                        if target_dim in target_slice.coords:
                             source_slice = source_slice.assign_coords(
                                 {
                                     target_dim: np.full_like(
@@ -281,6 +288,13 @@ def _pad_face_connections(
                                     )
                                 }
                             )
+
+                        # Match the source slice's dimension order to the target's.
+                        # `expand_dims` prepends the restored `target_dim`, so without
+                        # this the two operands can disagree on axis order and
+                        # `xr.concat(..., join="override")` produces a transposed/
+                        # clobbered result (order-dependent, hence hash-seed dependent).
+                        source_slice = source_slice.transpose(*target_slice.dims)
 
                         # assemble the padded array
                         if is_right:
