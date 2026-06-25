@@ -251,6 +251,42 @@ def test_diff_across_seam_runs():
     assert np.isfinite(d.values).all()
 
 
+def test_interp_diff_across_seam_known_answer():
+    """`interp` and `diff` across the north fold must equal the same operation on
+    a hand-folded (pure-numpy) halo -- a known-answer check that the *operators*,
+    not just `pad`, are correct across the seam, for both a scalar and a vector.
+
+    ``v`` lives on ``(yl, xh)``; a left->center shift in Y pads the north edge, so
+    the top output row straddles the last interior row and the folded halo row.
+    For the ``corner`` pivot a field at this position folds by: mirror in x
+    (``[::-1]``, seam=center), skip the redundant seam row (fold=edge -> source
+    ``yl=-2``), and -- only as a vector -- flip sign. We build that halo by hand
+    and finite-difference/average against it.
+    """
+    ds = _make_ds()
+    grid = _grid(ds, "corner")
+    v = ds.v.values  # (Ny, Nx), on (yl, xh)
+
+    def expect(halo_row):
+        vp = np.vstack([v, halo_row[None, :]])  # append halo as yl=Ny
+        return 0.5 * (vp[:-1] + vp[1:]), vp[1:] - vp[:-1]  # interp(yh), diff(yh)
+
+    # scalar: mirror + skip, no sign change
+    exp_i_s, exp_d_s = expect(v[-2][::-1])
+    np.testing.assert_allclose(grid.interp(ds.v, "Y").values, exp_i_s)
+    np.testing.assert_allclose(grid.diff(ds.v, "Y").values, exp_d_s)
+
+    # vector: same mirror + skip, plus the 180deg sign flip
+    exp_i_v, exp_d_v = expect(-v[-2][::-1])
+    oc = {"X": ds.u}
+    np.testing.assert_allclose(
+        grid.interp({"Y": ds.v}, "Y", other_component=oc).values, exp_i_v
+    )
+    np.testing.assert_allclose(
+        grid.diff({"Y": ds.v}, "Y", other_component=oc).values, exp_d_v
+    )
+
+
 def test_multi_row_halo():
     ds = _make_ds()
     grid = _grid(ds, "corner")  # center field: skip 0, no roll
