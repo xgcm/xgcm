@@ -144,11 +144,25 @@ xarray = "0.20.*"
 
 # TODO: Update with rest of core deps
 
+[tool.pixi.feature.py310.dependencies]
+python = "3.10.*"
+
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"
 
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
+
+[tool.pixi.feature.py314.dependencies]
+# Pin the standard (GIL) CPython build for the 3.14 test env. The free-threaded
+# `cp314t` variant has a sparse conda-forge ecosystem and an unconstrained solve
+# selects it, breaking dependency resolution (e.g. it collapses the pre-commit
+# toolchain down to an ancient `identify`). This is also why the default dev env
+# pins `py313` rather than floating to the latest Python.
+python = { version = "3.14.*", build = "*cp314" }
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
@@ -203,16 +217,22 @@ default = { features = [
   "test",
   "extra",
   "pre-commit",
+  "py313",
 ], solve-group = "main" }
 
-test-core = { features = ["test"] }
-test-latest = { features = ["test", 'extra'] }
+# Core deps only (no `extra`) and full deps, both on the latest standard Python.
+test-core = { features = ["test", "py314"] }
+test-latest = { features = ["test", "extra", "py314"] }
 test-nightly = { features = [
   "py313",
   "nightly",
   "test",
 ], no-default-feature = true }
 
+# One explicit env per supported minor, all on standard (GIL) builds.
 test-minimum = { features = ["test", "minimum"] }
+test-py310 = { features = ["test", "py310"] }
 test-py311 = { features = ["test", "py311"] }
-docs = { features = ["docs", "extra", "notebooks"], solve-group = "docs" }
+test-py312 = { features = ["test", "py312"] }
+test-py313 = { features = ["test", "py313"] }
+docs = { features = ["docs", "extra", "notebooks", "py313"], solve-group = "docs" }
