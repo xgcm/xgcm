@@ -46,8 +46,9 @@ _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG = {
 #   U          : (X=edge,   Y=center)   -- pole on a U (east/west face) point
 #   V          : (X=center, Y=edge)     -- pole on a V (north/south face) point
 #
-# Only the *north* (upper) edge of the Y axis folds; the south edge uses the
-# ``"south"`` mode (default ``"fill"``).
+# Only the *north* (upper) edge of the Y axis folds; the south edge uses a
+# per-call ``boundary`` if one is given, else the construction-time ``"south"``
+# mode (default ``"fill"``).
 #
 # (Internally the two roles are keyed "seam" (= X) and "fold" (= Y), so the grid
 # need not literally name its axes "X"/"Y"; "X" and "Y" here just mean the zonal
@@ -544,6 +545,16 @@ def _fold_north_halo(
     # gather each output column from its mirror partner (handles every position,
     # including outer/symmetric-memory grids).
     idx = _seam_partner_indices(seam_position, pivot["seam"], halo.sizes[seam_dim])
+    if idx.max() >= halo.sizes[seam_dim]:
+        # e.g. an `inner` seam position under a center-type pivot: reflecting the
+        # inner sublattice about a cell-center pole lands on an excluded endpoint,
+        # so there is no mirror partner.
+        raise NotImplementedError(
+            f"A {seam_position!r} seam position is incompatible with a "
+            f"center-type fold pivot (seam role {pivot['seam']!r}): the mirror "
+            "about a cell-center pole has no partner on this sublattice. Use an "
+            "edge-type pivot, or a center/left/right/outer seam position."
+        )
     halo = halo.isel({seam_dim: idx})
 
     if isvector:
@@ -601,10 +612,16 @@ def _pad_fold(
     basic_padding = {}
     for ax, widths in padding_width.items():
         if ax in grid._folds:
-            # the north edge is folded (or not padded); the south edge uses the
-            # fold's `south` mode. Never hand the fold spec to `_pad_basic`.
+            # the north edge is folded (or not padded). The south edge takes an
+            # explicit per-call boundary if the user gave one, else the fold's
+            # construction-time `south` mode. (A fold axis's default `padding`
+            # entry is the fold-spec dict, which must never reach `_pad_basic`;
+            # only a plain string is a genuine per-call override.)
+            per_call = padding[ax]
             basic_width[ax] = (widths[0], 0)
-            basic_padding[ax] = grid._folds[ax]["south"]
+            basic_padding[ax] = (
+                per_call if isinstance(per_call, str) else grid._folds[ax]["south"]
+            )
         else:
             basic_width[ax] = widths
             basic_padding[ax] = padding[ax]

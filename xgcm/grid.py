@@ -433,6 +433,13 @@ class Grid:
                 "south": boundary["south"],
             }
 
+        if self._folds and self._face_connections is not None:
+            raise NotImplementedError(
+                "Combining a north-fold boundary with face_connections is not "
+                f"supported (fold axes: {sorted(self._folds)}). Use one or the "
+                "other."
+            )
+
     def set_metrics(self, key, value, overwrite=False):
         metric_axes = frozenset(_maybe_promote_str_to_list(key))
         axes_not_found = [ma for ma in metric_axes if ma not in self.axes]

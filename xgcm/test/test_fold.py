@@ -113,6 +113,60 @@ def test_bad_pivot_raises():
         _grid(ds, "banana")
 
 
+def test_fold_rejects_face_connections():
+    # the fold and face-connection padding paths are mutually exclusive; declaring
+    # both must fail clearly at construction, not cryptically at pad time.
+    ds = xr.Dataset(
+        coords={
+            "face": [0, 1],
+            "xh": np.arange(Nx),
+            "xl": np.arange(Nx),
+            "yh": np.arange(Ny),
+            "yl": np.arange(Ny),
+        }
+    )
+    fc = {
+        "face": {0: {"X": (None, (1, "X", False))}, 1: {"X": ((0, "X", False), None)}}
+    }
+    with pytest.raises(NotImplementedError, match="face_connections"):
+        Grid(
+            ds,
+            coords={
+                "X": {"center": "xh", "left": "xl"},
+                "Y": {"center": "yh", "left": "yl"},
+            },
+            boundary={"X": "periodic", "Y": {"fold": "corner"}},
+            face_connections=fc,
+            autoparse_metadata=False,
+        )
+
+
+@pytest.mark.parametrize("pivot", ["center", "V"])
+def test_inner_seam_position_center_pivot_raises(pivot):
+    # an `inner` seam position has no mirror partner about a cell-center pole, so a
+    # center-type pivot must raise a clear error rather than an opaque IndexError.
+    ds = xr.Dataset(
+        coords={
+            "xh": np.arange(Nx),
+            "xi": np.arange(Nx - 1),
+            "yh": np.arange(Ny),
+            "yl": np.arange(Ny),
+        }
+    )
+    ds["f"] = (("yl", "xi"), np.zeros((Ny, Nx - 1)))
+    grid = Grid(
+        ds,
+        coords={
+            "X": {"center": "xh", "inner": "xi"},
+            "Y": {"center": "yh", "left": "yl"},
+        },
+        boundary={"X": "periodic", "Y": {"fold": pivot}},
+        autoparse_metadata=False,
+    )
+    with pytest.raises(NotImplementedError, match="inner.*incompatible|incompatible"):
+        pad(ds.f, grid, boundary_width={"Y": (0, 1)})
+
+
 # ---------------------------------------------------------------------------
 # Per-position halo (explicit expected, the Oceananigans-kernel conventions)
 # ---------------------------------------------------------------------------
@@ -297,6 +351,29 @@ def test_interp_diff_across_seam_known_answer():
     exp_i, exp_d = straddle(v, v[-1][::-1])
     np.testing.assert_allclose(gridU.interp(ds.v, "Y").values, exp_i)
     np.testing.assert_allclose(gridU.diff(ds.v, "Y").values, exp_d)
+
+
+def test_fold_south_edge_respects_per_call_boundary():
+    # the north always folds (topology), but the south edge is an ordinary
+    # boundary: a per-call `boundary` must override the construction-time `south`
+    # mode (default "fill"), while the north halo stays the folded mirror.
+    ds = _make_ds()
+    grid = _grid(ds, "corner")  # default south mode is "fill"
+    # pad both edges so we can check south (override) and north (fold) at once
+    out = pad(
+        ds.c,
+        grid,
+        boundary_width={"Y": (1, 1)},
+        boundary={"Y": "extend"},
+    )
+    # south edge: per-call "extend" -> repeats the southern interior row
+    np.testing.assert_allclose(out.isel(yh=0).values, ds.c.isel(yh=0).values)
+    # north edge: still the folded mirror, unaffected by the per-call boundary
+    np.testing.assert_allclose(out.isel(yh=-1).values, ds.c.isel(yh=-1).values[::-1])
+    # default (no override) south stays "fill" (zeros), confirming the override
+    # above actually changed something
+    default = pad(ds.c, grid, boundary_width={"Y": (1, 0)})
+    np.testing.assert_allclose(default.isel(yh=0).values, 0.0)
 
 
 def test_multi_row_halo():

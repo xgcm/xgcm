@@ -21,7 +21,9 @@
   folds onto itself along the bipolar seam joining the two northern poles: the zonal axis is
   mirrored about the pole and vector components reverse sign, so `interp`/`diff`/`derivative`
   work across the Arctic seam. The pivot (`center`/`T`, `corner`/`F`, `U`, `V`) names the
-  staggered position the pole sits on ([#194](https://github.com/xgcm/xgcm/issues/194),
+  staggered position the pole sits on. Only the north edge folds; the south edge of a fold
+  axis honours a per-call `boundary` override when given, otherwise a configurable `south`
+  mode (default `fill`) ([#194](https://github.com/xgcm/xgcm/issues/194),
   [#711](https://github.com/xgcm/xgcm/pull/711)).
   By [Henri Drake](https://github.com/hdrake).
 
