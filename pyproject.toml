@@ -114,6 +114,14 @@ name = "xgcm"
 version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
 
 [tool.pixi.package.build]
+# This build backend talks to the pixi tool over a private `pixi-build-api-version`
+# contract (pixi-build is still a preview feature). The `0.4.*` backend only
+# supports the api-version provided by pixi up to ~0.70.x; pixi 0.71.x bumped it
+# and the solve fails with "no candidates" for pixi-build-api-version. So the pixi
+# *tool* version must stay compatible with this *backend* pin. Keep them in sync:
+#   - CI pins the tool via `PIXI_VERSION` in .github/workflows/ci.yaml
+#   - ReadTheDocs pins it via `asdf install pixi <ver>` in readthedocs.yml
+# If you bump this backend (0.5.x+), drop those tool pins / allow newer pixi.
 backend = { name = "pixi-build-python", version = "0.4.*" }
 
 [tool.pixi.package.host-dependencies]
