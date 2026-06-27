@@ -64,6 +64,11 @@ def _restore_input_dim_order(results, args, sig, in_core_dims, out_core_dims):
     grid position (e.g. ``j`` -> ``jg``) and for genuinely-new output dims.
     """
     # Link input core dims to output core dims via the shared dummy axis names.
+    # Note: this mapping is keyed solely by dummy axis name, so it cannot
+    # distinguish multiple outputs that share one dummy axis at different
+    # positions (e.g. ``(X:center)->(X:left),(X:right)``) - those collapse onto
+    # the last position. No built-in operator emits such a signature (vector ops
+    # use distinct axes), so this only affects direct public-API power-users.
     dummy_to_in_dim = {
         ax_name: dim
         for arg_ax_names, arg_in_dims in zip(sig.in_ax_names, in_core_dims)
