@@ -176,7 +176,7 @@ def fig_pivots():
     out = OUT / "fold_pivots.png"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
-    print("wrote", out)
+    print("wrote", out)  # noqa: T201
 
 
 def _halo_source(nx):
@@ -346,7 +346,7 @@ def fig_halo():
     out = OUT / "fold_halo.png"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
-    print("wrote", out)
+    print("wrote", out)  # noqa: T201
 
 
 if __name__ == "__main__":
