@@ -56,10 +56,13 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
         pixi-env:
-          - test-latest
           - test-minimum
+          - test-py310
           - test-py311
+          - test-py312
+          - test-py313
           - test-core
+          - test-latest
           - test-nightly
     env:
       PIXI_ENV: ${{ matrix.pixi-env }}
