@@ -46,6 +46,12 @@
 
 ### Bugfixes
 
+- Grid operations (e.g. `Grid.interp`, `Grid.diff`) no longer clobber coordinates the user set on the
+  input `DataArray` for non-core dimensions with the (possibly stale) copy stored in the grid. Coordinates
+  on non-core dimensions are now preserved from the input array, while the newly position-shifted core-dim
+  coordinate still comes from the grid ([#496](https://github.com/xgcm/xgcm/issues/496)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
   on grids with face connections when a vector component is a dask array chunked into more than one chunk
   along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,

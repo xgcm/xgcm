@@ -359,6 +359,43 @@ def test_keep_coords_deprecation():
             grid.diff(ds.tracer, axis_name, keep_coords=False)
 
 
+@pytest.mark.parametrize("funcname", ["interp", "diff"])
+@pytest.mark.parametrize("use_dask", [False, True])
+def test_preserve_input_noncore_coords(funcname, use_dask):
+    # Regression test for GH #496: grid operations should not clobber a
+    # coordinate the user set on the INPUT array for a non-core dimension with
+    # the (stale) version stored in grid._ds. The newly position-shifted
+    # core-dim coordinate must still come from the grid.
+    N = 8
+    time = np.arange(N) * np.timedelta64(600, "s")
+    ds = xr.Dataset(
+        coords={"XC": np.arange(N) + 0.5, "XG": np.arange(N), "time": time}
+    )
+    ds["v"] = xr.DataArray(np.random.rand(N, N), dims=["time", "XC"])
+    grid = Grid(
+        ds,
+        coords={"X": {"center": "XC", "left": "XG"}},
+        periodic=True,
+        autoparse_metadata=False,
+    )
+
+    # User recasts the non-core `time` coordinate on the input array.
+    new_time = (np.arange(N) * 600 / 3600.0).astype(np.float32)
+    v = ds.v.assign_coords({"time": new_time})
+    if use_dask:
+        v = v.chunk({"time": 4})
+
+    out = getattr(grid, funcname)(v, "X")
+
+    # The user's modified non-core coord must survive (dtype AND values).
+    assert out.time.dtype == np.float32
+    np.testing.assert_array_equal(out.time.values, new_time)
+
+    # The shifted core-dim coordinate must still be attached from the grid.
+    assert "XG" in out.coords
+    np.testing.assert_array_equal(out["XG"].values, ds["XG"].values)
+
+
 def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     ds = datasets["2d_left"]
     ds, grid_kwargs = parse_comodo(ds)
