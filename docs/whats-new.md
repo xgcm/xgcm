@@ -46,6 +46,14 @@
 
 ### Bugfixes
 
+- Preserve the input DataArray's dimension order in the output of `apply_as_grid_ufunc`
+  (and the `Grid.apply_as_grid_ufunc` method). Previously `xarray.apply_ufunc` moved the
+  operated-on core dimension to the end and never moved it back, so an input with dims
+  `('tile', 'j', 'i')` came back as `('tile', 'i', 'j')`. The output now follows the input
+  ordering (with the core dim renamed in-place if it changes grid position)
+  ([#533](https://github.com/xgcm/xgcm/issues/533)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
   on grids with face connections when a vector component is a dask array chunked into more than one chunk
   along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,
