@@ -252,6 +252,29 @@ def test_dask_vs_eager(all_datasets, func, boundary):
     xr.testing.assert_allclose(dask_result, eager_result)
 
 
+@pytest.mark.parametrize("func", ["diff_2d_vector", "interp_2d_vector"])
+@pytest.mark.parametrize("boundary", ["fill", "extend"])
+@pytest.mark.parametrize("chunked", [False, True])
+def test_2d_vector_dict_input_no_face_connections(func, boundary, chunked):
+    """Regression test for GH #581: vector grid ufuncs (diff_2d_vector /
+    interp_2d_vector) accept their components as ``{axis: DataArray}`` dicts.
+    On a grid without face connections these dicts reached ``_pad_basic``
+    unchanged, raising ``TypeError: dict.copy() takes no keyword arguments``
+    (and previously ``AttributeError`` in the dask map_overlap path)."""
+    ds, coords, _ = datasets_grid_metric("C")
+    if chunked:
+        ds = ds.chunk({"xt": 1, "yt": 1, "xu": 1, "yu": 1, "time": 1, "zt": 1})
+
+    grid = Grid(ds, coords=coords, periodic=True, autoparse_metadata=False)
+    grid_method = getattr(grid, func)
+    result = grid_method({"X": ds.u, "Y": ds.v}, boundary=boundary)
+
+    # The vector op returns a dict of components; make sure both compute cleanly.
+    for component in result.values():
+        computed = component.compute()
+        assert not np.any(np.isnan(computed.values))
+
+
 def test_grid_dict_input_boundary_fill(nonperiodic_1d):
     """Test axis kwarg input functionality using dict input"""
     ds, _, _ = nonperiodic_1d

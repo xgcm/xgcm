@@ -46,6 +46,13 @@
 
 ### Bugfixes
 
+- Fix `TypeError: dict.copy() takes no keyword arguments` (and the `AttributeError` reported for dask
+  arrays) when applying vector grid ufuncs (e.g. `diff_2d_vector`, `interp_2d_vector`) on grids *without*
+  face connections, where a vector component supplied as a `{axis_name: DataArray}` dict was passed
+  unchanged to the basic padding routine. The dict is now unpacked before basic padding
+  ([#581](https://github.com/xgcm/xgcm/issues/581)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
   on grids with face connections when a vector component is a dask array chunked into more than one chunk
   along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,
