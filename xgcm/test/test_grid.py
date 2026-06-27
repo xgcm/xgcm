@@ -368,9 +368,7 @@ def test_preserve_input_noncore_coords(funcname, use_dask):
     # core-dim coordinate must still come from the grid.
     N = 8
     time = np.arange(N) * np.timedelta64(600, "s")
-    ds = xr.Dataset(
-        coords={"XC": np.arange(N) + 0.5, "XG": np.arange(N), "time": time}
-    )
+    ds = xr.Dataset(coords={"XC": np.arange(N) + 0.5, "XG": np.arange(N), "time": time})
     ds["v"] = xr.DataArray(np.random.rand(N, N), dims=["time", "XC"])
     grid = Grid(
         ds,
