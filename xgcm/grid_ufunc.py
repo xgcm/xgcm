@@ -1161,7 +1161,9 @@ def _reattach_coords(
             # those must come from grid._ds instead.
             if any(dim in out_core_dim_names for dim in da_coord.dims):
                 continue
-            input_coords[coord] = da_coord
+            # If multiple input args carry a coord of the same name, the first
+            # arg wins (matches the precedence convention used in #719).
+            input_coords.setdefault(coord, da_coord)
 
     results_with_coords = []
     for res in results:
