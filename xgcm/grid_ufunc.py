@@ -806,9 +806,21 @@ def apply_as_grid_ufunc(
 
     # TODO add option to trim result if not done in ufunc
 
+    # Collect non-core coordinates carried on the input arguments. Padding strips all
+    # coordinates, and they are normally restored from grid._ds; but coordinates that
+    # live on the data and not on grid._ds (e.g. a `time` coordinate on the array being
+    # operated on) would otherwise be lost. See GH #575.
+    input_coords: Dict[str, xr.DataArray] = {}
+    for arg in args:
+        arg_da = _maybe_unpack_vector_component(arg)
+        for name, coord in arg_da.coords.items():
+            input_coords.setdefault(name, coord)
+
     # Restore any dimension coordinates associated with new output dims that are present in grid
     # Also throws loud warning if ufunc returns array of incorrect size
-    results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
+    results_with_coords = _reattach_coords(
+        results, grid, boundary_width, keep_coords, input_coords
+    )
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
     if len(results_with_coords) == 1:
@@ -1110,7 +1122,11 @@ def _identify_dummy_axes_with_real_axes(
 
 
 def _reattach_coords(
-    results: Sequence[xr.DataArray], grid: "Grid", boundary_width, keep_coords: bool
+    results: Sequence[xr.DataArray],
+    grid: "Grid",
+    boundary_width,
+    keep_coords: bool,
+    input_coords: Optional[Dict[str, xr.DataArray]] = None,
 ) -> List[xr.DataArray]:
     results_with_coords = []
     for res in results:
@@ -1121,6 +1137,16 @@ def _reattach_coords(
             for coord, da_coord in grid._ds.coords.items()
             if all(dim in res.dims for dim in da_coord.dims)
         }
+
+        # Also restore coordinates that were carried on the input arguments but are not
+        # present on grid._ds (e.g. a `time` coordinate on the data), as long as all of
+        # their dimensions survive in the output. grid._ds takes precedence on conflict,
+        # so transformed core-dimension coordinates are not clobbered. See GH #575.
+        for coord, da_coord in (input_coords or {}).items():
+            if coord in all_matching_coords:
+                continue
+            if all(dim in res.dims for dim in da_coord.dims):
+                all_matching_coords[coord] = da_coord
 
         try:
             res = res.assign_coords(all_matching_coords)

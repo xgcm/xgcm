@@ -46,6 +46,12 @@
 
 ### Bugfixes
 
+- Fix grid operations (`interp`, `diff`, etc.) silently dropping non-core coordinates that ride on the
+  input data but are not stored on the grid's dataset (e.g. a `time` coordinate). Padding strips all
+  coordinates and they were only restored from `grid._ds`; such coordinates are now also restored from
+  the input arguments. ([#575](https://github.com/xgcm/xgcm/issues/575)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Fix bug in `xgcm.transform.transform` that violated tracer conservation when using conservative interpolation in the presence of nans. ([#635](https://github.com/xgcm/xgcm/pull/635))
   By [Julius Busecke](https://github.com/jbusecke).
 - Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate
