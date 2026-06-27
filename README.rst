@@ -10,7 +10,6 @@ Binder Examples
 Link      Provider       Description
 ========= ============== ============================================================================
 |Binder|  mybinder.org   Basic self-contained example
-|PBinder| Pangeo Binder  More complex examples integrated with other Pangeo tools (dask, zarr, etc.)
 ========= ============== ============================================================================
 
 Description
@@ -55,8 +54,8 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
 
 .. |conda forge| image:: https://img.shields.io/conda/vn/conda-forge/xgcm
    :target: https://anaconda.org/conda-forge/xgcm
-.. |DOI| image:: https://zenodo.org/badge/41581350.svg
-   :target: https://zenodo.org/badge/latestdoi/41581350
+.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.41581350.svg
+   :target: https://doi.org/10.5281/zenodo.41581350
 .. |Build Status| image:: https://github.com/xgcm/xgcm/actions/workflows/ci.yaml/badge.svg
    :target: https://github.com/xgcm/xgcm/actions/workflows/ci.yaml
    :alt: GitHub Workflow CI Status
