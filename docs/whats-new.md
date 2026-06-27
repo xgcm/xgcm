@@ -46,10 +46,13 @@
 
 ### Bugfixes
 
-- Grid operations (e.g. `Grid.interp`, `Grid.diff`) no longer clobber coordinates the user set on the
-  input `DataArray` for non-core dimensions with the (possibly stale) copy stored in the grid. Coordinates
-  on non-core dimensions are now preserved from the input array, while the newly position-shifted core-dim
-  coordinate still comes from the grid ([#496](https://github.com/xgcm/xgcm/issues/496)).
+- Grid operations (e.g. `Grid.interp`, `Grid.diff`) no longer drop or clobber non-core coordinates carried
+  on the input `DataArray`. Padding strips all coordinates and they were only restored from the grid's own
+  dataset, so a coordinate that lived on the input but not on the grid (e.g. a `time` coordinate) was lost,
+  and a coordinate present on both was overwritten with the grid's (possibly stale) copy. Coordinates on
+  non-core dimensions are now preserved from the input array (first input wins for repeated names), while
+  the newly position-shifted core-dim coordinate still comes from the grid
+  ([#496](https://github.com/xgcm/xgcm/issues/496), [#575](https://github.com/xgcm/xgcm/issues/575)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)

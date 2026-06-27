@@ -689,6 +689,47 @@ class TestGridUfuncWithPadding:
         ).compute()
         assert_equal(result, expected)
 
+    @pytest.mark.parametrize("chunk", [False, True])
+    def test_non_core_coord_on_input_is_preserved(self, chunk):
+        """Coordinates carried on the input data but absent from grid._ds (e.g. a
+        ``time`` coordinate) must survive the pad/unpad round-trip. See GH #575."""
+
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+
+        time = xr.DataArray(
+            np.array([10, 20, 30], dtype="float32"), dims="time", name="time"
+        )
+        label = xr.DataArray(["a", "b", "c"], dims="time")
+        da = xr.DataArray(
+            np.random.rand(3, 9),
+            dims=["time", "depth_c"],
+            coords={"time": time, "label": label, "depth_c": grid._ds.depth_c},
+        )
+        if chunk:
+            da = da.chunk({"time": 1})
+
+        result = apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="parallelized" if chunk else "forbidden",
+        )
+
+        # The dimension coordinate `time` and the non-dimension coordinate `label`
+        # both ride on a dimension that survives the operation, so both must remain,
+        # with their original values and dtype intact.
+        assert "time" in result.coords
+        assert "label" in result.coords
+        assert result["time"].dtype == time.dtype
+        np.testing.assert_array_equal(result["time"].values, time.values)
+        np.testing.assert_array_equal(result["label"].values, label.values)
+
     def test_2d_padding(self):
         def diff(a, axis):
             def _diff(a):
