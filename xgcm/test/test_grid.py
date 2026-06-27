@@ -259,9 +259,19 @@ def test_2d_vector_dict_input_no_face_connections(func, boundary, chunked):
     """Regression test for GH #581: vector grid ufuncs (diff_2d_vector /
     interp_2d_vector) accept their components as ``{axis: DataArray}`` dicts.
     On a grid without face connections these dicts reached ``_pad_basic``
-    unchanged, raising ``TypeError: dict.copy() takes no keyword arguments``
-    (and previously ``AttributeError`` in the dask map_overlap path)."""
+    unchanged, raising ``TypeError: dict.copy() takes no keyword arguments``."""
     ds, coords, _ = datasets_grid_metric("C")
+
+    # Eager (numpy) baseline computed via the equivalent scalar grid ufuncs:
+    # diff_2d_vector(u, v) == (diff(u, "X"), diff(v, "Y")) and likewise for interp.
+    scalar_func = func.replace("_2d_vector", "")
+    eager_grid = Grid(ds, coords=coords, periodic=True, autoparse_metadata=False)
+    eager_scalar = getattr(eager_grid, scalar_func)
+    expected = {
+        "X": eager_scalar(ds.u, "X", boundary=boundary),
+        "Y": eager_scalar(ds.v, "Y", boundary=boundary),
+    }
+
     if chunked:
         ds = ds.chunk({"xt": 1, "yt": 1, "xu": 1, "yu": 1, "time": 1, "zt": 1})
 
@@ -269,10 +279,10 @@ def test_2d_vector_dict_input_no_face_connections(func, boundary, chunked):
     grid_method = getattr(grid, func)
     result = grid_method({"X": ds.u, "Y": ds.v}, boundary=boundary)
 
-    # The vector op returns a dict of components; make sure both compute cleanly.
-    for component in result.values():
-        computed = component.compute()
-        assert not np.any(np.isnan(computed.values))
+    # The vector op returns a dict of components; check each computes cleanly and
+    # matches the eager baseline (this is the correctness assertion for #581).
+    for axis, component in result.items():
+        xr.testing.assert_allclose(component.compute(), expected[axis])
 
 
 def test_grid_dict_input_boundary_fill(nonperiodic_1d):
