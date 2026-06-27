@@ -54,8 +54,8 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
 
 .. |conda forge| image:: https://img.shields.io/conda/vn/conda-forge/xgcm
    :target: https://anaconda.org/conda-forge/xgcm
-.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.41581350.svg
-   :target: https://doi.org/10.5281/zenodo.41581350
+.. |DOI| image:: https://img.shields.io/badge/DOI-10.5281%2Fzenodo.7348619-blue.svg
+   :target: https://doi.org/10.5281/zenodo.7348619
 .. |Build Status| image:: https://github.com/xgcm/xgcm/actions/workflows/ci.yaml/badge.svg
    :target: https://github.com/xgcm/xgcm/actions/workflows/ci.yaml
    :alt: GitHub Workflow CI Status
