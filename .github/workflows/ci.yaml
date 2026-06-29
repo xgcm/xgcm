@@ -109,11 +109,15 @@ jobs:
         if: >-
           ${{ contains(needs.*.result, 'failure')
            || contains(needs.*.result, 'cancelled') }}
+        env:
+          CACHE_RESULT: ${{ needs.cache-pixi-lock.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          ZIZMOR_RESULT: ${{ needs.zizmor.result }}
         run: |
           echo "One or more required jobs did not succeed:"
-          echo "  cache-pixi-lock: ${{ needs.cache-pixi-lock.result }}"
-          echo "  test:            ${{ needs.test.result }}"
-          echo "  zizmor:          ${{ needs.zizmor.result }}"
+          echo "  cache-pixi-lock: $CACHE_RESULT"
+          echo "  test:            $TEST_RESULT"
+          echo "  zizmor:          $ZIZMOR_RESULT"
           exit 1
       - name: All required jobs succeeded
         run: echo "All required jobs passed."
