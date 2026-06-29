@@ -226,7 +226,7 @@
 
 - Added documentation on boundary conditions ([#273](https://github.com/xgcm/xgcm/issues/273), [#325](https://github.com/xgcm/xgcm/pull/325))
   By [Romain Caneill](https://github.com/rcaneill).
-- Updated metrics documentation for new methods in [Grid Metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics.html).
+- Updated metrics documentation for new methods in [Grid Metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics/).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
 ### Internal Changes
@@ -258,7 +258,7 @@
 
 ### Documentation
 
-- Updated Realistic Data examples in [Transforming Vertical Coordinates](https://xgcm.readthedocs.io/en/latest/transform.html) ([#322](https://github.com/xgcm/xgcm/pull/322))
+- Updated Realistic Data examples in [Transforming Vertical Coordinates](https://xgcm.readthedocs.io/en/latest/transform/) ([#322](https://github.com/xgcm/xgcm/pull/322))
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
 - Migrated model example notebooks to [xgcm-examples](https://github.com/xgcm/xgcm-examples) which integrates with [pangeo gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/) ([#294](https://github.com/xgcm/xgcm/pull/294))
@@ -312,7 +312,7 @@
 
 ## v0.3.0 (31 January 2020) {#whats-new-0-4-0}
 
-This release adds support for [model grid metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics.html) , bug fixes and extended documentation.
+This release adds support for [model grid metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics/) , bug fixes and extended documentation.
 
 ### Breaking changes
 
