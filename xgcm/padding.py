@@ -539,6 +539,19 @@ def _fold_north_halo(
     # take `width` rows starting `skip` in -> rows ordered north-to-further-south,
     # i.e. the correct order to concatenate above the interior.
     reversed_fold = da.isel({fold_dim: slice(None, None, -1)})
+    # The fold can only mirror rows that exist below it: after dropping the
+    # `skip` (redundant pole) rows there are `n_interior` interior rows to
+    # supply the halo. A wider request would silently clamp `isel` and yield a
+    # too-short array, so fail loudly instead.
+    n_interior = reversed_fold.sizes[fold_dim] - skip
+    if width > n_interior:
+        raise ValueError(
+            f"North-fold halo width {width} requested on fold axis "
+            f"{fold_axis!r} exceeds the {n_interior} interior row(s) available "
+            f"to mirror along {fold_dim!r} (grid length {reversed_fold.sizes[fold_dim]}"
+            f"{f', minus {skip} redundant pole row' if skip else ''}). "
+            "The fold can supply at most that many halo rows."
+        )
     halo = reversed_fold.isel({fold_dim: slice(skip, skip + width)})
 
     # --- mirror along the seam (X) axis about the pole ----------------------

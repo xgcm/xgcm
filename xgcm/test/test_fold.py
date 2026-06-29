@@ -385,6 +385,20 @@ def test_multi_row_halo():
     np.testing.assert_allclose(out.isel(yh=-1).values, ds.c.isel(yh=-2).values[::-1])
 
 
+def test_north_halo_wider_than_interior_raises():
+    # the fold mirrors interior rows, so it can supply at most as many halo rows
+    # as there are interior rows. Requesting more must fail loudly rather than
+    # silently clamp `isel` and return a too-short array.
+    ds = _make_ds()
+    grid = _grid(ds, "corner")  # center field: skip 0 -> Ny interior rows
+    # in-range widths still work (boundary, exactly Ny)
+    out = pad(ds.c, grid, boundary_width={"Y": (0, Ny)})
+    assert out.sizes["yh"] == 2 * Ny
+    # one row too many -> clear error naming axis, request, and max available
+    with pytest.raises(ValueError, match="exceeds the .* interior row"):
+        pad(ds.c, grid, boundary_width={"Y": (0, Ny + 1)})
+
+
 def test_fold_with_simultaneous_seam_padding():
     ds = _make_ds()
     grid = _grid(ds, "corner")
