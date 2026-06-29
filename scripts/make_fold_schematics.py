@@ -148,18 +148,17 @@ def fig_pivots():
             color=INK,
             style="italic",
         )
-        skip = (
-            "redundant row on the fold line (skipped)"
-            if fold == "edge"
-            else "top row half a cell below the fold line"
-        )
+        # The redundant (skipped) top row falls on whichever fields share the
+        # pivot's Y position: a field's top row sits on the fold line exactly
+        # when the field's Y sublattice (center/edge) matches the pivot's.
+        skip = f"redundant top row on Y-{fold} fields (skipped)"
         ax.text(
             nx / 2,
             -0.42,
             f"X = {seam},  Y = {fold}   →   {skip}",
             ha="center",
             va="top",
-            fontsize=9,
+            fontsize=8,
             color=ACCENT,
         )
 

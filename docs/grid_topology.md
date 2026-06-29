@@ -306,8 +306,12 @@ the pole that matches *its* position:
 The seam is **bipolar**: a periodic reflection has *two* fixed points, half a
 domain apart (the stars above). Whether the pole sits on a cell edge or a cell
 center in X sets their zonal location; whether it sits on an edge or center in Y
-sets whether the topmost grid row lies exactly *on* the fold line (a redundant
-row, which xgcm skips) or half a cell below it.
+sets, *for each field separately*, whether that field's topmost row lies exactly
+*on* the fold line — a redundant row, which xgcm skips — or half a cell below it.
+A field's top row is on the line precisely when the field's own Y position
+(center or edge) matches the pivot's; so a pivot whose pole is Y-centered
+(`center`/`u`) still produces a redundant top row for its center-positioned
+fields, not only the Y-edge pivots (`corner`/`v`).
 
 These four exhaust the possibilities — the pivot depends only on whether each
 axis lands on a cell center or a cell edge, and a center/edge pair on each of two

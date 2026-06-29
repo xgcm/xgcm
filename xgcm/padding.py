@@ -606,7 +606,9 @@ def _pad_fold(
 
     # 1. Attach the northern fold halo for each fold axis (computed from the
     #    unpadded interior so the seam mirror sees the full periodic row).
-    for fax in fold_axes:
+    #    Iterate in a stable (sorted) order so the concatenation is
+    #    deterministic when more than one fold axis is present.
+    for fax in sorted(fold_axes):
         info = grid._folds[fax]
         pivot = _resolve_pivot(info["pivot"], fax, info["seam_axis"])
         _, fold_dim = grid.axes[fax]._get_position_name(da)
