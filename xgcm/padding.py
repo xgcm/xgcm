@@ -600,7 +600,13 @@ def _pad_fold(
     else:
         isvector = False
 
-    for fax in sorted(fold_axes):
+    fold_axes = {
+        ax for ax in padding_width if ax in grid._folds and padding_width[ax][1] > 0
+    }
+
+    # 1. Attach the northern fold halo for each fold axis (computed from the
+    #    unpadded interior so the seam mirror sees the full periodic row).
+    for fax in fold_axes:
         info = grid._folds[fax]
         pivot = _resolve_pivot(info["pivot"], fax, info["seam_axis"])
         _, fold_dim = grid.axes[fax]._get_position_name(da)
