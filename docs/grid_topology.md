@@ -296,12 +296,12 @@ the pole that matches *its* position:
 
 ![The four north-fold pivot conventions](images/fold_pivots.png)
 
-| `fold` value | Aliases | Pole position (X, Y) | Used by |
+| `fold` value | Aliases | Pole position (X, Y) | Pole sits on |
 |---|---|---|---|
-| `"center"` | `"t"` | center, center | MOM5, generic tracer pole |
-| `"corner"` | `"f"` | edge, edge | MOM6 / OM4, NEMO / ORCA |
-| `"u"` | | edge, center | Oceananigans `TripolarGrid` (tracer zipper) |
-| `"v"` | | center, edge | north/south velocity-face pole |
+| `"center"` | `"t"` | center, center | a tracer (T) point |
+| `"corner"` | `"f"` | edge, edge | a cell corner (F) point |
+| `"u"` | | edge, center | a zonal-velocity (U) face |
+| `"v"` | | center, edge | a meridional-velocity (V) face |
 
 The seam is **bipolar**: a periodic reflection has *two* fixed points, half a
 domain apart (the stars above). Whether the pole sits on a cell edge or a cell
