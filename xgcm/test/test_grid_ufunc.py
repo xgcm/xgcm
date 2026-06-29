@@ -738,6 +738,123 @@ class TestGridUfuncWithPadding:
         ).compute()
         assert_equal(result, expected)
 
+    @pytest.mark.parametrize("chunk", [False, True])
+    def test_non_core_coord_on_input_is_preserved(self, chunk):
+        """Coordinates carried on the input data but absent from grid._ds (e.g. a
+        ``time`` coordinate) must survive the pad/unpad round-trip. See GH #575."""
+
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+
+        time = xr.DataArray(
+            np.array([10, 20, 30], dtype="float32"), dims="time", name="time"
+        )
+        label = xr.DataArray(["a", "b", "c"], dims="time")
+        da = xr.DataArray(
+            np.random.rand(3, 9),
+            dims=["time", "depth_c"],
+            coords={"time": time, "label": label, "depth_c": grid._ds.depth_c},
+        )
+        if chunk:
+            da = da.chunk({"time": 1})
+
+        result = apply_as_grid_ufunc(
+            diff_center_to_left,
+            da,
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="parallelized" if chunk else "forbidden",
+        )
+
+        # The dimension coordinate `time` and the non-dimension coordinate `label`
+        # both ride on a dimension that survives the operation, so both must remain,
+        # with their original values and dtype intact.
+        assert "time" in result.coords
+        assert "label" in result.coords
+        assert result["time"].dtype == time.dtype
+        np.testing.assert_array_equal(result["time"].values, time.values)
+        np.testing.assert_array_equal(result["label"].values, label.values)
+
+    def test_non_core_coord_first_input_wins(self):
+        """When multiple inputs carry a same-named non-core coordinate with
+        different values, the first input's values win (matching the
+        ``setdefault`` first-wins precedence in ``_reattach_coords``)."""
+
+        def diff_of_diff(a, b):
+            return (a - b)[..., 1:]
+
+        grid = create_1d_test_grid("depth")
+
+        time_a = xr.DataArray(
+            np.array([10, 20, 30], dtype="float32"), dims="time", name="time"
+        )
+        time_b = xr.DataArray(
+            np.array([99, 98, 97], dtype="float32"), dims="time", name="time"
+        )
+        a = xr.DataArray(
+            np.random.rand(3, 9),
+            dims=["time", "depth_c"],
+            coords={"time": time_a, "depth_c": grid._ds.depth_c},
+        )
+        b = xr.DataArray(
+            np.random.rand(3, 9),
+            dims=["time", "depth_c"],
+            coords={"time": time_b, "depth_c": grid._ds.depth_c},
+        )
+
+        result = apply_as_grid_ufunc(
+            diff_of_diff,
+            a,
+            b,
+            axis=[("depth",), ("depth",)],
+            grid=grid,
+            signature="(X:center),(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="forbidden",
+        )
+
+        # The first input's `time` coordinate values must win.
+        assert "time" in result.coords
+        np.testing.assert_array_equal(result["time"].values, time_a.values)
+
+    def test_non_core_coord_on_vector_component_input_is_preserved(self):
+        """A vector component supplied as a ``{axis: DataArray}`` dict goes
+        through ``_maybe_unpack_vector_component``; non-core coordinates on the
+        inner DataArray must still survive the unpack + reattach."""
+
+        def diff_center_to_left(a):
+            return a[..., 1:] - a[..., :-1]
+
+        grid = create_1d_test_grid("depth")
+
+        time = xr.DataArray(
+            np.array([10, 20, 30], dtype="float32"), dims="time", name="time"
+        )
+        da = xr.DataArray(
+            np.random.rand(3, 9),
+            dims=["time", "depth_c"],
+            coords={"time": time, "depth_c": grid._ds.depth_c},
+        )
+
+        result = apply_as_grid_ufunc(
+            diff_center_to_left,
+            {"depth": da},
+            axis=[("depth",)],
+            grid=grid,
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            dask="forbidden",
+        )
+
+        # The non-core `time` coordinate on the unpacked component must survive.
+        assert "time" in result.coords
+        assert result["time"].dtype == time.dtype
+        np.testing.assert_array_equal(result["time"].values, time.values)
+
     def test_2d_padding(self):
         def diff(a, axis):
             def _diff(a):

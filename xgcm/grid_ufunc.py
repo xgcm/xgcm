@@ -11,6 +11,7 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
+    Set,
     Tuple,
     Union,
     get_type_hints,
@@ -858,7 +859,14 @@ def apply_as_grid_ufunc(
 
     # Restore any dimension coordinates associated with new output dims that are present in grid
     # Also throws loud warning if ufunc returns array of incorrect size
-    results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
+    # Flatten the output core dims to a set of dim names; coords on these (newly
+    # position-shifted) dims must come from grid._ds, but coords on all other
+    # (non-core) dims should preserve whatever the user set on the input args.
+    out_core_dim_names = set(d for arg in out_core_dims for d in arg)
+    input_args = [_maybe_unpack_vector_component(arg) for arg in args]
+    results_with_coords = _reattach_coords(
+        results, grid, boundary_width, keep_coords, out_core_dim_names, input_args
+    )
 
     # xr.apply_ufunc moves core dims to the end and never moves them back, so
     # restore the input dimension ordering on each output (see GH #533).
@@ -1185,8 +1193,34 @@ def _identify_dummy_axes_with_real_axes(
 
 
 def _reattach_coords(
-    results: Sequence[xr.DataArray], grid: "Grid", boundary_width, keep_coords: bool
+    results: Sequence[xr.DataArray],
+    grid: "Grid",
+    boundary_width,
+    keep_coords: bool,
+    out_core_dim_names: Optional[Set[str]] = None,
+    input_args: Optional[Sequence[xr.DataArray]] = None,
 ) -> List[xr.DataArray]:
+    if out_core_dim_names is None:
+        out_core_dim_names = set()
+    if input_args is None:
+        input_args = []
+
+    # Collect coordinates carried on the original input arguments. These should
+    # take precedence over grid._ds for any coordinate that lives entirely on
+    # NON-core (i.e. not position-shifted) dimensions, so that coordinate values
+    # the user modified on the input array (e.g. a recast `time` coordinate on a
+    # dim untouched by the operation) survive the round-trip. See GH #496.
+    input_coords: Dict[str, xr.DataArray] = {}
+    for arg in input_args:
+        for coord, da_coord in arg.coords.items():
+            # Skip coords that touch a core (newly created/shifted) output dim;
+            # those must come from grid._ds instead.
+            if any(dim in out_core_dim_names for dim in da_coord.dims):
+                continue
+            # If multiple input args carry a coord of the same name, the first
+            # arg wins (matches the precedence convention used in #719).
+            input_coords.setdefault(coord, da_coord)
+
     results_with_coords = []
     for res in results:
         # padding strips all coordinates (including dimension coordinates).
@@ -1196,6 +1230,12 @@ def _reattach_coords(
             for coord, da_coord in grid._ds.coords.items()
             if all(dim in res.dims for dim in da_coord.dims)
         }
+
+        # Let coords from the input args override those from grid._ds when they
+        # live entirely on non-core dims that are present in the result.
+        for coord, da_coord in input_coords.items():
+            if all(dim in res.dims for dim in da_coord.dims):
+                all_matching_coords[coord] = da_coord
 
         try:
             res = res.assign_coords(all_matching_coords)
