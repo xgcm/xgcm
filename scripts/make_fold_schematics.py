@@ -46,12 +46,16 @@ plt.rcParams.update(
     }
 )
 
-# Four pivots: (label, models, X-role "seam", Y-role "fold", marker)
+# Four pivots: (label, subtitle, X-role "seam", Y-role "fold", marker)
+# Subtitles describe each pivot purely by where the pole sits on the staggered
+# (C-grid) sublattice -- not by model. Individual ocean models often support
+# more than one of these conventions, so we deliberately avoid pinning a model
+# to a single panel.
 PIVOTS = [
-    ("center  ·  T-point", "MOM5, generic tracer pole", "center", "center", "o"),
-    ("corner  ·  F-point", "MOM6 / OM4, NEMO / ORCA", "edge", "edge", "s"),
-    ("U-point", "Oceananigans TripolarGrid (tracer zipper)", "edge", "center", ">"),
-    ("V-point", "north/south velocity-face pole", "center", "edge", "^"),
+    ("center  ·  T-point", "pole on a tracer (T) point", "center", "center", "o"),
+    ("corner  ·  F-point", "pole on a cell corner (F) point", "edge", "edge", "s"),
+    ("U-point", "pole on a zonal-velocity (U) face", "edge", "center", ">"),
+    ("V-point", "pole on a meridional-velocity (V) face", "center", "edge", "^"),
 ]
 
 
@@ -73,7 +77,7 @@ def fig_pivots():
     fold_y = ny
     fig, axes = plt.subplots(2, 2, figsize=(11.0, 6.6))
 
-    for ax, (label, models, seam, fold, marker) in zip(axes.ravel(), PIVOTS):
+    for ax, (label, subtitle, seam, fold, marker) in zip(axes.ravel(), PIVOTS):
         _grid_backdrop(ax, nx, fold_y)
 
         # the fold line: the north edge of the logical grid
@@ -127,7 +131,7 @@ def fig_pivots():
         ax.text(
             0.0,
             1.045,
-            models,
+            subtitle,
             transform=ax.transAxes,
             fontsize=9.5,
             color="0.4",
