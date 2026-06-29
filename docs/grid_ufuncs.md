@@ -191,7 +191,7 @@ from typing import Annotated
 ```python
 @as_grid_ufunc()
 def diff_center_to_left(
-    a: Annotated[np.ndarray, "ax1:center"]
+    a: Annotated[np.ndarray, "ax1:center"],
 ) -> Annotated[np.ndarray, "ax1:left"]:
     return diff_forward(a)
 ```
