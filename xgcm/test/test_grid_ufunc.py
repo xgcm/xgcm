@@ -511,6 +511,55 @@ class TestGridUFuncNoPadding:
         result = diff_center_to_left(grid, da, axis=[("lon",)])
         assert_equal(result, expected)
 
+    @pytest.mark.parametrize("chunks", [None, {"k": 2}])
+    def test_preserves_input_dim_order(self, chunks):
+        # Regression test for GH #533: apply_as_grid_ufunc should return output
+        # with the same dimension order as the input, even when the core dim
+        # being operated on is not the last dim.
+        nx, ny, nz = 4, 5, 6
+        ds = xr.Dataset(
+            coords={
+                "i": np.arange(nx),
+                "j": np.arange(ny),
+                "jg": np.arange(ny),
+                "k": np.arange(nz),
+            }
+        )
+        da = xr.DataArray(np.random.rand(nz, ny, nx), dims=["k", "j", "i"])
+        dask = "forbidden"
+        if chunks is not None:
+            da = da.chunk(chunks)
+            dask = "parallelized"
+        grid = Grid(
+            ds,
+            coords={"Y": {"center": "j", "left": "jg"}},
+            periodic=True,
+            autoparse_metadata=False,
+        )
+
+        # Core dim "j" is in the middle of the input; it must stay there.
+        out = grid.apply_as_grid_ufunc(
+            lambda a: a,
+            da,
+            axis=[["Y"]],
+            signature="(Y:center)->(Y:center)",
+            boundary_width={"Y": (0, 0)},
+            dask=dask,
+        )
+        assert out.dims == ("k", "j", "i")
+
+        # When the core dim changes grid position (and is renamed j -> jg) it
+        # should still occupy the same slot in the dim ordering.
+        out_left = grid.apply_as_grid_ufunc(
+            lambda a: a,
+            da,
+            axis=[["Y"]],
+            signature="(Y:center)->(Y:left)",
+            boundary_width={"Y": (0, 0)},
+            dask=dask,
+        )
+        assert out_left.dims == ("k", "jg", "i")
+
     def test_multiple_inputs(self):
         def inner_product_left_right(a, b):
             return np.inner(a, b)

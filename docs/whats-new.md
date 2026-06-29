@@ -46,6 +46,13 @@
 
 ### Bugfixes
 
+- Preserve the input DataArray's dimension order in the output of `apply_as_grid_ufunc`
+  (and the `Grid.apply_as_grid_ufunc` method). Previously `xarray.apply_ufunc` moved the
+  operated-on core dimension to the end and never moved it back, so an input with dims
+  `('tile', 'j', 'i')` came back as `('tile', 'i', 'j')`. The output now follows the input
+  ordering (with the core dim renamed in-place if it changes grid position)
+  ([#533](https://github.com/xgcm/xgcm/issues/533)).
+
 - Grid operations (e.g. `Grid.interp`, `Grid.diff`, `Grid.cumsum`) no longer drop or clobber non-core
   coordinates carried on the input `DataArray`. Padding strips all coordinates and they were only restored
   from the grid's own dataset, so a coordinate that lived on the input but not on the grid (e.g. a `time`
