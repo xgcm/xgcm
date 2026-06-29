@@ -591,6 +591,10 @@ def _pad_fold(
     ordinary `_pad_basic` machinery.
     """
     if isinstance(da, dict):
+        # A north fold is a 180-degree point reflection about the pole: both
+        # horizontal components reverse sign but do *not* swap axes, so unlike a
+        # 90-degree rotation (e.g. a cube-sphere edge) the fold needs no
+        # `other_component` -- the lone component is sign-flipped in `_fold_north_halo`.
         isvector = True
         _, da = da.popitem()
     else:

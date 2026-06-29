@@ -261,6 +261,12 @@ grid = xgcm.Grid(
 grid
 ```
 
+The seam axis is inferred as the axis you **explicitly** mark `"periodic"`. On a
+3-D grid you therefore only need to declare the zonal seam (`"X"`) and the fold
+(`"Y"`); a vertical axis can be left unspecified and will not be mistaken for the
+seam. The inference is only ambiguous if you explicitly mark *more than one*
+non-fold axis periodic.
+
 With the fold in place, `interp`, `diff`, `derivative`, and the rest of the grid
 operators stitch correctly across the top edge instead of falling back to an
 ordinary boundary. To see what the fold actually does, label each cell of the

@@ -107,6 +107,44 @@ def test_fold_seam_axis_inferred():
     assert grid._folds["Y"]["seam_axis"] == "X"
 
 
+def test_fold_seam_ignores_defaulted_periodic_vertical():
+    # A vertical axis left unspecified defaults to periodic, but must NOT be
+    # mistaken for the seam: only the *explicitly* periodic axis (X) is a
+    # candidate. The grid must construct and infer X as the seam.
+    ds = _make_ds()
+    ds = ds.assign_coords(zh=np.arange(3))
+    grid = Grid(
+        ds,
+        coords={
+            "X": {"center": "xh", "left": "xl"},
+            "Y": {"center": "yh", "left": "yl"},
+            "Z": {"center": "zh"},  # boundary unspecified -> defaults periodic
+        },
+        boundary={"X": "periodic", "Y": {"fold": "corner"}},
+        autoparse_metadata=False,
+    )
+    assert grid._folds["Y"]["seam_axis"] == "X"
+    # the unspecified vertical still defaulted to periodic, it is just not a seam
+    assert "Z" not in grid._explicitly_periodic_axes
+
+
+def test_fold_seam_ambiguous_when_two_explicit_periodic():
+    # two *explicitly* periodic non-fold axes is genuinely ambiguous -> raise.
+    ds = _make_ds()
+    ds = ds.assign_coords(zh=np.arange(3))
+    with pytest.raises(ValueError, match="ambiguous"):
+        Grid(
+            ds,
+            coords={
+                "X": {"center": "xh", "left": "xl"},
+                "Y": {"center": "yh", "left": "yl"},
+                "Z": {"center": "zh"},
+            },
+            boundary={"X": "periodic", "Z": "periodic", "Y": {"fold": "corner"}},
+            autoparse_metadata=False,
+        )
+
+
 def test_bad_pivot_raises():
     ds = _make_ds()
     with pytest.raises(ValueError, match="Unknown fold pivot"):

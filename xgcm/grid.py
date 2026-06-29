@@ -221,6 +221,22 @@ class Grid:
         # TODO: In the future we want this the only place where we store these.
         # TODO: This info needs to then be accessible to e.g. pad()
 
+        # Capture the axes the user *explicitly* marked periodic, before any
+        # defaults are filled in below. `_validate_folds` uses this to infer a
+        # north-fold seam axis: only an explicitly-periodic axis is a seam
+        # candidate, so e.g. a vertical axis that merely defaults to periodic is
+        # not considered. The legacy `periodic=True` default is intentionally not
+        # treated as explicit (it cannot be told apart from the argument default);
+        # declare the seam via `boundary={seam: "periodic"}` or an explicit
+        # `periodic` list/dict.
+        self._explicitly_periodic_axes = {
+            ax for ax, b in boundary_dict.items() if b == "periodic"
+        }
+        if isinstance(periodic, list):
+            self._explicitly_periodic_axes |= set(periodic)
+        elif isinstance(periodic, Mapping):
+            self._explicitly_periodic_axes |= {ax for ax, p in periodic.items() if p}
+
         # Parse list input. This case does only apply to periodic.
         # Since we plan on deprecating it soon handle it here, so we can easily
         # remove it later
@@ -230,7 +246,10 @@ class Grid:
             periodic_dict = self._map_kwargs_over_axes(periodic, axes=all_axes)
 
         for ax, p in periodic_dict.items():
-            if boundary_dict[ax] is None:
+            # Use `.get`: a dict `boundary` may omit axes (e.g. leaving the
+            # vertical unspecified), in which case they take the periodic/fill
+            # default here rather than raising a KeyError.
+            if boundary_dict.get(ax) is None:
                 if p is True:
                     boundary_dict[ax] = "periodic"
                 else:
@@ -402,8 +421,10 @@ class Grid:
         A fold boundary (e.g. ``boundary={"Y": {"fold": "corner"}}``) is declared
         on the fold axis -- the meridional ("Y") axis -- but the seam axis it
         mirrors along -- the zonal ("X") axis -- is a cross-axis property. Infer
-        it here as the periodic axis orthogonal to the fold axis, and record
-        everything in ``self._folds`` keyed by fold-axis name.
+        it here as the *explicitly* periodic axis orthogonal to the fold axis (an
+        axis that merely defaults to periodic, e.g. an unspecified vertical axis,
+        is not a candidate), and record everything in ``self._folds`` keyed by
+        fold-axis name.
         """
         self._folds: Dict[str, Dict[str, Any]] = {}
         for axname, axis in self.axes.items():
@@ -412,20 +433,21 @@ class Grid:
                 continue
             seam_candidates = [
                 other
-                for other, oax in self.axes.items()
-                if other != axname and oax._boundary == "periodic"
+                for other in self.axes
+                if other != axname and other in self._explicitly_periodic_axes
             ]
             if len(seam_candidates) == 0:
                 raise ValueError(
-                    f"A fold boundary on axis {axname!r} requires a periodic seam "
-                    "axis (the zonal wrap), but no other axis is periodic. Set e.g. "
+                    f"A fold boundary on axis {axname!r} requires an explicitly "
+                    "periodic seam axis (the zonal wrap), but no other axis was "
+                    "explicitly marked periodic. Set e.g. "
                     "boundary={'X': 'periodic', '" + str(axname) + "': {'fold': ...}}."
                 )
             if len(seam_candidates) > 1:
                 raise ValueError(
                     f"A fold boundary on axis {axname!r} is ambiguous: more than one "
-                    f"periodic axis could be the seam ({seam_candidates}). Multiple "
-                    "candidate seam axes are not supported."
+                    f"explicitly periodic axis could be the seam ({seam_candidates}). "
+                    "Multiple candidate seam axes are not supported."
                 )
             self._folds[axname] = {
                 "seam_axis": seam_candidates[0],
