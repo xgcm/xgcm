@@ -1126,6 +1126,11 @@ class Grid:
         for ax in axes:
             pos, dim = ax._get_position_name(da)
 
+            # Capture the input array (with its coordinates) before it is mutated
+            # below; its NON-core coordinates should survive the operation rather
+            # than being clobbered by the grid's (possibly stale) copies. See #496.
+            input_da = data
+
             ax_metric_weighted = metric_weighted[ax.name]
             if ax_metric_weighted:
                 metric = self.get_metric(data, ax_metric_weighted)
@@ -1185,6 +1190,11 @@ class Grid:
                 grid=self,
                 boundary_width=ax_boundary_width,
                 keep_coords=keep_coords,
+                # The only newly position-shifted (core) dim is the result dim;
+                # its coordinate must come from the grid. Coordinates on all other
+                # (non-core) dims should be preserved from the input array. #496.
+                out_core_dim_names={new_dim_name},
+                input_args=[input_da],
             )[0]
 
             ax_metric_weighted = metric_weighted[ax.name]
