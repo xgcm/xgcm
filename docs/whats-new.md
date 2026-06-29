@@ -53,6 +53,13 @@
   non-core dimensions are now preserved from the input array (first input wins for repeated names), while
   the newly position-shifted core-dim coordinate still comes from the grid
   ([#496](https://github.com/xgcm/xgcm/issues/496), [#575](https://github.com/xgcm/xgcm/issues/575)).
+  
+- Fix `TypeError: dict.copy() takes no keyword arguments` when applying vector grid ufuncs (e.g.
+  `diff_2d_vector`, `interp_2d_vector`) on grids *without* face connections. A vector component supplied
+  as a `{axis_name: DataArray}` dict was forwarded unchanged by `xgcm.padding.pad` to the basic padding
+  routine `_pad_basic` (which expects a `DataArray`); `pad` now unpacks the inner `DataArray` on the
+  non-face-connection path, mirroring the existing face-connection path
+  ([#581](https://github.com/xgcm/xgcm/issues/581)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
