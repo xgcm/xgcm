@@ -736,6 +736,11 @@ def pad(
     ):
         da_padded = _pad_fold(data, grid, padding_width, padding, fill_value)
     else:
+        # A vector component is supplied as a {axis_name: DataArray} dict. Unlike the
+        # face-connection path (which needs the axis to orient the component), basic
+        # padding only operates on the array itself, so unpack the inner DataArray.
+        if isinstance(data, dict):
+            [data] = list(data.values())  # raises if more than one component
         da_padded = _pad_basic(data, grid, padding_width, padding, fill_value)  # type: ignore
 
     return da_padded

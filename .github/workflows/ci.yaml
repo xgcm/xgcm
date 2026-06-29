@@ -29,14 +29,14 @@ jobs:
       cache-key: ${{ steps.pixi-lock.outputs.cache-key }}
       pixi-version: ${{ steps.pixi-lock.outputs.pixi-version }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
       - uses: Parcels-code/pixi-lock/create-and-cache@a9aee67fa67426e6b0297fa5bef80600572be153
         id: pixi-lock
         with:
           pixi-version: ${{env.PIXI_VERSION}}
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pixi-lock
           path: pixi.lock
@@ -45,6 +45,9 @@ jobs:
     needs: ["cache-pixi-lock"]
     if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
+    # nightly runs against git-tip xarray/dask/numpy; let it fail without
+    # failing the overall `test` job (and therefore the merge gate).
+    continue-on-error: ${{ matrix.pixi-env == 'test-nightly' }}
     permissions:
       contents: read
     timeout-minutes: 60
@@ -67,7 +70,7 @@ jobs:
     env:
       PIXI_ENV: ${{ matrix.pixi-env }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
           persist-credentials: false
 
@@ -76,7 +79,7 @@ jobs:
         with:
           cache-key: ${{ needs.cache-pixi-lock.outputs.cache-key }}
 
-      - uses: prefix-dev/setup-pixi@fef5c9568ca6c4ff7707bf840ab0692ba3f08293 # v0.9.0
+      - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
         with:
           pixi-version: ${{ needs.cache-pixi-lock.outputs.pixi-version }}
           cache: true
@@ -85,13 +88,39 @@ jobs:
         run: |
           pixi run -e ${{matrix.pixi-env}} tests --cov=./ --cov-report=xml
       - name: Upload code coverage to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           file: ./coverage.xml
           flags: unittests
           env_vars: PIXI_ENV
           name: codecov-umbrella
           fail_ci_if_error: false
+
+  all-tests:
+    name: All tests passed
+    # Single aggregated gate to use as the required status check on `master`,
+    # so the matrix can change without touching branch-protection settings.
+    needs: ["cache-pixi-lock", "test", "zizmor"]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        if: >-
+          ${{ contains(needs.*.result, 'failure')
+           || contains(needs.*.result, 'cancelled') }}
+        env:
+          CACHE_RESULT: ${{ needs.cache-pixi-lock.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          ZIZMOR_RESULT: ${{ needs.zizmor.result }}
+        run: |
+          echo "One or more required jobs did not succeed:"
+          echo "  cache-pixi-lock: $CACHE_RESULT"
+          echo "  test:            $TEST_RESULT"
+          echo "  zizmor:          $ZIZMOR_RESULT"
+          exit 1
+      - name: All required jobs succeeded
+        run: echo "All required jobs passed."
 
   zizmor:
     name: GHA Security Analysis using Zizmor
@@ -101,9 +130,9 @@ jobs:
       security-events: write # Required for upload-sarif (used by zizmor-action) to upload SARIF files.
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Run zizmor
-        uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
+        uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
