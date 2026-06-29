@@ -46,12 +46,12 @@
 
 ### Bugfixes
 
-- Grid operations (e.g. `Grid.interp`, `Grid.diff`) no longer drop or clobber non-core coordinates carried
-  on the input `DataArray`. Padding strips all coordinates and they were only restored from the grid's own
-  dataset, so a coordinate that lived on the input but not on the grid (e.g. a `time` coordinate) was lost,
-  and a coordinate present on both was overwritten with the grid's (possibly stale) copy. Coordinates on
-  non-core dimensions are now preserved from the input array (first input wins for repeated names), while
-  the newly position-shifted core-dim coordinate still comes from the grid
+- Grid operations (e.g. `Grid.interp`, `Grid.diff`, `Grid.cumsum`) no longer drop or clobber non-core
+  coordinates carried on the input `DataArray`. Padding strips all coordinates and they were only restored
+  from the grid's own dataset, so a coordinate that lived on the input but not on the grid (e.g. a `time`
+  coordinate) was lost, and a coordinate present on both was overwritten with the grid's (possibly stale)
+  copy. Coordinates on non-core dimensions are now preserved from the input array (first input wins for
+  repeated names), while the newly position-shifted core-dim coordinate still comes from the grid
   ([#496](https://github.com/xgcm/xgcm/issues/496), [#575](https://github.com/xgcm/xgcm/issues/575)).
 
 - Fix `TypeError: dict.copy() takes no keyword arguments` when applying vector grid ufuncs (e.g.

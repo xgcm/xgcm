@@ -452,6 +452,59 @@ def test_preserve_input_noncore_coords(funcname, use_dask):
     assert "xc_aux" not in out.coords
 
 
+@pytest.mark.parametrize("use_dask", [False, True])
+def test_cumsum_preserves_input_noncore_coords(use_dask):
+    # Regression test for GH #496/#575 extended to `Grid.cumsum`: a coordinate
+    # carried on the INPUT array for a non-core dimension (here `time`, and the
+    # non-dimension `t_label`) must be preserved through the cumsum, rather than
+    # dropped or clobbered with the (stale) grid copy. The newly position-shifted
+    # core-dim coordinate must still come from the grid.
+    N = 8
+    time = np.arange(N) * np.timedelta64(600, "s")
+    ds = xr.Dataset(coords={"XC": np.arange(N) + 0.5, "XG": np.arange(N), "time": time})
+    ds = ds.assign_coords(
+        t_label=("time", np.arange(N).astype("int64")),
+        xc_aux=("XC", np.arange(N).astype("int64") * 10),
+    )
+    ds["v"] = xr.DataArray(np.random.rand(N, N), dims=["time", "XC"])
+    grid = Grid(
+        ds,
+        coords={"X": {"center": "XC", "left": "XG"}},
+        periodic=True,
+        autoparse_metadata=False,
+    )
+
+    # User recasts the non-core coords on the input array.
+    new_time = (np.arange(N) * 600 / 3600.0).astype(np.float32)
+    new_t_label = (np.arange(N) + 100).astype(np.float32)
+    new_xc_aux = (np.arange(N) + 500).astype(np.float32)
+    v = ds.v.assign_coords(
+        time=new_time, t_label=("time", new_t_label), xc_aux=("XC", new_xc_aux)
+    )
+    if use_dask:
+        v = v.chunk({"time": 4})
+
+    out = grid.cumsum(v, "X", to="left", keep_coords=True)
+
+    # The user's modified non-core dimension coord must survive (dtype AND values).
+    assert out.time.dtype == np.float32
+    np.testing.assert_array_equal(out.time.values, new_time)
+
+    # The user's modified non-core, non-dimension coord must survive too.
+    assert "t_label" in out.coords
+    assert out["t_label"].dtype == np.float32
+    np.testing.assert_array_equal(out["t_label"].values, new_t_label)
+
+    # The shifted core-dim coordinate must still be attached from the grid.
+    assert "XG" in out.coords
+    np.testing.assert_array_equal(out["XG"].values, ds["XG"].values)
+
+    # XC is no longer a dimension of the result, so `xc_aux` (on XC) must be
+    # absent rather than incorrectly re-attached from the input.
+    assert "XC" not in out.dims
+    assert "xc_aux" not in out.coords
+
+
 def test_boundary_kwarg_same_as_grid_constructor_kwarg():
     ds = datasets["2d_left"]
     ds, grid_kwargs = parse_comodo(ds)
