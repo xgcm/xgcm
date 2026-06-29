@@ -1087,7 +1087,9 @@ class Grid:
             element rather than the first (the default, `False`, accumulates from
             low index to high index). Implemented by flipping the data along the
             core dimension, cumulatively summing, and flipping the result back.
-            Optionally a dict with separate values for each axis can be passed.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------
@@ -1107,6 +1109,19 @@ class Grid:
         if isinstance(axis, str):
             axis = [axis]
         to = self._map_kwargs_over_axes(to)
+
+        # `reverse` controls the accumulation direction of each axis being
+        # cumulatively summed, so it only makes sense for axes in `axis`. Reject
+        # a dict that names other axes rather than silently ignoring them, which
+        # could mislead users into thinking a non-integrated axis is reversed.
+        if isinstance(reverse, dict):
+            extra = [ax_name for ax_name in reverse if ax_name not in axis]
+            if extra:
+                raise ValueError(
+                    f"`reverse` was given for axes {extra} which are not being "
+                    f"cumulatively summed (axis={axis}). Only pass `reverse` for "
+                    f"the axes in `axis`."
+                )
         reverse = self._map_kwargs_over_axes(reverse)
 
         if isinstance(metric_weighted, str):
@@ -1469,7 +1484,9 @@ class Grid:
             low-index end, so that the cumulative integral starts from the last
             element rather than the first (the default, `False`, accumulates from
             low index to high index). Forwarded to :meth:`Grid.cumsum`.
-            Optionally a dict with separate values for each axis can be passed.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------

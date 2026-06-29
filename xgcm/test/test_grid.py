@@ -342,6 +342,28 @@ def test_cumint_reverse():
     assert not np.allclose(result.data, forward.data)
 
 
+def test_cumsum_reverse_rejects_non_integrated_axis():
+    """A `reverse` dict naming an axis not in `axis` is an error, not ignored."""
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary="fill",
+        autoparse_metadata=False,
+    )
+    da = ds.tracer
+
+    # "Y" is not being summed over, so a reverse value for it is ambiguous
+    with pytest.raises(ValueError, match="reverse.*not being cumulatively summed"):
+        grid.cumsum(da, "X", boundary="fill", reverse={"X": True, "Y": False})
+
+    # the error propagates through cumint as well
+    with pytest.raises(ValueError, match="reverse.*not being cumulatively summed"):
+        grid.cumint(da, "X", boundary="fill", reverse={"X": True, "Y": False})
+
+
 @pytest.mark.parametrize(
     "func",
     ["interp", "max", "min", "diff", "cumsum"],
