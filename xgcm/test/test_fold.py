@@ -151,6 +151,16 @@ def test_bad_pivot_raises():
         _grid(ds, "banana")
 
 
+def test_explicit_pivot_invalid_position_raises():
+    # An invalid position in an explicit {axis: position} mapping must raise,
+    # not be silently coerced to an edge pivot (which would give a wrong halo).
+    ds = _make_ds()
+    with pytest.raises(ValueError, match="Invalid position"):
+        _grid(ds, {"X": "centre", "Y": "center"})  # British spelling typo
+    with pytest.raises(ValueError, match="Invalid position"):
+        _grid(ds, {"X": "banana"})
+
+
 def test_fold_rejects_face_connections():
     # the fold and face-connection padding paths are mutually exclusive; declaring
     # both must fail clearly at construction, not cryptically at pad time.

@@ -332,10 +332,13 @@ mirrored *and* sign-flipped, because folding the grid rotates the local axes by
 
 ![How the north fold fills the halo](images/fold_halo.png)
 
-So that vector components flip correctly, pass the partner component via
-`other_component`, exactly as for [vector face connections](grids.md). Folding
-the same `u` data as a scalar versus as a vector shows the difference — the
-vector halo is the scalar halo with the sign reversed:
+To fold a field as a **vector** (so its components flip sign), pass it wrapped as
+a single-key dict keyed by its axis, e.g. `{"X": ds.u}` — that is what flags it as
+a vector rather than a scalar. Unlike a 90° rotated [face connection](grids.md),
+the 180° fold needs no partner component (each component simply reverses sign), so
+`other_component` is optional here. Folding the same `u` data as a scalar versus
+as a vector shows the difference — the vector halo is the scalar halo with the
+sign reversed:
 
 ```python
 ds["u"] = (("y_c", "x_g"), np.broadcast_to(np.arange(1, N + 1), (N, N)).astype(float))

@@ -128,6 +128,13 @@ def _parse_fold_boundary(boundary: Mapping) -> Dict:
         # explicit per-axis pivot positions, e.g. {"X": "right", "Y": "center"}
         if not pivot:
             raise ValueError("Explicit fold pivot mapping must not be empty.")
+        bad = {ax: pos for ax, pos in pivot.items() if pos not in _SEAM_POSITION}
+        if bad:
+            raise ValueError(
+                f"Invalid position(s) {bad} in explicit fold pivot "
+                f"{dict(pivot)!r}. Each must be one of "
+                f"{sorted(_SEAM_POSITION)}."
+            )
     else:
         raise ValueError(
             f"Fold pivot must be a name ({sorted({k for k in _PIVOT_ALIASES})}) "
