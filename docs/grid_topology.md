@@ -358,7 +358,7 @@ The fold is applied purely in the padding layer as an indexed gather, so it stay
 lazy and works with multi-chunk dask arrays. For a worked example on real model
 output from three different codes — including `interp` (surface speed) and `diff`
 (horizontal divergence) diagnostics that stay continuous across the seam — see the
-[Tripolar fold example](xgcm-examples/06_tripolar_fold.ipynb).
+[Tripolar fold example](xgcm-examples/05_tripolar_fold.ipynb).
 
 !!! note
     Only the **north** edge folds; the south edge of the fold axis uses an
