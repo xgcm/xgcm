@@ -1,37 +1,13 @@
 # What's New
 
-## v0.9.0 (unreleased) {#whats-new-0-9-0}
+## v0.10.0 (unreleased) {#whats-new-0-10-0}
 
 
 ### New Features
 
-- Methods for autoparsing of dataset metadata to construct a `xgcm.Grid` class have been added.
-  Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
-  addition of SGRID conventions ([#109](https://github.com/xgcm/xgcm/issues/109), [#559](https://github.com/xgcm/xgcm/pull/559)).
-  By [Jack Atkinson](https://github.com/jatkinson1000).
-
-- Vertical coordinate transformations are now also supported for multi-dimensional targets, for example a
-  terrain-following (spatially varying) vertical coordinate. This feature currently only works with the linear
-  interpolation method ([#614](https://github.com/xgcm/xgcm/issues/614), [#642](https://github.com/xgcm/xgcm/pull/642)).
-  By [Nora Loose](https://github.com/noraloose).
-
 ### Breaking Changes
 
-- All computation methods on the `xgcm.Axis` class have been removed, in favour of using the corresponding
-  methods on the `xgcm.Grid` object. The `xgcm.Axis` class has also been removed from public API.
-  ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557)).
-  By [Thomas Nicholas](https://github.com/tomnicholas).
-
-- All functionality for generating c-grid dimensions on incomplete datasets via `Grid.autogenerate`,  was removed ([#557](https://github.com/xgcm/xgcm/pull/557)).
-   By [Julius Busecke](https://github.com/jbusecke).
-
 ### Internal Changes
-
-- Switch CI environment setup to micromamba ([#576](https://github.com/xgcm/xgcm/issues/576), [#577](https://github.com/xgcm/xgcm/pull/577)).
-  By [Julius Busecke](https://github.com/jbusecke).
-
-- pre-commit autoupdate frequency reduced ([#563](https://github.com/xgcm/xgcm/pull/563)).
-  By [Julius Busecke](https://github.com/jbusecke).
 
 - Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
@@ -77,8 +53,50 @@
   ([#708](https://github.com/xgcm/xgcm/issues/708)).
   By [Henri Drake](https://github.com/hdrake).
 
+- Fix non-deterministic, hash-seed-dependent halo values in face-connection padding that could yield
+  incorrect results across a face-connection seam between runs ([#713](https://github.com/xgcm/xgcm/pull/713)).
+  By [Henri Drake](https://github.com/hdrake).
+
+## v0.9.0 (2025/08/20) {#whats-new-0-9-0}
+
+
+### New Features
+
+- Methods for autoparsing of dataset metadata to construct a `xgcm.Grid` class have been added.
+  Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
+  addition of SGRID conventions ([#109](https://github.com/xgcm/xgcm/issues/109), [#559](https://github.com/xgcm/xgcm/pull/559)).
+  By [Jack Atkinson](https://github.com/jatkinson1000).
+
+- Vertical coordinate transformations are now also supported for multi-dimensional targets, for example a
+  terrain-following (spatially varying) vertical coordinate. This feature currently only works with the linear
+  interpolation method ([#614](https://github.com/xgcm/xgcm/issues/614), [#642](https://github.com/xgcm/xgcm/pull/642)).
+  By [Nora Loose](https://github.com/noraloose).
+
+### Breaking Changes
+
+- All computation methods on the `xgcm.Axis` class have been removed, in favour of using the corresponding
+  methods on the `xgcm.Grid` object. The `xgcm.Axis` class has also been removed from public API.
+  ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557)).
+  By [Thomas Nicholas](https://github.com/tomnicholas).
+
+- All functionality for generating c-grid dimensions on incomplete datasets via `Grid.autogenerate`,  was removed ([#557](https://github.com/xgcm/xgcm/pull/557)).
+   By [Julius Busecke](https://github.com/jbusecke).
+
+### Internal Changes
+
+- Switch CI environment setup to micromamba ([#576](https://github.com/xgcm/xgcm/issues/576), [#577](https://github.com/xgcm/xgcm/pull/577)).
+  By [Julius Busecke](https://github.com/jbusecke).
+
+- pre-commit autoupdate frequency reduced ([#563](https://github.com/xgcm/xgcm/pull/563)).
+  By [Julius Busecke](https://github.com/jbusecke).
+
+### Documentation
+
+### Bugfixes
+
 - Fix bug in `xgcm.transform.transform` that violated tracer conservation when using conservative interpolation in the presence of nans. ([#635](https://github.com/xgcm/xgcm/pull/635))
   By [Julius Busecke](https://github.com/jbusecke).
+
 - Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate
   values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
   By [Julius Busecke](https://github.com/jbusecke).
@@ -90,9 +108,6 @@
   By [Julius Busecke](https://github.com/jbusecke).
 
 - Fix bug that did not allow to create grids with faceconnections if the face dimension was coordinate-less. ([#616](https://github.com/xgcm/xgcm/issues/616), [#616](https://github.com/xgcm/xgcm/pull/616)).
-  By [Julius Busecke](https://github.com/jbusecke).
-
-- Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ## v0.8.1 (2022/11/22) {#whats-new-0-8-1}
