@@ -1,8 +1,11 @@
-from typing import Mapping, Optional, Tuple
+from typing import Mapping, Optional, Tuple, Union
 
 import xarray as xr
 
-from .padding import _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
+from .padding import (
+    _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG,
+    _parse_fold_boundary,
+)
 
 VALID_POSITION_NAMES = "center|left|right|inner|outer"
 FALLBACK_SHIFTS = {
@@ -20,7 +23,7 @@ class Axis:
         str, str
     ]  # TODO give this mapping from positions to dimension names a better name?
     _default_shifts: Mapping[str, str]
-    _boundary: str
+    _boundary: Union[str, Mapping]
     _fill_value: float
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
@@ -34,7 +37,7 @@ class Axis:
             Mapping[str, str]
         ] = None,  # TODO type hint as Literal of the allowed options
         boundary: Optional[
-            str
+            Union[str, Mapping]
         ] = None,  # TODO type hint as Literal of the allowed options
         fill_value: Optional[float] = None,
     ):
@@ -116,9 +119,15 @@ class Axis:
 
         if boundary is None:
             boundary = "periodic"
-        if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
+        if isinstance(boundary, Mapping):
+            # a north-fold boundary value, e.g. {"fold": "corner"}. Validate the
+            # pivot/south here; the seam axis (a cross-axis property) is checked
+            # at the Grid level in `_validate_folds`.
+            boundary = _parse_fold_boundary(boundary)
+        elif boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
             raise ValueError(
-                f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}"
+                f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()} "
+                f"or a fold spec (e.g. {{'fold': 'corner'}}), but got {boundary}"
             )
         self._boundary = boundary
 
@@ -158,7 +167,7 @@ class Axis:
         return self._default_shifts
 
     @property
-    def boundary(self) -> str:
+    def boundary(self) -> Union[str, Mapping]:
         return self._boundary
 
     def __repr__(self):

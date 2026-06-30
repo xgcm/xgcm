@@ -31,6 +31,7 @@ plugins:
   mkdocs-jupyter:
     include_source: true
     execute: false
+    include: ["*.ipynb"]   # don't render helper scripts (scripts/*.py) as pages
   mkdocstrings:
     handlers:
       python:
@@ -81,6 +82,7 @@ nav:
       - MITgcm ECCOv4: xgcm-examples/01_eccov4.ipynb
       - MOM6: xgcm-examples/03_MOM6.ipynb
       - NEMO: xgcm-examples/04_nemo_idealized.ipynb
+      - Tripolar north fold: xgcm-examples/05_tripolar_fold.ipynb
   - "What's New": whats-new.md
   - Contributor Guide: contributor_guide.md
   - API: api.md
