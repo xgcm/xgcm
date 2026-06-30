@@ -81,7 +81,6 @@ nav:
       - MITgcm ECCOv4: xgcm-examples/01_eccov4.ipynb
       - MOM6: xgcm-examples/03_MOM6.ipynb
       - NEMO: xgcm-examples/04_nemo_idealized.ipynb
-      - Generate missing C-grid coordinates: xgcm-examples/05_autogenerate.ipynb
   - "What's New": whats-new.md
   - Contributor Guide: contributor_guide.md
   - API: api.md
