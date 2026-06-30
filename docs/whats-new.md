@@ -5,6 +5,16 @@
 
 ### New Features
 
+- Added axis directionality via a `direction` argument on `xgcm.Grid` (and the underlying
+  `xgcm.Axis`). Pass `direction='decreasing'` (or a per-axis dict such as
+  `{'Z': 'decreasing'}`) for an axis whose index increases as its physical coordinate
+  decreases (e.g. a vertical axis indexed from the surface down while depth becomes more
+  negative). The direction-sensitive operations `diff`, `derivative`, `cumsum`, and
+  `cumint` are then sign-corrected automatically. Defaults to `'increasing'`, so existing
+  behavior is unchanged ([#337](https://github.com/xgcm/xgcm/issues/337),
+  [#665](https://github.com/xgcm/xgcm/pull/665)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Methods for autoparsing of dataset metadata to construct a `xgcm.Grid` class have been added.
   Currently these include restructred functionality for the COMODO conventions (already in xgcm) and the
   addition of SGRID conventions ([#109](https://github.com/xgcm/xgcm/issues/109), [#559](https://github.com/xgcm/xgcm/pull/559)).
