@@ -466,7 +466,7 @@ def transform(
         )
     elif method == "conservative":
         if isinstance(target, xr.DataArray):
-            if target_dim is not None and len(target_dim) > 1:
+            if len(target.dims) > 1:
                 raise NotImplementedError(
                     "Conservative transformation is not yet supported for multi-dimensional targets."
                 )
