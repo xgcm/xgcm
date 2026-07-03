@@ -114,7 +114,7 @@ name = "xgcm"
 version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
 
 [tool.pixi.package.build]
-backend = { name = "pixi-build-python", version = "0.4.*" }
+backend = { name = "pixi-build-python", version = "0.7.*" }
 
 [tool.pixi.package.host-dependencies]
 setuptools = "*"
