@@ -376,13 +376,29 @@ def test_keep_coords(funcname, gridtype):
 
 def test_keep_coords_removed():
     # The `keep_coords` kwarg was removed in v1.0.0 (GH #382); passing it now
-    # raises a TypeError rather than emitting a deprecation warning.
+    # raises an informative TypeError rather than emitting a deprecation
+    # warning. Check all three entry points that guard against it: the 1D
+    # grid-ufunc dispatch (interp/diff/min/max/...), cumsum (separate code
+    # path), and apply_as_grid_ufunc (public entry point).
+    from xgcm.grid_ufunc import apply_as_grid_ufunc
+
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
     for axis_name in grid.axes.keys():
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match="has been removed"):
             grid.diff(ds.tracer, axis_name, keep_coords=False)
+        with pytest.raises(TypeError, match="has been removed"):
+            grid.cumsum(ds.tracer, axis_name, keep_coords=False)
+    with pytest.raises(TypeError, match="has been removed"):
+        apply_as_grid_ufunc(
+            lambda x: x,
+            ds.tracer,
+            axis=[("X",)],
+            grid=grid,
+            signature="(X:center)->(X:center)",
+            keep_coords=False,
+        )
 
 
 @pytest.mark.parametrize("funcname", ["interp", "diff"])

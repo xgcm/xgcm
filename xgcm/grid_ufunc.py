@@ -711,6 +711,13 @@ def apply_as_grid_ufunc(
     xarray.apply_ufunc
     """
 
+    # TODO - remove deprecation handling in a future release
+    if "keep_coords" in kwargs:
+        raise TypeError(
+            "The 'keep_coords' argument has been removed. Coordinates "
+            "compatible with the output are now always preserved."
+        )
+
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
     # ? Why is this actually an optional input? This causes some mypy issues on pre-commit too.

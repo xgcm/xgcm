@@ -11,7 +11,10 @@
   (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from
   `apply_as_grid_ufunc`. The behavior is now always that formerly given by
   `keep_coords=True`: coordinates compatible with the output (including non-dimension
-  coordinates) are preserved. Passing `keep_coords=` now raises a `TypeError`
+  coordinates) are preserved. Note that this silently changes the **default** output of
+  `Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, `Grid.derivative`,
+  and `Grid.cumint`, which previously dropped non-dimension coordinates from the result
+  and now retains them. Passing `keep_coords=` now raises a `TypeError`
   ([#382](https://github.com/xgcm/xgcm/issues/382), [#745](https://github.com/xgcm/xgcm/pull/745)).
   By [Henri Drake](https://github.com/hdrake).
 

@@ -627,6 +627,13 @@ class Grid:
             If not specified, the `default_shifts` stored in each Axis object will be used for that axis.
         """
 
+        # TODO - remove deprecation handling in a future release
+        if "keep_coords" in kwargs:
+            raise TypeError(
+                "The 'keep_coords' argument has been removed. Coordinates "
+                "compatible with the output are now always preserved."
+            )
+
         if isinstance(axis, str):
             axis = [axis]
 
@@ -1041,6 +1048,7 @@ class Grid:
         boundary=None,
         fill_value=None,
         metric_weighted=None,
+        **kwargs,
     ) -> xr.DataArray:
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
@@ -1092,6 +1100,17 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
+
+        # TODO - remove deprecation handling in a future release
+        if "keep_coords" in kwargs:
+            raise TypeError(
+                "The 'keep_coords' argument has been removed. Coordinates "
+                "compatible with the output are now always preserved."
+            )
+        if kwargs:
+            raise TypeError(
+                f"cumsum() got unexpected keyword argument(s): {list(kwargs)}"
+            )
 
         if isinstance(axis, str):
             axis = [axis]
