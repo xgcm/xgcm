@@ -22,6 +22,8 @@ classifiers = [
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
 ]
 license = { text = "MIT" }
 keywords = ["pangeo", "simulations", "grids"]
@@ -30,7 +32,6 @@ dependencies = [
     "xarray>=0.20.0",
     "dask",
     "numpy",
-    "future"
 ]
 
 [project.optional-dependencies]
@@ -134,7 +135,6 @@ python = ">=3.9"
 xarray = ">=0.20.0"
 dask = "*"
 numpy = "*"
-future = "*"
 scipy = "*" # TODO: `xgcm/test/test_grid_ufunc.py::TestGridUFuncNoPadding::test_1d_changing_size_dask_parallelized` failing if scipy isn't put here. Is scipy a core dependency? If no - move to `feature.extra` and fix test.
 
 [tool.pixi.dependencies]

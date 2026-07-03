@@ -317,8 +317,8 @@ For more advanced examples of grid ufuncs, see the page on [Ufunc Examples](ufun
 ## Metrics
 
 !!! note
-    Automatically supplying metrics directly to grid ufuncs is not yet implemented, but will be soon!
-    For now, if you need a metric in your grid ufunc, simply include it as an input and pass it explicitly.
+    Metrics are not automatically supplied to grid ufuncs. If you need a metric in your grid ufunc,
+    include it as an input and pass it explicitly.
     To work with metrics outside of grid ufuncs see the documentation page on metrics.
 
 
