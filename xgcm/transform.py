@@ -156,8 +156,10 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
         Array of shape (..., n+1) giving values of scalar theta  on the
         cell vertices. Phi is assumed to vary linearly between vertices.
     target_theta_bins : array_like
-        Array of shape (m) defining the bounds of bins in which to accumulate
-        phi.
+        Array of shape (..., m) defining the bounds of bins in which to
+        accumulate phi. May be multi-dimensional (e.g. for a spatially
+        varying target coordinate); in that case the bin bounds are
+        accumulated independently along the final axis of each column.
 
     Returns
     -------
@@ -167,27 +169,29 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
     """
 
     assert phi.shape[-1] == (theta.shape[-1] - 1)
-    assert target_theta_bins.ndim == 1
 
     # flip target_theta_bins if needed (only needed for the conservative method,
-    # np.interp handles this by itself)
-    target_diff = np.diff(target_theta_bins)
-    if all(target_diff < 0):
+    # np.interp handles this by itself). The low-level gufunc requires the bin
+    # bounds to be increasing along the final axis. For multi-dimensional
+    # targets we require every column to share the same (increasing or
+    # decreasing) orientation, so a single flip of the final axis suffices.
+    target_diff = np.diff(target_theta_bins, axis=-1)
+    if np.all(target_diff < 0):
         flip_switch = True
-        target_theta_bins = target_theta_bins[::-1]
-    elif all(target_diff > 0):
+        target_theta_bins = target_theta_bins[..., ::-1]
+    elif np.all(target_diff > 0):
         flip_switch = False
     else:
         raise ValueError("Target values are not monotonic")
 
     theta_1 = theta[..., :-1]
     theta_2 = theta[..., 1:]
-    theta_hat_1 = target_theta_bins[:-1]
-    theta_hat_2 = target_theta_bins[1:]
+    theta_hat_1 = target_theta_bins[..., :-1]
+    theta_hat_2 = target_theta_bins[..., 1:]
 
     out = _interp_1d_conservative(phi, theta_1, theta_2, theta_hat_1, theta_hat_2)
     if flip_switch:
-        out = out[::-1]
+        out = out[..., ::-1]
     return out
 
 
@@ -262,14 +266,30 @@ def conservative_interpolation(
         input_core_dims=[[phi_dim], [theta_dim], [target_dim]],
         output_core_dims=[["remapped"]],
         dask="parallelized",
-        dask_gufunc_kwargs={"output_sizes": {"remapped": len(target_theta_levels) - 1}},
+        dask_gufunc_kwargs={
+            "output_sizes": {"remapped": target_theta_levels.sizes[target_dim] - 1}
+        },
         # Since we are introducing a new dimension instead of changing it we need to declare the output size.
         output_dtypes=[phi.dtype],
     ).rename({"remapped": target_dim})
 
-    # assign the target cell center
-    target_centers = (target_theta_levels.data[1:] + target_theta_levels.data[:-1]) / 2
-    out = out.assign_coords({target_dim: target_centers})
+    # assign the target cell centers as the midpoints between the (possibly
+    # multi-dimensional) target cell bounds along the target dimension. Using
+    # `.variable` avoids coordinate-based alignment of the two staggered slices.
+    upper = target_theta_levels.isel({target_dim: slice(1, None)}).variable
+    lower = target_theta_levels.isel({target_dim: slice(0, -1)}).variable
+    target_centers = (upper + lower) / 2
+
+    if len(target_theta_levels.dims) == 1:
+        # 1D target: keep the transformed dimension as a dimension coordinate
+        out = out.assign_coords({target_dim: target_centers.data})
+    else:
+        # multi-dimensional target: the cell centers vary across the other
+        # dimensions, so store them as a non-dimension coordinate named after
+        # the target (mirroring the linear method's behavior).
+        out = out.assign_coords(
+            {target_theta_levels.name: (target_centers.dims, target_centers.data)}
+        )
 
     # TODO: Somehow preserve the original bounds
 
@@ -323,8 +343,9 @@ def transform(
       velocity). N given `target` values are interpreted as cell-bounds
       and the returned array will have N-1 elements along the newly
       created coordinate, with coordinate values that are interpolated
-      between `target` values. This method does currently not work
-      for multi-dimensional targets.
+      between `target` values. Multi-dimensional targets (e.g. a
+      spatially varying, terrain-following vertical coordinate) are
+      supported; in that case `target_dim` must be specified.
     Parameters
     ----------
     grid : xgcm.Grid
@@ -429,17 +450,24 @@ def transform(
             # Infer target_dim from target
             if isinstance(target, xr.DataArray):
                 if len(target.dims) == 1:
-                    if target_dim is None:
-                        target_dim = list(target.dims)[0]
+                    target_dim = list(target.dims)[0]
                 else:
-                    if target_dim is not None and target_dim not in target.dims:
-                        raise ValueError(
-                            f"The specified `target_dim` {target_dim} is not within the dimensions of the target: [{target.dims}]."
-                        )
+                    # A multi-dimensional target is ambiguous: we cannot infer
+                    # which dimension is the transformed coordinate.
+                    raise ValueError(
+                        f"`target` has multiple dimensions {tuple(target.dims)}; "
+                        "please specify `target_dim` to indicate which dimension "
+                        "corresponds to the transformed coordinate."
+                    )
             else:
                 # if the target is not provided as xr.Dataarray we take the name of the target_data as new dimension name
                 _target_data_name_handling(target_data)
                 target_dim = target_data.name
+        elif isinstance(target, xr.DataArray) and target_dim not in target.dims:
+            raise ValueError(
+                f"The specified `target_dim` {target_dim} is not within the "
+                f"dimensions of the target: [{tuple(target.dims)}]."
+            )
         if not isinstance(target, xr.DataArray):
             target = xr.DataArray(
                 target, dims=[target_dim], coords={target_dim: target}
@@ -465,12 +493,6 @@ def transform(
             logarithmic=(method == "log"),
         )
     elif method == "conservative":
-        if isinstance(target, xr.DataArray):
-            if target_dim is not None and len(target_dim) > 1:
-                raise NotImplementedError(
-                    "Conservative transformation is not yet supported for multi-dimensional targets."
-                )
-
         # the conservative method requires `target_data` to be on the `outer` coordinate.
         # If that is not the case (a very common use case like transformation on any tracer),
         # we need to infer the boundary values (using the interp logic)

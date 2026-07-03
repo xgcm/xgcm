@@ -5,6 +5,14 @@
 
 ### New Features
 
+- The `conservative` vertical coordinate transformation now supports multi-dimensional
+  targets, for example a terrain-following (spatially varying) vertical coordinate. This
+  matches the existing multi-dimensional target support of the `linear` method and works
+  with both numpy- and dask-backed source data. When the target is multi-dimensional,
+  `target_dim` must be specified ([#666](https://github.com/xgcm/xgcm/issues/666),
+  [#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  By [Henri Drake](https://github.com/hdrake).
+
 ### Breaking Changes
 
 ### Internal Changes
