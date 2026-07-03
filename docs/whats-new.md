@@ -18,6 +18,12 @@
   ([#382](https://github.com/xgcm/xgcm/issues/382), [#745](https://github.com/xgcm/xgcm/pull/745)).
   By [Henri Drake](https://github.com/hdrake).
 
+- `Axis` is no longer importable from the top-level `xgcm` namespace, making effective the
+  removal announced in v0.9.0; internal use continues via `xgcm.axis.Axis`
+  ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557),
+  [#743](https://github.com/xgcm/xgcm/pull/743)).
+  By [Henri Drake](https://github.com/hdrake).
+
 ### Internal Changes
 
 - Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
@@ -32,6 +38,13 @@
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
 ### Bugfixes
+
+- Fix `Grid.transform(..., method="conservative")` falsely raising `NotImplementedError`
+  ("not yet supported for multi-dimensional targets") when a 1-dimensional target was combined
+  with an explicit `target_dim` longer than one character: the guard tested the length of the
+  dimension *name* instead of the number of target dimensions
+  ([#741](https://github.com/xgcm/xgcm/pull/741)).
+  By [Henri Drake](https://github.com/hdrake).
 
 - Preserve the input DataArray's dimension order in the output of `apply_as_grid_ufunc`
   (and the `Grid.apply_as_grid_ufunc` method). Previously `xarray.apply_ufunc` moved the

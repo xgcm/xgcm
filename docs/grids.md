@@ -82,7 +82,7 @@ one extra point. These positions are visualized in the figure below.
 
 *The different possible positions of a variable `f` along an axis.*
 
-xgcm represents an axis internally using the `xgcm.Axis` class.
+xgcm represents an axis internally using the `Axis` class (`xgcm.axis.Axis`).
 
 Although it is technically possible to create an `Axis` directly, the recommended way to
 to use xgcm is by creating a single `xgcm.Grid` object, containing multiple axes

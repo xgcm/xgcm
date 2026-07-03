@@ -1083,6 +1083,29 @@ def test_conservative_interp_error_if_multidim_target_dim(conservative_multidim_
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_transform_explicit_target_dim():
+    # Regression test: the multi-dimensional-target guard used to check
+    # len(target_dim) — the length of the dimension *name* — so a 1D target
+    # combined with an explicit target_dim longer than one character falsely
+    # raised NotImplementedError.
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        construct_test_source_data(cases["conservative_depth_depth_rename"])
+    )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    (target_dim,) = target.dims
+    assert len(target_dim) > 1
+    transformed = grid.transform(
+        source.data, axis, target, target_dim=target_dim, **transform_kwargs
+    )
+    output_name = "data" + transform_kwargs.get("suffix", "")
+    xr.testing.assert_allclose(transformed, expected[output_name])
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_conservative_interp_warn_if_no_cell_bounds():
     (
         source,
