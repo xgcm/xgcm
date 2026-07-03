@@ -52,7 +52,7 @@ coverage.xml
 *.log
 
 # Sphinx documentation
-doc/_build/
+docs/_build/
 
 # PyBuilder
 target/
@@ -82,7 +82,15 @@ xgcm/test/sample.py
 global.lock
 purge.lock
 .DS_Store
-doc/.vscode/settings.json
+docs/.vscode/settings.json
 
 # docs artifacts
-doc/*.png
+docs/*.png
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+pixi.lock
+
+# mkdocs build
+site/**

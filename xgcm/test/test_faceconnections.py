@@ -295,6 +295,116 @@ def test_vector_diff_interp_connected_grid_x_to_y(
         _ = grid.interp_2d_vector({"X": ds.v, "Y": ds.u}, boundary="fill")
 
 
+@pytest.mark.parametrize("method", ["interp_2d_vector", "diff_2d_vector"])
+def test_vector_diff_interp_connected_grid_x_to_y_dask(
+    ds, ds_face_connections_x_to_y, method
+):
+    """Regression test for https://github.com/xgcm/xgcm/issues/704.
+
+    When the vector components are dask-backed, padding splits the core
+    dimension into boundary chunks, so the operation goes through
+    ``_rechunk_to_merge_in_boundary_chunks``. That helper used to assume the
+    argument was always a ``DataArray`` and raised
+    ``AttributeError: 'dict' object has no attribute 'variable'`` when handed
+    the ``{"X": u}`` vector-component dict (see the traceback in #704). Here we
+    keep the inputs lazy (single chunk per core dim) so the result must match
+    the numpy path exactly.
+    """
+    pytest.importorskip("dask")
+
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+
+    # Keep the components lazy with a single chunk per core dim. This mirrors
+    # the #704 scenario: map_overlap stays False, but padding still chunks the
+    # core dim, exercising _rechunk_to_merge_in_boundary_chunks.
+    u = ds.u.chunk()
+    v = ds.v.chunk()
+
+    vector_out = getattr(grid, method)(
+        {"X": u, "Y": v},
+        to="center",
+        boundary="fill",
+        fill_value=100,
+    )
+    u_c = vector_out["X"]
+
+    # The result should stay on the dask path.
+    assert u_c.chunks is not None
+
+    # Values must match the numpy path: first point is normal, last point picks
+    # up the rotated neighbour across the face connection.
+    if method == "interp_2d_vector":
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], 0.5 * (ds.u.data[0, 0, :] + ds.u.data[0, 1, :])
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], 0.5 * (ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0])
+        )
+    else:
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], ds.u.data[0, 1, :] - ds.u.data[0, 0, :]
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], -ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0]
+        )
+
+
+@pytest.mark.parametrize("method", ["interp_2d_vector", "diff_2d_vector"])
+def test_vector_diff_interp_connected_grid_x_to_y_dask_multichunk(
+    ds, ds_face_connections_x_to_y, method
+):
+    """Regression test for https://github.com/xgcm/xgcm/issues/708.
+
+    When a vector component has more than one chunk along its core dimension,
+    ``_1d_grid_ufunc_dispatch`` routes through the ``map_overlap`` path
+    (``_map_func_over_core_dims``) instead of the single-chunk path exercised by
+    ``test_vector_diff_interp_connected_grid_x_to_y_dask`` (#704). Padding a
+    vector component across a face connection pulls in data from the connected
+    face, which forces dask to rechunk the *non-core* dims (e.g. splitting the
+    face dim). The ``adjust_chunks`` spec handed to dask used to be derived from
+    the pre-pad array, so it still expected the original block count and the
+    computation failed with ``ValueError: Dimension 0 has 2 blocks,
+    adjust_chunks specified with 1 blocks``. The result must now match the numpy
+    path exactly.
+    """
+    pytest.importorskip("dask")
+
+    grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
+
+    # >1 chunk along the core dim flips the dispatch onto the map_overlap path.
+    u = ds.u.chunk({"xl": 10})
+    v = ds.v.chunk({"yl": 10})
+
+    vector_out = getattr(grid, method)(
+        {"X": u, "Y": v},
+        to="center",
+        boundary="fill",
+        fill_value=100,
+    )
+    u_c = vector_out["X"]
+
+    # The result should stay on the dask path, with the core dim still chunked.
+    assert u_c.chunks is not None
+    assert len(u_c.variable.chunksizes["x"]) > 1
+
+    # Values must match the numpy path: first point is normal, last point picks
+    # up the rotated neighbour across the face connection.
+    if method == "interp_2d_vector":
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], 0.5 * (ds.u.data[0, 0, :] + ds.u.data[0, 1, :])
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], 0.5 * (ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0])
+        )
+    else:
+        np.testing.assert_allclose(
+            u_c.data[0, 0, :], ds.u.data[0, 1, :] - ds.u.data[0, 0, :]
+        )
+        np.testing.assert_allclose(
+            u_c.data[0, -1, :], -ds.u.data[0, -1, :] + ds.v.data[1, ::-1, 0]
+        )
+
+
 def test_create_cubed_sphere_grid(cs, cubed_sphere_connections):
     _ = Grid(cs, face_connections=cubed_sphere_connections)
 
@@ -310,6 +420,42 @@ def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
     face_diff_y = grid.diff(face, "Y")
     np.testing.assert_allclose(face_diff_y[:, 0, 0], [-4, -3, -2, -1, 2, 5])
     np.testing.assert_allclose(face_diff_y[:, 0, -1], [-4, -3, -2, -1, 2, 5])
+
+
+def test_cubed_sphere_scalar_pad_connected_halos(cs, cubed_sphere_connections):
+    # Regression test for GH #712. Padding a field whose connected dims carry no
+    # coordinate variables used to leave the source slice 1-D (the dim-restoring
+    # ``expand_dims`` was gated on the dim having a coordinate), so
+    # ``xr.concat(..., join="override")`` transposed and clobbered the orthogonal
+    # connected edge. Because the axes were iterated in ``set`` (hash-seed) order,
+    # which edge came out wrong varied from one Python process to the next.
+    #
+    # Here we pad a coordinate-less field equal to the face index, so every
+    # connected halo cell must read the neighbor face that the connections declare.
+    from xgcm.padding import pad as _pad
+
+    grid = Grid(cs, face_connections=cubed_sphere_connections)
+    nf, ny, nx = cs.sizes["face"], cs.sizes["y"], cs.sizes["x"]
+    face_field = xr.DataArray(
+        np.broadcast_to(np.arange(nf)[:, None, None], (nf, ny, nx)).astype(float),
+        dims=("face", "y", "x"),
+    )
+    padded = _pad(
+        face_field,
+        grid,
+        {"X": (1, 1), "Y": (1, 1)},
+        boundary={"X": "fill", "Y": "fill"},
+        fill_value=np.nan,
+    ).values  # (face, y+2, x+2)
+
+    for f in range(nf):
+        conn = cubed_sphere_connections["face"][f]
+        (left_x, right_x), (down_y, up_y) = conn["X"], conn["Y"]
+        # interior of each edge (exclude the two corner cells) reads the source face
+        np.testing.assert_array_equal(padded[f, 1:-1, 0], left_x[0])
+        np.testing.assert_array_equal(padded[f, 1:-1, -1], right_x[0])
+        np.testing.assert_array_equal(padded[f, 0, 1:-1], down_y[0])
+        np.testing.assert_array_equal(padded[f, -1, 1:-1], up_y[0])
 
 
 class TestErrors:

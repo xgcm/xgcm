@@ -11,6 +11,7 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
+    Set,
     Tuple,
     Union,
     get_type_hints,
@@ -51,6 +52,56 @@ def _maybe_unpack_vector_component(
     else:
         da = data
     return da
+
+
+def _restore_input_dim_order(results, args, sig, in_core_dims, out_core_dims):
+    """
+    Transpose each output so it follows the input DataArrays' dimension order.
+
+    ``xr.apply_ufunc`` moves core dimensions to the end of the output and does
+    not move them back, so an input with dims ``('tile', 'j', 'i')`` operated on
+    along ``j`` comes back as ``('tile', 'i', 'j')``. Here we restore the
+    original ordering, accounting for core dims that get renamed when they change
+    grid position (e.g. ``j`` -> ``jg``) and for genuinely-new output dims.
+    """
+    # Link input core dims to output core dims via the shared dummy axis names.
+    # Note: this mapping is keyed solely by dummy axis name, so it cannot
+    # distinguish multiple outputs that share one dummy axis at different
+    # positions (e.g. ``(X:center)->(X:left),(X:right)``) - those collapse onto
+    # the last position. No built-in operator emits such a signature (vector ops
+    # use distinct axes), so this only affects direct public-API power-users.
+    dummy_to_in_dim = {
+        ax_name: dim
+        for arg_ax_names, arg_in_dims in zip(sig.in_ax_names, in_core_dims)
+        for ax_name, dim in zip(arg_ax_names, arg_in_dims)
+    }
+    dummy_to_out_dim = {
+        ax_name: dim
+        for arg_ax_names, arg_out_dims in zip(sig.out_ax_names, out_core_dims)
+        for ax_name, dim in zip(arg_ax_names, arg_out_dims)
+    }
+    rename_map = {
+        dummy_to_in_dim[ax]: dummy_to_out_dim[ax]
+        for ax in dummy_to_in_dim
+        if ax in dummy_to_out_dim
+    }
+
+    # Reference ordering: order in which dims first appear across all input args,
+    # with input core dims renamed to their output names.
+    reference_order: List[str] = []
+    for arg in args:
+        for d in _maybe_unpack_vector_component(arg).dims:
+            d = rename_map.get(d, d)
+            if d not in reference_order:
+                reference_order.append(d)
+
+    transposed = []
+    for res in results:
+        order = [d for d in reference_order if d in res.dims] + [
+            d for d in res.dims if d not in reference_order
+        ]
+        transposed.append(res.transpose(*order))
+    return tuple(transposed)
 
 
 def _check_data_input(
@@ -808,7 +859,20 @@ def apply_as_grid_ufunc(
 
     # Restore any dimension coordinates associated with new output dims that are present in grid
     # Also throws loud warning if ufunc returns array of incorrect size
-    results_with_coords = _reattach_coords(results, grid, boundary_width, keep_coords)
+    # Flatten the output core dims to a set of dim names; coords on these (newly
+    # position-shifted) dims must come from grid._ds, but coords on all other
+    # (non-core) dims should preserve whatever the user set on the input args.
+    out_core_dim_names = set(d for arg in out_core_dims for d in arg)
+    input_args = [_maybe_unpack_vector_component(arg) for arg in args]
+    results_with_coords = _reattach_coords(
+        results, grid, boundary_width, keep_coords, out_core_dim_names, input_args
+    )
+
+    # xr.apply_ufunc moves core dims to the end and never moves them back, so
+    # restore the input dimension ordering on each output (see GH #533).
+    results_with_coords = _restore_input_dim_order(
+        results_with_coords, args, sig, in_core_dims, out_core_dims
+    )
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does
     if len(results_with_coords) == 1:
@@ -942,7 +1006,8 @@ def _map_func_over_core_dims(
     # Need to transpose the numpy axis arguments to leave core dims at end
     # else they won't match up inside mapped_func after xr.apply_ufunc does its transposition
     transposed_original_args = [
-        arg.transpose(..., *in_core_dims[i]) for i, arg in enumerate(original_args)
+        _maybe_unpack_vector_component(arg).transpose(..., *in_core_dims[i])
+        for i, arg in enumerate(original_args)
     ]
 
     boundary_width_per_numpy_axis = {
@@ -958,14 +1023,31 @@ def _map_func_over_core_dims(
         """This implicitly crystallises the order of the given mapping"""
         return tuple(sizes.values())
 
-    # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have
-    # But in this case output chunks are the same as input chunks
-    # (as we disallowed axis positions for which this is not the case)
+    # Our rechunking means dask.map_overlap needs to be explicitly told what chunks output should have.
+    # Along the core dims the output chunks match the *original* (pre-pad) chunks, because the ufunc
+    # consumes the boundary padding (we disallowed axis positions for which this is not the case).
     original_chunksizes = [arg.variable.chunksizes for arg in transposed_original_args]
     # TODO first argument only because map_overlap can't handle multiple return values (I think)
     true_chunksizes = original_chunksizes[0]
     # dask.map_overlap needs chunks in terms of axis number, not axis name (i.e. (chunks, ...), not {str: chunks})
     true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
+
+    # The core dims are the only axes whose chunks are deliberately changed (by padding + rechunking).
+    core_numpy_axes = set(boundary_width_per_numpy_axis)
+
+    def _output_chunks_per_numpy_axis(arg):
+        # On grids with face connections, padding a vector component pulls in data from a connected
+        # face, which can force dask to rechunk *non-core* dims (e.g. splitting the face dim). The
+        # number of blocks per non-core dim must match the array actually handed to map_overlap, so
+        # we read those from the (padded, rechunked) input rather than the original. Core dims keep
+        # their original chunks, since the ufunc trims the padding back to the unpadded size.
+        actual_chunks = arg.chunks
+        return tuple(
+            true_chunksizes_per_numpy_axis[axis]
+            if axis in core_numpy_axes
+            else actual_chunks[axis]
+            for axis in range(arg.ndim)
+        )
 
     # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
     # calls map_blocks automatically in that scenario)
@@ -978,7 +1060,7 @@ def _map_func_over_core_dims(
             boundary="none",
             trim=False,
             meta=np.array([], dtype=out_dtypes[0]),
-            chunks=true_chunksizes_per_numpy_axis,
+            chunks=_output_chunks_per_numpy_axis(a[0]),
         )
 
     return mapped_func
@@ -1020,7 +1102,8 @@ def _rechunk_to_merge_in_boundary_chunks(
 
     rechunked_padded_args = []
     for padded_arg, original_arg in zip(padded_args, original_args):
-        original_arg_chunks = original_arg.variable.chunksizes
+        original_arg_da = _maybe_unpack_vector_component(original_arg)
+        original_arg_chunks = original_arg_da.variable.chunksizes
         merged_boundary_chunks = _get_chunk_pattern_for_merging_boundary(
             grid,
             padded_arg,
@@ -1110,8 +1193,34 @@ def _identify_dummy_axes_with_real_axes(
 
 
 def _reattach_coords(
-    results: Sequence[xr.DataArray], grid: "Grid", boundary_width, keep_coords: bool
+    results: Sequence[xr.DataArray],
+    grid: "Grid",
+    boundary_width,
+    keep_coords: bool,
+    out_core_dim_names: Optional[Set[str]] = None,
+    input_args: Optional[Sequence[xr.DataArray]] = None,
 ) -> List[xr.DataArray]:
+    if out_core_dim_names is None:
+        out_core_dim_names = set()
+    if input_args is None:
+        input_args = []
+
+    # Collect coordinates carried on the original input arguments. These should
+    # take precedence over grid._ds for any coordinate that lives entirely on
+    # NON-core (i.e. not position-shifted) dimensions, so that coordinate values
+    # the user modified on the input array (e.g. a recast `time` coordinate on a
+    # dim untouched by the operation) survive the round-trip. See GH #496.
+    input_coords: Dict[str, xr.DataArray] = {}
+    for arg in input_args:
+        for coord, da_coord in arg.coords.items():
+            # Skip coords that touch a core (newly created/shifted) output dim;
+            # those must come from grid._ds instead.
+            if any(dim in out_core_dim_names for dim in da_coord.dims):
+                continue
+            # If multiple input args carry a coord of the same name, the first
+            # arg wins (matches the precedence convention used in #719).
+            input_coords.setdefault(coord, da_coord)
+
     results_with_coords = []
     for res in results:
         # padding strips all coordinates (including dimension coordinates).
@@ -1121,6 +1230,12 @@ def _reattach_coords(
             for coord, da_coord in grid._ds.coords.items()
             if all(dim in res.dims for dim in da_coord.dims)
         }
+
+        # Let coords from the input args override those from grid._ds when they
+        # live entirely on non-core dims that are present in the result.
+        for coord, da_coord in input_coords.items():
+            if all(dim in res.dims for dim in da_coord.dims):
+                all_matching_coords[coord] = da_coord
 
         try:
             res = res.assign_coords(all_matching_coords)

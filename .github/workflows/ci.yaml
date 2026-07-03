@@ -10,15 +10,46 @@ on:
   schedule:
     - cron: "0 13 * * 1"
 
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PIXI_VERSION: "v0.63.0"
+
+permissions: {}
+
 jobs:
-  build:
-    name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
+  cache-pixi-lock:
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+    outputs:
+      cache-key: ${{ steps.pixi-lock.outputs.cache-key }}
+      pixi-version: ${{ steps.pixi-lock.outputs.pixi-version }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: Parcels-code/pixi-lock/create-and-cache@a9aee67fa67426e6b0297fa5bef80600572be153
+        id: pixi-lock
+        with:
+          pixi-version: ${{env.PIXI_VERSION}}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pixi-lock
+          path: pixi.lock
+  test:
+    name: Test (${{ matrix.pixi-env }})
+    needs: ["cache-pixi-lock"]
     if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
+    # nightly runs against git-tip xarray/dask/numpy; let it fail without
+    # failing the overall `test` job (and therefore the merge gate).
+    continue-on-error: ${{ matrix.pixi-env == 'test-nightly' }}
+    permissions:
+      contents: read
     timeout-minutes: 60
     defaults:
       run:
@@ -27,87 +58,81 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.9", "3.10","3.11","3.12", "3.13"]
+        pixi-env:
+          - test-minimum
+          - test-py310
+          - test-py311
+          - test-py312
+          - test-py313
+          - test-core
+          - test-latest
+          - test-nightly
+    env:
+      PIXI_ENV: ${{ matrix.pixi-env }}
     steps:
-      - uses: actions/checkout@v5
-      - name: Create conda environment
-        uses: mamba-org/setup-micromamba@v2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
         with:
-          micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
-          environment-file: ci/environment.yml
-          create-args: >-
-            python=${{ matrix.python-version }}
-          post-cleanup: 'all'
-          cache-environment: true
-          cache-downloads: true
-      - name: Install XGCM
-        run: |
-          python -m pip install -e . --no-deps
-          conda list
+          persist-credentials: false
+
+      - name: Restore cached pixi lockfile
+        uses: Parcels-code/pixi-lock/restore@a9aee67fa67426e6b0297fa5bef80600572be153
+        with:
+          cache-key: ${{ needs.cache-pixi-lock.outputs.cache-key }}
+
+      - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
+        with:
+          pixi-version: ${{ needs.cache-pixi-lock.outputs.pixi-version }}
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'master' }}
       - name: Run Tests
         run: |
-          pytest -n auto --cov=./ --cov-report=xml
+          pixi run -e ${{matrix.pixi-env}} tests --cov=./ --cov-report=xml
       - name: Upload code coverage to Codecov
-        uses: codecov/codecov-action@v5.5.0
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           file: ./coverage.xml
           flags: unittests
-          env_vars: OS,PYTHON
+          env_vars: PIXI_ENV
           name: codecov-umbrella
           fail_ci_if_error: false
 
-  core-deps-dev:
-    name: Build (core-dependencies)
-    if: github.repository == 'xgcm/xgcm'
+  all-tests:
+    name: All tests passed
+    # Single aggregated gate to use as the required status check on `master`,
+    # so the matrix can change without touching branch-protection settings.
+    needs: ["cache-pixi-lock", "test", "zizmor"]
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash -l {0}
+    permissions: {}
     steps:
-    - uses: actions/checkout@v5
-    - name: Create conda environment
-      uses: mamba-org/setup-micromamba@v2
-      with:
-        micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
-        environment-file: ci/environment-core-deps.yml
-        create-args: >-
-          python=3.10
-        post-cleanup: 'all'
-        cache-environment: true
-        cache-downloads: true
-    - name: Install XGCM
-      run: |
-        python -m pip install -e . --no-deps
-        conda list
-    - name: Run Tests
-      run: |
-        pytest -n auto
+      - name: Fail if any required job failed or was cancelled
+        if: >-
+          ${{ contains(needs.*.result, 'failure')
+           || contains(needs.*.result, 'cancelled') }}
+        env:
+          CACHE_RESULT: ${{ needs.cache-pixi-lock.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          ZIZMOR_RESULT: ${{ needs.zizmor.result }}
+        run: |
+          echo "One or more required jobs did not succeed:"
+          echo "  cache-pixi-lock: $CACHE_RESULT"
+          echo "  test:            $TEST_RESULT"
+          echo "  zizmor:          $ZIZMOR_RESULT"
+          exit 1
+      - name: All required jobs succeeded
+        run: echo "All required jobs passed."
 
-  upstream-dev:
-    name: Build (upstream-dev)
-    if: github.repository == 'xgcm/xgcm'
+  zizmor:
+    name: GHA Security Analysis using Zizmor
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash -l {0}
+    permissions:
+      contents: read
+      security-events: write # Required for upload-sarif (used by zizmor-action) to upload SARIF files.
     steps:
-    - uses: actions/checkout@v5
-    - name: Create conda environment
-      uses: mamba-org/setup-micromamba@v2
-      with:
-        micromamba-version: '1.5.6-0' # any version from https://github.com/mamba-org/micromamba-releases
-        environment-file: ci/environment-upstream-dev.yml
-        create-args: >-
-          python=3.13
-        post-cleanup: 'all'
-        cache-environment: true
-        cache-downloads: true
-    - name: Install XGCM
-      run: |
-        python -m pip install -e . --no-deps
-        conda list
-    - name: Run Tests
-      run: |
-        pytest -n auto
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
