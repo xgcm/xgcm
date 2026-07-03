@@ -22,7 +22,7 @@
 
 - xgcm now follows [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/); the policy
   is documented in the contributor guide and advertised by a README badge
-  ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742)).
   By [Nick Hodgskin](https://github.com/VeckoTheGecko) and [Henri Drake](https://github.com/hdrake).
 
 ### Bugfixes
