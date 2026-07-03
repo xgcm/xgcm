@@ -20,6 +20,11 @@
 - Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
+- xgcm now follows [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/); the policy
+  is documented in the contributor guide and advertised by a README badge
+  ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko) and [Henri Drake](https://github.com/hdrake).
+
 ### Bugfixes
 
 - Preserve the input DataArray's dimension order in the output of `apply_as_grid_ufunc`
