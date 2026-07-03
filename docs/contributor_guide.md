@@ -53,7 +53,7 @@ This will start a live preview running on `http://127.0.0.1:8000/`
 
 ## Versioning policy
 
-xgcm uses [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/): version numbers are `MACRO.MESO.MICRO`. A **MACRO** bump signals that adopting the release may require a large effort from users; a **MESO** bump signals that some effort may be required; a **MICRO** bump signals that little to no effort is expected. Version numbers communicate the *intended* upgrade effort, not a strict API-compatibility guarantee.
+xgcm uses [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/): version numbers are `MACRO.MESO.MICRO`. A **MACRO** bump signals that adopting the release may require a large effort from users; a **MESO** bump signals that some effort may be required; a **MICRO** bump signals that little to no effort is expected. Version numbers communicate the *intended* upgrade effort, not a strict API-compatibility guarantee. (For releases below 1.0.0, the segments shift one position per EffVer's zero-version guidance: `0.MACRO.MESO`.)
 
 ## How to release a new version of xgcm (for maintainers only)
 
