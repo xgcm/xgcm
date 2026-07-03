@@ -2,7 +2,7 @@ name: Build and Upload xGCM to PyPI
 on:
   push:
     branches:
-      - "main"
+      - "master"
   pull_request:
     branches:
       - "*"
