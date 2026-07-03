@@ -629,7 +629,7 @@ class Grid:
 
         # TODO - remove deprecation handling in a future release
         if "keep_coords" in kwargs:
-            raise TypeError(
+            raise ValueError(
                 "The 'keep_coords' argument has been removed. Coordinates "
                 "compatible with the output are now always preserved."
             )
@@ -1103,7 +1103,7 @@ class Grid:
 
         # TODO - remove deprecation handling in a future release
         if "keep_coords" in kwargs:
-            raise TypeError(
+            raise ValueError(
                 "The 'keep_coords' argument has been removed. Coordinates "
                 "compatible with the output are now always preserved."
             )
