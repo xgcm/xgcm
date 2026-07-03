@@ -12,7 +12,7 @@
   `apply_as_grid_ufunc`. The behavior is now always that formerly given by
   `keep_coords=True`: coordinates compatible with the output (including non-dimension
   coordinates) are preserved. Passing `keep_coords=` now raises a `TypeError`
-  ([#382](https://github.com/xgcm/xgcm/issues/382), [#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  ([#382](https://github.com/xgcm/xgcm/issues/382), [#745](https://github.com/xgcm/xgcm/pull/745)).
   By [Henri Drake](https://github.com/hdrake).
 
 ### Internal Changes
