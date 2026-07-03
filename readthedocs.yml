@@ -10,9 +10,15 @@ build:
     python: "latest"
   jobs:
     create_environment:
+      # Pin pixi to a known-good version instead of `latest`. pixi 0.71.x ships
+      # a `pixi-build-api-version` that the pinned `pixi-build-python = "0.4.*"`
+      # build backend (in pyproject.toml) can no longer resolve against, so
+      # `pixi install -e docs` fails to solve the environment. 0.70.2 is the
+      # last version that produced a successful build. See the solver error:
+      # https://app.readthedocs.org/projects/xgcm/builds/33330391/
       - asdf plugin add pixi
-      - asdf install pixi latest
-      - asdf global pixi latest
+      - asdf install pixi 0.70.2
+      - asdf global pixi 0.70.2
     install:
       - pixi install -e docs
     build:

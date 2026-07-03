@@ -101,7 +101,7 @@ g_perio = grid_perio.diff(g, "X").rename("periodic")
 ```
 
 ```python
-for (i, var) in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
+for i, var in enumerate([g_extend, g_fill_0, g_fill_2, g_perio]):
     var.plot.line(marker="o", label=var.name)
 plt.grid(True)
 plt.legend()
