@@ -606,7 +606,6 @@ class Grid:
         data: Union[xr.DataArray, Dict[str, xr.DataArray]],
         axis,
         to=None,
-        keep_coords=False,
         metric_weighted: Optional[
             Union[str, Iterable[str], Dict[str, Union[str, Iterable[str]]]]
         ] = None,
@@ -690,7 +689,6 @@ class Grid:
                 self,
                 array,
                 axis=[(ax_name,)],
-                keep_coords=keep_coords,
                 dask=dask,
                 map_overlap=map_overlap,
                 other_component=other_component,
@@ -1043,7 +1041,6 @@ class Grid:
         boundary=None,
         fill_value=None,
         metric_weighted=None,
-        keep_coords: bool = False,
     ) -> xr.DataArray:
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
@@ -1172,7 +1169,6 @@ class Grid:
                 [coordless],
                 grid=self,
                 boundary_width=ax_boundary_width,
-                keep_coords=keep_coords,
                 # The only newly position-shifted (core) dim is the result dim;
                 # its coordinate must come from the grid. Coordinates on all other
                 # (non-core) dims should be preserved from the input array. #496.
@@ -1293,8 +1289,6 @@ class Grid:
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Returns
         -------

@@ -7,6 +7,14 @@
 
 ### Breaking Changes
 
+- Removed the deprecated `keep_coords` keyword argument from grid operations
+  (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from
+  `apply_as_grid_ufunc`. The behavior is now always that formerly given by
+  `keep_coords=True`: coordinates compatible with the output (including non-dimension
+  coordinates) are preserved. Passing `keep_coords=` now raises a `TypeError`
+  ([#382](https://github.com/xgcm/xgcm/issues/382), [#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  By [Henri Drake](https://github.com/hdrake).
+
 ### Internal Changes
 
 - Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
