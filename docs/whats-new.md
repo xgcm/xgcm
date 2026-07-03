@@ -11,7 +11,7 @@
 
 - Advertise Python 3.12 and 3.13 support by adding their `Programming Language :: Python` trove
   classifiers, and drop the unused `future` dependency (the package was never imported; only the
-  stdlib `from __future__` is used) ([#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  stdlib `from __future__` is used) ([#744](https://github.com/xgcm/xgcm/pull/744)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
@@ -24,7 +24,7 @@
 
 - Reword the "Metrics" note in `grid_ufuncs.md` to a stable, non-promissory statement: metrics are
   not automatically supplied to grid ufuncs, so pass any needed metric explicitly as an input
-  ([#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  ([#744](https://github.com/xgcm/xgcm/pull/744)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
