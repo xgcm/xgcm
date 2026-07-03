@@ -170,6 +170,16 @@ def interp_1d_conservative(phi, theta, target_theta_bins):
 
     assert phi.shape[-1] == (theta.shape[-1] - 1)
 
+    # NaNs in the bin edges (e.g. a terrain-following coordinate with undefined
+    # interfaces under topography) would otherwise surface as a misleading
+    # "not monotonic" error below, so detect them explicitly first.
+    if np.isnan(target_theta_bins).any():
+        raise ValueError(
+            "Conservative transformation requires target bin edges without NaNs; "
+            "mask or fill NaN interface values before transforming "
+            "(the linear method tolerates NaN targets)."
+        )
+
     # flip target_theta_bins if needed (only needed for the conservative method,
     # np.interp handles this by itself). The low-level gufunc requires the bin
     # bounds to be increasing along the final axis. For multi-dimensional
@@ -393,6 +403,9 @@ def transform(
     - If `target` is multi-dimensional, you must specify `target_dim` explicitly.
     - If `target_dim` is not specified and `target_data` has no name, a default name "TRANSFORMED_DIMENSION" will be used for the transformed dimension.
     - For `conservative` transformations, `target_data` must be located on cell bounds.
+    - Unlike `linear`/`log`, the `conservative` method does not accept NaNs in
+      `target` (e.g. undefined interface values under topography); mask or fill
+      them before transforming.
 
     """
 

@@ -1120,6 +1120,80 @@ def test_conservative_multidim_target_conservation(conservative_multidim_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_multidim_column_aligned():
+    """Source AND target share a horizontal dimension (as in a real
+    terrain-following coordinate): each column has its own phi values and its
+    own target bins, aligned by dimension name inside apply_ufunc. Verify
+    against hand-computed overlap integrals, per-column conservation, and that
+    dask-chunked inputs reproduce the numpy result."""
+    # source cells bounded by zc: [0, 10], [10, 50], [50, 75]
+    phi = np.array([[1.0, 4.0, 0.0], [2.0, 1.0, 3.0]])  # (column, z)
+    source = xr.Dataset(
+        {"data": (("column", "z"), phi)},
+        coords={"z": [5, 25, 60], "zc": [0, 10, 50, 75]},
+    )
+    target = xr.DataArray(
+        np.array([[0.0, 1.0, 10.0, 50.0, 80.0], [0.0, 5.0, 20.0, 30.0, 100.0]]),
+        dims=("column", "s_w"),
+        name="depth_bounds",
+    )
+    # hand-computed overlap integrals:
+    # column 0: bins [0,1],[1,10],[10,50],[50,80] over cells
+    #   (0-10, phi=1), (10-50, phi=4), (50-75, phi=0)
+    #   -> [1/10 * 1, 9/10 * 1, 4, 0]
+    # column 1: bins [0,5],[5,20],[20,30],[30,100] over cells
+    #   (0-10, phi=2), (10-50, phi=1), (50-75, phi=3)
+    #   -> [5/10 * 2, 5/10 * 2 + 10/40 * 1, 10/40 * 1, 20/40 * 1 + 3]
+    expected = np.array([[0.1, 0.9, 4.0, 0.0], [1.0, 1.25, 0.25, 3.5]])
+
+    grid_kwargs = {
+        "coords": {"Z": {"center": "z", "outer": "zc"}},
+        "autoparse_metadata": False,
+    }
+    grid = Grid(source, periodic=False, **grid_kwargs)
+    transformed = grid.transform(
+        source.data, "Z", target, method="conservative", target_dim="s_w"
+    )
+    np.testing.assert_allclose(transformed.transpose("column", "s_w").values, expected)
+    # per-column conservation: each column conserves its own integral
+    np.testing.assert_allclose(
+        transformed.sum("s_w").transpose("column").values, phi.sum(axis=-1)
+    )
+
+    # dask-backed: chunk source and target along the shared column dimension
+    source_dask = source.copy(deep=True)
+    source_dask["data"] = source_dask["data"].chunk({"column": 1})
+    grid_dask = Grid(source_dask, periodic=False, **grid_kwargs)
+    transformed_dask = grid_dask.transform(
+        source_dask.data,
+        "Z",
+        target.chunk({"column": 1}),
+        method="conservative",
+        target_dim="s_w",
+    ).load()
+    xr.testing.assert_allclose(transformed_dask, transformed)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_multidim_nan_target_error(conservative_multidim_cases):
+    """NaNs in the target bin edges (e.g. undefined interfaces under
+    topography) must raise a specific error rather than the misleading
+    'not monotonic' one."""
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        conservative_multidim_cases
+    )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, periodic=False, **grid_kwargs)
+
+    target = target.astype(float)
+    target[0, -1] = np.nan
+
+    with pytest.raises(ValueError, match="target bin edges without NaNs"):
+        _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
 def test_conservative_transform_explicit_target_dim():
     # Regression test: the multi-dimensional-target guard used to check
     # len(target_dim) — the length of the dimension *name* — so a 1D target
