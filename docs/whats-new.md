@@ -25,7 +25,8 @@
 - Fix `Grid.transform(..., method="conservative")` falsely raising `NotImplementedError`
   ("not yet supported for multi-dimensional targets") when a 1-dimensional target was combined
   with an explicit `target_dim` longer than one character: the guard tested the length of the
-  dimension *name* instead of the number of target dimensions.
+  dimension *name* instead of the number of target dimensions
+  ([#741](https://github.com/xgcm/xgcm/pull/741)).
   By [Henri Drake](https://github.com/hdrake).
 
 - Preserve the input DataArray's dimension order in the output of `apply_as_grid_ufunc`
