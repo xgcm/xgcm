@@ -7,6 +7,12 @@
 
 ### Breaking Changes
 
+- `Axis` is no longer importable from the top-level `xgcm` namespace, making effective the
+  removal announced in v0.9.0; internal use continues via `xgcm.axis.Axis`
+  ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557),
+  [#XXX](https://github.com/xgcm/xgcm/pull/XXX)).
+  By [Henri Drake](https://github.com/hdrake).
+
 ### Internal Changes
 
 - Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
