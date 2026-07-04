@@ -33,6 +33,17 @@
 
 ### Bugfixes
 
+- Fix `xgcm.padding.pad(..., other_component=...)` (and hence vector `Grid.diff`/`Grid.interp`)
+  silently ignoring the vector rotation when the component is passed as a bare `DataArray`
+  rather than a `{axis_name: DataArray}` dict. On a `face_connections` grid the bare form padded
+  the component scalar-style, so the halo across a rotated (axis-swapping) or reversed seam was
+  wrong and no error was raised — e.g. on ECCO LLC90 the global convergence sum of the advective
+  heat flux was `-1.6e9` (bare) versus `0` (dict). The bare form now recovers the component's axis
+  from its own staggering and runs the same rotation/sign-flip logic as the dict form, giving
+  identical output, and raises a clear error when the axis cannot be inferred (e.g. a cell-centre
+  field) ([#748](https://github.com/xgcm/xgcm/issues/748)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Fix `Grid.transform(..., method="conservative")` falsely raising `NotImplementedError`
   ("not yet supported for multi-dimensional targets") when a 1-dimensional target was combined
   with an explicit `target_dim` longer than one character: the guard tested the length of the

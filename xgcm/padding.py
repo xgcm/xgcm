@@ -67,6 +67,36 @@ def _strip_all_coords(obj: xr.DataArray):
         return obj_stripped
 
 
+def _infer_vector_component_axis(grid: Grid, da: xr.DataArray) -> str:
+    """Infer the grid axis a vector component is aligned with from its staggering.
+
+    A velocity component is edge-staggered (``left``/``right``/``inner``/
+    ``outer``) on exactly its own axis and cell-``center`` on every orthogonal
+    axis, so the single edge axis unambiguously names the component. Used to
+    orient the vector sign-flips when a bare ``DataArray`` is padded with an
+    ``other_component`` but the caller did not wrap it in a
+    ``{axis_name: DataArray}`` dict.
+    """
+    edge_axes = []
+    for axname, axis in grid.axes.items():
+        try:
+            position, _ = axis._get_position_name(da)
+        except KeyError:
+            # The component has no dimension on this axis; skip it.
+            continue
+        if position != "center":
+            edge_axes.append(axname)
+    if len(edge_axes) == 1:
+        return edge_axes[0]
+    raise ValueError(
+        "Could not unambiguously infer the axis of the vector component being "
+        f"padded from its staggered position (edge axes found: {edge_axes}). "
+        "Pass the component as a `{axis_name: DataArray}` dict so its "
+        "orientation is explicit, e.g. "
+        "`pad({'Y': v}, ..., other_component={'X': u})`."
+    )
+
+
 def _pad_face_connections(
     da: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
@@ -87,6 +117,16 @@ def _pad_face_connections(
     if isinstance(da, dict):
         isvector = True
         vectoraxis, da = da.popitem()
+    elif other_component is not None:
+        # A bare DataArray supplied together with `other_component` is a vector
+        # component whose axis was not named (the dict key is what names it).
+        # Treat it as a vector and recover the axis from its own staggering so the
+        # rotation/sign-flip logic below runs identically to the dict form.
+        # Without this the component is padded scalar-style and the halo across a
+        # rotated (axis-swapping) or reversed face-connection seam is silently
+        # wrong -- `other_component` is ignored entirely.
+        isvector = True
+        vectoraxis = _infer_vector_component_axis(grid, da)
     else:
         isvector = False
 

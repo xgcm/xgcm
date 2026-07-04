@@ -905,6 +905,106 @@ class TestPaddingFaceConnection:
         xr.testing.assert_allclose(u_result, u_expected)
         xr.testing.assert_allclose(v_result, v_expected)
 
+    def test_vector_bare_matches_dict_swap_axis(
+        self, boundary_width, ds_faces, fill_value
+    ):
+        # Regression: a bare `DataArray` padded with `other_component` must
+        # produce the SAME halo as the equivalent `{axis: DataArray}` dict input.
+        # Previously the bare form silently ignored `other_component` and padded
+        # scalar-style, so the halo across the rotated (axis-swapping) seam was
+        # wrong -- the component was never replaced by the neighbour's orthogonal
+        # component and never sign-flipped. The dict form is the verified oracle
+        # (pinned to hand-computed halos by the tests above).
+        face_connections = {
+            "face": {
+                0: {"X": (None, (1, "Y", False))},
+                1: {"Y": ((0, "X", False), None)},
+            }
+        }
+        grid = Grid(ds_faces, face_connections=face_connections)
+        u = ds_faces.u.reset_coords(drop=True).reset_index(ds_faces.u.dims, drop=True)
+        v = ds_faces.v.reset_coords(drop=True).reset_index(ds_faces.v.dims, drop=True)
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
+        kw = dict(
+            grid=grid,
+            boundary_width=boundary_width,
+            boundary="fill",
+            fill_value=fill_value,
+        )
+
+        u_dict = pad({"X": u}, other_component={"Y": v}, **kw)
+        u_bare = pad(u, other_component={"Y": v}, **kw)
+        xr.testing.assert_identical(u_bare, u_dict)
+
+        v_dict = pad({"Y": v}, other_component={"X": u}, **kw)
+        v_bare = pad(v, other_component={"X": u}, **kw)
+        xr.testing.assert_identical(v_bare, v_dict)
+
+    def test_vector_bare_matches_dict_same_axis_reverse(
+        self, boundary_width, ds_faces, fill_value
+    ):
+        # As above but for a same-axis *reversed* seam (the sign-flip that a
+        # bipolar/tripolar fold applies to the normal component): exercises the
+        # `vectoraxis == axname` branch, which the bare form must reach too.
+        face_connections = {
+            "face": {
+                0: {"X": (None, (1, "X", True))},
+                1: {"X": (None, (0, "X", True))},
+            }
+        }
+        grid = Grid(ds_faces, face_connections=face_connections)
+        u = ds_faces.u.reset_coords(drop=True).reset_index(ds_faces.u.dims, drop=True)
+        v = ds_faces.v.reset_coords(drop=True).reset_index(ds_faces.v.dims, drop=True)
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
+        kw = dict(
+            grid=grid,
+            boundary_width=boundary_width,
+            boundary="fill",
+            fill_value=fill_value,
+        )
+
+        u_dict = pad({"X": u}, other_component={"Y": v}, **kw)
+        u_bare = pad(u, other_component={"Y": v}, **kw)
+        xr.testing.assert_identical(u_bare, u_dict)
+
+        v_dict = pad({"Y": v}, other_component={"X": u}, **kw)
+        v_bare = pad(v, other_component={"X": u}, **kw)
+        xr.testing.assert_identical(v_bare, v_dict)
+
+    def test_bare_vector_pad_ambiguous_axis_raises(
+        self, boundary_width, ds_faces, fill_value
+    ):
+        # A cell-centre (tracer-like) field is not a vector component -- its axis
+        # cannot be inferred from staggering -- so a bare pad with
+        # `other_component` must raise rather than silently guess.
+        face_connections = {
+            "face": {
+                0: {"X": (None, (1, "X", False))},
+                1: {"X": ((0, "X", False), None)},
+            }
+        }
+        grid = Grid(ds_faces, face_connections=face_connections)
+        tracer = xr.DataArray(
+            np.zeros(
+                (
+                    ds_faces.sizes["face"],
+                    ds_faces.sizes["x"],
+                    ds_faces.sizes["y"],
+                )
+            ),
+            dims=["face", "x", "y"],
+        )
+        boundary_width["Y"] = boundary_width.get("Y", (0, 0))
+        with pytest.raises(ValueError, match="infer the axis"):
+            pad(
+                tracer,
+                grid=grid,
+                boundary_width=boundary_width,
+                boundary="fill",
+                fill_value=fill_value,
+                other_component={"X": ds_faces.u},
+            )
+
     def test_vector_face_connections_right_right_swap_axis(
         self, boundary_width, ds_faces, fill_value
     ):
