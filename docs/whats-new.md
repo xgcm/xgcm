@@ -9,7 +9,9 @@
   targets, for example a terrain-following (spatially varying) vertical coordinate. This
   matches the existing multi-dimensional target support of the `linear` method and works
   with both numpy- and dask-backed source data. When the target is multi-dimensional,
-  `target_dim` must be specified ([#666](https://github.com/xgcm/xgcm/issues/666),
+  `target_dim` must be specified. The "Transforming Vertical Coordinates" documentation
+  page now closes with a worked linear-versus-conservative comparison on a
+  terrain-following target grid ([#666](https://github.com/xgcm/xgcm/issues/666),
   [#747](https://github.com/xgcm/xgcm/pull/747)).
   By [Henri Drake](https://github.com/hdrake).
 
