@@ -82,7 +82,7 @@ one extra point. These positions are visualized in the figure below.
 
 *The different possible positions of a variable `f` along an axis.*
 
-xgcm represents an axis internally using the `xgcm.Axis` class.
+xgcm represents an axis internally using the `Axis` class (`xgcm.axis.Axis`).
 
 Although it is technically possible to create an `Axis` directly, the recommended way to
 to use xgcm is by creating a single `xgcm.Grid` object, containing multiple axes
@@ -367,15 +367,15 @@ grid.cumsum(da_diff, "X")
 Which is approximately equal to the original `da`, modulo the numerical errors
 accrued due to the discretization of the data.
 
-By default, these grid operations will drop any coordinate that are not
-dimensions. The keep_coords argument allow to preserve compatible coordinates.
-For example:
+These grid operations preserve any coordinate that is compatible with the
+output (i.e. defined on dimensions present in the result), including
+non-dimension coordinates. For example:
 
 ```python
 da2 = da + xr.Dataset(coords={"y": np.arange(1, 3)})["y"]
 da2 = da2.assign_coords(h=da2.y**2)
 print(da2)
-grid.interp(da2, "X", keep_coords=True)
+grid.interp(da2, "X")
 ```
 
 So far we have just discussed simple grids (i.e. regular grids with a single

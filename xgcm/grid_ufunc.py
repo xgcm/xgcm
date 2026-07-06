@@ -1,6 +1,5 @@
 import re
 import string
-import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -618,7 +617,6 @@ def apply_as_grid_ufunc(
     boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
     boundary: Optional[Union[str, Mapping[str, str]]] = None,
     fill_value: Optional[Union[float, Mapping[str, float]]] = None,
-    keep_coords: bool = True,
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
     pad_before_func: bool = True,
@@ -712,6 +710,13 @@ def apply_as_grid_ufunc(
     Grid.apply_as_grid_ufunc
     xarray.apply_ufunc
     """
+
+    # TODO - remove deprecation handling in a future release
+    if "keep_coords" in kwargs:
+        raise ValueError(
+            "The 'keep_coords' argument has been removed. Coordinates "
+            "compatible with the output are now always preserved."
+        )
 
     if grid is None:
         raise ValueError("Must provide a grid object to describe the Axes")
@@ -865,7 +870,7 @@ def apply_as_grid_ufunc(
     out_core_dim_names = set(d for arg in out_core_dims for d in arg)
     input_args = [_maybe_unpack_vector_component(arg) for arg in args]
     results_with_coords = _reattach_coords(
-        results, grid, boundary_width, keep_coords, out_core_dim_names, input_args
+        results, grid, boundary_width, out_core_dim_names, input_args
     )
 
     # xr.apply_ufunc moves core dims to the end and never moves them back, so
@@ -1196,7 +1201,6 @@ def _reattach_coords(
     results: Sequence[xr.DataArray],
     grid: "Grid",
     boundary_width,
-    keep_coords: bool,
     out_core_dim_names: Optional[Set[str]] = None,
     input_args: Optional[Sequence[xr.DataArray]] = None,
 ) -> List[xr.DataArray]:
@@ -1248,18 +1252,6 @@ def _reattach_coords(
                 )
             else:
                 raise
-
-        if not keep_coords:
-            # TODO I don't like the `keep_coords` argument in general and think it should be removed for clarity.
-            warnings.warn(
-                "The keep_coords keyword argument is being deprecated - in future it will be removed "
-                "entirely, and the behaviour will always be that currently given by keep_coords=True.",
-                category=DeprecationWarning,
-            )
-
-            # Drop any non-dimension coordinates on the output
-            non_dim_coords = [coord for coord in res.coords if coord not in res.dims]
-            res = res.drop_vars(non_dim_coords)
 
         results_with_coords.append(res)
 

@@ -369,27 +369,36 @@ def test_keep_coords(funcname, gridtype):
             if set(ds[c].dims).issubset(result.dims) and c not in result.dims
         ]
 
-        if funcname in ["integrate", "average"]:
-            assert set(result.coords) == set(base_coords + augmented_coords)
-        else:
-            assert set(result.coords) == set(base_coords)
-
-        # TODO: why is the behavior different for integrate and average?
-        if funcname not in ["integrate", "average"]:
-            result = func(ds.tracer, axis_name, keep_coords=False)
-            assert set(result.coords) == set(base_coords)
-
-            result = func(ds.tracer, axis_name, keep_coords=True)
-            assert set(result.coords) == set(base_coords + augmented_coords)
+        # Non-dimension coordinates compatible with the output are now always
+        # preserved (former keep_coords=True behavior, GH #382).
+        assert set(result.coords) == set(base_coords + augmented_coords)
 
 
-def test_keep_coords_deprecation():
+def test_keep_coords_removed():
+    # The `keep_coords` kwarg was removed in v1.0.0 (GH #382); passing it now
+    # raises an informative ValueError (per the deprecation policy in GH #696)
+    # rather than emitting a deprecation warning. Check all three entry points
+    # that guard against it: the 1D grid-ufunc dispatch (interp/diff/min/max/...),
+    # cumsum (separate code path), and apply_as_grid_ufunc (public entry point).
+    from xgcm.grid_ufunc import apply_as_grid_ufunc
+
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
     for axis_name in grid.axes.keys():
-        with pytest.warns(DeprecationWarning):
+        with pytest.raises(ValueError, match="has been removed"):
             grid.diff(ds.tracer, axis_name, keep_coords=False)
+        with pytest.raises(ValueError, match="has been removed"):
+            grid.cumsum(ds.tracer, axis_name, keep_coords=False)
+    with pytest.raises(ValueError, match="has been removed"):
+        apply_as_grid_ufunc(
+            lambda x: x,
+            ds.tracer,
+            axis=[("X",)],
+            grid=grid,
+            signature="(X:center)->(X:center)",
+            keep_coords=False,
+        )
 
 
 @pytest.mark.parametrize("funcname", ["interp", "diff"])
@@ -428,9 +437,8 @@ def test_preserve_input_noncore_coords(funcname, use_dask):
     if use_dask:
         v = v.chunk({"time": 4})
 
-    # keep_coords=True so that non-dimension coordinates are retained on output
-    # (the default drops them, which is unrelated to the #496 clobbering bug).
-    out = getattr(grid, funcname)(v, "X", keep_coords=True)
+    # Non-dimension coordinates are always retained on output (GH #382).
+    out = getattr(grid, funcname)(v, "X")
 
     # The user's modified non-core dimension coord must survive (dtype AND values).
     assert out.time.dtype == np.float32
@@ -484,7 +492,7 @@ def test_cumsum_preserves_input_noncore_coords(use_dask):
     if use_dask:
         v = v.chunk({"time": 4})
 
-    out = grid.cumsum(v, "X", to="left", keep_coords=True)
+    out = grid.cumsum(v, "X", to="left")
 
     # The user's modified non-core dimension coord must survive (dtype AND values).
     assert out.time.dtype == np.float32

@@ -606,7 +606,6 @@ class Grid:
         data: Union[xr.DataArray, Dict[str, xr.DataArray]],
         axis,
         to=None,
-        keep_coords=False,
         metric_weighted: Optional[
             Union[str, Iterable[str], Dict[str, Union[str, Iterable[str]]]]
         ] = None,
@@ -627,6 +626,13 @@ class Grid:
             Can be passed as a single str to use for all axis, or as a dict with separate values for each axis.
             If not specified, the `default_shifts` stored in each Axis object will be used for that axis.
         """
+
+        # TODO - remove deprecation handling in a future release
+        if "keep_coords" in kwargs:
+            raise ValueError(
+                "The 'keep_coords' argument has been removed. Coordinates "
+                "compatible with the output are now always preserved."
+            )
 
         if isinstance(axis, str):
             axis = [axis]
@@ -690,7 +696,6 @@ class Grid:
                 self,
                 array,
                 axis=[(ax_name,)],
-                keep_coords=keep_coords,
                 dask=dask,
                 map_overlap=map_overlap,
                 other_component=other_component,
@@ -1043,7 +1048,7 @@ class Grid:
         boundary=None,
         fill_value=None,
         metric_weighted=None,
-        keep_coords: bool = False,
+        **kwargs,
     ) -> xr.DataArray:
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
@@ -1095,6 +1100,17 @@ class Grid:
 
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
+
+        # TODO - remove deprecation handling in a future release
+        if "keep_coords" in kwargs:
+            raise ValueError(
+                "The 'keep_coords' argument has been removed. Coordinates "
+                "compatible with the output are now always preserved."
+            )
+        if kwargs:
+            raise TypeError(
+                f"cumsum() got unexpected keyword argument(s): {list(kwargs)}"
+            )
 
         if isinstance(axis, str):
             axis = [axis]
@@ -1172,7 +1188,6 @@ class Grid:
                 [coordless],
                 grid=self,
                 boundary_width=ax_boundary_width,
-                keep_coords=keep_coords,
                 # The only newly position-shifted (core) dim is the result dim;
                 # its coordinate must come from the grid. Coordinates on all other
                 # (non-core) dims should be preserved from the input array. #496.
@@ -1293,8 +1308,6 @@ class Grid:
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Returns
         -------
