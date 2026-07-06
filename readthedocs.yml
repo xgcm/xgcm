@@ -10,9 +10,14 @@ build:
     python: "latest"
   jobs:
     create_environment:
+      # Pin pixi to a known-good version instead of `latest`, and keep it in sync
+      # with the `pixi-build-python` backend in pyproject.toml (they negotiate over
+      # a private `pixi-build-api-version`; a mismatched pair fails to solve with
+      # "no candidates for pixi-build-api-version"). The `0.7.*` backend needs a
+      # recent pixi, so this is pinned to match `PIXI_VERSION` in ci.yaml.
       - asdf plugin add pixi
-      - asdf install pixi latest
-      - asdf global pixi latest
+      - asdf install pixi 0.72.0
+      - asdf global pixi 0.72.0
     install:
       - pixi install -e docs
     build:

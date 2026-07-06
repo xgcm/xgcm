@@ -22,6 +22,8 @@ classifiers = [
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
 ]
 license = { text = "MIT" }
 keywords = ["pangeo", "simulations", "grids"]
@@ -30,7 +32,6 @@ dependencies = [
     "xarray>=0.20.0",
     "dask",
     "numpy",
-    "future"
 ]
 
 [project.optional-dependencies]
@@ -114,7 +115,16 @@ name = "xgcm"
 version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
 
 [tool.pixi.package.build]
-backend = { name = "pixi-build-python", version = "0.4.*" }
+# This build backend talks to the pixi tool over a private `pixi-build-api-version`
+# contract (pixi-build is still a preview feature), so the backend version and the
+# pixi *tool* version must stay compatible. An older backend cannot resolve the
+# api-version bumped by a newer pixi -- e.g. the previous `0.4.*` backend failed to
+# solve against pixi 0.71.x+ ("no candidates for pixi-build-api-version"), which is
+# why this was bumped to `0.7.*`. If you bump the backend again, confirm the pinned
+# tool versions still solve:
+#   - CI pins the tool via `PIXI_VERSION` in .github/workflows/ci.yaml
+#   - ReadTheDocs pins it via `asdf install pixi <ver>` in readthedocs.yml
+backend = { name = "pixi-build-python", version = "0.7.*" }
 
 [tool.pixi.package.host-dependencies]
 setuptools = "*"
@@ -126,7 +136,6 @@ python = ">=3.9"
 xarray = ">=0.20.0"
 dask = "*"
 numpy = "*"
-future = "*"
 scipy = "*" # TODO: `xgcm/test/test_grid_ufunc.py::TestGridUFuncNoPadding::test_1d_changing_size_dask_parallelized` failing if scipy isn't put here. Is scipy a core dependency? If no - move to `feature.extra` and fix test.
 
 [tool.pixi.dependencies]
@@ -144,11 +153,25 @@ xarray = "0.20.*"
 
 # TODO: Update with rest of core deps
 
+[tool.pixi.feature.py310.dependencies]
+python = "3.10.*"
+
 [tool.pixi.feature.py311.dependencies]
 python = "3.11.*"
 
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
+
+[tool.pixi.feature.py314.dependencies]
+# Pin the standard (GIL) CPython build for the 3.14 test env. The free-threaded
+# `cp314t` variant has a sparse conda-forge ecosystem and an unconstrained solve
+# selects it, breaking dependency resolution (e.g. it collapses the pre-commit
+# toolchain down to an ancient `identify`). This is also why the default dev env
+# pins `py313` rather than floating to the latest Python.
+python = { version = "3.14.*", build = "*cp314" }
 
 [tool.pixi.feature.test.dependencies]
 pytest = "*"
@@ -185,11 +208,13 @@ mkdocstrings-python=">=1.18.2"
 pyyaml=">=6.0.1"
 matplotlib="*"
 graphviz = "*"
+jupyterlab=">=4"
 
 [tool.pixi.feature.docs.tasks]
 _setup-graphviz = "dot -c"
 docs-serve = { cmd = "mkdocs serve --livereload", depends-on = ['_setup-graphviz'] }
 docs-build = { cmd = "mkdocs build", depends-on = ['_setup-graphviz'] }
+notebooks = "jupyter lab docs"
 
 [tool.pixi.feature.pre-commit.dependencies]
 pre_commit = "*"
@@ -203,16 +228,22 @@ default = { features = [
   "test",
   "extra",
   "pre-commit",
+  "py313",
 ], solve-group = "main" }
 
-test-core = { features = ["test"] }
-test-latest = { features = ["test", 'extra'] }
+# Core deps only (no `extra`) and full deps, both on the latest standard Python.
+test-core = { features = ["test", "py314"] }
+test-latest = { features = ["test", "extra", "py314"] }
 test-nightly = { features = [
   "py313",
   "nightly",
   "test",
 ], no-default-feature = true }
 
+# One explicit env per supported minor, all on standard (GIL) builds.
 test-minimum = { features = ["test", "minimum"] }
+test-py310 = { features = ["test", "py310"] }
 test-py311 = { features = ["test", "py311"] }
-docs = { features = ["docs", "extra", "notebooks"], solve-group = "docs" }
+test-py312 = { features = ["test", "py312"] }
+test-py313 = { features = ["test", "py313"] }
+docs = { features = ["docs", "extra", "notebooks", "py313"], solve-group = "docs" }

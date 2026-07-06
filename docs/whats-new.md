@@ -1,6 +1,124 @@
 # What's New
 
-## v0.9.0 (unreleased) {#whats-new-0-9-0}
+## v0.10.0 (unreleased) {#whats-new-0-10-0}
+
+
+### New Features
+
+### Breaking Changes
+
+- Removed the deprecated `keep_coords` keyword argument from grid operations
+  (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from
+  `apply_as_grid_ufunc`. The behavior is now always that formerly given by
+  `keep_coords=True`: coordinates compatible with the output (including non-dimension
+  coordinates) are preserved. Note that this silently changes the **default** output of
+  `Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, `Grid.derivative`,
+  and `Grid.cumint`, which previously dropped non-dimension coordinates from the result
+  and now retains them. Passing `keep_coords=` now raises a `ValueError`
+  ([#382](https://github.com/xgcm/xgcm/issues/382), [#745](https://github.com/xgcm/xgcm/pull/745)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- `Axis` is no longer importable from the top-level `xgcm` namespace, making effective the
+  removal announced in v0.9.0; internal use continues via `xgcm.axis.Axis`
+  ([#405](https://github.com/xgcm/xgcm/issues/405), [#557](https://github.com/xgcm/xgcm/pull/557),
+  [#743](https://github.com/xgcm/xgcm/pull/743)).
+  By [Henri Drake](https://github.com/hdrake).
+
+### Internal Changes
+
+- Advertise Python 3.12 and 3.13 support by adding their `Programming Language :: Python` trove
+  classifiers, and drop the unused `future` dependency (the package was never imported; only the
+  stdlib `from __future__` is used) ([#744](https://github.com/xgcm/xgcm/pull/744)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
+- Improve xgcm import speed by lazy-loading the transform module, reducing import time from 3.4s to 0.8s ([#697](https://github.com/xgcm/xgcm/pull/697))
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
+### Documentation
+
+- Reword the "Metrics" note in `grid_ufuncs.md` to a stable, non-promissory statement: metrics are
+  not automatically supplied to grid ufuncs, so pass any needed metric explicitly as an input
+  ([#744](https://github.com/xgcm/xgcm/pull/744)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
+
+- Document which environment runs the documentation notebooks (`transform.ipynb`, `grid_metrics.ipynb`).
+  The existing `docs` pixi environment now bundles Jupyter Lab and can be launched with `pixi run notebooks`,
+  and the notebooks and contributor guide note the required dependencies ([#667](https://github.com/xgcm/xgcm/issues/667)).
+
+- xgcm now follows [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/); the policy
+  is documented in the contributor guide and advertised by a README badge
+  ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742)).
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko) and [Henri Drake](https://github.com/hdrake).
+
+### Bugfixes
+
+- Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
+  silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
+  fell through to the `apply_as_grid_ufunc` default of `0`. The bound value is now forwarded (and still
+  overridable at call time), mirroring the other bound boundary kwargs
+  ([#652](https://github.com/xgcm/xgcm/issues/652), [#710](https://github.com/xgcm/xgcm/pull/710)).
+  By [Vincent Gao](https://github.com/gaoflow).
+
+- Fix `xgcm.padding.pad(..., other_component=...)` (and hence vector `Grid.diff`/`Grid.interp`)
+  silently ignoring the vector rotation when the component is passed as a bare `DataArray`
+  rather than a `{axis_name: DataArray}` dict. On a `face_connections` grid the bare form padded
+  the component scalar-style, so the halo across a rotated (axis-swapping) or reversed seam was
+  wrong and no error was raised — e.g. on ECCO LLC90 the global convergence sum of the advective
+  heat flux was `-1.6e9` (bare) versus `0` (dict). The bare form now recovers the component's axis
+  from its own staggering and runs the same rotation/sign-flip logic as the dict form, giving
+  identical output, and raises a clear error when the axis cannot be inferred (e.g. a cell-centre
+  field) ([#748](https://github.com/xgcm/xgcm/issues/748)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- Fix `Grid.transform(..., method="conservative")` falsely raising `NotImplementedError`
+  ("not yet supported for multi-dimensional targets") when a 1-dimensional target was combined
+  with an explicit `target_dim` longer than one character: the guard tested the length of the
+  dimension *name* instead of the number of target dimensions
+  ([#741](https://github.com/xgcm/xgcm/pull/741)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- Preserve the input DataArray's dimension order in the output of `apply_as_grid_ufunc`
+  (and the `Grid.apply_as_grid_ufunc` method). Previously `xarray.apply_ufunc` moved the
+  operated-on core dimension to the end and never moved it back, so an input with dims
+  `('tile', 'j', 'i')` came back as `('tile', 'i', 'j')`. The output now follows the input
+  ordering (with the core dim renamed in-place if it changes grid position)
+  ([#533](https://github.com/xgcm/xgcm/issues/533)).
+
+- Grid operations (e.g. `Grid.interp`, `Grid.diff`, `Grid.cumsum`) no longer drop or clobber non-core
+  coordinates carried on the input `DataArray`. Padding strips all coordinates and they were only restored
+  from the grid's own dataset, so a coordinate that lived on the input but not on the grid (e.g. a `time`
+  coordinate) was lost, and a coordinate present on both was overwritten with the grid's (possibly stale)
+  copy. Coordinates on non-core dimensions are now preserved from the input array (first input wins for
+  repeated names), while the newly position-shifted core-dim coordinate still comes from the grid
+  ([#496](https://github.com/xgcm/xgcm/issues/496), [#575](https://github.com/xgcm/xgcm/issues/575)).
+
+- Fix `TypeError: dict.copy() takes no keyword arguments` when applying vector grid ufuncs (e.g.
+  `diff_2d_vector`, `interp_2d_vector`) on grids *without* face connections. A vector component supplied
+  as a `{axis_name: DataArray}` dict was forwarded unchanged by `xgcm.padding.pad` to the basic padding
+  routine `_pad_basic` (which expects a `DataArray`); `pad` now unpacks the inner `DataArray` on the
+  non-face-connection path, mirroring the existing face-connection path
+  ([#581](https://github.com/xgcm/xgcm/issues/581)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
+  on grids with face connections when a vector component is a dask array chunked into more than one chunk
+  along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,
+  rechunked array, so face-connection padding that rechunks non-core dimensions no longer raises
+  `ValueError: Dimension 0 has 2 blocks, adjust_chunks specified with 1 blocks`
+  ([#708](https://github.com/xgcm/xgcm/issues/708)).
+  By [Henri Drake](https://github.com/hdrake).
+
+- Fix non-deterministic, hash-seed-dependent halo values in face-connection padding that could yield
+  incorrect results across a face-connection seam between runs ([#713](https://github.com/xgcm/xgcm/pull/713)).
+  By [Henri Drake](https://github.com/hdrake).
+
+## v0.9.0 (2025/08/20) {#whats-new-0-9-0}
 
 
 ### New Features
@@ -33,36 +151,13 @@
 - pre-commit autoupdate frequency reduced ([#563](https://github.com/xgcm/xgcm/pull/563)).
   By [Julius Busecke](https://github.com/jbusecke).
 
-- Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
-  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
-
-- Improve xgcm import speed by lazy-loading the transform module, reducing import time from 3.4s to 0.8s ([#697](https://github.com/xgcm/xgcm/pull/697))
-  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
-
 ### Documentation
-
-- Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
-  By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
 ### Bugfixes
 
-- Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
-  silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
-  fell through to the `apply_as_grid_ufunc` default of `0`. The bound value is now forwarded (and still
-  overridable at call time), mirroring the other bound boundary kwargs
-  ([#652](https://github.com/xgcm/xgcm/issues/652), [#710](https://github.com/xgcm/xgcm/pull/710)).
-  By [Vincent Gao](https://github.com/gaoflow).
-
-- Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
-  on grids with face connections when a vector component is a dask array chunked into more than one chunk
-  along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,
-  rechunked array, so face-connection padding that rechunks non-core dimensions no longer raises
-  `ValueError: Dimension 0 has 2 blocks, adjust_chunks specified with 1 blocks`
-  ([#708](https://github.com/xgcm/xgcm/issues/708)).
-  By [Henri Drake](https://github.com/hdrake).
-
 - Fix bug in `xgcm.transform.transform` that violated tracer conservation when using conservative interpolation in the presence of nans. ([#635](https://github.com/xgcm/xgcm/pull/635))
   By [Julius Busecke](https://github.com/jbusecke).
+
 - Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate
   values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
   By [Julius Busecke](https://github.com/jbusecke).
@@ -74,9 +169,6 @@
   By [Julius Busecke](https://github.com/jbusecke).
 
 - Fix bug that did not allow to create grids with faceconnections if the face dimension was coordinate-less. ([#616](https://github.com/xgcm/xgcm/issues/616), [#616](https://github.com/xgcm/xgcm/pull/616)).
-  By [Julius Busecke](https://github.com/jbusecke).
-
-- Fix bug in `xgcm.padding._maybe_rename_grid_positions` where dimensions were assumed to have coordinate values leading to errors with ECCO data. ([#531](https://github.com/xgcm/xgcm/issues/531), [#595](https://github.com/xgcm/xgcm/issues/595), [#597](https://github.com/xgcm/xgcm/pull/597)).
   By [Julius Busecke](https://github.com/jbusecke).
 
 ## v0.8.1 (2022/11/22) {#whats-new-0-8-1}
@@ -210,7 +302,7 @@
 
 - Added documentation on boundary conditions ([#273](https://github.com/xgcm/xgcm/issues/273), [#325](https://github.com/xgcm/xgcm/pull/325))
   By [Romain Caneill](https://github.com/rcaneill).
-- Updated metrics documentation for new methods in [Grid Metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics.html).
+- Updated metrics documentation for new methods in [Grid Metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics/).
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
 ### Internal Changes
@@ -242,7 +334,7 @@
 
 ### Documentation
 
-- Updated Realistic Data examples in [Transforming Vertical Coordinates](https://xgcm.readthedocs.io/en/latest/transform.html) ([#322](https://github.com/xgcm/xgcm/pull/322))
+- Updated Realistic Data examples in [Transforming Vertical Coordinates](https://xgcm.readthedocs.io/en/latest/transform/) ([#322](https://github.com/xgcm/xgcm/pull/322))
   By [Dianne Deauna](https://github.com/jdldeauna).[^siparcs]
 
 - Migrated model example notebooks to [xgcm-examples](https://github.com/xgcm/xgcm-examples) which integrates with [pangeo gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/) ([#294](https://github.com/xgcm/xgcm/pull/294))
@@ -296,7 +388,7 @@
 
 ## v0.3.0 (31 January 2020) {#whats-new-0-4-0}
 
-This release adds support for [model grid metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics.html) , bug fixes and extended documentation.
+This release adds support for [model grid metrics](https://xgcm.readthedocs.io/en/latest/grid_metrics/) , bug fixes and extended documentation.
 
 ### Breaking changes
 

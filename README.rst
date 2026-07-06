@@ -1,7 +1,7 @@
 xgcm: General Circulation Model Postprocessing with xarray
 ==========================================================
 
-|pypi| |conda forge| |conda-forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style| |pre-commit|
+|pypi| |conda forge| |conda-forge| |Build Status| |codecov| |docs| |DOI| |license| |Code style| |pre-commit| |effver|
 
 Binder Examples
 ---------------
@@ -10,7 +10,6 @@ Binder Examples
 Link      Provider       Description
 ========= ============== ============================================================================
 |Binder|  mybinder.org   Basic self-contained example
-|PBinder| Pangeo Binder  More complex examples integrated with other Pangeo tools (dask, zarr, etc.)
 ========= ============== ============================================================================
 
 Description
@@ -55,8 +54,8 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
 
 .. |conda forge| image:: https://img.shields.io/conda/vn/conda-forge/xgcm
    :target: https://anaconda.org/conda-forge/xgcm
-.. |DOI| image:: https://zenodo.org/badge/41581350.svg
-   :target: https://zenodo.org/badge/latestdoi/41581350
+.. |DOI| image:: https://img.shields.io/badge/DOI-10.5281%2Fzenodo.7348619-blue.svg
+   :target: https://doi.org/10.5281/zenodo.7348619
 .. |Build Status| image:: https://github.com/xgcm/xgcm/actions/workflows/ci.yaml/badge.svg
    :target: https://github.com/xgcm/xgcm/actions/workflows/ci.yaml
    :alt: GitHub Workflow CI Status
@@ -76,7 +75,7 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
    :target: https://github.com/python/black
    :alt: Code style
 .. |Binder| image:: https://mybinder.org/badge_logo.svg
-   :target: https://mybinder.org/v2/gh/xgcm/xgcm/master?filepath=doc%2Fexample_mitgcm.ipynb
+   :target: https://mybinder.org/v2/gh/xgcm/xgcm/master?filepath=docs%2Fxgcm-examples%2F02_mitgcm.ipynb
 .. |PBinder| image:: https://binder.pangeo.io/badge_logo.svg
    :target: https://binder.pangeo.io/v2/gh/pangeo-data/pangeo-ocean-examples/master
 .. |conda-forge| image:: https://img.shields.io/conda/dn/conda-forge/xgcm?label=conda-forge
@@ -84,3 +83,6 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
 .. |pre-commit| image:: https://results.pre-commit.ci/badge/github/xgcm/xgcm/master.svg
    :target: https://results.pre-commit.ci/latest/github/xgcm/xgcm/master
    :alt: pre-commit.ci status
+.. |effver| image:: https://img.shields.io/badge/version_scheme-EffVer-0097a7
+   :target: https://jacobtomlinson.dev/effver
+   :alt: EffVer Versioning

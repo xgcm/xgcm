@@ -51,13 +51,30 @@ pixi run docs-serve
 ```
 This will start a live preview running on `http://127.0.0.1:8000/`
 
+## Running the documentation notebooks
+
+The documentation notebooks that live directly in `docs/` (`transform.ipynb` and
+`grid_metrics.ipynb`) run in the `docs` pixi environment, which bundles everything
+they need (including `numba` for `Grid.transform` and `matplotlib`). To open them
+interactively in Jupyter Lab:
+
+```
+pixi run notebooks
+```
+
+This launches Jupyter Lab rooted at the `docs` folder.
+
+## Versioning policy
+
+xgcm uses [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/): version numbers are `MACRO.MESO.MICRO`. A **MACRO** bump signals that adopting the release may require a large effort from users; a **MESO** bump signals that some effort may be required; a **MICRO** bump signals that little to no effort is expected. Version numbers communicate the *intended* upgrade effort, not a strict API-compatibility guarantee. (For releases below 1.0.0, the segments shift one position per EffVer's zero-version guidance: `0.MACRO.MESO`.)
+
 ## How to release a new version of xgcm (for maintainers only)
 
 The process of releasing at this point is very easy.
 
 We need only two things: A PR to update the documentation and a release on github.
 
-1. Make sure that all the new features/bugfixes etc are appropriately documented in `docs/whats-new.md`, add the date to the current release and make an empty (unreleased) entry for the next minor release as a PR.
+1. Make sure that all the new features/bugfixes etc are appropriately documented in `docs/whats-new.md`, add the date to the current release and make an empty (unreleased) entry for the next release as a PR. Choose the next version number according to the [versioning policy](#versioning-policy) above.
 2. Navigate to the 'tags' symbol on the repos main page, click on 'Releases' and on 'Draft new release' on the right. Add the version number and a short description and save the release.
 
 From here the github actions take over and package things for [Pypi](https://pypi.org/project/xgcm/).

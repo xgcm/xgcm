@@ -115,7 +115,9 @@ def _run_single_derivative_test(grid, axis, fld, dx):
     dvar_dx = grid.derivative(fld, axis)
     expected = grid.diff(fld, axis) / dx
 
-    assert dvar_dx.equals(expected.reset_coords(drop=True))
+    # Grid operations now always preserve compatible non-dimension coords
+    # (GH #382); compare the underlying values by dropping them on both sides.
+    assert dvar_dx.reset_coords(drop=True).equals(expected.reset_coords(drop=True))
 
 
 class TestDerivatives:

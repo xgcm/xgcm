@@ -67,6 +67,36 @@ def _strip_all_coords(obj: xr.DataArray):
         return obj_stripped
 
 
+def _infer_vector_component_axis(grid: Grid, da: xr.DataArray) -> str:
+    """Infer the grid axis a vector component is aligned with from its staggering.
+
+    A velocity component is edge-staggered (``left``/``right``/``inner``/
+    ``outer``) on exactly its own axis and cell-``center`` on every orthogonal
+    axis, so the single edge axis unambiguously names the component. Used to
+    orient the vector sign-flips when a bare ``DataArray`` is padded with an
+    ``other_component`` but the caller did not wrap it in a
+    ``{axis_name: DataArray}`` dict.
+    """
+    edge_axes = []
+    for axname, axis in grid.axes.items():
+        try:
+            position, _ = axis._get_position_name(da)
+        except KeyError:
+            # The component has no dimension on this axis; skip it.
+            continue
+        if position != "center":
+            edge_axes.append(axname)
+    if len(edge_axes) == 1:
+        return edge_axes[0]
+    raise ValueError(
+        "Could not unambiguously infer the axis of the vector component being "
+        f"padded from its staggered position (edge axes found: {edge_axes}). "
+        "Pass the component as a `{axis_name: DataArray}` dict so its "
+        "orientation is explicit, e.g. "
+        "`pad({'Y': v}, ..., other_component={'X': u})`."
+    )
+
+
 def _pad_face_connections(
     da: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: Grid,
@@ -87,6 +117,16 @@ def _pad_face_connections(
     if isinstance(da, dict):
         isvector = True
         vectoraxis, da = da.popitem()
+    elif other_component is not None:
+        # A bare DataArray supplied together with `other_component` is a vector
+        # component whose axis was not named (the dict key is what names it).
+        # Treat it as a vector and recover the axis from its own staggering so the
+        # rotation/sign-flip logic below runs identically to the dict form.
+        # Without this the component is padded scalar-style and the halo across a
+        # rotated (axis-swapping) or reversed face-connection seam is silently
+        # wrong -- `other_component` is ignored entirely.
+        isvector = True
+        vectoraxis = _infer_vector_component_axis(grid, da)
     else:
         isvector = False
 
@@ -264,14 +304,23 @@ def _pad_face_connections(
                             [co for co in source_slice.coords]
                         )
 
-                        # Here I am trying to emulate the way xarray.pad deals with dimension coordinates
-                        # I will set them to nan in any case. This might change later.
-                        if target_dim in target_slice.coords:
-                            if (
-                                target_dim not in source_slice.dims
-                            ):  # in case this a 1 element padding slice
-                                source_slice = source_slice.expand_dims([target_dim])
+                        # The squeeze above drops the length-1 `target_dim` from the
+                        # source slice. Restore it unconditionally so the concat below
+                        # always sees matching dimensions. Previously this only happened
+                        # when `target_dim` carried a coordinate variable; on a grid
+                        # whose padded dims have no coordinates the slice stayed 1-D and
+                        # `xr.concat(..., join="override")` silently transposed and
+                        # clobbered the orthogonal connected edge -- and, because the
+                        # axes are iterated in `set` (hash-seed) order, which edge ended
+                        # up wrong varied from run to run.
+                        if (
+                            target_dim not in source_slice.dims
+                        ):  # 1-element padding slice
+                            source_slice = source_slice.expand_dims([target_dim])
 
+                        # Emulate the way xarray.pad deals with dimension coordinates:
+                        # blank them out (only relevant when the dim has a coordinate).
+                        if target_dim in target_slice.coords:
                             source_slice = source_slice.assign_coords(
                                 {
                                     target_dim: np.full_like(
@@ -281,6 +330,13 @@ def _pad_face_connections(
                                     )
                                 }
                             )
+
+                        # Match the source slice's dimension order to the target's.
+                        # `expand_dims` prepends the restored `target_dim`, so without
+                        # this the two operands can disagree on axis order and
+                        # `xr.concat(..., join="override")` produces a transposed/
+                        # clobbered result (order-dependent, hence hash-seed dependent).
+                        source_slice = source_slice.transpose(*target_slice.dims)
 
                         # assemble the padded array
                         if is_right:
@@ -428,6 +484,11 @@ def pad(
             other_component=other_component,
         )
     else:
+        # A vector component is supplied as a {axis_name: DataArray} dict. Unlike the
+        # face-connection path (which needs the axis to orient the component), basic
+        # padding only operates on the array itself, so unpack the inner DataArray.
+        if isinstance(data, dict):
+            [data] = list(data.values())  # raises if more than one component
         da_padded = _pad_basic(data, grid, padding_width, padding, fill_value)  # type: ignore
 
     return da_padded

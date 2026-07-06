@@ -422,6 +422,42 @@ def test_diff_interp_cubed_sphere(cs, cubed_sphere_connections):
     np.testing.assert_allclose(face_diff_y[:, 0, -1], [-4, -3, -2, -1, 2, 5])
 
 
+def test_cubed_sphere_scalar_pad_connected_halos(cs, cubed_sphere_connections):
+    # Regression test for GH #712. Padding a field whose connected dims carry no
+    # coordinate variables used to leave the source slice 1-D (the dim-restoring
+    # ``expand_dims`` was gated on the dim having a coordinate), so
+    # ``xr.concat(..., join="override")`` transposed and clobbered the orthogonal
+    # connected edge. Because the axes were iterated in ``set`` (hash-seed) order,
+    # which edge came out wrong varied from one Python process to the next.
+    #
+    # Here we pad a coordinate-less field equal to the face index, so every
+    # connected halo cell must read the neighbor face that the connections declare.
+    from xgcm.padding import pad as _pad
+
+    grid = Grid(cs, face_connections=cubed_sphere_connections)
+    nf, ny, nx = cs.sizes["face"], cs.sizes["y"], cs.sizes["x"]
+    face_field = xr.DataArray(
+        np.broadcast_to(np.arange(nf)[:, None, None], (nf, ny, nx)).astype(float),
+        dims=("face", "y", "x"),
+    )
+    padded = _pad(
+        face_field,
+        grid,
+        {"X": (1, 1), "Y": (1, 1)},
+        boundary={"X": "fill", "Y": "fill"},
+        fill_value=np.nan,
+    ).values  # (face, y+2, x+2)
+
+    for f in range(nf):
+        conn = cubed_sphere_connections["face"][f]
+        (left_x, right_x), (down_y, up_y) = conn["X"], conn["Y"]
+        # interior of each edge (exclude the two corner cells) reads the source face
+        np.testing.assert_array_equal(padded[f, 1:-1, 0], left_x[0])
+        np.testing.assert_array_equal(padded[f, 1:-1, -1], right_x[0])
+        np.testing.assert_array_equal(padded[f, 0, 1:-1], down_y[0])
+        np.testing.assert_array_equal(padded[f, -1, 1:-1], up_y[0])
+
+
 class TestErrors:
     def test_vector_missing_other_component(self, ds, ds_face_connections_x_to_y):
         grid = Grid(ds, face_connections=ds_face_connections_x_to_y)
