@@ -46,6 +46,13 @@
 
 ### Bugfixes
 
+- Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
+  silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
+  fell through to the `apply_as_grid_ufunc` default of `0`. The bound value is now forwarded (and still
+  overridable at call time), mirroring the other bound boundary kwargs
+  ([#652](https://github.com/xgcm/xgcm/issues/652), [#710](https://github.com/xgcm/xgcm/pull/710)).
+  By [Vincent Gao](https://github.com/gaoflow).
+
 - Fix `diff_2d_vector`/`interp_2d_vector` (and the equivalent vector-component `Grid.diff`/`Grid.interp`)
   on grids with face connections when a vector component is a dask array chunked into more than one chunk
   along its core dimension. The `map_overlap` path now derives the output chunk spec from the padded,
