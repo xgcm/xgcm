@@ -75,7 +75,7 @@ To learn how to install and use xgcm for your dataset, visit the `xgcm documenta
    :target: https://github.com/python/black
    :alt: Code style
 .. |Binder| image:: https://mybinder.org/badge_logo.svg
-   :target: https://mybinder.org/v2/gh/xgcm/xgcm/master?filepath=doc%2Fexample_mitgcm.ipynb
+   :target: https://mybinder.org/v2/gh/xgcm/xgcm/master?filepath=docs%2Fxgcm-examples%2F02_mitgcm.ipynb
 .. |PBinder| image:: https://binder.pangeo.io/badge_logo.svg
    :target: https://binder.pangeo.io/v2/gh/pangeo-data/pangeo-ocean-examples/master
 .. |conda-forge| image:: https://img.shields.io/conda/dn/conda-forge/xgcm?label=conda-forge

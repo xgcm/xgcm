@@ -45,6 +45,9 @@ jobs:
     needs: ["cache-pixi-lock"]
     if: github.repository == 'xgcm/xgcm'
     runs-on: ${{ matrix.os }}
+    # nightly runs against git-tip xarray/dask/numpy; let it fail without
+    # failing the overall `test` job (and therefore the merge gate).
+    continue-on-error: ${{ matrix.pixi-env == 'test-nightly' }}
     permissions:
       contents: read
     timeout-minutes: 60
@@ -92,6 +95,32 @@ jobs:
           env_vars: PIXI_ENV
           name: codecov-umbrella
           fail_ci_if_error: false
+
+  all-tests:
+    name: All tests passed
+    # Single aggregated gate to use as the required status check on `master`,
+    # so the matrix can change without touching branch-protection settings.
+    needs: ["cache-pixi-lock", "test", "zizmor"]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        if: >-
+          ${{ contains(needs.*.result, 'failure')
+           || contains(needs.*.result, 'cancelled') }}
+        env:
+          CACHE_RESULT: ${{ needs.cache-pixi-lock.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          ZIZMOR_RESULT: ${{ needs.zizmor.result }}
+        run: |
+          echo "One or more required jobs did not succeed:"
+          echo "  cache-pixi-lock: $CACHE_RESULT"
+          echo "  test:            $TEST_RESULT"
+          echo "  zizmor:          $ZIZMOR_RESULT"
+          exit 1
+      - name: All required jobs succeeded
+        run: echo "All required jobs passed."
 
   zizmor:
     name: GHA Security Analysis using Zizmor

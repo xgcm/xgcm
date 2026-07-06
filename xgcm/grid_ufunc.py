@@ -54,6 +54,56 @@ def _maybe_unpack_vector_component(
     return da
 
 
+def _restore_input_dim_order(results, args, sig, in_core_dims, out_core_dims):
+    """
+    Transpose each output so it follows the input DataArrays' dimension order.
+
+    ``xr.apply_ufunc`` moves core dimensions to the end of the output and does
+    not move them back, so an input with dims ``('tile', 'j', 'i')`` operated on
+    along ``j`` comes back as ``('tile', 'i', 'j')``. Here we restore the
+    original ordering, accounting for core dims that get renamed when they change
+    grid position (e.g. ``j`` -> ``jg``) and for genuinely-new output dims.
+    """
+    # Link input core dims to output core dims via the shared dummy axis names.
+    # Note: this mapping is keyed solely by dummy axis name, so it cannot
+    # distinguish multiple outputs that share one dummy axis at different
+    # positions (e.g. ``(X:center)->(X:left),(X:right)``) - those collapse onto
+    # the last position. No built-in operator emits such a signature (vector ops
+    # use distinct axes), so this only affects direct public-API power-users.
+    dummy_to_in_dim = {
+        ax_name: dim
+        for arg_ax_names, arg_in_dims in zip(sig.in_ax_names, in_core_dims)
+        for ax_name, dim in zip(arg_ax_names, arg_in_dims)
+    }
+    dummy_to_out_dim = {
+        ax_name: dim
+        for arg_ax_names, arg_out_dims in zip(sig.out_ax_names, out_core_dims)
+        for ax_name, dim in zip(arg_ax_names, arg_out_dims)
+    }
+    rename_map = {
+        dummy_to_in_dim[ax]: dummy_to_out_dim[ax]
+        for ax in dummy_to_in_dim
+        if ax in dummy_to_out_dim
+    }
+
+    # Reference ordering: order in which dims first appear across all input args,
+    # with input core dims renamed to their output names.
+    reference_order: List[str] = []
+    for arg in args:
+        for d in _maybe_unpack_vector_component(arg).dims:
+            d = rename_map.get(d, d)
+            if d not in reference_order:
+                reference_order.append(d)
+
+    transposed = []
+    for res in results:
+        order = [d for d in reference_order if d in res.dims] + [
+            d for d in res.dims if d not in reference_order
+        ]
+        transposed.append(res.transpose(*order))
+    return tuple(transposed)
+
+
 def _check_data_input(
     data: Union[xr.DataArray, Dict[str, xr.DataArray]],
     grid: "Grid",
@@ -816,6 +866,12 @@ def apply_as_grid_ufunc(
     input_args = [_maybe_unpack_vector_component(arg) for arg in args]
     results_with_coords = _reattach_coords(
         results, grid, boundary_width, keep_coords, out_core_dim_names, input_args
+    )
+
+    # xr.apply_ufunc moves core dims to the end and never moves them back, so
+    # restore the input dimension ordering on each output (see GH #533).
+    results_with_coords = _restore_input_dim_order(
+        results_with_coords, args, sig, in_core_dims, out_core_dims
     )
 
     # Return single results not wrapped in 1-element tuple, like xr.apply_ufunc does

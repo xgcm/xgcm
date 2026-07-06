@@ -27,10 +27,10 @@ repos:
         types_or: [jupyter]
       - id: ruff-format
   - repo: https://github.com/keewis/blackdoc
-    rev: v0.4.1
+    rev: v0.4.6
     hooks:
       - id: blackdoc
-        additional_dependencies: ["black==22.3.0"]
+        additional_dependencies: ["black==26.5.1"]
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.1
     hooks:

@@ -36,7 +36,7 @@ and install it using pip:
 pip install git+https://github.com/xgcm/xgcm.git
 ```
 
-More comprehensive instructions for installing a development environment can be found in the [Contributor Guide](https://xgcm.readthedocs.io/en/latest/contributor_guide.html).
+More comprehensive instructions for installing a development environment can be found in the [Contributor Guide](https://xgcm.readthedocs.io/en/latest/contributor_guide/).
 
 Users are encouraged to [fork](https://help.github.com/articles/fork-a-repo/)
 xgcm and submit [issues] and [pull requests].

@@ -701,7 +701,9 @@ class Grid:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array / metric
 
-        return self._transpose_to_keep_same_dim_order(data_unpacked, array, axis)
+        # Dimension order is already restored inside apply_as_grid_ufunc /
+        # _restore_input_dim_order (see GH #722), so no transpose is needed here.
+        return array
 
     def _create_1d_grid_ufunc_signatures(
         self, da, axis, to
@@ -730,25 +732,6 @@ class Grid:
             signatures.append(signature_1d)
 
         return signatures
-
-    def _transpose_to_keep_same_dim_order(self, da, result, axis):
-        """Reorder DataArray dimensions to match the original input."""
-
-        initial_dims = da.dims
-
-        shifted_dims = {}
-        for ax_name in axis:
-            ax = self.axes[ax_name]
-
-            _, old_dim = ax._get_position_name(da)
-            _, new_dim = ax._get_position_name(result)
-            shifted_dims[old_dim] = new_dim
-
-        output_dims_but_in_original_order = [
-            shifted_dims[dim] if dim in shifted_dims else dim for dim in initial_dims
-        ]
-
-        return result.transpose(*output_dims_but_in_original_order)
 
     def apply_as_grid_ufunc(
         self,
