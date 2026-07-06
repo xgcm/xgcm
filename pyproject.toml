@@ -207,11 +207,13 @@ mkdocstrings-python=">=1.18.2"
 pyyaml=">=6.0.1"
 matplotlib="*"
 graphviz = "*"
+jupyterlab=">=4"
 
 [tool.pixi.feature.docs.tasks]
 _setup-graphviz = "dot -c"
 docs-serve = { cmd = "mkdocs serve --livereload", depends-on = ['_setup-graphviz'] }
 docs-build = { cmd = "mkdocs build", depends-on = ['_setup-graphviz'] }
+notebooks = "jupyter lab docs"
 
 [tool.pixi.feature.pre-commit.dependencies]
 pre_commit = "*"

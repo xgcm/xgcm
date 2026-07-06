@@ -51,6 +51,19 @@ pixi run docs-serve
 ```
 This will start a live preview running on `http://127.0.0.1:8000/`
 
+## Running the documentation notebooks
+
+The documentation notebooks that live directly in `docs/` (`transform.ipynb` and
+`grid_metrics.ipynb`) run in the `docs` pixi environment, which bundles everything
+they need (including `numba` for `Grid.transform` and `matplotlib`). To open them
+interactively in Jupyter Lab:
+
+```
+pixi run notebooks
+```
+
+This launches Jupyter Lab rooted at the `docs` folder.
+
 ## How to release a new version of xgcm (for maintainers only)
 
 The process of releasing at this point is very easy.
