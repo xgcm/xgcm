@@ -51,9 +51,11 @@ class TestInvalidGrid:
             ds, *_ = datasets_grid_metric("C")
             Grid(ds, coords={"ax1": {"center": "XGEEEEEEEE"}}, autoparse_metadata=False)
 
-    @pytest.mark.xfail(reason="Not yet implemented")
-    def test_duplicate_values(self):
-        with pytest.raises(ValueError):
+    def test_duplicate_dims_same_axis(self):
+        """Same dimension assigned to two positions on one axis must raise."""
+        with pytest.raises(
+            ValueError, match="same dimension cannot be assigned to multiple positions"
+        ):
             ds, *_ = datasets_grid_metric("C")
             Grid(
                 ds,
@@ -61,6 +63,9 @@ class TestInvalidGrid:
                 autoparse_metadata=False,
             )
 
+    @pytest.mark.xfail(reason="Cross-axis duplicate dimension check not yet implemented")
+    def test_duplicate_dims_cross_axis(self):
+        """Same dimension assigned across two different axes must raise."""
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
             Grid(

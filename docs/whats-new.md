@@ -5,6 +5,14 @@
 
 ### New Features
 
+### Bug Fixes
+
+- `Axis` now raises a `ValueError` immediately if the same dimension name is
+  assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
+  rather than silently accepting the invalid configuration
+  ([#634](https://github.com/xgcm/xgcm/issues/634)).
+  By [Mike German](https://github.com/steps-re).
+
 ### Breaking Changes
 
 - Removed the deprecated `keep_coords` keyword argument from grid operations
