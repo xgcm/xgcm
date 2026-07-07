@@ -15,7 +15,26 @@
   [#747](https://github.com/xgcm/xgcm/pull/747)).
   By [Henri Drake](https://github.com/hdrake).
 
+### Bug Fixes
+
+- `Axis` now raises a `ValueError` immediately if the same dimension name is
+  assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
+  rather than silently accepting the invalid configuration
+  ([#634](https://github.com/xgcm/xgcm/issues/634)).
+  By [Mike German](https://github.com/steps-re).
+
 ### Breaking Changes
+
+- Removed the deprecated `keep_coords` keyword argument from grid operations
+  (`Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, etc.) and from
+  `apply_as_grid_ufunc`. The behavior is now always that formerly given by
+  `keep_coords=True`: coordinates compatible with the output (including non-dimension
+  coordinates) are preserved. Note that this silently changes the **default** output of
+  `Grid.interp`, `Grid.diff`, `Grid.min`, `Grid.max`, `Grid.cumsum`, `Grid.derivative`,
+  and `Grid.cumint`, which previously dropped non-dimension coordinates from the result
+  and now retains them. Passing `keep_coords=` now raises a `ValueError`
+  ([#382](https://github.com/xgcm/xgcm/issues/382), [#745](https://github.com/xgcm/xgcm/pull/745)).
+  By [Henri Drake](https://github.com/hdrake).
 
 - `Axis` is no longer importable from the top-level `xgcm` namespace, making effective the
   removal announced in v0.9.0; internal use continues via `xgcm.axis.Axis`
@@ -25,6 +44,11 @@
 
 ### Internal Changes
 
+- Advertise Python 3.12 and 3.13 support by adding their `Programming Language :: Python` trove
+  classifiers, and drop the unused `future` dependency (the package was never imported; only the
+  stdlib `from __future__` is used) ([#744](https://github.com/xgcm/xgcm/pull/744)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Migrate development workflow to Pixi ([#691](https://github.com/xgcm/xgcm/pull/691))
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
@@ -33,10 +57,42 @@
 
 ### Documentation
 
+- Reword the "Metrics" note in `grid_ufuncs.md` to a stable, non-promissory statement: metrics are
+  not automatically supplied to grid ufuncs, so pass any needed metric explicitly as an input
+  ([#744](https://github.com/xgcm/xgcm/pull/744)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Migrate documentation to mkdocs ([#691](https://github.com/xgcm/xgcm/pull/691))
   By [Nick Hodgskin](https://github.com/VeckoTheGecko).
 
+- Document which environment runs the documentation notebooks (`transform.ipynb`, `grid_metrics.ipynb`).
+  The existing `docs` pixi environment now bundles Jupyter Lab and can be launched with `pixi run notebooks`,
+  and the notebooks and contributor guide note the required dependencies ([#667](https://github.com/xgcm/xgcm/issues/667)).
+
+- xgcm now follows [Intended Effort Versioning (EffVer)](https://jacobtomlinson.dev/effver/); the policy
+  is documented in the contributor guide and advertised by a README badge
+  ([#679](https://github.com/xgcm/xgcm/issues/679), [#680](https://github.com/xgcm/xgcm/pull/680), [#742](https://github.com/xgcm/xgcm/pull/742)).
+  By [Nick Hodgskin](https://github.com/VeckoTheGecko) and [Henri Drake](https://github.com/hdrake).
+
 ### Bugfixes
+
+- Respect the `fill_value` bound on the `@as_grid_ufunc` decorator (or passed to `GridUFunc`). It was
+  silently dropped in `GridUFunc.__call__` — only a call-time `fill_value` took effect, so a bound value
+  fell through to the `apply_as_grid_ufunc` default of `0`. The bound value is now forwarded (and still
+  overridable at call time), mirroring the other bound boundary kwargs
+  ([#652](https://github.com/xgcm/xgcm/issues/652), [#710](https://github.com/xgcm/xgcm/pull/710)).
+  By [Vincent Gao](https://github.com/gaoflow).
+
+- Fix `xgcm.padding.pad(..., other_component=...)` (and hence vector `Grid.diff`/`Grid.interp`)
+  silently ignoring the vector rotation when the component is passed as a bare `DataArray`
+  rather than a `{axis_name: DataArray}` dict. On a `face_connections` grid the bare form padded
+  the component scalar-style, so the halo across a rotated (axis-swapping) or reversed seam was
+  wrong and no error was raised — e.g. on ECCO LLC90 the global convergence sum of the advective
+  heat flux was `-1.6e9` (bare) versus `0` (dict). The bare form now recovers the component's axis
+  from its own staggering and runs the same rotation/sign-flip logic as the dict form, giving
+  identical output, and raises a clear error when the axis cannot be inferred (e.g. a cell-centre
+  field) ([#748](https://github.com/xgcm/xgcm/issues/748)).
+  By [Henri Drake](https://github.com/hdrake).
 
 - Fix `Grid.transform(..., method="conservative")` falsely raising `NotImplementedError`
   ("not yet supported for multi-dimensional targets") when a 1-dimensional target was combined

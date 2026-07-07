@@ -1240,6 +1240,36 @@ class TestBoundary:
         expected = grid._ds.lat_g.copy(data=interped_arr_padded_with_one)
         assert_equal(result, expected)
 
+    def test_fill_value_from_decorator(self):
+        # A non-zero fill_value set on the decorator must be used, not silently
+        # ignored in favour of the default of 0 (GH #652). It must also still be
+        # overridable at call time.
+        def interp(a):
+            return 0.5 * (a[..., :-1] + a[..., 1:])
+
+        @as_grid_ufunc(
+            signature="(X:center)->(X:left)",
+            boundary_width={"X": (1, 0)},
+            boundary="fill",
+            fill_value=10,
+        )
+        def interp_center_to_left(a):
+            return interp(a)
+
+        grid = create_1d_test_grid("lat")
+        arr = np.arange(9)
+        da = grid._ds.lat_c.copy(data=arr)
+
+        # fill_value=10 from the decorator must be honoured (would pad with 0 if ignored)
+        result = interp_center_to_left(grid, da, axis=[["lat"]])
+        expected = grid._ds.lat_g.copy(data=interp(np.concatenate([[10], arr])))
+        assert_equal(result, expected)
+
+        # a call-time fill_value still overrides the decorator value
+        result = interp_center_to_left(grid, da, axis=[["lat"]], fill_value=1)
+        expected = grid._ds.lat_g.copy(data=interp(np.concatenate([[1], arr])))
+        assert_equal(result, expected)
+
 
 # TODO tests for handling dask in gri.diff etc. should eventually live in test_grid.py
 class TestMapOverlapGridops:

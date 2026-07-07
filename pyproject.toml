@@ -22,6 +22,8 @@ classifiers = [
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
 ]
 license = { text = "MIT" }
 keywords = ["pangeo", "simulations", "grids"]
@@ -30,7 +32,6 @@ dependencies = [
     "xarray>=0.20.0",
     "dask",
     "numpy",
-    "future"
 ]
 
 [project.optional-dependencies]
@@ -115,14 +116,15 @@ version = "dynamic" # dynamic versioning needs better support in pixi https://gi
 
 [tool.pixi.package.build]
 # This build backend talks to the pixi tool over a private `pixi-build-api-version`
-# contract (pixi-build is still a preview feature). The `0.4.*` backend only
-# supports the api-version provided by pixi up to ~0.70.x; pixi 0.71.x bumped it
-# and the solve fails with "no candidates" for pixi-build-api-version. So the pixi
-# *tool* version must stay compatible with this *backend* pin. Keep them in sync:
+# contract (pixi-build is still a preview feature), so the backend version and the
+# pixi *tool* version must stay compatible. An older backend cannot resolve the
+# api-version bumped by a newer pixi -- e.g. the previous `0.4.*` backend failed to
+# solve against pixi 0.71.x+ ("no candidates for pixi-build-api-version"), which is
+# why this was bumped to `0.7.*`. If you bump the backend again, confirm the pinned
+# tool versions still solve:
 #   - CI pins the tool via `PIXI_VERSION` in .github/workflows/ci.yaml
 #   - ReadTheDocs pins it via `asdf install pixi <ver>` in readthedocs.yml
-# If you bump this backend (0.5.x+), drop those tool pins / allow newer pixi.
-backend = { name = "pixi-build-python", version = "0.4.*" }
+backend = { name = "pixi-build-python", version = "0.7.*" }
 
 [tool.pixi.package.host-dependencies]
 setuptools = "*"
@@ -134,7 +136,6 @@ python = ">=3.9"
 xarray = ">=0.20.0"
 dask = "*"
 numpy = "*"
-future = "*"
 scipy = "*" # TODO: `xgcm/test/test_grid_ufunc.py::TestGridUFuncNoPadding::test_1d_changing_size_dask_parallelized` failing if scipy isn't put here. Is scipy a core dependency? If no - move to `feature.extra` and fix test.
 
 [tool.pixi.dependencies]
@@ -207,11 +208,13 @@ mkdocstrings-python=">=1.18.2"
 pyyaml=">=6.0.1"
 matplotlib="*"
 graphviz = "*"
+jupyterlab=">=4"
 
 [tool.pixi.feature.docs.tasks]
 _setup-graphviz = "dot -c"
 docs-serve = { cmd = "mkdocs serve --livereload", depends-on = ['_setup-graphviz'] }
 docs-build = { cmd = "mkdocs build", depends-on = ['_setup-graphviz'] }
+notebooks = "jupyter lab docs"
 
 [tool.pixi.feature.pre-commit.dependencies]
 pre_commit = "*"

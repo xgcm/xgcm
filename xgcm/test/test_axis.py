@@ -50,6 +50,18 @@ class TestInit:
                 coords={"center": "lat", "left": "lon"},
             )
 
+    def test_duplicate_dims(self, periodic_1d):
+        """Test that assigning the same dimension to two positions raises an error."""
+        ds, _, _ = periodic_1d
+        with pytest.raises(
+            ValueError, match="same dimension cannot be assigned to multiple positions"
+        ):
+            Axis(
+                name="X",
+                ds=ds,
+                coords={"center": "XC", "outer": "XC"},
+            )
+
     def test_invalid_args(self, periodic_1d):
         ds, _, _ = periodic_1d
 

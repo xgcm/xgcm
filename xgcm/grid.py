@@ -606,7 +606,6 @@ class Grid:
         data: Union[xr.DataArray, Dict[str, xr.DataArray]],
         axis,
         to=None,
-        keep_coords=False,
         metric_weighted: Optional[
             Union[str, Iterable[str], Dict[str, Union[str, Iterable[str]]]]
         ] = None,
@@ -627,6 +626,13 @@ class Grid:
             Can be passed as a single str to use for all axis, or as a dict with separate values for each axis.
             If not specified, the `default_shifts` stored in each Axis object will be used for that axis.
         """
+
+        # TODO - remove deprecation handling in a future release
+        if "keep_coords" in kwargs:
+            raise ValueError(
+                "The 'keep_coords' argument has been removed. Coordinates "
+                "compatible with the output are now always preserved."
+            )
 
         if isinstance(axis, str):
             axis = [axis]
@@ -690,7 +696,6 @@ class Grid:
                 self,
                 array,
                 axis=[(ax_name,)],
-                keep_coords=keep_coords,
                 dask=dask,
                 map_overlap=map_overlap,
                 other_component=other_component,
@@ -1043,7 +1048,8 @@ class Grid:
         boundary=None,
         fill_value=None,
         metric_weighted=None,
-        keep_coords: bool = False,
+        reverse=False,
+        **kwargs,
     ) -> xr.DataArray:
         """
         Cumulatively sum a DataArray, transforming to the intermediate axis
@@ -1080,6 +1086,15 @@ class Grid:
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
             Optionally a dict with seperate values for each axis can be passed.
+        reverse : bool or dict, optional
+            If `True`, accumulate from the high-index end of the axis toward the
+            low-index end, so that the cumulative total starts from the last
+            element rather than the first (the default, `False`, accumulates from
+            low index to high index). Implemented by flipping the data along the
+            core dimension, cumulatively summing, and flipping the result back.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------
@@ -1096,9 +1111,34 @@ class Grid:
         >>> grid.max(da, ["X", "Y"], fill_value={"X": 0, "Y": 100})
         """
 
+        # TODO - remove deprecation handling in a future release
+        if "keep_coords" in kwargs:
+            raise ValueError(
+                "The 'keep_coords' argument has been removed. Coordinates "
+                "compatible with the output are now always preserved."
+            )
+        if kwargs:
+            raise TypeError(
+                f"cumsum() got unexpected keyword argument(s): {list(kwargs)}"
+            )
+
         if isinstance(axis, str):
             axis = [axis]
         to = self._map_kwargs_over_axes(to)
+
+        # `reverse` controls the accumulation direction of each axis being
+        # cumulatively summed, so it only makes sense for axes in `axis`. Reject
+        # a dict that names other axes rather than silently ignoring them, which
+        # could mislead users into thinking a non-integrated axis is reversed.
+        if isinstance(reverse, dict):
+            extra = [ax_name for ax_name in reverse if ax_name not in axis]
+            if extra:
+                raise ValueError(
+                    f"`reverse` was given for axes {extra} which are not being "
+                    f"cumulatively summed (axis={axis}). Only pass `reverse` for "
+                    f"the axes in `axis`."
+                )
+        reverse = self._map_kwargs_over_axes(reverse)
 
         if isinstance(metric_weighted, str):
             metric_weighted = (metric_weighted,)
@@ -1114,13 +1154,22 @@ class Grid:
             # than being clobbered by the grid's (possibly stale) copies. See #496.
             input_da = data
 
+            ax_reverse = reverse.get(ax.name, False)
+
             ax_metric_weighted = metric_weighted[ax.name]
             if ax_metric_weighted:
                 metric = self.get_metric(data, ax_metric_weighted)
                 data = data * metric
 
-            # first use xarray's cumsum method
+            # use xarray's cumsum method. When `reverse` is requested we flip the
+            # data along the core dim, accumulate, and flip back, so that the
+            # cumulative total accumulates from the high-index end of the axis
+            # toward the low-index end (see #256 / #605).
+            if ax_reverse:
+                data = data.isel(**{dim: slice(None, None, -1)})
             data = data.cumsum(dim=dim)
+            if ax_reverse:
+                data = data.isel(**{dim: slice(None, None, -1)})
 
             ax_to = to[ax.name]
             if ax_to is None:
@@ -1128,30 +1177,64 @@ class Grid:
 
             # now pad / trim the data as necessary
             # here we enumerate all the valid possible shifts
-            if (pos == "center" and ax_to == "right") or (
-                pos == "left" and ax_to == "center"
-            ):
-                # do nothing, this is the default for how cumsum works
-                ax_boundary_width = {ax.name: (0, 0)}
-            elif (pos == "center" and ax_to == "left") or (
-                pos == "right" and ax_to == "center"
-            ):
-                data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (1, 0)}
-            elif (pos == "center" and ax_to == "inner") or (
-                pos == "outer" and ax_to == "center"
-            ):
-                data = data.isel(**{dim: slice(0, -1)})
-                ax_boundary_width = {ax.name: (0, 0)}
-            elif (pos == "center" and ax_to == "outer") or (
-                pos == "inner" and ax_to == "center"
-            ):
-                ax_boundary_width = {ax.name: (1, 0)}
+            if not ax_reverse:
+                # forward accumulation: a low->high cumsum lands naturally on the
+                # `right` position (the right cell faces), so any trimming happens
+                # at the high-index end and any padding at the low-index end.
+                if (pos == "center" and ax_to == "right") or (
+                    pos == "left" and ax_to == "center"
+                ):
+                    # do nothing, this is the default for how cumsum works
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "left") or (
+                    pos == "right" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(0, -1)})
+                    ax_boundary_width = {ax.name: (1, 0)}
+                elif (pos == "center" and ax_to == "inner") or (
+                    pos == "outer" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(0, -1)})
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "outer") or (
+                    pos == "inner" and ax_to == "center"
+                ):
+                    ax_boundary_width = {ax.name: (1, 0)}
+                else:
+                    raise ValueError(
+                        f"From `{pos}` to `{ax_to}` is not a valid position "
+                        f"shift for cumsum operation along axis {ax}."
+                    )
             else:
-                raise ValueError(
-                    f"From `{pos}` to `{ax_to}` is not a valid position "
-                    f"shift for cumsum operation along axis {ax}."
-                )
+                # reversed accumulation: a high->low cumsum lands naturally on the
+                # `left` position (the left cell faces). This is the mirror image
+                # of the forward case: trimming happens at the low-index end
+                # (`slice(1, None)`) and padding at the high-index end (the upper
+                # boundary_width), so the position shifts stay consistent.
+                if (pos == "center" and ax_to == "left") or (
+                    pos == "right" and ax_to == "center"
+                ):
+                    # do nothing, this is the default for a reversed cumsum
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "right") or (
+                    pos == "left" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(1, None)})
+                    ax_boundary_width = {ax.name: (0, 1)}
+                elif (pos == "center" and ax_to == "inner") or (
+                    pos == "outer" and ax_to == "center"
+                ):
+                    data = data.isel(**{dim: slice(1, None)})
+                    ax_boundary_width = {ax.name: (0, 0)}
+                elif (pos == "center" and ax_to == "outer") or (
+                    pos == "inner" and ax_to == "center"
+                ):
+                    ax_boundary_width = {ax.name: (0, 1)}
+                else:
+                    raise ValueError(
+                        f"From `{pos}` to `{ax_to}` is not a valid position "
+                        f"shift for cumsum operation along axis {ax}."
+                    )
 
             padded = pad(
                 data=data,
@@ -1172,7 +1255,6 @@ class Grid:
                 [coordless],
                 grid=self,
                 boundary_width=ax_boundary_width,
-                keep_coords=keep_coords,
                 # The only newly position-shifted (core) dim is the result dim;
                 # its coordinate must come from the grid. Coordinates on all other
                 # (non-core) dims should be preserved from the input array. #496.
@@ -1293,8 +1375,6 @@ class Grid:
             The value to use in the boundary condition with `boundary='fill'`.
         vector_partner : dict, optional
             A single key (string), value (DataArray)
-        keep_coords : boolean, optional
-            Preserves compatible coordinates. False by default.
 
         Returns
         -------
@@ -1412,6 +1492,14 @@ class Grid:
             E.g. if passing `metric_weighted=['X', 'Y']`, values will be weighted by horizontal area.
             If `False` (default), the points will be weighted equally.
             Optionally a dict with seperate values for each axis can be passed.
+        reverse : bool or dict, optional
+            If `True`, accumulate from the high-index end of the axis toward the
+            low-index end, so that the cumulative integral starts from the last
+            element rather than the first (the default, `False`, accumulates from
+            low index to high index). Forwarded to :meth:`Grid.cumsum`.
+            Optionally a dict with separate values for each axis can be passed;
+            it may only name axes that appear in `axis` (a `ValueError` is raised
+            otherwise).
 
         Returns
         -------

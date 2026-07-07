@@ -90,6 +90,21 @@ class Axis:
                 raise ValueError(
                     f"Could not find dimension `{dim}` (for the `{pos}` position on axis `{name}`) in input dataset."
                 )
+
+        # check that no dimension is assigned to more than one position
+        dims = list(coords.values())
+        seen = set()
+        duplicates = set()
+        for dim in dims:
+            if dim in seen:
+                duplicates.add(dim)
+            seen.add(dim)
+        if duplicates:
+            raise ValueError(
+                f"The same dimension cannot be assigned to multiple positions on axis `{name}`. "
+                f"Duplicate dimension(s): {sorted(duplicates)}"
+            )
+
         self._coords = coords
 
         # set default position shifts

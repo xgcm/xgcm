@@ -51,9 +51,11 @@ class TestInvalidGrid:
             ds, *_ = datasets_grid_metric("C")
             Grid(ds, coords={"ax1": {"center": "XGEEEEEEEE"}}, autoparse_metadata=False)
 
-    @pytest.mark.xfail(reason="Not yet implemented")
-    def test_duplicate_values(self):
-        with pytest.raises(ValueError):
+    def test_duplicate_dims_same_axis(self):
+        """Same dimension assigned to two positions on one axis must raise."""
+        with pytest.raises(
+            ValueError, match="same dimension cannot be assigned to multiple positions"
+        ):
             ds, *_ = datasets_grid_metric("C")
             Grid(
                 ds,
@@ -61,6 +63,11 @@ class TestInvalidGrid:
                 autoparse_metadata=False,
             )
 
+    @pytest.mark.xfail(
+        reason="Cross-axis duplicate dimension check not yet implemented"
+    )
+    def test_duplicate_dims_cross_axis(self):
+        """Same dimension assigned across two different axes must raise."""
         with pytest.raises(ValueError):
             ds, *_ = datasets_grid_metric("C")
             Grid(
@@ -225,6 +232,145 @@ def test_cumsum(nonperiodic_1d, boundary):
     #         axis.cumsum(ds.data_c, to=pos, boundary=boundary)
 
 
+@pytest.mark.parametrize("boundary", ["extend", "fill"])
+def test_cumsum_reverse(nonperiodic_1d, boundary):
+    """Reversed cumsum accumulates from the high-index end toward the low-index
+    end. Checked against an independent numpy ``np.cumsum(x[::-1])[::-1]``
+    computation across all ``to`` positions and both pad boundaries.
+
+    Reversed accumulation is the mirror image of the default: the natural
+    output position for a reversed cumsum of a center array is ``left`` (rather
+    than ``right``), trimming happens at the low-index end, and padding happens
+    at the high-index (upper) end -- so ``extend`` repeats the *last* value."""
+    ds, periodic, expected = nonperiodic_1d
+    grid = Grid(ds, boundary="periodic")
+
+    to = grid.axes["X"].default_shifts["center"]
+
+    cumsum_g = grid.cumsum(
+        ds.data_g, axis="X", to="center", boundary=boundary, reverse=True
+    )
+    cumsum_c = grid.cumsum(ds.data_c, axis="X", to=to, boundary=boundary, reverse=True)
+
+    # reversed cumulative sums computed independently with numpy
+    rev_c = np.cumsum(ds.data_c.data[::-1])[::-1]
+    rev_g = np.cumsum(ds.data_g.data[::-1])[::-1]
+
+    if to == "right":
+        # center -> right (reversed): drop first element, pad upper end
+        fill_value = 0.0 if boundary == "fill" else rev_c[-1]
+        np.testing.assert_allclose(cumsum_c.data, np.hstack([rev_c[1:], fill_value]))
+        # right -> center (reversed): natural, no pad/trim
+        np.testing.assert_allclose(cumsum_g.data, rev_g)
+    elif to == "left":
+        # center -> left (reversed): natural, no pad/trim
+        np.testing.assert_allclose(cumsum_c.data, rev_c)
+        # left -> center (reversed): drop first element, pad upper end
+        fill_value = 0.0 if boundary == "fill" else rev_g[-1]
+        np.testing.assert_allclose(cumsum_g.data, np.hstack([rev_g[1:], fill_value]))
+    elif to == "inner":
+        # center -> inner (reversed): drop first element
+        np.testing.assert_allclose(cumsum_c.data, rev_c[1:])
+        # inner -> center (reversed): pad upper end
+        fill_value = 0.0 if boundary == "fill" else rev_g[-1]
+        np.testing.assert_allclose(cumsum_g.data, np.hstack([rev_g, fill_value]))
+    elif to == "outer":
+        # center -> outer (reversed): pad upper end
+        fill_value = 0.0 if boundary == "fill" else rev_c[-1]
+        np.testing.assert_allclose(cumsum_c.data, np.hstack([rev_c, fill_value]))
+        # outer -> center (reversed): drop first element
+        np.testing.assert_allclose(cumsum_g.data, rev_g[1:])
+
+
+@pytest.mark.parametrize("boundary", ["extend", "fill"])
+def test_cumsum_reverse_false_matches_default(nonperiodic_1d, boundary):
+    """`reverse=False` must be identical to the default (no `reverse` kwarg)."""
+    ds, _, _ = nonperiodic_1d
+    grid = Grid(ds, boundary="periodic")
+
+    default = grid.cumsum(ds.data_c, axis="X", boundary=boundary)
+    explicit = grid.cumsum(ds.data_c, axis="X", boundary=boundary, reverse=False)
+    xr.testing.assert_identical(default, explicit)
+
+
+def test_cumsum_reverse_per_axis_dict():
+    """`reverse` accepts a per-axis dict, applied independently per axis."""
+    ds, coords, _ = datasets_grid_metric("C")
+    grid = Grid(
+        ds, coords=coords, periodic=False, boundary="fill", autoparse_metadata=False
+    )
+    da = ds.tracer
+
+    # reverse only along X (dict form), forward along Y
+    result = grid.cumsum(
+        da, ["X", "Y"], boundary="fill", reverse={"X": True, "Y": False}
+    )
+    # equivalent to applying the two axes sequentially with scalar `reverse`
+    expected = grid.cumsum(
+        grid.cumsum(da, "X", boundary="fill", reverse=True),
+        "Y",
+        boundary="fill",
+        reverse=False,
+    )
+    xr.testing.assert_allclose(result, expected)
+
+    # a bare scalar `reverse=True` reverses every requested axis
+    result_all = grid.cumsum(da, ["X", "Y"], boundary="fill", reverse=True)
+    expected_all = grid.cumsum(
+        grid.cumsum(da, "X", boundary="fill", reverse=True),
+        "Y",
+        boundary="fill",
+        reverse=True,
+    )
+    xr.testing.assert_allclose(result_all, expected_all)
+
+
+def test_cumint_reverse():
+    """`Grid.cumint` forwards `reverse` through to `Grid.cumsum`."""
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary="fill",
+        autoparse_metadata=False,
+    )
+    da = ds.tracer
+
+    # cumint == cumsum of (data * metric); reverse must flow through **kwargs
+    weight = grid.get_metric(da, ("X",))
+    expected = grid.cumsum(da * weight, "X", boundary="fill", reverse=True)
+    result = grid.cumint(da, "X", boundary="fill", reverse=True)
+    xr.testing.assert_allclose(result, expected)
+
+    # and reversed differs from the forward cumint
+    forward = grid.cumint(da, "X", boundary="fill")
+    assert not np.allclose(result.data, forward.data)
+
+
+def test_cumsum_reverse_rejects_non_integrated_axis():
+    """A `reverse` dict naming an axis not in `axis` is an error, not ignored."""
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        periodic=False,
+        boundary="fill",
+        autoparse_metadata=False,
+    )
+    da = ds.tracer
+
+    # "Y" is not being summed over, so a reverse value for it is ambiguous
+    with pytest.raises(ValueError, match="reverse.*not being cumulatively summed"):
+        grid.cumsum(da, "X", boundary="fill", reverse={"X": True, "Y": False})
+
+    # the error propagates through cumint as well
+    with pytest.raises(ValueError, match="reverse.*not being cumulatively summed"):
+        grid.cumint(da, "X", boundary="fill", reverse={"X": True, "Y": False})
+
+
 @pytest.mark.parametrize(
     "func",
     ["interp", "max", "min", "diff", "cumsum"],
@@ -369,27 +515,36 @@ def test_keep_coords(funcname, gridtype):
             if set(ds[c].dims).issubset(result.dims) and c not in result.dims
         ]
 
-        if funcname in ["integrate", "average"]:
-            assert set(result.coords) == set(base_coords + augmented_coords)
-        else:
-            assert set(result.coords) == set(base_coords)
-
-        # TODO: why is the behavior different for integrate and average?
-        if funcname not in ["integrate", "average"]:
-            result = func(ds.tracer, axis_name, keep_coords=False)
-            assert set(result.coords) == set(base_coords)
-
-            result = func(ds.tracer, axis_name, keep_coords=True)
-            assert set(result.coords) == set(base_coords + augmented_coords)
+        # Non-dimension coordinates compatible with the output are now always
+        # preserved (former keep_coords=True behavior, GH #382).
+        assert set(result.coords) == set(base_coords + augmented_coords)
 
 
-def test_keep_coords_deprecation():
+def test_keep_coords_removed():
+    # The `keep_coords` kwarg was removed in v1.0.0 (GH #382); passing it now
+    # raises an informative ValueError (per the deprecation policy in GH #696)
+    # rather than emitting a deprecation warning. Check all three entry points
+    # that guard against it: the 1D grid-ufunc dispatch (interp/diff/min/max/...),
+    # cumsum (separate code path), and apply_as_grid_ufunc (public entry point).
+    from xgcm.grid_ufunc import apply_as_grid_ufunc
+
     ds, coords, metrics = datasets_grid_metric("B")
     ds = ds.assign_coords(yt_bis=ds["yt"], xt_bis=ds["xt"])
     grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
     for axis_name in grid.axes.keys():
-        with pytest.warns(DeprecationWarning):
+        with pytest.raises(ValueError, match="has been removed"):
             grid.diff(ds.tracer, axis_name, keep_coords=False)
+        with pytest.raises(ValueError, match="has been removed"):
+            grid.cumsum(ds.tracer, axis_name, keep_coords=False)
+    with pytest.raises(ValueError, match="has been removed"):
+        apply_as_grid_ufunc(
+            lambda x: x,
+            ds.tracer,
+            axis=[("X",)],
+            grid=grid,
+            signature="(X:center)->(X:center)",
+            keep_coords=False,
+        )
 
 
 @pytest.mark.parametrize("funcname", ["interp", "diff"])
@@ -428,9 +583,8 @@ def test_preserve_input_noncore_coords(funcname, use_dask):
     if use_dask:
         v = v.chunk({"time": 4})
 
-    # keep_coords=True so that non-dimension coordinates are retained on output
-    # (the default drops them, which is unrelated to the #496 clobbering bug).
-    out = getattr(grid, funcname)(v, "X", keep_coords=True)
+    # Non-dimension coordinates are always retained on output (GH #382).
+    out = getattr(grid, funcname)(v, "X")
 
     # The user's modified non-core dimension coord must survive (dtype AND values).
     assert out.time.dtype == np.float32
@@ -484,7 +638,7 @@ def test_cumsum_preserves_input_noncore_coords(use_dask):
     if use_dask:
         v = v.chunk({"time": 4})
 
-    out = grid.cumsum(v, "X", to="left", keep_coords=True)
+    out = grid.cumsum(v, "X", to="left")
 
     # The user's modified non-core dimension coord must survive (dtype AND values).
     assert out.time.dtype == np.float32
