@@ -63,7 +63,9 @@ class TestInvalidGrid:
                 autoparse_metadata=False,
             )
 
-    @pytest.mark.xfail(reason="Cross-axis duplicate dimension check not yet implemented")
+    @pytest.mark.xfail(
+        reason="Cross-axis duplicate dimension check not yet implemented"
+    )
     def test_duplicate_dims_cross_axis(self):
         """Same dimension assigned across two different axes must raise."""
         with pytest.raises(ValueError):
