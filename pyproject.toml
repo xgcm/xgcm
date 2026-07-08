@@ -146,6 +146,15 @@ numba = "*"
 
 [tool.pixi.feature.notebooks.dependencies]
 netcdf4 = "*"
+# pooch is used at build time: docs/grid_metrics.ipynb is executed on every docs
+# build and fetches its example dataset from Zenodo via pooch. Do not drop it.
+pooch = "*"
+# The rest are only needed to manually re-execute docs/transform.ipynb, which
+# stays EXCLUDED from the mkdocs build execute list.
+intake = "*"
+intake-esm = "*"
+gcsfs = "*"
+cf_xarray = "*"
 
 [tool.pixi.feature.minimum.dependencies]
 python = "3.9.*"

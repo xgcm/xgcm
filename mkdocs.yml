@@ -25,12 +25,15 @@ plugins:
   execute:
     exclude:
       # TODO: Fix
-      - 'grid_metrics.ipynb'
       - 'transform.ipynb'
       - 'xgcm-examples/*'
   mkdocs-jupyter:
     include_source: true
     execute: false
+    # grid_metrics.ipynb is executed and rendered by the `execute` plugin above;
+    # mkdocs-jupyter must skip it to avoid double-wrapping the same .ipynb file.
+    ignore:
+      - 'grid_metrics.ipynb'
   mkdocstrings:
     handlers:
       python:
