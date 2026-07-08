@@ -499,38 +499,64 @@ class Grid:
                 )
                 metric_vars = self.interp_like(mv, array, "extend", None)
         else:
+            # Search ALL candidate axis combinations for an exact-position match
+            # (Condition 3) before considering interpolation (Condition 4).
+            # Otherwise, position-mismatched combinations iterated before the
+            # exact one would emit spurious "being interpolated" warnings even
+            # though an exact-position metric exists (GH #756).
+            #
+            # `interp_fallback` records the combination to interpolate if NO
+            # exact-position combination exists for any candidate. To keep
+            # existing interpolation results (e.g. test_get_metric_with_
+            # conditions_04*) unchanged, it deliberately mirrors the pre-fix
+            # selection: the LAST product combination of the FIRST candidate
+            # whose metrics are all present. Once that first present candidate
+            # has been fully scanned without an exact match, the fallback is
+            # locked so later candidates cannot overwrite it.
+            interp_fallback = None
+            interp_fallback_locked = False
             for axis_combinations in iterate_axis_combinations(axes):
                 try:
                     # will raise KeyError if the axis combination is not in metrics
                     possible_metric_vars = [
                         self._metrics[ac] for ac in axis_combinations
                     ]
-                    for possible_combinations in itertools.product(
-                        *possible_metric_vars
-                    ):
-                        metric_dims = set(
-                            [d for mv in possible_combinations for d in mv.dims]
-                        )
-                        if metric_dims.issubset(array_dims):
-                            # Condition 3: use provided metrics with matching dimensions to calculate for required metric
-                            metric_vars = possible_combinations
-                            break
-                        else:
-                            # Condition 4: metrics in the wrong position (must interpolate before multiplying)
-                            possible_dims = [pc.dims for pc in possible_combinations]
-                            warnings.warn(
-                                f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Boundary value set to 'extend'."
-                            )
-                            metric_vars = tuple(
-                                self.interp_like(pc, array, "extend", None)
-                                for pc in possible_combinations
-                            )
-                    if metric_vars is not None:
-                        # return the product of the metrics
-                        metric_vars = functools.reduce(operator.mul, metric_vars, 1)
-                        break
                 except KeyError:
-                    pass
+                    continue
+                for possible_combinations in itertools.product(*possible_metric_vars):
+                    metric_dims = set(
+                        [d for mv in possible_combinations for d in mv.dims]
+                    )
+                    if metric_dims.issubset(array_dims):
+                        # Condition 3: use provided metrics with matching
+                        # dimensions to calculate the required metric.
+                        metric_vars = functools.reduce(
+                            operator.mul, possible_combinations, 1
+                        )
+                        break
+                    if not interp_fallback_locked:
+                        interp_fallback = possible_combinations
+                if metric_vars is not None:
+                    break
+                # Only the first present candidate seeds the interpolation
+                # fallback (see comment above).
+                interp_fallback_locked = True
+
+            if metric_vars is None and interp_fallback is not None:
+                # Condition 4: no exact-position combination exists anywhere, so
+                # interpolate the fallback metrics (warning exactly once).
+                possible_dims = [pc.dims for pc in interp_fallback]
+                warnings.warn(
+                    f"Metric at {array.dims} being interpolated from metrics at dimensions {possible_dims}. Boundary value set to 'extend'."
+                )
+                metric_vars = functools.reduce(
+                    operator.mul,
+                    tuple(
+                        self.interp_like(pc, array, "extend", None)
+                        for pc in interp_fallback
+                    ),
+                    1,
+                )
         if metric_vars is None:
             raise KeyError(
                 f"Unable to find any combinations of metrics for array dims {array_dims!r} and axes {axes!r}"

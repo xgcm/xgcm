@@ -7,6 +7,15 @@
 
 ### Bug Fixes
 
+- `Grid.get_metric` (and the operations built on it, e.g. `Grid.integrate` and
+  `Grid.average`) no longer emits spurious "Metric ... being interpolated ..."
+  `UserWarning`s when an exact-position metric combination exists but is not the
+  first candidate tried. The search now looks for an exact-position match across
+  all candidate combinations before falling back to interpolation, and warns at
+  most once. The returned metric is unchanged
+  ([#758](https://github.com/xgcm/xgcm/pull/758)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - `Axis` now raises a `ValueError` immediately if the same dimension name is
   assigned to more than one position (e.g. `{'center': 'x', 'outer': 'x'}`),
   rather than silently accepting the invalid configuration
