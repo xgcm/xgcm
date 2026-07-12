@@ -129,18 +129,22 @@ datasets = {
     ),
 }
 
-# include periodicity
-datasets_with_periodicity = {
-    "nonperiodic_1d_outer": (datasets["1d_outer"], False),
-    "nonperiodic_1d_inner": (datasets["1d_inner"], False),
-    "periodic_1d_left": (datasets["1d_left"], True),
-    "nonperiodic_1d_left": (datasets["1d_left"], False),
-    "periodic_1d_right": (datasets["1d_right"], True),
-    "nonperiodic_1d_right": (datasets["1d_right"], False),
-    "periodic_2d_left": (datasets["2d_left"], True),
-    "nonperiodic_2d_left": (datasets["2d_left"], False),
-    "xperiodic_2d_left": (datasets["2d_left"], ["X"]),
-    "yperiodic_2d_left": (datasets["2d_left"], ["Y"]),
+# include the boundary condition each dataset is meant to be used with.
+# The pre-1.0 `periodic` flag translated to a `padding` as follows:
+#   periodic=True  -> padding='periodic'
+#   periodic=False -> padding='fill'
+#   periodic=['X'] -> padding={'X': 'periodic', 'Y': 'fill'} (others non-periodic)
+datasets_with_boundary = {
+    "nonperiodic_1d_outer": (datasets["1d_outer"], "fill"),
+    "nonperiodic_1d_inner": (datasets["1d_inner"], "fill"),
+    "periodic_1d_left": (datasets["1d_left"], "periodic"),
+    "nonperiodic_1d_left": (datasets["1d_left"], "fill"),
+    "periodic_1d_right": (datasets["1d_right"], "periodic"),
+    "nonperiodic_1d_right": (datasets["1d_right"], "fill"),
+    "periodic_2d_left": (datasets["2d_left"], "periodic"),
+    "nonperiodic_2d_left": (datasets["2d_left"], "fill"),
+    "xperiodic_2d_left": (datasets["2d_left"], {"X": "periodic", "Y": "fill"}),
+    "yperiodic_2d_left": (datasets["2d_left"], {"X": "fill", "Y": "periodic"}),
 }
 
 expected_values = {
@@ -416,15 +420,15 @@ sgrid_datasets = {
         attrs={"conventions": "sgrid-x.x"},
     ),
 }
-sgrid_with_periodicity = {
-    "nonperiodic_sgrid1D": (sgrid_datasets["sgrid1D"], False),
-    "periodic_sgrid1D": (sgrid_datasets["sgrid1D"], True),
-    "nonperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], False),
-    "periodic_sgrid2D": (sgrid_datasets["sgrid2D"], True),
-    "xperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], ["X"]),
-    "yperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], ["Y"]),
-    "sgrid2Dvert": (sgrid_datasets["sgrid2Dvert"], False),
-    "sgrid3D": (sgrid_datasets["sgrid3D"], False),
+sgrid_with_boundary = {
+    "nonperiodic_sgrid1D": (sgrid_datasets["sgrid1D"], "fill"),
+    "periodic_sgrid1D": (sgrid_datasets["sgrid1D"], "periodic"),
+    "nonperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], "fill"),
+    "periodic_sgrid2D": (sgrid_datasets["sgrid2D"], "periodic"),
+    "xperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], {"X": "periodic", "Y": "fill"}),
+    "yperiodic_sgrid2D": (sgrid_datasets["sgrid2D"], {"X": "fill", "Y": "periodic"}),
+    "sgrid2Dvert": (sgrid_datasets["sgrid2Dvert"], "fill"),
+    "sgrid3D": (sgrid_datasets["sgrid3D"], "fill"),
 }
 
 sgrid_expected_values = {
@@ -479,10 +483,10 @@ sgrid_expected_values = {
 }
 
 
-@pytest.fixture(scope="module", params=datasets_with_periodicity.keys())
+@pytest.fixture(scope="module", params=datasets_with_boundary.keys())
 def all_datasets(request):
-    ds, periodic = datasets_with_periodicity[request.param]
-    return ds, periodic, expected_values[request.param]
+    ds, boundary = datasets_with_boundary[request.param]
+    return ds, boundary, expected_values[request.param]
 
 
 @pytest.fixture(
@@ -495,14 +499,14 @@ def all_datasets(request):
     ],
 )
 def nonperiodic_1d(request):
-    ds, periodic = datasets_with_periodicity[request.param]
-    return ds, periodic, expected_values[request.param]
+    ds, boundary = datasets_with_boundary[request.param]
+    return ds, boundary, expected_values[request.param]
 
 
 @pytest.fixture(scope="module", params=["periodic_1d_left", "periodic_1d_right"])
 def periodic_1d(request):
-    ds, periodic = datasets_with_periodicity[request.param]
-    return ds, periodic, expected_values[request.param]
+    ds, boundary = datasets_with_boundary[request.param]
+    return ds, boundary, expected_values[request.param]
 
 
 @pytest.fixture(
@@ -515,14 +519,14 @@ def periodic_1d(request):
     ],
 )
 def all_2d(request):
-    ds, periodic = datasets_with_periodicity[request.param]
-    return ds, periodic, expected_values[request.param]
+    ds, boundary = datasets_with_boundary[request.param]
+    return ds, boundary, expected_values[request.param]
 
 
 @pytest.fixture(scope="module", params=["periodic_2d_left"])
 def periodic_2d(request):
-    ds, periodic = datasets_with_periodicity[request.param]
-    return ds, periodic, expected_values[request.param]
+    ds, boundary = datasets_with_boundary[request.param]
+    return ds, boundary, expected_values[request.param]
 
 
 @pytest.fixture(
@@ -534,17 +538,17 @@ def periodic_2d(request):
     ],
 )
 def nonperiodic_2d(request):
-    ds, periodic = datasets_with_periodicity[request.param]
-    return ds, periodic, expected_values[request.param]
+    ds, boundary = datasets_with_boundary[request.param]
+    return ds, boundary, expected_values[request.param]
 
 
 @pytest.fixture(
     scope="module",
-    params=[x for x in sgrid_with_periodicity.keys()],
+    params=[x for x in sgrid_with_boundary.keys()],
 )
 def all_sgrid(request):
-    ds, periodic = sgrid_with_periodicity[request.param]
-    return ds, periodic, sgrid_expected_values[request.param]
+    ds, boundary = sgrid_with_boundary[request.param]
+    return ds, boundary, sgrid_expected_values[request.param]
 
 
 def datasets_grid_metric(grid_type):

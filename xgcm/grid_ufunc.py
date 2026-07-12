@@ -384,11 +384,11 @@ class GridUFunc:
         positions for each input and output variable, e.g.,
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)`.
-    boundary_width : Dict[str: Tuple[int, int], optional
-        The widths of the boundaries at the edge of each array.
+    padding_width : Dict[str: Tuple[int, int], optional
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+    padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
@@ -401,7 +401,7 @@ class GridUFunc:
         Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
-        The value to use in boundary conditions with `boundary='fill'`.
+        The value to use in boundary conditions with `padding='fill'`.
         Optionally a dict mapping axis name to separate values for each axis
         can be passed. Default is 0.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
@@ -434,8 +434,8 @@ class GridUFunc:
 
     ufunc: Callable
     signature: _GridUFuncSignature
-    boundary_width: Optional[Mapping[str, Tuple[int, int]]]
-    boundary: Optional[Union[str, Mapping[str, str]]]
+    padding_width: Optional[Mapping[str, Tuple[int, int]]]
+    padding: Optional[Union[str, Mapping[str, str]]]
     fill_value: Optional[Union[float, Mapping[str, float]]]
     dask: Literal["forbidden", "parallelized", "allowed"]
     map_overlap: bool
@@ -444,10 +444,22 @@ class GridUFunc:
     def __init__(self, ufunc: Callable, **kwargs):
         self.ufunc = ufunc  # type: ignore  # see mypy issue 2427
 
+        # TODO - remove deprecation handling
+        if "boundary" in kwargs:
+            raise ValueError(
+                "Argument 'boundary' has been renamed to 'padding'. "
+                "Please use 'padding' instead."
+            )
+        if "boundary_width" in kwargs:
+            raise ValueError(
+                "Argument 'boundary_width' has been renamed to 'padding_width'. "
+                "Please use 'padding_width' instead."
+            )
+
         str_sig = kwargs.pop("signature")
         self.signature = self._get_signature_from_str_or_type_hints(ufunc, str_sig)
-        self.boundary_width = kwargs.pop("boundary_width", None)
-        self.boundary = kwargs.pop("boundary", None)
+        self.padding_width = kwargs.pop("padding_width", None)
+        self.padding = kwargs.pop("padding", None)
         self.fill_value = kwargs.pop("fill_value", None)
         self.dask = kwargs.pop("dask", "forbidden")
         self.map_overlap = kwargs.pop("map_overlap", False)
@@ -495,8 +507,24 @@ class GridUFunc:
 
     def __repr__(self):
         return (
-            f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', boundary_width='{self.boundary_width}', "
-            f"          dask='{self.dask})', map_overlap={self.map_overlap}, pad_before_func={self.pad_before_func})"
+            f"GridUFunc(ufunc={self.ufunc}, signature='{self.signature}', padding_width='{self.padding_width}', "
+            f"          padding='{self.padding}', dask='{self.dask})', map_overlap={self.map_overlap}, pad_before_func={self.pad_before_func})"
+        )
+
+    # TODO - remove deprecation handling
+    @property
+    def boundary(self):
+        raise AttributeError(
+            "Attribute 'boundary' has been renamed to 'padding'. "
+            "Please use 'padding' instead."
+        )
+
+    # TODO - remove deprecation handling
+    @property
+    def boundary_width(self):
+        raise AttributeError(
+            "Attribute 'boundary_width' has been renamed to 'padding_width'. "
+            "Please use 'padding_width' instead."
         )
 
     def __call__(
@@ -506,7 +534,14 @@ class GridUFunc:
         axis: Sequence[str],
         **kwargs,
     ):
-        boundary = kwargs.pop("boundary", self.boundary)
+        # TODO - remove deprecation handling
+        if "boundary" in kwargs:
+            raise ValueError(
+                "Argument 'boundary' has been renamed to 'padding'. "
+                "Please use 'padding' instead."
+            )
+
+        padding = kwargs.pop("padding", self.padding)
         fill_value = kwargs.pop("fill_value", self.fill_value)
         dask = kwargs.pop("dask", self.dask)
         map_overlap = kwargs.pop("map_overlap", self.map_overlap)
@@ -517,8 +552,8 @@ class GridUFunc:
             axis=axis,
             grid=grid,
             signature=self.signature,
-            boundary_width=self.boundary_width,
-            boundary=boundary,
+            padding_width=self.padding_width,
+            padding=padding,
             fill_value=fill_value,
             dask=dask,
             map_overlap=map_overlap,
@@ -529,7 +564,7 @@ class GridUFunc:
 
 def as_grid_ufunc(
     signature: str = "",
-    boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+    padding_width: Optional[Mapping[str, Tuple[int, int]]] = None,
     **kwargs,
 ) -> Callable:
     """
@@ -545,11 +580,11 @@ def as_grid_ufunc(
         positions for each input and output variable, e.g.,
 
         ``"(X:center)->(X:left)"`` for ``diff_center_to_left(a)``.
-    boundary_width : Dict[str: Tuple[int, int], optional
-        The widths of the boundaries at the edge of each array.
+    padding_width : Dict[str: Tuple[int, int], optional
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {axis_name: (lower_width, upper_width)}.
-    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+    padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
@@ -562,7 +597,7 @@ def as_grid_ufunc(
         Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
-        The value to use in boundary conditions with `boundary='fill'`.
+        The value to use in boundary conditions with `padding='fill'`.
         Optionally a dict mapping axis name to separate values for each axis
         can be passed. Default is 0.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
@@ -591,8 +626,21 @@ def as_grid_ufunc(
     apply_as_grid_ufunc
     Grid.apply_as_grid_ufunc
     """
+    # TODO - remove deprecation handling
+    if "boundary" in kwargs:
+        raise ValueError(
+            "Argument 'boundary' has been renamed to 'padding'. "
+            "Please use 'padding' instead."
+        )
+    # TODO - remove deprecation handling
+    if "boundary_width" in kwargs:
+        raise ValueError(
+            "Argument 'boundary_width' has been renamed to 'padding_width'. "
+            "Please use 'padding_width' instead."
+        )
+
     _allowedkwargs = {
-        "boundary",
+        "padding",
         "fill_value",
         "dask",
         "map_overlap",
@@ -604,7 +652,7 @@ def as_grid_ufunc(
 
     def _as_grid_ufunc(ufunc):
         return GridUFunc(
-            ufunc, signature=signature, boundary_width=boundary_width, **kwargs
+            ufunc, signature=signature, padding_width=padding_width, **kwargs
         )
 
     return _as_grid_ufunc
@@ -616,8 +664,8 @@ def apply_as_grid_ufunc(
     axis: Optional[Sequence[Sequence[str]]] = None,
     grid: Optional["Grid"] = None,
     signature: Union[str, _GridUFuncSignature] = "",
-    boundary_width: Optional[Mapping[str, Tuple[int, int]]] = None,
-    boundary: Optional[Union[str, Mapping[str, str]]] = None,
+    padding_width: Optional[Mapping[str, Tuple[int, int]]] = None,
+    padding: Optional[Union[str, Mapping[str, str]]] = None,
     fill_value: Optional[Union[float, Mapping[str, float]]] = None,
     dask: Literal["forbidden", "parallelized", "allowed"] = "forbidden",
     map_overlap: bool = False,
@@ -661,12 +709,12 @@ def apply_as_grid_ufunc(
         instance, ``"(Z:center)->(Z:left)"`` is equivalent to ``"(X:center)->(X:left)"`` - both choices of `signature`
         require only that there is exactly one xgcm.Axis name in `axis` which exists in Grid and starts on position
         `center`.
-    boundary_width : Dict[str: Tuple[int, int]
-        The widths of the boundaries at the edge of each array.
+    padding_width : Dict[str: Tuple[int, int]
+        The number of values used to pad the two sides of each array.
         Supplied in a mapping of the form {dummy_axis_name: (lower_width, upper_width)}.
         The axis names here are again dummy variables, each of which must be present in the signature.
-    boundary : {None, 'fill', 'extend', 'periodic', dict}, optional
-        A flag indicating how to handle boundaries:
+    padding : {None, 'fill', 'extend', 'periodic', dict}, optional
+        A flag indicating how to handle padding at exterior grid boundaries:
 
         * None:  Do not apply any boundary conditions. Raise an error if
             boundary conditions are required for the operation.
@@ -679,7 +727,7 @@ def apply_as_grid_ufunc(
         Optionally a dict mapping axis name to seperate values for each axis
         can be passed.
     fill_value : {float, dict}, optional
-        The value to use in boundary conditions with `boundary='fill'`.
+        The value to use in boundary conditions with `padding='fill'`.
         Optionally a dict mapping axis name to separate values for each axis
         can be passed. Default is 0.
     dask : {"forbidden", "allowed", "parallelized"}, default: "forbidden"
@@ -690,7 +738,7 @@ def apply_as_grid_ufunc(
         Default is False. If True, will need to be accompanied by dask='allowed'.
     pad_before_func : bool, optional
         Whether padding should occur before applying func or after it. Default is True.
-        (For no padding at all pass `boundary_width=None`).
+        (For no padding at all pass `padding_width=None`).
     other_component : Union[None, Dict[str,xr.DataArray], Sequence[Dict[str,xr.DataArray]]], default: None
         Matching vector component for input provided as dictionary. Needed for complex vector padding.
         For multiple arguments, `other_components` needs to provide one element per input.
@@ -712,6 +760,19 @@ def apply_as_grid_ufunc(
     Grid.apply_as_grid_ufunc
     xarray.apply_ufunc
     """
+    # TODO - remove deprecation handling
+    if "boundary" in kwargs:
+        raise ValueError(
+            "Argument 'boundary' has been renamed to 'padding'. "
+            "Please use 'padding' instead."
+        )
+
+    # TODO - remove deprecation handling
+    if "boundary_width" in kwargs:
+        raise ValueError(
+            "Argument 'boundary_width' has been renamed to 'padding_width'. "
+            "Please use 'padding_width' instead."
+        )
 
     # TODO - remove deprecation handling in a future release
     if "keep_coords" in kwargs:
@@ -799,8 +860,8 @@ def apply_as_grid_ufunc(
     ] * n_output_vars  # assume uniformity of dtypes
 
     # Pad arrays according to boundary condition information
-    boundary_width_real_axes = _substitute_dummy_axis_names(
-        boundary_width, dummy_to_real_axes_mapping
+    padding_width_real_axes = _substitute_dummy_axis_names(
+        padding_width, dummy_to_real_axes_mapping
     )
 
     # Maybe map function over chunked core dims using dask.array.map_overlap
@@ -813,7 +874,7 @@ def apply_as_grid_ufunc(
             args,
             grid,
             in_core_dims,
-            boundary_width_real_axes,
+            padding_width_real_axes,
             out_dtypes,
         )
     else:
@@ -826,8 +887,8 @@ def apply_as_grid_ufunc(
             args,
             grid,
             in_core_dims,
-            boundary_width_real_axes,
-            boundary,
+            padding_width_real_axes,
+            padding,
             fill_value,
             other_component,
         )
@@ -856,8 +917,8 @@ def apply_as_grid_ufunc(
             unpadded_results,
             grid,
             out_core_dims,
-            boundary_width_real_axes,
-            boundary,
+            padding_width_real_axes,
+            padding,
             fill_value,
             other_component,
         )
@@ -872,7 +933,7 @@ def apply_as_grid_ufunc(
     out_core_dim_names = set(d for arg in out_core_dims for d in arg)
     input_args = [_maybe_unpack_vector_component(arg) for arg in args]
     results_with_coords = _reattach_coords(
-        results, grid, boundary_width, out_core_dim_names, input_args
+        results, grid, padding_width, out_core_dim_names, input_args
     )
 
     # xr.apply_ufunc moves core dims to the end and never moves them back, so
@@ -929,27 +990,26 @@ def _apply(
     return results
 
 
-def _substitute_dummy_axis_names(boundary_width, dummy_to_real_axes_mapping):
-    if boundary_width:
-        # convert dummy axes names in boundary_width to match real names of given axes
-        boundary_width_real_axes = {
-            dummy_to_real_axes_mapping[ax]: width
-            for ax, width in boundary_width.items()
+def _substitute_dummy_axis_names(padding_width, dummy_to_real_axes_mapping):
+    if padding_width:
+        # convert dummy axes names in padding_width to match real names of given axes
+        padding_width_real_axes = {
+            dummy_to_real_axes_mapping[ax]: width for ax, width in padding_width.items()
         }
     else:
-        # If the boundary_width kwarg was not specified assume that zero padding is required
-        boundary_width_real_axes = {
+        # If the padding_width kwarg was not specified assume that zero padding is required
+        padding_width_real_axes = {
             real_ax: (0, 0) for real_ax in dummy_to_real_axes_mapping.values()
         }
-    return boundary_width_real_axes
+    return padding_width_real_axes
 
 
 def _pad_then_rechunk(
     args,
     grid,
     in_core_dims,
-    boundary_width_real_axes,
-    boundary,
+    padding_width_real_axes,
+    padding,
     fill_value,
     other_component,
 ):
@@ -957,8 +1017,8 @@ def _pad_then_rechunk(
         pad(
             a,
             grid=grid,
-            boundary_width=boundary_width_real_axes,
-            boundary=boundary,
+            padding_width=padding_width_real_axes,
+            padding=padding,
             fill_value=fill_value,
             other_component=oc,
         )
@@ -973,7 +1033,7 @@ def _pad_then_rechunk(
         rechunked_padded_args = _rechunk_to_merge_in_boundary_chunks(
             padded_args,
             args,
-            boundary_width_real_axes,
+            padding_width_real_axes,
             grid,
         )
     else:
@@ -999,7 +1059,7 @@ def _map_func_over_core_dims(
     original_args,
     grid,
     in_core_dims,
-    boundary_width_real_axes,
+    padding_width_real_axes,
     out_dtypes,
 ):
     """
@@ -1017,9 +1077,9 @@ def _map_func_over_core_dims(
         for i, arg in enumerate(original_args)
     ]
 
-    boundary_width_per_numpy_axis = {
+    padding_width_per_numpy_axis = {
         grid.axes[ax_name]._get_axis_dim_num(transposed_original_args[0]): width
-        for ax_name, width in boundary_width_real_axes.items()
+        for ax_name, width in padding_width_real_axes.items()
     }
 
     single_dim_chunktype = Tuple[int, ...]
@@ -1040,7 +1100,7 @@ def _map_func_over_core_dims(
     true_chunksizes_per_numpy_axis = _dict_to_numbered_axes(true_chunksizes)
 
     # The core dims are the only axes whose chunks are deliberately changed (by padding + rechunking).
-    core_numpy_axes = set(boundary_width_per_numpy_axis)
+    core_numpy_axes = set(padding_width_per_numpy_axis)
 
     def _output_chunks_per_numpy_axis(arg):
         # On grids with face connections, padding a vector component pulls in data from a connected
@@ -1056,14 +1116,14 @@ def _map_func_over_core_dims(
             for axis in range(arg.ndim)
         )
 
-    # (we don't need a separate code path using bare map_blocks if boundary_widths are zero because map_overlap just
+    # (we don't need a separate code path using bare map_blocks if padding_widths are zero because map_overlap just
     # calls map_blocks automatically in that scenario)
     def mapped_func(*a, **kw):
         return dask_map_overlap(
             func,
             *a,
             **kw,
-            depth=boundary_width_per_numpy_axis,
+            depth=padding_width_per_numpy_axis,
             boundary="none",
             trim=False,
             meta=np.array([], dtype=out_dtypes[0]),
@@ -1102,7 +1162,7 @@ def _check_if_length_would_change(signature: _GridUFuncSignature):
 def _rechunk_to_merge_in_boundary_chunks(
     padded_args: Sequence[xr.DataArray],
     original_args: Sequence[xr.DataArray],
-    boundary_width_real_axes: Mapping[str, Tuple[int, int]],
+    padding_width_real_axes: Mapping[str, Tuple[int, int]],
     grid: "Grid",
 ) -> List[xr.DataArray]:
     """Merges in any small floating chunks at the edges that were created by the padding operation"""
@@ -1115,7 +1175,7 @@ def _rechunk_to_merge_in_boundary_chunks(
             grid,
             padded_arg,
             original_arg_chunks,
-            boundary_width_real_axes,
+            padding_width_real_axes,
         )
         rechunked_arg = padded_arg.chunk(merged_boundary_chunks)
         rechunked_padded_args.append(rechunked_arg)
@@ -1127,25 +1187,25 @@ def _get_chunk_pattern_for_merging_boundary(
     grid: "Grid",
     da: xr.DataArray,
     original_chunks: Mapping[str, Tuple[int, ...]],
-    boundary_width_real_axes: Mapping[str, Tuple[int, int]],
+    padding_width_real_axes: Mapping[str, Tuple[int, int]],
 ) -> Mapping[str, Tuple[int, ...]]:
     """Calculates the pattern of chunking needed to merge back in small chunks left on boundaries after padding"""
 
     # Easier to work with width of boundaries in terms of str dimension names rather than int axis numbers
-    boundary_width_dims = {
-        _get_dim(grid, da, ax): width for ax, width in boundary_width_real_axes.items()
+    padding_width_dims = {
+        _get_dim(grid, da, ax): width for ax, width in padding_width_real_axes.items()
     }
 
     new_chunks: Dict[str, Tuple[int, ...]] = {}
-    for dim, width in boundary_width_dims.items():
-        lower_boundary_width, upper_boundary_width = boundary_width_dims[dim]
+    for dim, width in padding_width_dims.items():
+        lower_padding_width, upper_padding_width = padding_width_dims[dim]
 
         new_chunks_along_dim: Tuple[int, ...]
         if len(original_chunks[dim]) == 1:
             # unpadded array had only one chunk, but padding has meant new array is extended
             original_array_length = original_chunks[dim][0]
             new_chunks_along_dim = (
-                lower_boundary_width + original_array_length + upper_boundary_width,
+                lower_padding_width + original_array_length + upper_padding_width,
             )
         else:
             first_chunk_width, *other_chunks_widths, last_chunk_width = original_chunks[
@@ -1153,9 +1213,9 @@ def _get_chunk_pattern_for_merging_boundary(
             ]
             new_chunks_along_dim = tuple(
                 [
-                    first_chunk_width + lower_boundary_width,
+                    first_chunk_width + lower_padding_width,
                     *other_chunks_widths,
-                    last_chunk_width + upper_boundary_width,
+                    last_chunk_width + upper_padding_width,
                 ]
             )
         new_chunks[dim] = new_chunks_along_dim
@@ -1202,7 +1262,7 @@ def _identify_dummy_axes_with_real_axes(
 def _reattach_coords(
     results: Sequence[xr.DataArray],
     grid: "Grid",
-    boundary_width,
+    padding_width,
     out_core_dim_names: Optional[Set[str]] = None,
     input_args: Optional[Sequence[xr.DataArray]] = None,
 ) -> List[xr.DataArray]:
@@ -1246,11 +1306,11 @@ def _reattach_coords(
         try:
             res = res.assign_coords(all_matching_coords)
         except ValueError as err:
-            if boundary_width and str(err).startswith("conflicting sizes"):
+            if padding_width and str(err).startswith("conflicting sizes"):
                 # TODO make this error more informative?
                 raise ValueError(
                     f"{str(err)} - does your grid ufunc correctly trim off the same number of elements "
-                    f"which were added by padding using boundary_width={boundary_width}?"
+                    f"which were added by padding using padding_width={padding_width}?"
                 )
             else:
                 raise

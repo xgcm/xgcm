@@ -125,7 +125,10 @@ ds = xr.Dataset(
 )
 
 grid = Grid(
-    ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
+    ds,
+    coords={"X": {"center": "x_c", "left": "x_g"}},
+    padding="periodic",
+    autoparse_metadata=False,
 )
 grid
 ```
@@ -268,10 +271,10 @@ We can also see that the result depends on the choice of boundary conditions.
 Doing this manually is a chore, so xgcm allows you to apply boundary conditions automatically when using grid ufuncs.
 
 When doing the padding manually for `interp`, we had to add one element on the left-hand side of the ``"X"`` axis,
-so we tell xGCM to do the same thing by specifying the keyword argument `boundary_width={"X": (1, 0)}`,
+so we tell xGCM to do the same thing by specifying the keyword argument `padding_width={"X": (1, 0)}`,
 
 ```python
-@as_grid_ufunc(signature="(X:center)->(X:left)", boundary_width={"X": (1, 0)})
+@as_grid_ufunc(signature="(X:center)->(X:left)", padding_width={"X": (1, 0)})
 def interp_center_to_left(a):
     return interp(a)
 ```
@@ -286,13 +289,15 @@ da = da.copy(data=arr)
 interp_center_to_left(grid, da, axis=[["X"]])
 ```
 
-Here a periodic boundary condition has been used as the default, but we can choose other boundary conditions using the `boundary` kwarg:
+Here a periodic boundary condition has been used, because the `grid` was created
+with `padding="periodic"` and the decorated function did not specify its own
+`padding`. We can choose other boundary conditions using the `padding` kwarg:
 
 ```python
 @as_grid_ufunc(
     signature="(X:center)->(X:left)",
-    boundary_width={"X": (1, 0)},
-    boundary="fill",
+    padding_width={"X": (1, 0)},
+    padding="fill",
     fill_value=0,
 )
 def interp_center_to_left_fill_with_zeros(a):
@@ -301,7 +306,7 @@ def interp_center_to_left_fill_with_zeros(a):
 
 ```python
 interp_center_to_left_fill_with_zeros(
-    grid, da, axis=[["X"]], boundary="fill", fill_value=0
+    grid, da, axis=[["X"]], padding="fill", fill_value=0
 )
 ```
 
@@ -309,7 +314,7 @@ We can also choose a different default boundary condition at decorator definitio
 and then override it at function call time if we prefer.
 
 ```python
-interp_center_to_left(grid, da, axis=[["X"]], boundary="fill", fill_value=0)
+interp_center_to_left(grid, da, axis=[["X"]], padding="fill", fill_value=0)
 ```
 
 For more advanced examples of grid ufuncs, see the page on [Ufunc Examples](ufunc_examples.md).
@@ -354,7 +359,7 @@ result = interp_center_to_left(grid, chunked_y, axis=[["X"]], dask="parallelized
 
 
 (We could also have passed the `dask` kwarg to the `@as_grid_ufunc` decorator, and it would have been bound
-to the new function in the same way that the boundary kwargs work.)
+to the new function in the same way that the padding kwargs work.)
 
 The dask graph in this case is simple, because this is an "embarrasingly parallel" problem.
 
@@ -390,7 +395,7 @@ result = interp_center_to_left(
 
 If your ufunc operates on individual chunks independently, then `dask.map_blocks` would have been sufficient,
 but the possibility of padding boundaries means that `dask.map_overlap` is required.
-The dask graph is more complicated, because each chunk along the core dim needs to communicate its `boundary_width` elements to adjacent chunks.
+The dask graph is more complicated, because each chunk along the core dim needs to communicate its `padding_width` elements to adjacent chunks.
 
 ```python
 result.data.visualize(optimize_graph=True)

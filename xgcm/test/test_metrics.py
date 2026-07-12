@@ -1,5 +1,6 @@
 import functools
 import operator
+import warnings
 
 import numpy as np
 import pytest
@@ -30,7 +31,7 @@ def test_multiple_metrics_per_axis():
         ds,
         coords={"X": {"center": "XC", "left": "XG"}},
         metrics={("X",): ["dXC", "dXG"]},
-        periodic=True,
+        padding="periodic",
         autoparse_metadata=False,
     )
 
@@ -183,15 +184,13 @@ def test_get_metric_with_conditions_01():
     xr.testing.assert_allclose(get_metric, expected_metric)
 
 
-@pytest.mark.parametrize("periodic", [True, False])
-def test_get_metric_with_conditions_02a(periodic):
+def test_get_metric_with_conditions_02a():
     # Condition 2, case a: interpolate metric with matching axis to desired dimensions
     ds, coords, _ = datasets_grid_metric("C")
     grid = Grid(
         ds,
         coords=coords,
-        periodic=periodic,
-        boundary="extend",
+        padding="extend",
         autoparse_metadata=False,
     )
     grid.set_metrics(("X", "Y"), "area_e")
@@ -207,7 +206,7 @@ def test_get_metric_with_conditions_02b():
     # Condition 2, case b: get_metric should select for the metric with matching axes and interpolate from there,
     # even if other metrics in the desired positions are available
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, padding="periodic", autoparse_metadata=False)
     grid.set_metrics(("X", "Y"), "area_e")
     grid.set_metrics(("X"), "dx_n")
     grid.set_metrics(("Y"), "dx_n")
@@ -255,7 +254,7 @@ def test_get_metric_with_conditions_03b():
 def test_get_metric_with_conditions_04a():
     # Condition 4, case a: 1 metric on the wrong position (must interpolate before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, padding="periodic", autoparse_metadata=False)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_n")
 
@@ -272,7 +271,7 @@ def test_get_metric_with_conditions_04a():
 def test_get_metric_with_conditions_04b():
     # Condition 4, case b: 2 metrics in the wrong position (must interpolate both before multiplying)
     ds, coords, _ = datasets_grid_metric("C")
-    grid = Grid(ds, coords=coords, autoparse_metadata=False)
+    grid = Grid(ds, coords=coords, padding="periodic", autoparse_metadata=False)
     grid.set_metrics(("X"), "dx_t")
     grid.set_metrics(("Y"), "dy_t")
 
@@ -285,6 +284,46 @@ def test_get_metric_with_conditions_04b():
     # Grid operations now always preserve compatible non-dimension coords
     # (GH #382); compare the metric values by dropping them.
     xr.testing.assert_allclose(get_metric.reset_coords(drop=True), expected_metric)
+
+
+@pytest.mark.parametrize(
+    "data_var, z_metrics, expected_dz",
+    [
+        # tracer point (xt, yt, zt): an exact-position thickness (dz_t) exists,
+        # but it is registered *after* several wrong-position thicknesses, so the
+        # pre-fix code warned once per wrong-position combination tried first.
+        ("tracer", ["dz_w", "dz_w_ne", "dz_w_n", "dz_w_e", "dz_t"], "dz_t"),
+        # w point (xt, yt, zw): exact-position thickness (dz_w) exists but is
+        # registered after the wrong-position dz_t.
+        ("wt", ["dz_t", "dz_w"], "dz_w"),
+    ],
+)
+def test_get_metric_no_spurious_interpolation_warning(data_var, z_metrics, expected_dz):
+    # Regression test (GH #756): when get_metric must combine metrics from
+    # separate axes (the `else` branch), an exact-position combination that is
+    # not the first one iterated should be found WITHOUT emitting bogus
+    # "being interpolated" UserWarnings for the earlier, wrong-position
+    # combinations. The returned metric must still be the exact-position product.
+    ds, coords, _ = datasets_grid_metric("C")
+    # Register area (X, Y) and thickness (Z) metrics but NOT a combined
+    # (X, Y, Z) volume, forcing get_metric into the axis-combination search.
+    metrics = {
+        ("X", "Y"): ["area_t", "area_n", "area_e", "area_ne"],
+        ("Z",): z_metrics,
+    }
+    grid = Grid(ds, coords=coords, metrics=metrics, autoparse_metadata=False)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        metric = grid.get_metric(ds[data_var], ("X", "Y", "Z"))
+
+    interpolation_warnings = [
+        str(w.message) for w in caught if "being interpolated" in str(w.message)
+    ]
+    assert interpolation_warnings == []
+
+    expected = (ds["area_t"] * ds[expected_dz]).reset_coords(drop=True)
+    xr.testing.assert_allclose(metric.reset_coords(drop=True), expected)
 
 
 def test_set_metric():

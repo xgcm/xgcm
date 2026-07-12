@@ -20,7 +20,7 @@ class Axis:
         str, str
     ]  # TODO give this mapping from positions to dimension names a better name?
     _default_shifts: Mapping[str, str]
-    _boundary: str
+    _padding: Optional[str]
     _fill_value: float
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
@@ -33,10 +33,11 @@ class Axis:
         default_shifts: Optional[
             Mapping[str, str]
         ] = None,  # TODO type hint as Literal of the allowed options
-        boundary: Optional[
+        padding: Optional[
             str
         ] = None,  # TODO type hint as Literal of the allowed options
         fill_value: Optional[float] = None,
+        **kwargs,
     ):
         """
         Create a new Axis object from an input dataset.
@@ -53,8 +54,8 @@ class Axis:
         default_shifts : dict, optional
             Default mapping from and to grid positions
             (e.g. `{'center': 'left'}`). Will be inferred if not specified.
-        boundary : {None, 'fill', 'extend', 'periodic'}, optional
-            A flag indicating how to handle boundaries:
+        padding : {None, 'fill', 'extend', 'periodic'}, optional
+            A flag indicating how to handle padding at exterior grid boundaries:
 
             * None:  Do not apply any boundary conditions. Raise an error if
               boundary conditions are required for the operation.
@@ -65,8 +66,14 @@ class Axis:
             * 'periodic': Set values by wrapping around the array on the specified
                 axes. (i.e. a periodic boundary condition.)
         fill_value : float, optional
-            The value to use in the boundary condition when boundary='fill'.
+            The value to use in the boundary condition when padding='fill'.
         """
+        # TODO - remove deprecation handling
+        if "boundary" in kwargs:
+            raise ValueError(
+                "Argument 'boundary' has been renamed to 'padding'. "
+                "Please use 'padding' instead."
+            )
 
         if not isinstance(name, str):
             raise TypeError(
@@ -129,13 +136,19 @@ class Axis:
                     f"Can't set the default shift for {pos} to be to {pos}"
                 )
 
-        if boundary is None:
-            boundary = "periodic"
-        if boundary not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG:
+        # ``padding=None`` means "no boundary condition specified". It is a valid
+        # (and the default) state: operations that do not require padding along this
+        # axis work fine, while those that do will raise an informative error at
+        # padding time rather than silently wrapping. See GH #509, #604, #624.
+        if (
+            padding is not None
+            and padding not in _XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG
+        ):
             raise ValueError(
-                f"boundary must be one of {_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys()}, but got {boundary}"
+                f"padding must be one of {list(_XGCM_BOUNDARY_KWARG_TO_XARRAY_PAD_KWARG.keys())} "
+                f"or None, but got {padding}"
             )
-        self._boundary = boundary
+        self._padding = padding
 
         if fill_value is None:
             fill_value = 0.0
@@ -145,7 +158,7 @@ class Axis:
 
         # TODO backwards compatible attributes, to be removed --------------------
 
-        if self._boundary == "periodic":
+        if self._padding == "periodic":
             self._periodic = True
         else:
             self._periodic = False
@@ -173,14 +186,21 @@ class Axis:
         return self._default_shifts
 
     @property
-    def boundary(self) -> str:
-        return self._boundary
+    def padding(self) -> Optional[str]:
+        return self._padding
+
+    # TODO - remove deprecation handling
+    @property
+    def boundary(self) -> Optional[str]:
+        raise AttributeError(
+            "Attribute 'boundary' has been renamed to 'padding'. "
+            "Please use 'padding' instead."
+        )
 
     def __repr__(self):
         is_periodic = "periodic" if self._periodic else "not periodic"
         summary = [
-            "<xgcm.Axis '%s' (%s, boundary=%r)>"
-            % (self.name, is_periodic, self.boundary)
+            "<xgcm.Axis '%s' (%s, padding=%r)>" % (self.name, is_periodic, self.padding)
         ]
         summary.append("Axis Coordinates:")
         summary += self._coord_desc()

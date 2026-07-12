@@ -265,6 +265,7 @@ def create_1d_test_grid(ax_name, length=9):
                 "outer": f"{ax_name}_o",
             }
         },
+        padding="periodic",
         autoparse_metadata=False,
     )
 
@@ -291,6 +292,7 @@ def create_2d_test_grid(ax_name_1, ax_name_2, length1=9, length2=11):
                 "outer": f"{ax_name_2}_o",
             },
         },
+        padding="periodic",
         autoparse_metadata=False,
     )
 
@@ -533,7 +535,7 @@ class TestGridUFuncNoPadding:
         grid = Grid(
             ds,
             coords={"Y": {"center": "j", "left": "jg"}},
-            periodic=True,
+            padding="periodic",
             autoparse_metadata=False,
         )
 
@@ -543,7 +545,7 @@ class TestGridUFuncNoPadding:
             da,
             axis=[["Y"]],
             signature="(Y:center)->(Y:center)",
-            boundary_width={"Y": (0, 0)},
+            padding_width={"Y": (0, 0)},
             dask=dask,
         )
         assert out.dims == ("k", "j", "i")
@@ -555,7 +557,7 @@ class TestGridUFuncNoPadding:
             da,
             axis=[["Y"]],
             signature="(Y:center)->(Y:left)",
-            boundary_width={"Y": (0, 0)},
+            padding_width={"Y": (0, 0)},
             dask=dask,
         )
         assert out_left.dims == ("k", "jg", "i")
@@ -677,7 +679,7 @@ class TestGridUfuncWithPadding:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:center)",
-            boundary_width={"X": (2, 0)},
+            padding_width={"X": (2, 0)},
         )
         assert_equal(result, expected)
 
@@ -706,7 +708,7 @@ class TestGridUfuncWithPadding:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="parallelized",
         ).compute()
         assert_equal(result, expected)
@@ -717,7 +719,7 @@ class TestGridUfuncWithPadding:
             da,
             axis=[("depth",)],
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="parallelized",
         )
         assert_equal(result, expected)
@@ -725,7 +727,7 @@ class TestGridUfuncWithPadding:
         # Test decorator
         @as_grid_ufunc(
             "(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="parallelized",
         )
         def diff_center_to_left(a):
@@ -766,7 +768,7 @@ class TestGridUfuncWithPadding:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="parallelized" if chunk else "forbidden",
         )
 
@@ -813,7 +815,7 @@ class TestGridUfuncWithPadding:
             axis=[("depth",), ("depth",)],
             grid=grid,
             signature="(X:center),(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="forbidden",
         )
 
@@ -846,7 +848,7 @@ class TestGridUfuncWithPadding:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="forbidden",
         )
 
@@ -891,7 +893,7 @@ class TestGridUfuncWithPadding:
             V,
             axis=2 * [("lon", "lat")],
             signature="(lon:left,lat:center),(lon:center,lat:left)->(lon:left,lat:left)",
-            boundary_width={"lon": (1, 0), "lat": (1, 0)},
+            padding_width={"lon": (1, 0), "lat": (1, 0)},
             dask="parallelized",  # data isn't chunked along lat/lon
         )
         assert_equal(result, expected)
@@ -931,7 +933,7 @@ class TestPadManuallyInsideUfunc:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:center)",
-            boundary_width=None,
+            padding_width=None,
         )
         assert_equal(result, expected)
 
@@ -957,8 +959,8 @@ class TestPadAfterUFunc:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
-            boundary="fill",
+            padding_width={"X": (1, 0)},
+            padding="fill",
             fill_value=0,
             pad_before_func=False,
         )
@@ -985,8 +987,8 @@ class TestPadAfterUFunc:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
-            boundary="fill",
+            padding_width={"X": (1, 0)},
+            padding="fill",
             fill_value=0,
             pad_before_func=False,
             dask="allowed",
@@ -1011,8 +1013,8 @@ class TestPadAfterUFunc:
             ds, coords={"Z": {"center": "Z", "outer": "Zp1"}}, autoparse_metadata=False
         )
 
-        grid.cumsum(ds.drF, "Z", boundary="periodic")
-        grid.cumsum(ds.drF, "Z", boundary="extend")
+        grid.cumsum(ds.drF, "Z", padding="periodic")
+        grid.cumsum(ds.drF, "Z", padding="extend")
 
 
 class TestDaskNoOverlap:
@@ -1044,7 +1046,7 @@ class TestDaskOverlap:
             axis=[("depth",)],
             grid=grid,
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         ).compute()
@@ -1056,7 +1058,7 @@ class TestDaskOverlap:
             da,
             axis=[("depth",)],
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )
@@ -1064,7 +1066,7 @@ class TestDaskOverlap:
 
         # Test decorator
         @as_grid_ufunc(
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )
@@ -1087,7 +1089,7 @@ class TestDaskOverlap:
         raise NotImplementedError
 
     @pytest.mark.xfail
-    def test_gave_axis_but_no_corresponding_boundary_width(self):
+    def test_gave_axis_but_no_corresponding_padding_width(self):
         # TODO this should default to zero
         raise NotImplementedError
 
@@ -1110,7 +1112,7 @@ class TestDaskOverlap:
             axis=[("depth",)],
             grid=grid,
             signature="(X:left)->(X:left)",
-            boundary_width=None,
+            padding_width=None,
             dask="allowed",
             map_overlap=True,
         ).compute()
@@ -1126,7 +1128,7 @@ class TestDaskOverlap:
 
     def test_raise_when_ufunc_changes_chunksize(self):
         @as_grid_ufunc(
-            boundary_width={"X": (1, 0)},
+            padding_width={"X": (1, 0)},
             dask="allowed",
             map_overlap=True,
         )
@@ -1154,7 +1156,7 @@ class TestDaskOverlap:
 
     def test_multiple_inputs(self):
         @as_grid_ufunc(
-            boundary_width=None,
+            padding_width=None,
             map_overlap=True,
             dask="allowed",
         )
@@ -1215,8 +1217,8 @@ class TestBoundary:
 
         @as_grid_ufunc(
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
-            boundary="fill",
+            padding_width={"X": (1, 0)},
+            padding="fill",
             fill_value=0,
         )
         def interp_center_to_left(a):
@@ -1234,7 +1236,7 @@ class TestBoundary:
 
         # test that bound kwargs can be overridden at call time
         result = interp_center_to_left(
-            grid, da, axis=[["lat"]], boundary="fill", fill_value=1
+            grid, da, axis=[["lat"]], padding="fill", fill_value=1
         )
         interped_arr_padded_with_one = interp(np.concatenate([[1], arr]))
         expected = grid._ds.lat_g.copy(data=interped_arr_padded_with_one)
@@ -1249,8 +1251,8 @@ class TestBoundary:
 
         @as_grid_ufunc(
             signature="(X:center)->(X:left)",
-            boundary_width={"X": (1, 0)},
-            boundary="fill",
+            padding_width={"X": (1, 0)},
+            padding="fill",
             fill_value=10,
         )
         def interp_center_to_left(a):
@@ -1330,7 +1332,7 @@ class TestMapOverlapGridops:
             .to_dataset(name="drF")
         )
 
-        result = grid.interp(ds.drF, "Z", boundary="extend", to="outer").to_dataset(
+        result = grid.interp(ds.drF, "Z", padding="extend", to="outer").to_dataset(
             name="drF"
         )
         assert_equal(result, expected)
@@ -1423,7 +1425,7 @@ class TestGridUFuncDispatch:
             "diff",
             _GridUFuncSignature.from_string("(X:center)->(X:right)"),
             module=GridOpsMockUp,
-            boundary="fill",
+            padding="fill",
         )
         assert gridufunc is GridOpsMockUp.diff_center_to_right_fill
 
@@ -1432,7 +1434,7 @@ class TestGridUFuncDispatch:
                 "diff",
                 _GridUFuncSignature.from_string("(X:center)->(X:right)"),
                 module=GridOpsMockUp,
-                boundary="nonsense",
+                padding="nonsense",
             )
 
     @pytest.mark.xfail
@@ -1442,6 +1444,6 @@ class TestGridUFuncDispatch:
             "pass",
             _GridUFuncSignature.from_string("()->()"),
             module=GridOpsMockUp,
-            boundary="fill",
+            padding="fill",
         )
         assert gridufunc(a=1) == {"a": 1}

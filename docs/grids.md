@@ -159,16 +159,24 @@ of the same axis. We do this using the `coords` keyword argument, as follows:
 import xgcm
 
 grid = xgcm.Grid(
-    ds, coords={"X": {"center": "x_c", "left": "x_g"}}, autoparse_metadata=False
+    ds,
+    coords={"X": {"center": "x_c", "left": "x_g"}},
+    padding="periodic",
+    autoparse_metadata=False,
 )
 grid
 ```
 
 The printed information about the grid indicates that xgcm has successfully
 undestood the relative location of the different coordinates along the x axis.
-Because we did not
-specify the `periodic` keyword argument, xgcm assumed that the data
-is periodic along all axes.
+Here we passed `padding="periodic"` because this example data is periodic
+(wrap-around) along the x axis. If the `padding` keyword argument is not
+specified, no boundary condition is applied by default, and any operation that
+needs to pad an axis (for example `grid.diff`) will raise an informative error
+until a `padding` is supplied (e.g. `padding="periodic"`, `"fill"`, or
+`"extend"`). This is a change from earlier versions of xgcm, which defaulted to
+periodic boundaries; the old `periodic` keyword argument has been removed in
+favor of the more explicit `padding` argument.
 The arrows after each coordinate indicate the default shift positions for
 interpolation and difference operations: operating on the center coordinate
 (`x_c`) shifts to the left coordinate (`x_g`), and vice versa.
@@ -317,7 +325,7 @@ We can now create a `Grid` object from this dataset without manually
 specifying `coords`:
 
 ```python
-grid = xgcm.Grid(ds)
+grid = xgcm.Grid(ds, padding="periodic")
 grid
 ```
 
