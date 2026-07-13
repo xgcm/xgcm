@@ -74,7 +74,7 @@ The process of releasing at this point is very easy.
 
 We need only two things: A PR to update the documentation and a release on github.
 
-1. Make sure that all the new features/bugfixes etc are appropriately documented in `docs/whats-new.md`, add the date to the current release and make an empty (unreleased) entry for the next release as a PR. Choose the next version number according to the [versioning policy](#versioning-policy) above.
+1. Make sure that all the new features/bugfixes etc are appropriately documented in `docs/whats-new.md`, add the date to the current release and make an empty (unreleased) entry for the next release as a PR. Choose the next version number according to the [versioning policy](#versioning-policy) above. When citing changes in `docs/whats-new.md`, cite the PR (always) and the issues it resolves (optionally), listing the PR first.
 2. Navigate to the 'tags' symbol on the repos main page, click on 'Releases' and on 'Draft new release' on the right. Add the version number and a short description and save the release.
 
 From here the github actions take over and package things for [Pypi](https://pypi.org/project/xgcm/).
