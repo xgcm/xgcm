@@ -1369,8 +1369,84 @@ def test_grid_transform_multidim_other_dims_error(request, multidim_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_chunking_dim_error():
-    """Assure that error is raised when we chunk along the 'vertical' dimension"""
+def test_chunking_along_transform_dim_is_rechunked():
+    """Data chunked along the transform ('vertical') dimension is automatically
+    rechunked to a single chunk and transformed correctly, rather than raising a
+    ValueError (GH #753). Both ``da`` and a dask-backed ``target_data`` are
+    handled, and the result stays lazy (only rechunked, not computed)."""
+
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        _,
+    ) = construct_test_source_data(cases["linear_depth_dens"])
+
+    # chunk both the field and the target_data along the transform dimension
+    source = source.chunk({"depth": 1})
+    if transform_kwargs.get("target_data") is not None:
+        transform_kwargs["target_data"] = transform_kwargs["target_data"].chunk(
+            {"depth": 1}
+        )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, **grid_kwargs)
+
+    transform_kwargs.setdefault("suffix", "")
+    output_name = "data" + transform_kwargs["suffix"]
+
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+
+    # the transform axis was rechunked internally but the result is still lazy
+    assert transformed.chunks is not None
+    xr.testing.assert_allclose(transformed, expected[output_name])
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_chunking_along_transform_dim_is_rechunked_conservative():
+    """Same as above for the conservative method, where an on-center `target_data`
+    is internally interpolated to the cell bounds. The rechunk must happen before
+    that interpolation (itself a grid ufunc that forbids a chunked core dim), so a
+    vertically-chunked `target_data` still transforms rather than raising (GH #753)."""
+
+    (
+        source,
+        grid_kwargs,
+        target,
+        transform_kwargs,
+        expected,
+        _,
+    ) = construct_test_source_data(cases["conservative_depth_temp"])
+
+    source = source.chunk({"depth": 1})
+    if transform_kwargs.get("target_data") is not None:
+        transform_kwargs["target_data"] = transform_kwargs["target_data"].chunk(
+            {"depth": 1}
+        )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, **grid_kwargs)
+
+    transform_kwargs.setdefault("suffix", "")
+    output_name = "data" + transform_kwargs["suffix"]
+
+    # target_data is on cell centers here, so transform interpolates it to the
+    # bounds internally (emitting this warning) -- exercising the pre-interp rechunk
+    with pytest.warns(UserWarning, match="not located on the cell bounds"):
+        transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+
+    assert transformed.chunks is not None
+    xr.testing.assert_allclose(transformed, expected[output_name])
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_chunking_along_transform_dim_warns_only_if_merged_chunk_large(recwarn):
+    """Collapsing the transform axis to one chunk emits a dask PerformanceWarning
+    only when the merged chunk exceeds dask's chunk-size guideline; small merges
+    (the common vertical case) stay silent (GH #753)."""
+    from dask.array import PerformanceWarning
 
     (
         source,
@@ -1382,10 +1458,21 @@ def test_chunking_dim_error():
     ) = construct_test_source_data(cases["linear_depth_dens"])
 
     source = source.chunk({"depth": 1})
+    if transform_kwargs.get("target_data") is not None:
+        transform_kwargs["target_data"] = transform_kwargs["target_data"].chunk(
+            {"depth": 1}
+        )
     axis = list(grid_kwargs["coords"].keys())[0]
     grid = Grid(source, **grid_kwargs)
-    with pytest.raises(ValueError):
-        _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+    # the tiny test arrays are far below the default 128 MiB guideline -> no warning
+    _ = grid.transform(source.data, axis, target, **transform_kwargs)
+    assert not any(isinstance(w.message, PerformanceWarning) for w in recwarn.list)
+
+    # force the guideline absurdly low so the same tiny transform trips the warning
+    with dask.config.set({"array.chunk-size": "1B"}):
+        with pytest.warns(PerformanceWarning, match="single chunk along the transform"):
+            _ = grid.transform(source.data, axis, target, **transform_kwargs)
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")

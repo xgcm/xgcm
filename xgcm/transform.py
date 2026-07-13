@@ -450,11 +450,48 @@ def transform(
         _check_other_dims(target_data)
         return target, target_dim, target_data
 
+    def _single_chunk_along(arr, chunk_dim, name):
+        # xgcm.transform interpolates along the entire `axis`, so the core
+        # dimension must be a single dask chunk: xr.apply_ufunc with
+        # dask="parallelized" errors out on a chunked core dimension. Rechunk it
+        # to a single chunk, leaving all other dimensions' chunking untouched.
+        # No-op for numpy-backed or already single-chunk data.
+        if arr is None or arr.chunks is None or chunk_dim not in arr.dims:
+            return arr
+        if len(arr.chunksizes[chunk_dim]) == 1:
+            return arr
+
+        arr = arr.chunk({chunk_dim: -1})
+
+        # Collapsing the transform axis into one chunk is required by the
+        # algorithm (each whole 1D column must be in memory at once), but warn if
+        # it produced a chunk larger than dask's guideline so the user can chunk
+        # the other dimensions more finely.
+        import dask
+        from dask.array import PerformanceWarning
+        from dask.utils import format_bytes, parse_bytes
+
+        max_chunk_bytes = arr.dtype.itemsize
+        for sizes in arr.chunksizes.values():
+            max_chunk_bytes *= max(sizes)
+        if max_chunk_bytes > parse_bytes(dask.config.get("array.chunk-size")):
+            warnings.warn(
+                f"transform rechunked `{name}` to a single chunk along the "
+                f"transform axis '{chunk_dim}', producing chunks up to "
+                f"{format_bytes(max_chunk_bytes)} (above dask's "
+                f"{dask.config.get('array.chunk-size')} guideline). Consider "
+                "chunking the other dimensions more finely.",
+                PerformanceWarning,
+            )
+        return arr
+
     _, dim = axis._get_position_name(da)
+    da = _single_chunk_along(da, dim, "da")
     if method == "linear" or method == "log":
         target, target_dim, target_data = _parse_target(
             target, target_dim, dim, target_data
         )
+        target_data = _single_chunk_along(target_data, dim, "target_data")
         out = linear_interpolation(
             da,
             target_data,
@@ -486,6 +523,15 @@ def transform(
 
         target, target_dim, target_data = _parse_target(
             target, target_dim, target_data_dim, target_data
+        )
+
+        # `target_data` must be a single dask chunk along its core dimension: both
+        # so `grid.interp` below (a grid ufunc that likewise forbids a chunked core
+        # dimension) can run when interpolation is needed, and for the final
+        # apply_ufunc. Rechunk along whichever position `target_data` currently sits.
+        _, target_data_pos_dim = axis._get_position_name(target_data)
+        target_data = _single_chunk_along(
+            target_data, target_data_pos_dim, "target_data"
         )
 
         # check on which coordinate `target_data` is, and interpolate if needed
