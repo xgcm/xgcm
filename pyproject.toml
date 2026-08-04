@@ -124,7 +124,7 @@ version = "dynamic" # dynamic versioning needs better support in pixi https://gi
 # tool versions still solve:
 #   - CI pins the tool via `PIXI_VERSION` in .github/workflows/ci.yaml
 #   - ReadTheDocs pins it via `asdf install pixi <ver>` in readthedocs.yml
-backend = { name = "pixi-build-python", version = "0.7.*" }
+backend = { name = "pixi-build-python", version = "0.*" }
 
 [tool.pixi.package.host-dependencies]
 setuptools = "*"
