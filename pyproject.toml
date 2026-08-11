@@ -115,15 +115,6 @@ name = "xgcm"
 version = "dynamic" # dynamic versioning needs better support in pixi https://github.com/prefix-dev/pixi/issues/2923#issuecomment-2598460666 . Putting `version = "dynamic"` here for now until pixi recommends something else.
 
 [tool.pixi.package.build]
-# This build backend talks to the pixi tool over a private `pixi-build-api-version`
-# contract (pixi-build is still a preview feature), so the backend version and the
-# pixi *tool* version must stay compatible. An older backend cannot resolve the
-# api-version bumped by a newer pixi -- e.g. the previous `0.4.*` backend failed to
-# solve against pixi 0.71.x+ ("no candidates for pixi-build-api-version"), which is
-# why this was bumped to `0.7.*`. If you bump the backend again, confirm the pinned
-# tool versions still solve:
-#   - CI pins the tool via `PIXI_VERSION` in .github/workflows/ci.yaml
-#   - ReadTheDocs pins it via `asdf install pixi <ver>` in readthedocs.yml
 backend = { name = "pixi-build-python", version = "0.*" }
 
 [tool.pixi.package.host-dependencies]
@@ -175,11 +166,6 @@ python = "3.12.*"
 python = "3.13.*"
 
 [tool.pixi.feature.py314.dependencies]
-# Pin the standard (GIL) CPython build for the 3.14 test env. The free-threaded
-# `cp314t` variant has a sparse conda-forge ecosystem and an unconstrained solve
-# selects it, breaking dependency resolution (e.g. it collapses the pre-commit
-# toolchain down to an ancient `identify`). This is also why the default dev env
-# pins `py313` rather than floating to the latest Python.
 python = { version = "3.14.*", build = "*cp314" }
 
 [tool.pixi.feature.test.dependencies]
