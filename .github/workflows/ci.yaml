@@ -75,7 +75,7 @@ jobs:
           persist-credentials: false
 
       - name: Restore cached pixi lockfile
-        uses: Parcels-code/pixi-lock/restore@38495788b79a5ff26009aecc15daa9a8310b8832
+        uses: Parcels-code/pixi-lock/restore@1fab4c17af8243f6ca1321bc941cf2325f46c05d
         with:
           cache-key: ${{ needs.cache-pixi-lock.outputs.cache-key }}
 
