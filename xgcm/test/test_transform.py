@@ -767,27 +767,10 @@ def construct_test_source_data(case_param_dict):
     )
 
 
-# TODO: once conservative method is implemented for multi-dimensional
-# targets, remove the exception from this list
 @pytest.fixture(
-    params=[
-        c
-        for c in list(cases.keys())
-        if not ("conservative" in c and "multidim_target" in c)
-    ],
+    params=list(cases.keys()),
 )
-def all_cases_except_conservative_multidim(request):
-    return construct_test_source_data(cases[request.param])
-
-
-@pytest.fixture(
-    params=[
-        c
-        for c in list(cases.keys())
-        if ("conservative" in c and "multidim_target" in c)
-    ],
-)
-def conservative_multidim_cases(request):
+def all_cases(request):
     return construct_test_source_data(cases[request.param])
 
 
@@ -828,9 +811,19 @@ def multidim_cases(request):
     params=[
         "linear_depth_depth_nomask_multidim_target",
         "linear_depth_depth_multidim_target",
+        "conservative_depth_depth_multidim_target",
     ],
 )
 def spatially_varying_vertical_target_coord_cases(request):
+    return construct_test_source_data(cases[request.param])
+
+
+@pytest.fixture(
+    params=[
+        "conservative_depth_depth_multidim_target",
+    ],
+)
+def conservative_multidim_cases(request):
     return construct_test_source_data(cases[request.param])
 
 
@@ -1050,10 +1043,8 @@ def test_mid_level_conservative(conservative_cases):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_grid_transform(all_cases_except_conservative_multidim):
-    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
-        all_cases_except_conservative_multidim
-    )
+def test_grid_transform(all_cases):
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = all_cases
 
     axis = list(grid_kwargs["coords"].keys())[0]
 
@@ -1069,7 +1060,10 @@ def test_grid_transform(all_cases_except_conservative_multidim):
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
-def test_conservative_interp_error_if_multidim_target_dim(conservative_multidim_cases):
+def test_conservative_interp_error_if_multidim_target_dim_not_specified(
+    conservative_multidim_cases,
+):
+    """A multi-dimensional target requires the user to specify `target_dim`."""
     source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
         conservative_multidim_cases
     )
@@ -1078,7 +1072,124 @@ def test_conservative_interp_error_if_multidim_target_dim(conservative_multidim_
 
     grid = Grid(source, **grid_kwargs)
 
-    with pytest.raises(NotImplementedError):
+    # drop the (required) `target_dim` to trigger the error
+    transform_kwargs.pop("target_dim", None)
+
+    with pytest.raises(ValueError, match="please specify `target_dim`"):
+        _ = grid.transform(source.data, axis, target, **transform_kwargs)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_multidim_target_conservation(conservative_multidim_cases):
+    """Conservative transform onto a spatially-varying (multi-dimensional)
+    target must conserve the column integral per-column, and reproduce a
+    hand-built numpy reference."""
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        conservative_multidim_cases
+    )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, **grid_kwargs)
+    target_dim = transform_kwargs["target_dim"]
+
+    transformed = grid.transform(source.data, axis, target, **transform_kwargs)
+
+    # known-answer check against the (hand-computed) expected dict
+    xr.testing.assert_allclose(transformed, expected["data"])
+
+    # per-column conservation: each target column here fully spans the source
+    # range, so the sum over the transformed dimension must equal the source
+    # integral for every column.
+    source_integral = float(source.data.sum())
+    per_column = transformed.sum(target_dim)
+    np.testing.assert_allclose(per_column.values, source_integral)
+
+    # independent hand-built numpy reference using the low-level routine applied
+    # column-by-column along the (multi-dimensional) target.
+    bounds_dim = grid_kwargs["coords"][axis]["outer"]
+    phi = source.data.values
+    theta = source[bounds_dim].values
+    target_bins = target.values  # (eta_rho, s_w)
+    reference = np.stack(
+        [
+            interp_1d_conservative(phi, theta, target_bins[i])
+            for i in range(target_bins.shape[0])
+        ]
+    )
+    np.testing.assert_allclose(transformed.values, reference)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_multidim_column_aligned():
+    """Source AND target share a horizontal dimension (as in a real
+    terrain-following coordinate): each column has its own phi values and its
+    own target bins, aligned by dimension name inside apply_ufunc. Verify
+    against hand-computed overlap integrals, per-column conservation, and that
+    dask-chunked inputs reproduce the numpy result."""
+    # source cells bounded by zc: [0, 10], [10, 50], [50, 75]
+    phi = np.array([[1.0, 4.0, 0.0], [2.0, 1.0, 3.0]])  # (column, z)
+    source = xr.Dataset(
+        {"data": (("column", "z"), phi)},
+        coords={"z": [5, 25, 60], "zc": [0, 10, 50, 75]},
+    )
+    target = xr.DataArray(
+        np.array([[0.0, 1.0, 10.0, 50.0, 80.0], [0.0, 5.0, 20.0, 30.0, 100.0]]),
+        dims=("column", "s_w"),
+        name="depth_bounds",
+    )
+    # hand-computed overlap integrals:
+    # column 0: bins [0,1],[1,10],[10,50],[50,80] over cells
+    #   (0-10, phi=1), (10-50, phi=4), (50-75, phi=0)
+    #   -> [1/10 * 1, 9/10 * 1, 4, 0]
+    # column 1: bins [0,5],[5,20],[20,30],[30,100] over cells
+    #   (0-10, phi=2), (10-50, phi=1), (50-75, phi=3)
+    #   -> [5/10 * 2, 5/10 * 2 + 10/40 * 1, 10/40 * 1, 20/40 * 1 + 3]
+    expected = np.array([[0.1, 0.9, 4.0, 0.0], [1.0, 1.25, 0.25, 3.5]])
+
+    grid_kwargs = {
+        "coords": {"Z": {"center": "z", "outer": "zc"}},
+        "autoparse_metadata": False,
+    }
+    grid = Grid(source, **grid_kwargs)
+    transformed = grid.transform(
+        source.data, "Z", target, method="conservative", target_dim="s_w"
+    )
+    np.testing.assert_allclose(transformed.transpose("column", "s_w").values, expected)
+    # per-column conservation: each column conserves its own integral
+    np.testing.assert_allclose(
+        transformed.sum("s_w").transpose("column").values, phi.sum(axis=-1)
+    )
+
+    # dask-backed: chunk source and target along the shared column dimension
+    source_dask = source.copy(deep=True)
+    source_dask["data"] = source_dask["data"].chunk({"column": 1})
+    grid_dask = Grid(source_dask, **grid_kwargs)
+    transformed_dask = grid_dask.transform(
+        source_dask.data,
+        "Z",
+        target.chunk({"column": 1}),
+        method="conservative",
+        target_dim="s_w",
+    ).load()
+    xr.testing.assert_allclose(transformed_dask, transformed)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+def test_conservative_multidim_nan_target_error(conservative_multidim_cases):
+    """NaNs in the target bin edges (e.g. undefined interfaces under
+    topography) must raise a specific error rather than the misleading
+    'not monotonic' one."""
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        conservative_multidim_cases
+    )
+
+    axis = list(grid_kwargs["coords"].keys())[0]
+    grid = Grid(source, **grid_kwargs)
+
+    target = target.astype(float)
+    target[0, -1] = np.nan
+
+    with pytest.raises(ValueError, match="target bin edges without NaNs"):
         _ = grid.transform(source.data, axis, target, **transform_kwargs)
 
 
@@ -1337,6 +1448,57 @@ def test_grid_transform_multidim_with_target_dim(
         source.data, axis, target, target_data=target_data, **transform_kwargs
     ).load()
     xr.testing.assert_allclose(transformed, expected.data)
+
+
+@pytest.mark.skipif(numba is None, reason="numba required")
+@pytest.mark.parametrize("client", all_clients)
+def test_grid_transform_conservative_multidim_dask(
+    request, client, conservative_multidim_cases
+):
+    """Conservative transform onto a spatially-varying target with dask-backed
+    inputs. We chunk both the source (along an extra broadcast dimension) and
+    the multi-dimensional target (along its horizontal dimension) and compare
+    against the numpy result."""
+    source, grid_kwargs, target, transform_kwargs, expected, error_flag = (
+        conservative_multidim_cases
+    )
+    axis = list(grid_kwargs["coords"].keys())[0]
+    target_data = transform_kwargs.pop("target_data", None)
+
+    # numpy reference
+    grid_np = Grid(source, **grid_kwargs)
+    expected_np = grid_np.transform(
+        source.data, axis, target, target_data=target_data, **transform_kwargs
+    )
+
+    # add an extra broadcast dimension to the source so we can chunk it along a
+    # non-core dimension
+    na = 4
+    source_nd = source.copy(deep=True)
+    source_nd["data"] = source_nd["data"].expand_dims(a=na).copy(deep=True)
+
+    source_dask = source_nd
+    target_dask = target
+    if client != "no_client":
+        source_dask = source_nd.copy(deep=True)
+        source_dask["data"] = source_dask["data"].chunk({"a": 1})
+        # also chunk the multi-dimensional target along its horizontal dimension
+        target_dask = target.chunk({"eta_rho": 1})
+
+    grid = Grid(source_dask, **grid_kwargs)
+    client = request.getfixturevalue(client)
+
+    transformed = grid.transform(
+        source_dask.data, axis, target_dask, target_data=target_data, **transform_kwargs
+    ).load()
+
+    _, expected_broadcasted = xr.broadcast(transformed, expected_np)
+    xr.testing.assert_allclose(transformed, expected_broadcasted)
+
+    # conservation must hold per-column for every broadcast slice
+    target_dim = transform_kwargs["target_dim"]
+    source_integral = float(source.data.sum())
+    np.testing.assert_allclose(transformed.sum(target_dim).values, source_integral)
 
 
 @pytest.mark.skipif(numba is None, reason="numba required")
