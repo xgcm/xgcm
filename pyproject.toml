@@ -109,6 +109,7 @@ name = "xgcm-dev"
 preview = ["pixi-build"]
 channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+requires-pixi = ">=0.82.1"
 
 [tool.pixi.package]
 name = "xgcm"

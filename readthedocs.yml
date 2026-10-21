@@ -16,8 +16,8 @@ build:
       # "no candidates for pixi-build-api-version"). The `0.7.*` backend needs a
       # recent pixi, so this is pinned to match `PIXI_VERSION` in ci.yaml.
       - asdf plugin add pixi
-      - asdf install pixi 0.72.0
-      - asdf global pixi 0.72.0
+      - asdf install pixi 0.82.1
+      - asdf global pixi 0.82.1
     install:
       - pixi install -e docs
     build:
