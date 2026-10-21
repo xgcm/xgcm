@@ -122,6 +122,18 @@
 
 ### Documentation
 
+- Add a `CLAUDE.md` that orients AI coding assistants to xgcm's architecture and
+  the project's engineering norms (deprecate-by-removing, fail loudly, minimal
+  core dependencies, testing across the standard grid topologies, EffVer). It
+  complements rather than duplicates the human contributor guide, which gains a
+  *Pull request guidelines* section and an explicit *AI Usage Policy* (aligned
+  with [xarray's](https://docs.xarray.dev/en/stable/contribute/ai-policy.html))
+  covering contributor responsibility for reviewing changes, communicating in
+  your own words, disclosing AI assistance, and discussing large AI-assisted
+  contributions before opening a PR
+  ([#755](https://github.com/xgcm/xgcm/pull/755)).
+  By [Henri Drake](https://github.com/hdrake).
+
 - Reword the "Metrics" note in `grid_ufuncs.md` to a stable, non-promissory statement: metrics are
   not automatically supplied to grid ufuncs, so pass any needed metric explicitly as an input
   ([#744](https://github.com/xgcm/xgcm/pull/744)).
