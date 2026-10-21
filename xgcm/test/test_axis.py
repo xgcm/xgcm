@@ -83,6 +83,35 @@ class TestInit:
                 padding="blargh",
             )
 
+        with pytest.raises(ValueError, match="direction must be"):
+            Axis(
+                name="foo",
+                ds=ds,
+                coords={"center": "XC", "left": "XG"},
+                direction="sideways",
+            )
+
+    def test_direction(self, periodic_1d):
+        ds, _, _ = periodic_1d
+        coords = {"center": "XC", "left": "XG"}
+
+        # default is increasing
+        axis = Axis(name="X", ds=ds, coords=coords)
+        assert axis.direction == "increasing"
+        assert axis.direction_sign == 1
+
+        axis_inc = Axis(name="X", ds=ds, coords=coords, direction="increasing")
+        assert axis_inc.direction == "increasing"
+        assert axis_inc.direction_sign == 1
+
+        axis_dec = Axis(name="X", ds=ds, coords=coords, direction="decreasing")
+        assert axis_dec.direction == "decreasing"
+        assert axis_dec.direction_sign == -1
+
+        # decreasing axes advertise their direction in the repr
+        assert "direction='decreasing'" in repr(axis_dec)
+        assert "direction" not in repr(axis_inc)
+
     def test_repr(self, periodic_1d):
         ds, _, _ = periodic_1d
         axis = Axis(name="X", ds=ds, coords={"center": "XC", "left": "XG"})

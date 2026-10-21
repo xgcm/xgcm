@@ -370,6 +370,95 @@ def test_cumsum_reverse_rejects_non_integrated_axis():
         grid.cumint(da, "X", padding="fill", reverse={"X": True, "Y": False})
 
 
+def test_axis_directionality():
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid_default = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="periodic",
+        autoparse_metadata=False,
+    )
+    grid_inc = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="periodic",
+        direction="increasing",
+        autoparse_metadata=False,
+    )
+    grid_dec = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="periodic",
+        direction="decreasing",
+        autoparse_metadata=False,
+    )
+
+    for axis_name in grid_default.axes.keys():
+        assert grid_default.axes[axis_name].direction == "increasing"
+        assert grid_dec.axes[axis_name].direction == "decreasing"
+
+        # explicit 'increasing' is identical to the default (no behavior change)
+        xr.testing.assert_identical(
+            grid_default.diff(ds.tracer, axis_name),
+            grid_inc.diff(ds.tracer, axis_name),
+        )
+
+        # direction-sensitive operations are sign-flipped on a decreasing axis
+        for funcname in ["diff", "derivative"]:
+            inc = getattr(grid_inc, funcname)(ds.tracer, axis_name)
+            dec = getattr(grid_dec, funcname)(ds.tracer, axis_name)
+            xr.testing.assert_allclose(dec, -inc)
+
+        # cumsum/cumint are not direction-sensitive
+        for funcname in ["cumsum", "cumint"]:
+            inc = getattr(grid_inc, funcname)(ds.tracer, axis_name)
+            dec = getattr(grid_dec, funcname)(ds.tracer, axis_name)
+            xr.testing.assert_identical(dec, inc)
+
+        # orientation-symmetric operations are unaffected
+        for funcname in ["interp", "min", "max"]:
+            inc = getattr(grid_inc, funcname)(ds.tracer, axis_name)
+            dec = getattr(grid_dec, funcname)(ds.tracer, axis_name)
+            xr.testing.assert_identical(dec, inc)
+
+
+def test_axis_directionality_per_axis_dict():
+    ds, coords, metrics = datasets_grid_metric("C")
+    grid_inc = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="periodic",
+        autoparse_metadata=False,
+    )
+
+    axis_names = list(grid_inc.axes.keys())
+    # flip only the second axis
+    decreasing_axis = axis_names[1]
+    direction = {ax: "increasing" for ax in axis_names}
+    direction[decreasing_axis] = "decreasing"
+
+    grid_mixed = Grid(
+        ds,
+        coords=coords,
+        metrics=metrics,
+        padding="periodic",
+        direction=direction,
+        autoparse_metadata=False,
+    )
+
+    for axis_name in axis_names:
+        inc = grid_inc.diff(ds.tracer, axis_name)
+        mixed = grid_mixed.diff(ds.tracer, axis_name)
+        if axis_name == decreasing_axis:
+            xr.testing.assert_allclose(mixed, -inc)
+        else:
+            xr.testing.assert_identical(mixed, inc)
+
+
 @pytest.mark.parametrize(
     "func",
     ["interp", "max", "min", "diff", "cumsum"],

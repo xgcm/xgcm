@@ -5,6 +5,18 @@
 
 ### New Features
 
+- Added axis directionality via a `direction` argument on `xgcm.Grid` (and the underlying
+  `xgcm.Axis`). Pass `direction='decreasing'` (or a per-axis dict such as
+  `{'Z': 'decreasing'}`) for an axis whose index increases as its physical coordinate
+  decreases (e.g. a vertical axis indexed from the surface down while depth becomes more
+  negative). The direction-sensitive operations `diff` and `derivative` are then
+  sign-corrected automatically. (Choosing which end of an axis to accumulate `cumsum` /
+  `cumint` from is a separate concern, handled by the `reverse` keyword in
+  [#729](https://github.com/xgcm/xgcm/pull/729).) Defaults to `'increasing'`, so existing
+  behavior is unchanged ([#337](https://github.com/xgcm/xgcm/issues/337),
+  [#665](https://github.com/xgcm/xgcm/issues/665)).
+  By [Henri Drake](https://github.com/hdrake).
+
 ### Breaking Changes
 
 ### Internal Changes
