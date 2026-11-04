@@ -6,7 +6,7 @@ contributions.
 Did you notice a bug? Are you missing a feature? A good first starting place is to
 open an issue in the [github issues page](https://github.com/xgcm/xgcm/issues).
 
-Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples). Notebooks from there will be rendered in [pangeo-gallery](https://gallery.pangeo.io/repos/xgcm/xgcm-examples/).
+Want to show off a cool example using xgcm? Please consider contributing to [xgcm-examples](https://github.com/xgcm/xgcm-examples).
 
 
 In order to contribute to xgcm, please fork the repository and submit a pull request.
@@ -63,6 +63,111 @@ pixi run notebooks
 ```
 
 This launches Jupyter Lab rooted at the `docs` folder.
+
+## Documentation {#documentation}
+
+The docs are the primary way new users learn about xgcm, so keep them as simple and
+clear as possible, and build every example on a publicly available dataset so that
+anyone can reproduce its output locally. The more advanced, comprehensive, or
+big-data examples — illustrating real use cases of xgcm's features on the
+ocean-model configurations and datasets commonly used in the community — live in
+[xgcm-examples](https://github.com/xgcm/xgcm-examples) rather than in the core docs.
+
+## Pull request guidelines {#pull-request-guidelines}
+
+A few conventions keep changes easy to review and release:
+
+- **One focused change per PR.** Keep diffs small and single-purpose. PRs are
+  squash-merged, so each lands as a single commit whose title ends with the PR
+  number, e.g. `Add reverse option to Grid.cumsum (#729)`. If a change genuinely
+  cannot be split, structure the commits to aid review and say why in the PR body.
+- **Document user-visible changes in `docs/whats-new.md`.** Anything a user would
+  notice — a new feature, bug fix, or breaking change — gets an entry in the
+  matching section of the unreleased release, ending with an attribution line
+  `By [Your Name](https://github.com/yourhandle).` New public functions or
+  methods also go in `docs/api.md`. This is the single most common thing
+  reviewers ask contributors to add.
+- **Keep the built docs in sync.** A breaking change, or any change that alters the
+  rendered output of the built `.md` docs or the executed `.ipynb` notebooks
+  (`docs/transform.ipynb`, `docs/grid_metrics.ipynb`), must update those files in
+  the same PR so the published [documentation](#documentation) still reproduces.
+- **Follow the [AI Usage Policy](#ai-usage-policy).** AI-assisted contributions
+  are welcome, but you must be able to explain every change and disclose the
+  assistance openly — a `Co-Authored-By:` trailer on commits, and a note on any
+  PR or review comment that was drafted with AI.
+
+## AI Usage Policy {#ai-usage-policy}
+
+Some xgcm contributors use AI tools (Claude Code and others) as part of their
+workflow, and this is welcome. This policy applies to every change regardless of
+whether it was written by hand, with AI assistance, or generated entirely by an AI
+tool. It aligns closely with, and borrows heavily from,
+[xarray's AI usage policy](https://docs.xarray.dev/en/stable/contribute/ai-policy.html),
+adapted for xgcm.
+
+xgcm is maintained by a small group of volunteers who fit it around other
+responsibilities. The aim of this policy is to keep the door open to AI-assisted
+work while ensuring that:
+
+- reviewers are not overburdened,
+- contributions can be understood and maintained over time, and
+- the submitter can vouch for and explain every change.
+
+### You are responsible for your changes
+
+If you open a pull request, you are responsible for having fully reviewed and
+understood it. You must be able to explain why each change is correct and how it
+fits into the project — the same bar as a hand-written PR. Keep diffs small and
+single-purpose (see [Pull request guidelines](#pull-request-guidelines)) to ease
+the burden on reviewers, and leave out unnecessary or loosely related changes. If
+you are unsure of the best approach, open a draft PR or an issue to discuss it
+first.
+
+### Communicate in your own words
+
+PR descriptions, issue comments, and review responses must be your own words; the
+substance and reasoning must come from you. Do not paste AI-generated text as a
+comment or a review response, and please be concise. Using AI to polish your own
+writing (grammar, phrasing, spelling) is fine, as long as it does not introduce
+inaccuracies.
+
+Disclose AI assistance openly: add a `Co-Authored-By:` trailer to commits and a
+note on any PR or comment that was drafted with an AI tool. (The PR that added this
+policy is itself an example of that disclosure.)
+
+### Review every line of code and tests
+
+You must have personally read and understood all changes before submitting them. If
+you used an AI tool to generate code, you are expected to have read it critically
+and tested it, and the PR description should explain the approach and the reasoning
+behind it. Do not leave it to reviewers to work out what the code does and why.
+
+Not acceptable:
+
+> I pointed an agent at the issue and here are the changes.
+
+> This is what Claude came up with. 🤷
+
+Acceptable:
+
+> I iterated with an agent to produce this; it wrote the code at my direction and I
+> have fully read, tested, and validated the changes.
+
+> An agent generated a first draft from the issue. I reviewed it thoroughly and
+> understand the implementation.
+
+### Discuss large AI-assisted contributions first
+
+Generating a large diff with an agent is fast; reviewing one is not. A large PR
+shifts the burden from the contributor onto our small pool of maintainers. If you
+are planning a substantial AI-assisted change — a significant refactor, a new
+subsystem, a framework migration — **open an issue first** to agree on the scope
+and approach before writing the code.
+
+Maintainers may ask for large changes to be broken into smaller, reviewable pieces,
+and reserve the right to close PRs where the scope makes meaningful review
+impractical or where this policy has not been followed, and to hide or delete
+comments that violate it.
 
 ## Versioning policy
 
