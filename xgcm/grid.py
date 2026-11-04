@@ -71,6 +71,7 @@ class Grid:
         ] = None,  # TODO: add more specific typing
         metrics: Optional[Mapping[Tuple[str], List[str]]] = None,  # TODO type hint this
         autoparse_metadata: bool = True,
+        direction: Optional[Union[str, Mapping[str, str]]] = None,
         **kwargs,
     ):
         """
@@ -129,6 +130,16 @@ class Grid:
             for the cell distance in the x-direction ``dx_t`` and the
             horizontal cell areas ``area_tracer`` and ``area_u``, located at
             different grid positions).
+        direction : {None, 'increasing', 'decreasing', dict}, optional
+            The sense in which each axis's index runs relative to its physical
+            coordinate. Use 'decreasing' for an axis whose index increases as
+            the physical coordinate decreases (e.g. a vertical axis indexed
+            from the surface down while depth becomes more negative); the
+            direction-sensitive operations (``diff``, ``derivative``,
+            ``cumsum``, ``cumint``) are then sign-corrected. Defaults to
+            'increasing' for all axes. Optionally a dict mapping axis name to a
+            separate value for each axis can be passed
+            (e.g. ``{'X': 'increasing', 'Z': 'decreasing'}``).
 
         REFERENCES
         ----------
@@ -252,6 +263,8 @@ class Grid:
 
         fill_value_dict = self._map_kwargs_over_axes(fill_value, axes=all_axes)
 
+        direction_dict = self._map_kwargs_over_axes(direction, axes=all_axes)
+
         # Set properties on grid object.
         if face_connections is not None and face_connections:
             self._facedim = list(face_connections.keys())[0]
@@ -273,6 +286,7 @@ class Grid:
                 default_shifts=default_shifts_dict.get(axis_name, None),
                 padding=padding_dict.get(axis_name, None),
                 fill_value=fill_value_dict.get(axis_name, None),
+                direction=direction_dict.get(axis_name, None),
             )
 
         if face_connections is not None:
@@ -830,6 +844,12 @@ class Grid:
             if ax_metric_weighted:
                 metric = self.get_metric(array, ax_metric_weighted)
                 array = array / metric
+
+            # On a 'decreasing' axis the physical difference is the negative of
+            # the index difference, so flip the sign of diff (and hence
+            # derivative, which divides diff by an unsigned metric).
+            if funcname == "diff":
+                array = array * self.axes[ax_name].direction_sign
 
         # Dimension order is already restored inside apply_as_grid_ufunc /
         # _restore_input_dim_order (see GH #722), so no transpose is needed here.

@@ -25,6 +25,7 @@ class Axis:
     _default_shifts: Mapping[str, str]
     _padding: Optional[Union[str, Mapping]]
     _fill_value: float
+    _direction: str
 
     """A single direction along a model grid, containing potentially multiple cell positions."""
 
@@ -40,6 +41,7 @@ class Axis:
             Union[str, Mapping]
         ] = None,  # TODO type hint as Literal of the allowed options
         fill_value: Optional[float] = None,
+        direction: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -76,6 +78,17 @@ class Axis:
               Only the north edge folds. See ``padding.py`` for the conventions.
         fill_value : float, optional
             The value to use in the boundary condition when padding='fill'.
+        direction : {None, 'increasing', 'decreasing'}, optional
+            The sense in which this axis's index runs relative to its physical
+            coordinate.
+
+            * None or 'increasing':  The index increases in the same direction
+              as the physical coordinate (the default).
+            * 'decreasing':  The index increases as the physical coordinate
+              decreases (e.g. a vertical axis indexed from the surface down
+              while depth becomes more negative). Direction-sensitive operations
+              (`diff`, `derivative`, `cumsum`, `cumint`) are sign-corrected
+              accordingly.
         """
         # TODO - remove deprecation handling
         if "boundary" in kwargs:
@@ -170,6 +183,14 @@ class Axis:
             raise TypeError("fill value must be an integer or a float")
         self._fill_value = fill_value
 
+        if direction is None:
+            direction = "increasing"
+        if direction not in ("increasing", "decreasing"):
+            raise ValueError(
+                f"direction must be 'increasing' or 'decreasing', but got {direction}"
+            )
+        self._direction = direction
+
         # TODO backwards compatible attributes, to be removed --------------------
 
         if self._padding == "periodic":
@@ -211,10 +232,23 @@ class Axis:
             "Please use 'padding' instead."
         )
 
+    @property
+    def direction(self) -> str:
+        return self._direction
+
+    @property
+    def direction_sign(self) -> int:
+        """+1 for an 'increasing' axis, -1 for a 'decreasing' axis."""
+        return 1 if self._direction == "increasing" else -1
+
     def __repr__(self):
         is_periodic = "periodic" if self._periodic else "not periodic"
+        direction = (
+            "" if self._direction == "increasing" else ", direction='decreasing'"
+        )
         summary = [
-            "<xgcm.Axis '%s' (%s, padding=%r)>" % (self.name, is_periodic, self.padding)
+            "<xgcm.Axis '%s' (%s, padding=%r%s)>"
+            % (self.name, is_periodic, self.padding, direction)
         ]
         summary.append("Axis Coordinates:")
         summary += self._coord_desc()

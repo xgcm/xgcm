@@ -16,6 +16,11 @@ through when `xgcm.Grid.diff()` is called. See xgcm.grid_ufunc._select_grid_ufun
 
 # TODO can we allow for grouping these definitions into classes? Similar to pytest tests?
 
+# Note on axis directionality: these ufuncs stay direction-agnostic. A 'decreasing'
+# axis (index increasing as the physical coordinate decreases) only changes the *sign*
+# of diff/derivative and cumsum/cumint, which is applied once at the Grid dispatch level
+# (see xgcm.Grid._1d_grid_ufunc_dispatch and xgcm.Grid.cumsum) using Axis.direction_sign.
+
 
 # Diff
 
